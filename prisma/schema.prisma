@@ -1,0 +1,184 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        Int       @id @default(autoincrement())
+  vkId      Int       @unique
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  player    Player?
+  logs      GameLog[]
+}
+
+model Player {
+  id               Int                   @id @default(autoincrement())
+  userId           Int                   @unique
+  level            Int                   @default(1)
+  experience       Int                   @default(0)
+  gold             Int                   @default(0)
+  baseHealth       Int                   @default(4)
+  baseAttack       Int                   @default(2)
+  baseDefence      Int                   @default(3)
+  baseMagicDefence Int                   @default(0)
+  baseDexterity    Int                   @default(2)
+  baseIntelligence Int                   @default(0)
+  createdAt        DateTime              @default(now())
+  updatedAt        DateTime              @updatedAt
+  user             User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  allocation       PlayerStatAllocation?
+  progress         PlayerProgress?
+  inventory        PlayerInventory?
+  runes            Rune[]
+  battles          BattleSession[]
+}
+
+model PlayerStatAllocation {
+  playerId      Int    @id
+  health        Int    @default(0)
+  attack        Int    @default(0)
+  defence       Int    @default(0)
+  magicDefence  Int    @default(0)
+  dexterity     Int    @default(0)
+  intelligence  Int    @default(0)
+  player        Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
+}
+
+model PlayerProgress {
+  playerId              Int      @id
+  unspentStatPoints     Int      @default(1)
+  locationLevel         Int      @default(0)
+  currentRuneIndex      Int      @default(0)
+  activeBattleId        String?
+  tutorialState         String   @default("ACTIVE")
+  victories             Int      @default(0)
+  victoryStreak         Int      @default(0)
+  defeats               Int      @default(0)
+  defeatStreak          Int      @default(0)
+  mobsKilled            Int      @default(0)
+  highestLocationLevel  Int      @default(0)
+  updatedAt             DateTime @updatedAt
+  player                Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
+}
+
+model PlayerInventory {
+  playerId         Int      @id
+  usualShards      Int      @default(0)
+  unusualShards    Int      @default(0)
+  rareShards       Int      @default(0)
+  epicShards       Int      @default(0)
+  legendaryShards  Int      @default(0)
+  mythicalShards   Int      @default(0)
+  leather          Int      @default(0)
+  bone             Int      @default(0)
+  herb             Int      @default(0)
+  essence          Int      @default(0)
+  metal            Int      @default(0)
+  crystal          Int      @default(0)
+  updatedAt        DateTime @updatedAt
+  player           Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
+}
+
+model Rune {
+  id               String   @id @default(cuid())
+  playerId         Int
+  runeCode         String?  @unique
+  archetypeCode    String? 
+  passiveAbilityCodes String @default("[]")
+  activeAbilityCodes  String @default("[]")
+  name             String
+  rarity           String
+  health           Int      @default(0)
+  attack           Int      @default(0)
+  defence          Int      @default(0)
+  magicDefence     Int      @default(0)
+  dexterity        Int      @default(0)
+  intelligence     Int      @default(0)
+  isEquipped       Boolean  @default(false)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  player           Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@index([playerId, createdAt])
+}
+
+model BattleSession {
+  id              String   @id @default(cuid())
+  playerId        Int
+  status          String   @default("ACTIVE")
+  battleType      String   @default("PVE")
+  playerLoadoutSnapshot String? 
+  locationLevel   Int
+  biomeCode       String
+  enemyCode       String
+  enemyName       String
+  rewardTableCode String? 
+  turnOwner       String
+  playerSnapshot  String
+  enemySnapshot   String
+  log             String   @default("[]")
+  result          String?
+  rewardsSnapshot String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  player          Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@index([playerId, status])
+}
+
+model Biome {
+  id           Int           @id @default(autoincrement())
+  code         String        @unique
+  name         String
+  description  String        @default("")
+  minLevel     Int
+  maxLevel     Int
+  mobTemplates MobTemplate[]
+}
+
+model MobTemplate {
+  id                 Int      @id @default(autoincrement())
+  biomeId            Int
+  code               String   @unique
+  rewardTableCode    String?
+  name               String
+  kind               String
+  isElite            Boolean  @default(false)
+  isBoss             Boolean  @default(false)
+  baseHealth         Int
+  baseAttack         Int
+  baseDefence        Int
+  baseMagicDefence   Int
+  baseDexterity      Int
+  baseIntelligence   Int
+  healthScale        Float    @default(1.15)
+  attackScale        Float    @default(1.10)
+  defenceScale       Float    @default(1.10)
+  magicDefenceScale  Float    @default(1.08)
+  dexterityScale     Float    @default(1.08)
+  intelligenceScale  Float    @default(1.08)
+  baseExperience     Int
+  baseGold           Int
+  runeDropChance     Int      @default(30)
+  lootTable          String   @default("{}")
+  attackText         String   @default("атакует")
+  biome              Biome    @relation(fields: [biomeId], references: [id], onDelete: Cascade)
+
+  @@index([biomeId])
+}
+
+model GameLog {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  action    String
+  details   String   @default("{}")
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, action])
+}

@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.env
+*.db
+*.db-journal
+coverage/
+.vscode/
+.idea/
+*.log
+.DS_Store

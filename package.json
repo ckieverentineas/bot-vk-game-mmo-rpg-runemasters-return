@@ -1,0 +1,46 @@
+{
+  "name": "bot-vk-game-mmo-rpg-runemasters-return",
+  "version": "2.0.0",
+  "description": "Runemasters Return — VK MMO RPG rewritten with modular TypeScript architecture",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "check": "npm run typecheck && npm run test && npm run build",
+    "start": "node dist/index.js",
+    "db:generate": "prisma generate",
+    "db:push": "prisma db push",
+    "db:migrate": "prisma migrate dev",
+    "db:studio": "prisma studio",
+    "db:seed": "tsx src/database/seed.ts",
+    "release:status": "tsx src/tooling/release/release-status.ts",
+    "lint": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run --passWithNoTests"
+  },
+  "keywords": [
+    "vk-bot",
+    "rpg",
+    "mmo",
+    "game",
+    "runes",
+    "typescript"
+  ],
+  "author": "Runemasters Team",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^20.11.19",
+    "typescript": "^5.3.3",
+    "tsx": "^4.7.1",
+    "prisma": "^5.9.1",
+    "@prisma/client": "^5.9.1",
+    "vitest": "^1.2.2",
+    "eslint": "^8.56.0",
+    "@typescript-eslint/eslint-plugin": "^6.21.0",
+    "@typescript-eslint/parser": "^6.21.0"
+  },
+  "dependencies": {
+    "vk-io": "^4.9.2",
+    "dotenv": "^16.4.1"
+  }
+}

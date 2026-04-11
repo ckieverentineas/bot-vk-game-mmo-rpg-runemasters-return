@@ -1,0 +1,154 @@
+import type { StatKey } from '../../shared/types/game';
+
+export const gameCommands = {
+  start: 'начать',
+  backToMenu: 'назад',
+  deletePlayer: 'удалить персонажа',
+  profile: 'профиль',
+  inventory: 'инвентарь',
+  location: 'локация',
+  skipTutorial: 'пропустить обучение',
+  returnToAdventure: 'в приключения',
+  resetStats: 'сброс',
+  explore: 'исследовать',
+  attack: 'атака',
+  skills: 'навыки',
+  spell: 'спелл',
+  runeCollection: 'руна',
+  equipRune: 'надеть',
+  unequipRune: 'снять',
+  altar: 'алтарь',
+  craftRune: 'создать',
+  rerollRuneMenu: 'изменить руну',
+  destroyRune: 'сломать',
+  nextRune: '+руна',
+  previousRune: '-руна',
+  increaseAttack: '+атк',
+  increaseHealth: '+здр',
+  increaseDefence: '+фзащ',
+  increaseMagicDefence: '+мзащ',
+  increaseDexterity: '+лвк',
+  increaseIntelligence: '+инт',
+  increaseLocationLevel: '+ур',
+  decreaseLocationLevel: '-ур',
+  increaseLocationLevelByTen: '+ур10',
+  decreaseLocationLevelByTen: '-ур10',
+  increaseLocationLevelByHundred: '+ур100',
+  decreaseLocationLevelByHundred: '-ур100',
+  rerollAttack: '~атк',
+  rerollHealth: '~здр',
+  rerollDefence: '~фзащ',
+  rerollMagicDefence: '~мзащ',
+  rerollDexterity: '~лвк',
+  rerollIntelligence: '~инт',
+} as const;
+
+export type GameCommand = (typeof gameCommands)[keyof typeof gameCommands];
+
+type StatAllocationCommand =
+  | typeof gameCommands.increaseAttack
+  | typeof gameCommands.increaseHealth
+  | typeof gameCommands.increaseDefence
+  | typeof gameCommands.increaseMagicDefence
+  | typeof gameCommands.increaseDexterity
+  | typeof gameCommands.increaseIntelligence;
+
+type RuneStatRerollCommand =
+  | typeof gameCommands.rerollAttack
+  | typeof gameCommands.rerollHealth
+  | typeof gameCommands.rerollDefence
+  | typeof gameCommands.rerollMagicDefence
+  | typeof gameCommands.rerollDexterity
+  | typeof gameCommands.rerollIntelligence;
+
+type LocationLevelCommand =
+  | typeof gameCommands.increaseLocationLevel
+  | typeof gameCommands.decreaseLocationLevel
+  | typeof gameCommands.increaseLocationLevelByTen
+  | typeof gameCommands.decreaseLocationLevelByTen
+  | typeof gameCommands.increaseLocationLevelByHundred
+  | typeof gameCommands.decreaseLocationLevelByHundred;
+
+type RuneCursorCommand = typeof gameCommands.nextRune | typeof gameCommands.previousRune;
+type RuneCursorDelta = 1 | -1;
+
+const hasOwn = <T extends object>(record: T, key: PropertyKey): key is keyof T => Object.prototype.hasOwnProperty.call(record, key);
+
+const statAllocationCommandMap = {
+  [gameCommands.increaseAttack]: 'attack',
+  [gameCommands.increaseHealth]: 'health',
+  [gameCommands.increaseDefence]: 'defence',
+  [gameCommands.increaseMagicDefence]: 'magicDefence',
+  [gameCommands.increaseDexterity]: 'dexterity',
+  [gameCommands.increaseIntelligence]: 'intelligence',
+} satisfies Readonly<Record<StatAllocationCommand, StatKey>>;
+
+const runeStatRerollCommandMap = {
+  [gameCommands.rerollAttack]: 'attack',
+  [gameCommands.rerollHealth]: 'health',
+  [gameCommands.rerollDefence]: 'defence',
+  [gameCommands.rerollMagicDefence]: 'magicDefence',
+  [gameCommands.rerollDexterity]: 'dexterity',
+  [gameCommands.rerollIntelligence]: 'intelligence',
+} satisfies Readonly<Record<RuneStatRerollCommand, StatKey>>;
+
+const locationLevelCommandMap = {
+  [gameCommands.increaseLocationLevel]: 1,
+  [gameCommands.decreaseLocationLevel]: -1,
+  [gameCommands.increaseLocationLevelByTen]: 10,
+  [gameCommands.decreaseLocationLevelByTen]: -10,
+  [gameCommands.increaseLocationLevelByHundred]: 100,
+  [gameCommands.decreaseLocationLevelByHundred]: -100,
+} satisfies Readonly<Record<LocationLevelCommand, number>>;
+
+const runeCursorCommandMap = {
+  [gameCommands.nextRune]: 1,
+  [gameCommands.previousRune]: -1,
+} satisfies Readonly<Record<RuneCursorCommand, RuneCursorDelta>>;
+
+export const commandAliases: Readonly<Record<string, GameCommand>> = {
+  'меню': gameCommands.backToMenu,
+  'удалить перса': gameCommands.deletePlayer,
+  'обучение': gameCommands.location,
+  'в мир': gameCommands.returnToAdventure,
+  '++руна': gameCommands.nextRune,
+  '--руна': gameCommands.previousRune,
+  '~+руна': gameCommands.nextRune,
+  '~-руна': gameCommands.previousRune,
+};
+
+export const resolveStatAllocationCommand = (command: string): StatKey | null => {
+  if (!hasOwn(statAllocationCommandMap, command)) {
+    return null;
+  }
+
+  return statAllocationCommandMap[command];
+};
+
+export const resolveRuneStatRerollCommand = (command: string): StatKey | null => {
+  if (!hasOwn(runeStatRerollCommandMap, command)) {
+    return null;
+  }
+
+  return runeStatRerollCommandMap[command];
+};
+
+export const resolveLocationLevelDeltaCommand = (command: string): number | null => {
+  if (!hasOwn(locationLevelCommandMap, command)) {
+    return null;
+  }
+
+  return locationLevelCommandMap[command];
+};
+
+export const resolveRuneCursorDeltaCommand = (command: string): RuneCursorDelta | null => {
+  if (!hasOwn(runeCursorCommandMap, command)) {
+    return null;
+  }
+
+  return runeCursorCommandMap[command];
+};
+
+export const isSkillPreviewCommand = (command: string): boolean => (
+  command === gameCommands.skills || command === gameCommands.spell
+);
