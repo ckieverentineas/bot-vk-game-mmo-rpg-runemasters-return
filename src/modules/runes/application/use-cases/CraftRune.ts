@@ -1,6 +1,8 @@
 import { gameBalance } from '../../../../config/game-balance';
 import { AppError } from '../../../../shared/domain/AppError';
 import type { PlayerState, RuneRarity } from '../../../../shared/types/game';
+
+import { requirePlayerByVkId } from '../../../shared/application/require-player';
 import type { GameRepository } from '../../../shared/application/ports/GameRepository';
 import { RuneFactory } from '../../domain/rune-factory';
 
@@ -10,10 +12,7 @@ export class CraftRune {
   public constructor(private readonly repository: GameRepository) {}
 
   public async execute(vkId: number): Promise<PlayerState> {
-    const player = await this.repository.findPlayerByVkId(vkId);
-    if (!player) {
-      throw new AppError('player_not_found', 'Напишите «начать», чтобы создать персонажа.');
-    }
+    const player = await requirePlayerByVkId(this.repository, vkId);
 
     const rarity = rarityPriority.find((candidate) => {
       const shardField = gameBalance.runes.profiles[candidate].shardField;
@@ -34,4 +33,3 @@ export class CraftRune {
     return updated;
   }
 }
-

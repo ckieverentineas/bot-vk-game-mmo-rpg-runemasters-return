@@ -1,9 +1,9 @@
 import { AppError } from '../../../../shared/domain/AppError';
 import type { BattleView } from '../../../../shared/types/game';
+import { finalizeRecoveredBattleIfNeeded } from '../../../combat/application/finalize-recovered-battle';
 import { BattleEngine } from '../../../combat/domain/battle-engine';
-import { recoverInvalidActiveBattle } from '../../../combat/domain/recover-active-battle';
-import { RewardEngine } from '../../../combat/domain/reward-engine';
 import { derivePlayerStats, resolveEncounterLocationLevel } from '../../../player/domain/player-stats';
+import { requirePlayerById, requirePlayerByVkId } from '../../../shared/application/require-player';
 import type { GameRepository } from '../../../shared/application/ports/GameRepository';
 import { buildEnemySnapshot, buildPlayerSnapshot, describeEncounter, pickEncounterTemplate, resolveInitialTurnOwner } from '../../../world/domain/enemy-scaling';
 
@@ -11,31 +11,19 @@ export class ExploreLocation {
   public constructor(private readonly repository: GameRepository) {}
 
   public async execute(vkId: number): Promise<BattleView> {
-    const player = await this.repository.findPlayerByVkId(vkId);
-    if (!player) {
-      throw new AppError('player_not_found', 'Напишите «начать», чтобы создать персонажа.');
-    }
+    const player = await requirePlayerByVkId(this.repository, vkId);
 
     let currentPlayer = player;
     const activeBattle = await this.repository.getActiveBattle(player.playerId);
+
     if (activeBattle) {
-      const recoveredBattle = recoverInvalidActiveBattle(activeBattle);
-      if (!recoveredBattle) {
+      const recoveredBattle = await finalizeRecoveredBattleIfNeeded(this.repository, player.playerId, activeBattle);
+
+      if (!recoveredBattle.recovered) {
         return activeBattle;
       }
 
-      const rewardedRecoveredBattle = recoveredBattle.result === 'VICTORY'
-        ? RewardEngine.applyVictoryRewards(recoveredBattle)
-        : { battle: recoveredBattle, droppedRune: null };
-
-      await this.repository.finalizeBattle(player.playerId, rewardedRecoveredBattle.battle, rewardedRecoveredBattle.droppedRune);
-
-      const refreshedPlayer = await this.repository.findPlayerById(player.playerId);
-      if (!refreshedPlayer) {
-        throw new AppError('player_not_found', 'Игрок не найден. Нажмите «начать», чтобы создать персонажа.');
-      }
-
-      currentPlayer = refreshedPlayer;
+      currentPlayer = await requirePlayerById(this.repository, player.playerId);
     }
 
     const locationLevel = resolveEncounterLocationLevel(currentPlayer);

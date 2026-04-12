@@ -1,7 +1,6 @@
 import { PerformBattleAction } from '../modules/combat/application/use-cases/PerformBattleAction';
 import { GetActiveBattle } from '../modules/combat/application/use-cases/GetActiveBattle';
 import { ExploreLocation } from '../modules/exploration/application/use-cases/ExploreLocation';
-import { ChangeLocationLevel } from '../modules/exploration/application/use-cases/ChangeLocationLevel';
 import { EnterTutorialMode } from '../modules/exploration/application/use-cases/EnterTutorialMode';
 import { ReturnToAdventure } from '../modules/exploration/application/use-cases/ReturnToAdventure';
 import { SkipTutorial } from '../modules/exploration/application/use-cases/SkipTutorial';
@@ -26,7 +25,6 @@ export interface AppServices {
   getPlayerProfile: GetPlayerProfile;
   allocateStatPoint: AllocateStatPoint;
   resetAllocatedStats: ResetAllocatedStats;
-  changeLocationLevel: ChangeLocationLevel;
   enterTutorialMode: EnterTutorialMode;
   returnToAdventure: ReturnToAdventure;
   skipTutorial: SkipTutorial;
@@ -51,7 +49,6 @@ export const createAppServices = (): AppServices => {
     getPlayerProfile: new GetPlayerProfile(repository),
     allocateStatPoint: new AllocateStatPoint(repository),
     resetAllocatedStats: new ResetAllocatedStats(repository),
-    changeLocationLevel: new ChangeLocationLevel(repository),
     enterTutorialMode: new EnterTutorialMode(repository),
     returnToAdventure: new ReturnToAdventure(repository),
     skipTutorial: new SkipTutorial(repository),

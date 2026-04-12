@@ -125,22 +125,6 @@ const runeRerollLayout: KeyboardLayout = [
   [{ label: '◀ Меню', command: gameCommands.backToMenu, color: Keyboard.SECONDARY_COLOR }],
 ];
 
-const levelLayout: KeyboardLayout = [
-  [
-    { label: '+УР', command: gameCommands.increaseLocationLevel, color: Keyboard.POSITIVE_COLOR },
-    { label: '-УР', command: gameCommands.decreaseLocationLevel, color: Keyboard.NEGATIVE_COLOR },
-  ],
-  [
-    { label: '+УР10', command: gameCommands.increaseLocationLevelByTen, color: Keyboard.POSITIVE_COLOR },
-    { label: '-УР10', command: gameCommands.decreaseLocationLevelByTen, color: Keyboard.NEGATIVE_COLOR },
-  ],
-  [
-    { label: '+УР100', command: gameCommands.increaseLocationLevelByHundred, color: Keyboard.POSITIVE_COLOR },
-    { label: '-УР100', command: gameCommands.decreaseLocationLevelByHundred, color: Keyboard.NEGATIVE_COLOR },
-  ],
-  [{ label: '◀ Меню', command: gameCommands.backToMenu, color: Keyboard.SECONDARY_COLOR }],
-];
-
 export const createMainMenuKeyboard = (): KeyboardBuilder => buildKeyboard(mainMenuLayout);
 
 export const createEntryKeyboard = (): KeyboardBuilder => buildKeyboard(entryLayout);
@@ -154,8 +138,6 @@ export const createRuneKeyboard = (): KeyboardBuilder => buildKeyboard(runeLayou
 export const createAltarKeyboard = (): KeyboardBuilder => buildKeyboard(altarLayout);
 
 export const createRuneRerollKeyboard = (): KeyboardBuilder => buildKeyboard(runeRerollLayout);
-
-export const createLevelKeyboard = (): KeyboardBuilder => buildKeyboard(levelLayout);
 
 export const createTutorialKeyboard = (player: PlayerState): KeyboardBuilder => {
   const inTutorial = isPlayerInTutorial(player);

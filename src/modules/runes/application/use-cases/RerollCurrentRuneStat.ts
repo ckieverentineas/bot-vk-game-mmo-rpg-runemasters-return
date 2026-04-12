@@ -2,6 +2,8 @@ import { gameBalance } from '../../../../config/game-balance';
 import { AppError } from '../../../../shared/domain/AppError';
 import type { PlayerState, StatKey } from '../../../../shared/types/game';
 import { getSelectedRune } from '../../../player/domain/player-stats';
+
+import { requirePlayerByVkId } from '../../../shared/application/require-player';
 import type { GameRepository } from '../../../shared/application/ports/GameRepository';
 import { RuneFactory } from '../../domain/rune-factory';
 
@@ -9,10 +11,7 @@ export class RerollCurrentRuneStat {
   public constructor(private readonly repository: GameRepository) {}
 
   public async execute(vkId: number, stat: StatKey): Promise<PlayerState> {
-    const player = await this.repository.findPlayerByVkId(vkId);
-    if (!player) {
-      throw new AppError('player_not_found', 'Напишите «начать», чтобы создать персонажа.');
-    }
+    const player = await requirePlayerByVkId(this.repository, vkId);
 
     const rune = getSelectedRune(player);
     if (!rune) {
@@ -37,4 +36,3 @@ export class RerollCurrentRuneStat {
     });
   }
 }
-

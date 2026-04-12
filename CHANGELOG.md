@@ -47,6 +47,33 @@
 - зафиксировано выравнивание git-истории между локальным [`main`](README.md) и [`origin/main`](README.md);
 - в changelog добавлена запись о backup-ветке и безопасном reconciliation git-истории.
 
+## [0.03] - 2026-04-12
+
+### Commit
+
+- `worktree` — `refactor: tighten scaling rails and release workflow`
+
+### Added
+
+- общий application helper загрузки игрока [`requirePlayerByVkId()`](src/modules/shared/application/require-player.ts:9) и [`requirePlayerById()`](src/modules/shared/application/require-player.ts:19), чтобы новые use-case'ы не дублировали проверку `player_not_found`;
+- общий сценарий авто-финализации зависших боёв [`finalizeRecoveredBattleIfNeeded()`](src/modules/combat/application/finalize-recovered-battle.ts:11);
+- preflight-скрипт [`src/tooling/release/release-preflight.ts`](src/tooling/release/release-preflight.ts) и команда `npm run release:preflight` для быстрой релизной проверки документов и версии;
+- план масштабирования проекта в [`PLAN.md`](PLAN.md).
+
+### Changed
+
+- из transport-слоя удалены устаревшие команды ручной смены уровня угрозы, чтобы у адаптивной сложности осталось одно место правды в [`resolveAdaptiveAdventureLocationLevel()`](src/modules/player/domain/player-stats.ts:76);
+- use-case'ы `player`, `exploration`, `combat` и `runes` переведены на единый guard загрузки игрока;
+- логика восстановления «битого» активного боя больше не размножается между [`ExploreLocation`](src/modules/exploration/application/use-cases/ExploreLocation.ts:10), [`GetActiveBattle`](src/modules/combat/application/use-cases/GetActiveBattle.ts:8) и [`PerformBattleAction`](src/modules/combat/application/use-cases/PerformBattleAction.ts:9);
+- release tooling собран вокруг единого snapshot-состояния в [`resolveReleaseStatus()`](src/tooling/release/versioning.ts:29);
+- корневая документация синхронизирована под дальнейшее масштабирование контента и более быструю поставку обновлений.
+
+### Fixed
+
+- убрано мёртвое ветвление вокруг отключённого use-case ручного выбора уровня локации;
+- снижён риск расхождения пользовательских ошибок и recovery-сценариев между разными модулями.
+- `npm run release:preflight` теперь завершает процесс с ненулевым кодом, если обязательные релизные документы отсутствуют или пусты.
+
 ## Шаблон следующей записи
 
 ### [0.03] - YYYY-MM-DD

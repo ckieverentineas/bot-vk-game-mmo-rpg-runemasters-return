@@ -14,8 +14,9 @@ Runemasters Return — VK MMO RPG на TypeScript с модульным игро
 
 - `src/vk/commands/catalog.ts` — единый источник правды для команд, алиасов и динамических действий;
 - `src/vk/keyboards/index.ts` — общий builder клавиатур, который уменьшает копипасту и упрощает рост меню;
+- `src/modules/shared/application/require-player.ts` — единая точка загрузки игрока и консистентных ошибок для use-case слоя;
 - `src/shared/utils/json.ts` — единая точка для JSON clone/parse/stringify;
-- `src/tooling/release` — правила версионирования и скрипт `npm run release:status`;
+- `src/tooling/release` — правила версионирования, preflight-проверка и скрипты `npm run release:status` / `npm run release:preflight`;
 - `npm run check` — быстрый прогон typecheck + tests + build перед изменениями и коммитом.
 
 ## Технологии
@@ -59,11 +60,12 @@ bot-vk-game-mmo-rpg-runemasters-return/
 │   └── index.ts
 ├── ARCHITECTURE.md
 ├── CHANGELOG.md
+├── PLAN.md
 ├── QUICKSTART.md
 └── package.json
 ```
 
-Подробная архитектурная карта лежит в `ARCHITECTURE.md`.
+Подробная архитектурная карта лежит в `ARCHITECTURE.md`, а текущий план масштабирования — в `PLAN.md`.
 
 ## Установка
 
@@ -108,6 +110,7 @@ npm run typecheck
 npm run test
 npm run check
 npm run release:status
+npm run release:preflight
 npm run db:generate
 npm run db:push
 npm run db:seed
@@ -150,6 +153,8 @@ npm run db:studio
 - серии побед подряд;
 - серии поражений подряд, чтобы после неудач снова приходили мобы по зубам.
 
+Исторические команды ручного изменения уровня угрозы (`+ур`, `-ур` и их расширенные варианты) больше не поддерживаются, чтобы у сложности оставалось одно место правды.
+
 ### Руны и алтарь
 
 - `руна`
@@ -166,8 +171,9 @@ npm run db:studio
 1. Добавьте или измените команду в `src/vk/commands/catalog.ts`, если меняется transport-слой.
 2. Реализуйте чистую доменную логику в `src/modules/*/domain`.
 3. Подключите use-case в `src/modules/*/application` и протащите его в `src/app/composition-root.ts`.
-4. Обновите `README.md`, `CHANGELOG.md` и при необходимости `ARCHITECTURE.md`.
+4. Обновите `README.md`, `CHANGELOG.md`, `PLAN.md` и при необходимости `ARCHITECTURE.md`.
 5. Перед коммитом прогоните `npm run check`.
+6. Перед быстрой выкладкой прогоните `npm run release:preflight`.
 
 ## Обучение и динамическая сложность
 
@@ -189,4 +195,5 @@ npm run db:studio
 - публичная версия считается по commit-based правилу: каждые 100 коммитов дают новый релиз формата `M.nn`;
 - это значит, что `100` коммитов = версия `1.00`, `245` коммитов = версия `2.45`;
 - текущий статус можно посмотреть через `npm run release:status`;
+- перед выкладкой изменений стоит прогонять `npm run release:preflight`, чтобы проверить документацию, релизные рельсы и остановить релиз при пропущенных или пустых обязательных файлах;
 - пользовательские изменения фиксируются в `CHANGELOG.md`.

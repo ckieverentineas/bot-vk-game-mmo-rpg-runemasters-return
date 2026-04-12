@@ -7,7 +7,6 @@ import { Logger } from '../../utils/logger';
 import {
   gameCommands,
   isSkillPreviewCommand,
-  resolveLocationLevelDeltaCommand,
   resolveRuneCursorDeltaCommand,
   resolveRuneStatRerollCommand,
   resolveStatAllocationCommand,
@@ -165,13 +164,6 @@ export class GameHandler {
     if (allocationStat) {
       const player = await this.services.allocateStatPoint.execute(vkId, allocationStat);
       await this.replyWithProfile(ctx, player);
-      return;
-    }
-
-    const locationDelta = resolveLocationLevelDeltaCommand(command);
-    if (locationDelta !== null) {
-      const player = await this.services.changeLocationLevel.execute(vkId, locationDelta);
-      await this.replyWithLocation(ctx, player);
       return;
     }
 

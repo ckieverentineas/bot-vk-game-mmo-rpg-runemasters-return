@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { formatReleaseVersion, resolveCommitsUntilNextRelease, resolveNextReleaseCommitTarget } from './versioning';
+import { formatReleaseVersion, resolveCommitsUntilNextRelease, resolveNextReleaseCommitTarget, resolveReleaseStatus } from './versioning';
 
 describe('formatReleaseVersion', () => {
   it('считает первые сто коммитов версией 1.00', () => {
@@ -23,5 +23,14 @@ describe('release milestones', () => {
 
   it('показывает сколько коммитов осталось до следующего релиза', () => {
     expect(resolveCommitsUntilNextRelease(145)).toBe(55);
+  });
+
+  it('собирает единый snapshot релизного состояния', () => {
+    expect(resolveReleaseStatus(245)).toEqual({
+      commitCount: 245,
+      currentVersion: '2.45',
+      nextReleaseCommitTarget: 300,
+      commitsUntilNextRelease: 55,
+    });
   });
 });

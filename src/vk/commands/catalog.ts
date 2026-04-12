@@ -29,12 +29,6 @@ export const gameCommands = {
   increaseMagicDefence: '+мзащ',
   increaseDexterity: '+лвк',
   increaseIntelligence: '+инт',
-  increaseLocationLevel: '+ур',
-  decreaseLocationLevel: '-ур',
-  increaseLocationLevelByTen: '+ур10',
-  decreaseLocationLevelByTen: '-ур10',
-  increaseLocationLevelByHundred: '+ур100',
-  decreaseLocationLevelByHundred: '-ур100',
   rerollAttack: '~атк',
   rerollHealth: '~здр',
   rerollDefence: '~фзащ',
@@ -61,14 +55,6 @@ type RuneStatRerollCommand =
   | typeof gameCommands.rerollDexterity
   | typeof gameCommands.rerollIntelligence;
 
-type LocationLevelCommand =
-  | typeof gameCommands.increaseLocationLevel
-  | typeof gameCommands.decreaseLocationLevel
-  | typeof gameCommands.increaseLocationLevelByTen
-  | typeof gameCommands.decreaseLocationLevelByTen
-  | typeof gameCommands.increaseLocationLevelByHundred
-  | typeof gameCommands.decreaseLocationLevelByHundred;
-
 type RuneCursorCommand = typeof gameCommands.nextRune | typeof gameCommands.previousRune;
 type RuneCursorDelta = 1 | -1;
 
@@ -91,15 +77,6 @@ const runeStatRerollCommandMap = {
   [gameCommands.rerollDexterity]: 'dexterity',
   [gameCommands.rerollIntelligence]: 'intelligence',
 } satisfies Readonly<Record<RuneStatRerollCommand, StatKey>>;
-
-const locationLevelCommandMap = {
-  [gameCommands.increaseLocationLevel]: 1,
-  [gameCommands.decreaseLocationLevel]: -1,
-  [gameCommands.increaseLocationLevelByTen]: 10,
-  [gameCommands.decreaseLocationLevelByTen]: -10,
-  [gameCommands.increaseLocationLevelByHundred]: 100,
-  [gameCommands.decreaseLocationLevelByHundred]: -100,
-} satisfies Readonly<Record<LocationLevelCommand, number>>;
 
 const runeCursorCommandMap = {
   [gameCommands.nextRune]: 1,
@@ -131,14 +108,6 @@ export const resolveRuneStatRerollCommand = (command: string): StatKey | null =>
   }
 
   return runeStatRerollCommandMap[command];
-};
-
-export const resolveLocationLevelDeltaCommand = (command: string): number | null => {
-  if (!hasOwn(locationLevelCommandMap, command)) {
-    return null;
-  }
-
-  return locationLevelCommandMap[command];
 };
 
 export const resolveRuneCursorDeltaCommand = (command: string): RuneCursorDelta | null => {

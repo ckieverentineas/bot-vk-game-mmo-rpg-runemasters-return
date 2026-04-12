@@ -1,35 +1,29 @@
 import { AppError } from '../../../../shared/domain/AppError';
 import type { BattleView } from '../../../../shared/types/game';
+import { requirePlayerByVkId } from '../../../shared/application/require-player';
 import type { GameRepository } from '../../../shared/application/ports/GameRepository';
 import { BattleEngine } from '../../domain/battle-engine';
-import { recoverInvalidActiveBattle } from '../../domain/recover-active-battle';
+
+import { finalizeRecoveredBattleIfNeeded } from '../finalize-recovered-battle';
 import { RewardEngine } from '../../domain/reward-engine';
 
 export class PerformBattleAction {
   public constructor(private readonly repository: GameRepository) {}
 
   public async execute(vkId: number): Promise<BattleView> {
-    const player = await this.repository.findPlayerByVkId(vkId);
-    if (!player) {
-      throw new AppError('player_not_found', 'Напишите «начать», чтобы создать персонажа.');
-    }
+    const player = await requirePlayerByVkId(this.repository, vkId);
 
     const activeBattle = await this.repository.getActiveBattle(player.playerId);
     if (!activeBattle) {
       throw new AppError('battle_not_found', 'Сейчас у вас нет активного боя.');
     }
 
-    const recoveredBattle = recoverInvalidActiveBattle(activeBattle);
-    if (recoveredBattle) {
-      const rewardedRecoveredBattle = recoveredBattle.result === 'VICTORY'
-        ? RewardEngine.applyVictoryRewards(recoveredBattle)
-        : { battle: recoveredBattle, droppedRune: null };
-
-      await this.repository.finalizeBattle(player.playerId, rewardedRecoveredBattle.battle, rewardedRecoveredBattle.droppedRune);
-      return rewardedRecoveredBattle.battle;
+    const recoveredBattle = await finalizeRecoveredBattleIfNeeded(this.repository, player.playerId, activeBattle);
+    if (recoveredBattle.recovered) {
+      return recoveredBattle.battle;
     }
 
-    let battle = BattleEngine.attack(activeBattle);
+    let battle = BattleEngine.attack(recoveredBattle.battle);
 
     if (battle.status === 'ACTIVE') {
       battle = BattleEngine.resolveEnemyTurn(battle);

@@ -100,6 +100,7 @@ src/
 ### `modules/shared`
 
 - application port `GameRepository`;
+- общие application guard/helper'ы для use-case слоя;
 - Prisma implementation;
 - маппинг persistent state ↔ view state.
 
@@ -123,13 +124,19 @@ src/
 
 `src/shared/utils/json.ts` и helper'ы Prisma-репозитория убирают дублирование `JSON.parse` / `JSON.stringify` и делают работу со snapshot-состоянием предсказуемой.
 
-### 4. Чистый combat core
+### 4. Общие application guard'ы
+
+`src/modules/shared/application/require-player.ts` убирает копипасту из use-case'ов и делает загрузку игрока вместе с ошибкой `player_not_found` единообразной по всему проекту.
+
+Дополнительно `src/modules/combat/application/finalize-recovered-battle.ts` выносит в одно место сценарий авто-завершения «битого» активного боя, чтобы `combat` и `exploration` не дублировали одинаковую recovery-логику.
+
+### 5. Чистый combat core
 
 `src/modules/combat/domain` держит reusable helper'ы для клонирования battle state, расчёта физического урона и trim battle log. Это упрощает будущие активные навыки, статусы и эффекты поля боя.
 
 Дополнительно [`recoverInvalidActiveBattle()`](src/modules/combat/domain/recover-active-battle.ts:1) страхует проект от зависших активных боёв, когда в snapshot уже нулевое HP, а статус ещё не был закрыт.
 
-### 5. Адаптивная сложность
+### 6. Адаптивная сложность
 
 `src/modules/player/domain/player-stats.ts` рассчитывает рекомендованный уровень угрозы из нескольких источников:
 
@@ -140,16 +147,20 @@ src/
 
 Это даёт мягкий recovery после смертей и автоматический рост давления при уверенном прогрессе.
 
-### 6. Release discipline
+### 7. Release discipline
 
-`src/tooling/release/versioning.ts` фиксирует правило: каждые `100` коммитов дают новую пользовательскую версию формата `M.nn`. Скрипт `npm run release:status` показывает текущее состояние.
+`src/tooling/release/versioning.ts` фиксирует правило: каждые `100` коммитов дают новую пользовательскую версию формата `M.nn`.
 
-### 7. Documentation discipline
+- `npm run release:status` показывает текущее состояние версии;
+- `npm run release:preflight` проверяет, что релизные документы в корне проекта существуют и не пустые.
+
+### 8. Documentation discipline
 
 Изменения пользовательского поведения должны синхронно обновлять:
 
 - `README.md`
 - `CHANGELOG.md`
+- `PLAN.md`
 - `ARCHITECTURE.md` при изменении архитектурных границ
 
 ## Как безопасно добавлять новую систему
@@ -160,13 +171,14 @@ src/
 4. При необходимости добавить transport-команды в `src/vk/commands/catalog.ts`.
 5. Обновить клавиатуры, presenter и handler.
 6. Добавить или расширить unit tests для чистой логики.
-7. Обновить `CHANGELOG.md` и при необходимости `README.md`.
+7. Обновить `CHANGELOG.md`, `README.md`, `PLAN.md` и при необходимости `ARCHITECTURE.md`.
 
 ## Инварианты проекта
 
 - derived stat'ы считаются в домене, а не хранятся дублирующимся слоем в БД;
 - battle state хранится как snapshot и восстанавливается через repository mapper;
 - игрок не настраивает уровень локации вручную, это делает доменная логика сложности;
+- транспорт не должен возвращать ручные команды управления уровнем угрозы;
 - keyboard-first сценарий является основным транспортным сценарием для VK;
 - VK transport не должен напрямую содержать игровую логику;
 - новые функции должны добавляться через маленькие use-case'ы, а не через один разрастающийся handler;

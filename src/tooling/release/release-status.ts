@@ -1,33 +1,17 @@
-import { execSync } from 'node:child_process';
+import { readGitCommitCount } from './read-git-commit-count';
+import { releaseCommitWindowSize, resolveReleaseStatus } from './versioning';
 
-import { formatReleaseVersion, resolveCommitsUntilNextRelease, resolveNextReleaseCommitTarget } from './versioning';
-
-const readCommitCount = (): number => {
-  try {
-    const rawValue = execSync('git rev-list --count HEAD', {
-      encoding: 'utf8',
-      stdio: ['ignore', 'pipe', 'ignore'],
-    }).trim();
-
-    const parsedCount = Number.parseInt(rawValue, 10);
-    return Number.isNaN(parsedCount) ? 0 : parsedCount;
-  } catch {
-    return 0;
-  }
-};
-
-const commitCount = readCommitCount();
-const nextReleaseTarget = resolveNextReleaseCommitTarget(commitCount);
+const releaseStatus = resolveReleaseStatus(readGitCommitCount());
 
 console.log(
   [
     'Runemasters Return — release status',
     '',
-    `Коммитов в истории: ${commitCount}`,
-    `Публичная версия по changelog-политике: ${formatReleaseVersion(commitCount)}`,
-    `Следующий релизный рубеж: ${nextReleaseTarget} коммитов`,
-    `Осталось коммитов до следующего рубежа: ${resolveCommitsUntilNextRelease(commitCount)}`,
+    `Коммитов в истории: ${releaseStatus.commitCount}`,
+    `Публичная версия по changelog-политике: ${releaseStatus.currentVersion}`,
+    `Следующий релизный рубеж: ${releaseStatus.nextReleaseCommitTarget} коммитов`,
+    `Осталось коммитов до следующего рубежа: ${releaseStatus.commitsUntilNextRelease}`,
     '',
-    'Правило релизов: каждые 100 коммитов дают новую версию формата M.nn, поэтому 100 коммитов = 1.00.',
+    `Правило релизов: каждые ${releaseCommitWindowSize} коммитов дают новую версию формата M.nn, поэтому ${releaseCommitWindowSize} коммитов = 1.00.`,
   ].join('\n'),
 );
