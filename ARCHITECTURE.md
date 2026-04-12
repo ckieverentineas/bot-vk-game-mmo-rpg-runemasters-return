@@ -124,19 +124,31 @@ src/
 
 `src/shared/utils/json.ts` и helper'ы Prisma-репозитория убирают дублирование `JSON.parse` / `JSON.stringify` и делают работу со snapshot-состоянием предсказуемой.
 
-### 4. Общие application guard'ы
+### 4. Контентные контракты и валидация
+
+`src/content/validation/validate-game-content.ts` проверяет инварианты, от которых зависит безопасное масштабирование проекта:
+
+- непрерывное покрытие биомов по уровням;
+- корректные ссылки мобов на биомы;
+- валидный loot table;
+- консистентность рунных архетипов и способностей;
+- базовые ограничения игрового баланса и стартовой конфигурации.
+
+Эта валидация запускается через `npm run content:validate`, входит в `npm run check`, включена в `npm run release:preflight` и вызывается перед [`seed()`](src/database/seed.ts:5), чтобы не заливать битый контент в базу.
+
+### 5. Общие application guard'ы
 
 `src/modules/shared/application/require-player.ts` убирает копипасту из use-case'ов и делает загрузку игрока вместе с ошибкой `player_not_found` единообразной по всему проекту.
 
 Дополнительно `src/modules/combat/application/finalize-recovered-battle.ts` выносит в одно место сценарий авто-завершения «битого» активного боя, чтобы `combat` и `exploration` не дублировали одинаковую recovery-логику.
 
-### 5. Чистый combat core
+### 6. Чистый combat core
 
 `src/modules/combat/domain` держит reusable helper'ы для клонирования battle state, расчёта физического урона и trim battle log. Это упрощает будущие активные навыки, статусы и эффекты поля боя.
 
 Дополнительно [`recoverInvalidActiveBattle()`](src/modules/combat/domain/recover-active-battle.ts:1) страхует проект от зависших активных боёв, когда в snapshot уже нулевое HP, а статус ещё не был закрыт.
 
-### 6. Адаптивная сложность
+### 7. Адаптивная сложность
 
 `src/modules/player/domain/player-stats.ts` рассчитывает рекомендованный уровень угрозы из нескольких источников:
 
@@ -147,14 +159,15 @@ src/
 
 Это даёт мягкий recovery после смертей и автоматический рост давления при уверенном прогрессе.
 
-### 7. Release discipline
+### 8. Release discipline
 
 `src/tooling/release/versioning.ts` фиксирует правило: каждые `100` коммитов дают новую пользовательскую версию формата `M.nn`.
 
+- `npm run content:validate` валидирует контент и баланс до сборки;
 - `npm run release:status` показывает текущее состояние версии;
 - `npm run release:preflight` проверяет, что релизные документы в корне проекта существуют и не пустые.
 
-### 8. Documentation discipline
+### 9. Documentation discipline
 
 Изменения пользовательского поведения должны синхронно обновлять:
 
@@ -178,6 +191,7 @@ src/
 - derived stat'ы считаются в домене, а не хранятся дублирующимся слоем в БД;
 - battle state хранится как snapshot и восстанавливается через repository mapper;
 - игрок не настраивает уровень локации вручную, это делает доменная логика сложности;
+- контентные сиды и баланс должны проходить автоматическую валидацию до seed, check и release preflight;
 - транспорт не должен возвращать ручные команды управления уровнем угрозы;
 - keyboard-first сценарий является основным транспортным сценарием для VK;
 - VK transport не должен напрямую содержать игровую логику;

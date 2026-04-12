@@ -1,6 +1,7 @@
 import { existsSync, statSync } from 'node:fs';
 import { resolve } from 'node:path';
 
+import { formatGameContentValidationReport, validateGameContent } from '../../content/validation/validate-game-content';
 import { readGitCommitCount } from './read-git-commit-count';
 import { resolveReleaseStatus } from './versioning';
 
@@ -65,10 +66,26 @@ const validateRequiredDocument = (requiredDocument: RequiredDocument): DocumentC
 const releaseStatus = resolveReleaseStatus(readGitCommitCount());
 const documentChecks = requiredDocuments.map(validateRequiredDocument);
 const hasBlockingDocumentIssues = documentChecks.some(({ isValid }) => !isValid);
+const contentValidationReport = validateGameContent();
+const hasBlockingContentIssues = !contentValidationReport.isValid;
 
-const preflightStatusMessage = hasBlockingDocumentIssues
-  ? 'Статус: preflight не пройден. Исправьте обязательные документы перед релизом.'
-  : 'Статус: preflight пройден.';
+const resolvePreflightStatusMessage = (): string => {
+  if (hasBlockingDocumentIssues && hasBlockingContentIssues) {
+    return 'Статус: preflight не пройден. Исправьте обязательные документы, контентные данные и баланс перед релизом.';
+  }
+
+  if (hasBlockingDocumentIssues) {
+    return 'Статус: preflight не пройден. Исправьте обязательные документы перед релизом.';
+  }
+
+  if (hasBlockingContentIssues) {
+    return 'Статус: preflight не пройден. Исправьте контентные данные и баланс перед релизом.';
+  }
+
+  return 'Статус: preflight пройден.';
+};
+
+const preflightStatusMessage = resolvePreflightStatusMessage();
 
 console.log(
   [
@@ -81,15 +98,18 @@ console.log(
     'Обязательные документы:',
     ...documentChecks.map(({ statusLine }) => statusLine),
     '',
+    'Контент и баланс:',
+    ...formatGameContentValidationReport(contentValidationReport),
+    '',
     preflightStatusMessage,
     '',
     'Перед быстрой выкладкой:',
     '1. npm run check',
     '2. npm run release:status',
-    '3. Синхронизировать README.md, CHANGELOG.md и PLAN.md, если менялось пользовательское поведение.',
+    '3. Синхронизировать README.md, CHANGELOG.md, PLAN.md и ARCHITECTURE.md, если менялось пользовательское поведение или архитектурные границы.',
   ].join('\n'),
 );
 
-if (hasBlockingDocumentIssues) {
+if (hasBlockingDocumentIssues || hasBlockingContentIssues) {
   process.exitCode = 1;
 }

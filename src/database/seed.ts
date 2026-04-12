@@ -1,9 +1,11 @@
+import { assertValidGameContent } from '../content/validation/validate-game-content';
 import { biomeSeed, mobSeed } from '../content/world';
 import { Logger } from '../utils/logger';
 import { prisma } from './client';
 
 async function seed(): Promise<void> {
   Logger.info('🌱 Seeding new Runemasters Return database...');
+  assertValidGameContent();
 
   await prisma.battleSession.deleteMany();
   await prisma.playerProgress.updateMany({

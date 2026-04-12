@@ -74,6 +74,32 @@
 - снижён риск расхождения пользовательских ошибок и recovery-сценариев между разными модулями.
 - `npm run release:preflight` теперь завершает процесс с ненулевым кодом, если обязательные релизные документы отсутствуют или пусты.
 
+## [0.04] - 2026-04-12
+
+### Commit
+
+- `worktree` — `feat: validate content rails before scale-out`
+
+### Added
+
+- автоматическая валидация контентных сидов и базового баланса в [`validateGameContent()`](src/content/validation/validate-game-content.ts:329);
+- CLI-проверка [`src/tooling/release/content-validation.ts`](src/tooling/release/content-validation.ts) и команда `npm run content:validate`;
+- тесты контентной валидации [`src/content/validation/validate-game-content.test.ts`](src/content/validation/validate-game-content.test.ts) и тесты адаптивной сложности [`src/modules/player/domain/player-stats.test.ts`](src/modules/player/domain/player-stats.test.ts).
+
+### Changed
+
+- [`npm run check`](package.json:10) теперь включает контентную валидацию до тестов и сборки;
+- [`release-preflight`](src/tooling/release/release-preflight.ts:73) теперь проверяет не только документы, но и валидность контента и баланса;
+- [`seed()`](src/database/seed.ts:5) больше не заливает сиды в базу, если игровые данные нарушают инварианты;
+- корневая документация синхронизирована под дальнейшее безопасное масштабирование контента.
+
+### Fixed
+
+- снижен риск тихо сломать покрытие биомов, loot table, ссылки мобов на биомы или связи архетипов со способностями при быстром добавлении контента;
+- релизные проверки теперь ловят не только пустые документы, но и битые контентные данные.
+- контентная валидация теперь отлавливает ссылки архетипов на способности чужого архетипа, а не только отсутствие способности или неверный тип;
+- `release-preflight` теперь точнее сообщает, нужно исправлять документы или контент с балансом.
+
 ## Шаблон следующей записи
 
 ### [0.03] - YYYY-MM-DD
