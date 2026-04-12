@@ -6,7 +6,7 @@ import { readGitCommitCount } from './read-git-commit-count';
 import { resolveReleaseStatus } from './versioning';
 
 interface RequiredDocument {
-  readonly fileName: 'README.md' | 'CHANGELOG.md' | 'PLAN.md' | 'ARCHITECTURE.md';
+  readonly fileName: 'README.md' | 'CHANGELOG.md' | 'PLAN.md' | 'ARCHITECTURE.md' | 'RELEASE_CHECKLIST.md';
   readonly purpose: string;
 }
 
@@ -34,6 +34,10 @@ const requiredDocuments: readonly RequiredDocument[] = [
   {
     fileName: 'ARCHITECTURE.md',
     purpose: 'архитектурные границы и правила расширения',
+  },
+  {
+    fileName: 'RELEASE_CHECKLIST.md',
+    purpose: 'единый чек-лист локальной поставки и CI',
   },
 ];
 
@@ -106,7 +110,8 @@ console.log(
     'Перед быстрой выкладкой:',
     '1. npm run check',
     '2. npm run release:status',
-    '3. Синхронизировать README.md, CHANGELOG.md, PLAN.md и ARCHITECTURE.md, если менялось пользовательское поведение или архитектурные границы.',
+    '3. npm run release:summary',
+    '4. Синхронизировать README.md, CHANGELOG.md, PLAN.md, RELEASE_CHECKLIST.md и ARCHITECTURE.md, если менялось пользовательское поведение или архитектурные границы.',
   ].join('\n'),
 );
 

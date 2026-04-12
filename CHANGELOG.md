@@ -100,6 +100,55 @@
 - контентная валидация теперь отлавливает ссылки архетипов на способности чужого архетипа, а не только отсутствие способности или неверный тип;
 - `release-preflight` теперь точнее сообщает, нужно исправлять документы или контент с балансом.
 
+## [0.05] - 2026-04-12
+
+### Commit
+
+- `worktree` — `chore: formalize release checklist and content-to-transport bridge`
+
+### Added
+
+- единый чек-лист релизной поставки в `RELEASE_CHECKLIST.md`;
+- GitHub Actions workflow `.github/workflows/ci.yml` для минимального CI-пайплайна;
+- доменные helper'ы описания рунного контента [`describeRuneContent()`](src/modules/runes/domain/rune-abilities.ts:49) и [`listRuneArchetypes()`](src/modules/runes/domain/rune-abilities.ts:21);
+- тесты рунного контента в [`src/modules/runes/domain/rune-abilities.test.ts`](src/modules/runes/domain/rune-abilities.test.ts).
+
+### Changed
+
+- [`RuneFactory.create()`](src/modules/runes/domain/rune-factory.ts:21) теперь создаёт руны с архетипом и способностями из контентного каталога;
+- [`PrismaGameRepository.createRune()`](src/modules/shared/infrastructure/prisma/PrismaGameRepository.ts:267) и финализация наград протягивают архетип и списки способностей до persistence;
+- [`renderRuneScreen()`](src/vk/presenters/messages.ts:125) и [`renderAltar()`](src/vk/presenters/messages.ts:138) показывают рунный контент без ручного дублирования transport-описаний;
+- документация и план синхронизированы под единый локальный и CI-релизный процесс.
+
+### Fixed
+
+- скрафченные и выпавшие руны больше не теряют архетип и способности при сохранении в БД;
+- контентные правки архетипов и способностей теперь доходят до VK-представления без ручной правки transport-слоя.
+
+## [0.06] - 2026-04-12
+
+### Commit
+
+- `worktree` — `test: add release summary and smoke verification rails`
+
+### Added
+
+- генератор пользовательского release summary в `src/tooling/release/release-summary-generator.ts` и CLI-команда `npm run release:summary`;
+- тесты release summary в `src/tooling/release/release-summary.test.ts`;
+- smoke-проверки сценариев transport-уровня в `src/vk/handlers/gameHandler.smoke.test.ts`.
+
+### Changed
+
+- релизная документация и архитектурная карта синхронизированы под новый summary/smoke-процесс;
+- `README.md` теперь фиксирует smoke-путь через `GameHandler` и использование `release:summary`.
+
+### Fixed
+
+- ручная подготовка release summary больше не требуется для базового релизного цикла;
+- ключевые пользовательские сценарии теперь проверяются до релиза без реального VK API.
+- `release:summary` теперь опирается на последнюю закоммиченную changelog-запись и не теряет недокументированные коммиты из-за локального черновика;
+- `release:summary --range` больше не подставляет необработанный ввод в shell-команду.
+
 ## Шаблон следующей записи
 
 ### [0.03] - YYYY-MM-DD
