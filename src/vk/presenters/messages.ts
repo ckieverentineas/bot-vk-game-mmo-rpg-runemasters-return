@@ -1,6 +1,13 @@
 import { gameBalance } from '../../config/game-balance';
-import { derivePlayerStats, getEquippedRune, getSelectedRune, isPlayerInTutorial, resolveAdaptiveAdventureLocationLevel } from '../../modules/player/domain/player-stats';
+import {
+  derivePlayerStats,
+  getEquippedRune,
+  getSelectedRune,
+  isPlayerInTutorial,
+  resolveAdaptiveAdventureLocationLevel,
+} from '../../modules/player/domain/player-stats';
 import { describeRuneContent } from '../../modules/runes/domain/rune-abilities';
+import { buildRuneCollectionPage } from '../../modules/runes/domain/rune-collection';
 import type { BattleView, PlayerState, RuneView, StatBlock } from '../../shared/types/game';
 
 const formatStatBlock = (stats: StatBlock): string => [
@@ -12,30 +19,68 @@ const formatStatBlock = (stats: StatBlock): string => [
   `🧠 Интеллект: ${stats.intelligence}`,
 ].join('\n');
 
+const runeStatSummaryOrder: readonly (keyof StatBlock)[] = [
+  'attack',
+  'health',
+  'defence',
+  'dexterity',
+  'magicDefence',
+  'intelligence',
+];
+
+const runeStatSummaryLabels: Record<keyof StatBlock, string> = {
+  health: 'ЗДР',
+  attack: 'АТК',
+  defence: 'ФЗАЩ',
+  magicDefence: 'МЗАЩ',
+  dexterity: 'ЛВК',
+  intelligence: 'ИНТ',
+};
+
+const formatRuneStatSummary = (stats: StatBlock, limit = 3): string => {
+  const parts = runeStatSummaryOrder
+    .filter((key) => stats[key] > 0)
+    .sort((left, right) => stats[right] - stats[left])
+    .slice(0, limit)
+    .map((key) => `${runeStatSummaryLabels[key]} +${stats[key]}`);
+
+  return parts.length > 0 ? parts.join(' · ') : 'Без бонусов';
+};
+
+const formatAbilityLine = (prefix: string, name: string, details: string[]): string => (
+  `${prefix} ${name}${details.length > 0 ? ` · ${details.join(' · ')}` : ''}`
+);
+
 const formatRune = (rune: RuneView | null): string => {
   if (!rune) {
     return 'Руна не выбрана.';
   }
 
   const runeContent = describeRuneContent(rune);
-  const abilityLines = [
-    ...runeContent.passiveAbilities.map((ability) => `🛡️ Пассивная: ${ability.name}`),
-    ...runeContent.activeAbilities.map((ability) => `🌀 Активная: ${ability.name}`),
-  ];
+  const passiveLines = runeContent.passiveAbilities.map((ability) => formatAbilityLine('🛡️', ability.name, []));
+  const activeLines = runeContent.activeAbilities.map((ability) => formatAbilityLine(
+    '🌀',
+    ability.name,
+    [
+      `${ability.manaCost} маны`,
+      ability.cooldownTurns > 0 ? `откат ${ability.cooldownTurns} хода` : 'без отката',
+    ],
+  ));
 
   return [
-    `${rune.isEquipped ? '✅' : '💎'} ${rune.name}`,
+    `${rune.isEquipped ? '✅ Экипирована' : '💠 Выбрана'}: ${rune.name}`,
     `Редкость: ${gameBalance.runes.profiles[rune.rarity].title}`,
     ...(runeContent.archetype ? [`Архетип: ${runeContent.archetype.name}`] : []),
-    ...(abilityLines.length > 0 ? ['', 'Способности:', ...abilityLines] : []),
-    formatStatBlock({
+    `Бонусы: ${formatRuneStatSummary({
       health: rune.health,
       attack: rune.attack,
       defence: rune.defence,
       magicDefence: rune.magicDefence,
       dexterity: rune.dexterity,
       intelligence: rune.intelligence,
-    }),
+    }, 4)}`,
+    ...(passiveLines.length > 0 ? ['', 'Пассивно:', ...passiveLines] : []),
+    ...(activeLines.length > 0 ? ['', 'Активно:', ...activeLines] : []),
   ].join('\n');
 };
 
@@ -43,11 +88,11 @@ export const renderWelcome = (player: PlayerState, created: boolean): string => 
   ? [
       '🎮 Добро пожаловать в Runemasters Return!',
       '',
-      `Создан новый рунный мастер #${player.vkId}.`,
-      'Вы начинаете в безопасной учебной зоне.',
+      'Ваш мастер создан.',
+      'Сначала — короткий учебный бой.',
       `Стартовые осколки: обычные ${player.inventory.usualShards}, необычные ${player.inventory.unusualShards}, редкие ${player.inventory.rareShards}.`,
       '',
-      'Первый шаг: нажмите «⚔️ Учебный бой».',
+      'Нажмите «⚔️ Учебный бой», чтобы начать.',
     ].join('\n')
   : [
       '🎮 Ваш мастер уже существует.',
@@ -67,7 +112,7 @@ export const renderMainMenu = (player: PlayerState): string => {
   const inTutorial = isPlayerInTutorial(player);
 
   return [
-    '🏰 Главное меню RuneMasters Return',
+    '🏰 Главное меню Runemasters Return',
     '',
     `⭐ Уровень: ${player.level}`,
     inTutorial
@@ -117,7 +162,7 @@ export const renderInventory = (player: PlayerState): string => [
 ].join('\n');
 
 export const renderLocation = (player: PlayerState): string => [
-  '📘 Учебная зона и приключения',
+  '📘 Обучение',
   '',
   player.tutorialState === 'ACTIVE'
     ? 'Обучение ещё не завершено. Это безопасная зона для первого боя и знакомства с базовой петлёй.'
@@ -127,8 +172,8 @@ export const renderLocation = (player: PlayerState): string => [
   '',
   isPlayerInTutorial(player)
     ? 'Сейчас вы в учебной зоне. Враги здесь мягче и подходят для первого боя.'
-    : 'Сейчас вы в приключениях. Сложность подбирается автоматически по силе героя и серии боёв.',
-  `🎯 Рекомендуемая сложность в приключениях: ${resolveAdaptiveAdventureLocationLevel(player)}`,
+    : 'Сейчас открыт режим приключений. Сложность подстраивается под силу героя и серию боёв.',
+  `🎯 Рекомендуемый уровень угрозы: ${resolveAdaptiveAdventureLocationLevel(player)}`,
   `🧭 Максимально пройденная сложность: ${player.highestLocationLevel}`,
   player.defeatStreak > 0
     ? `🛡️ После поражений подряд (${player.defeatStreak}) враги становятся слабее, чтобы вы быстрее вернулись в ритм.`
@@ -139,32 +184,41 @@ export const renderLocation = (player: PlayerState): string => [
 
 export const renderRuneScreen = (player: PlayerState): string => {
   const selectedRune = getSelectedRune(player);
+  const equippedRune = getEquippedRune(player);
+  const page = buildRuneCollectionPage(player);
+
+  if (player.runes.length === 0) {
+    return [
+      '🔮 Руны и мастерская',
+      '',
+      'У вас пока нет рун.',
+      `Создание руны стоит ${gameBalance.runes.craftCost} осколков одной редкости.`,
+      'Побеждайте в боях или нажмите «✨ Создать», чтобы собрать первую руну.',
+    ].join('\n');
+  }
 
   return [
-    '💎 Мои руны',
+    '🔮 Руны и мастерская',
     '',
-    `Всего рун: ${player.runes.length}`,
-    `Текущий индекс: ${player.runes.length > 0 ? player.currentRuneIndex + 1 : 0}/${player.runes.length}`,
+    `Всего рун: ${player.runes.length} · Страница ${page.pageNumber}/${page.totalPages}`,
+    `Экипирована: ${equippedRune ? equippedRune.name : 'нет руны'}`,
+    '',
+    'Список на этой странице:',
+    ...page.entries.map((entry) => {
+      const runeContent = describeRuneContent(entry.rune);
+      return `${entry.isSelected ? '▶️' : '▫️'} ${entry.slot + 1}. ${entry.rune.isEquipped ? '✅ ' : ''}${entry.rune.name} — ${runeContent.archetype?.name ?? 'без архетипа'} · ${formatRuneStatSummary(entry.rune)}`;
+    }),
     '',
     formatRune(selectedRune),
     '',
-    selectedRune
-      ? 'Следующий шаг: выберите руну кнопками ниже и нажмите «Надеть» или «Снять».'
-      : 'Следующий шаг: откройте «Алтарь рун», чтобы создать первую руну.',
+    `Создать руну: ${gameBalance.runes.craftCost} одинаковых осколков.`,
+    'Перековка свойства: 1 осколок той же редкости.',
+    'Распыление: возвращает часть осколков выбранной руны.',
+    'Выберите слот 1-4, чтобы открыть руну. Кнопки ◀️/▶️ листают страницы.',
   ].join('\n');
 };
 
-export const renderAltar = (player: PlayerState): string => [
-  '🕯️ Алтарь рун',
-  '',
-  'Мои руны — для просмотра и экипировки. Алтарь — для создания, изменения и распыления выбранной руны.',
-  '',
-  renderRuneScreen(player),
-  '',
-  `Новая руна создаётся из ${gameBalance.runes.craftCost} осколков одной редкости.`,
-  'Изменение характеристики требует 1 осколок той же редкости, что и руна.',
-  'Распыление возвращает часть осколков выбранной руны.',
-].join('\n');
+export const renderAltar = (player: PlayerState): string => renderRuneScreen(player);
 
 const renderBar = (current: number, max: number, filled: string, empty: string, width = 10): string => {
   if (max <= 0) {
@@ -214,49 +268,48 @@ const renderBattleActorStats = (
 ): string => [
   `${title} ${renderHealthMood(actor.currentHealth, actor.maxHealth)}`,
   `🏷️ ${actor.name}`,
-  `❤️ HP: ${actor.currentHealth}/${actor.maxHealth}`,
+  `❤️ ${actor.currentHealth}/${actor.maxHealth} HP`,
   `🟥 ${renderBar(actor.currentHealth, actor.maxHealth, '█', '░')}`,
-  `💙 Мана: ${actor.currentMana}/${actor.maxMana}`,
-  `🟦 ${renderBar(actor.currentMana, actor.maxMana, '█', '░')}`,
-  `⚔️ АТК: ${actor.attack}`,
-  `🛡️ ФЗАЩ: ${actor.defence}`,
-  `✨ МЗАЩ: ${actor.magicDefence}`,
-  `💨 ЛВК: ${actor.dexterity}`,
-  `🧠 ИНТ: ${actor.intelligence}`,
+  `⚔️ АТК ${actor.attack} · 🛡️ ЗАЩ ${actor.defence} · 💨 ЛВК ${actor.dexterity}`,
 ].join('\n');
 
 export const renderBattle = (battle: BattleView): string => {
-  const log = [...battle.log].slice(-4).reverse().join('\n');
+  const log = [...battle.log].slice(-3).reverse().join('\n');
   const battleStateLine = battle.status === 'ACTIVE'
     ? battle.turnOwner === 'PLAYER'
-      ? 'Ваш ход: нажмите «⚔️ Атака».'
-      : 'Ход врага: дождитесь результата текущего обмена.'
+      ? 'Ваш ход.'
+      : 'Ход врага.'
     : battle.result === 'VICTORY'
-      ? 'Победа. Нажмите «⚔️ Исследовать», чтобы сразу начать новый бой.'
-      : 'Поражение. Откройте «👤 Профиль», чтобы усилить героя, или начните новый бой.';
+      ? 'Победа.'
+      : 'Поражение.';
+
+  const nextStepLine = battle.status === 'ACTIVE'
+    ? battle.turnOwner === 'PLAYER'
+      ? 'Действие: Нажмите «⚔️ Атака». '
+      : 'Дождитесь завершения обмена ударами.'
+    : battle.result === 'VICTORY'
+      ? 'Действие: Нажмите «⚔️ Новый бой». '
+      : 'Действие: усилите героя в профиле или начните бой снова.';
 
   const rewardLines = battle.status === 'COMPLETED' && battle.rewards
     ? [
         '',
-        `Результат: ${battle.result === 'VICTORY' ? 'ПОБЕДА' : 'ПОРАЖЕНИЕ'}`,
-        `Опыт: ${battle.rewards.experience}`,
-        `Пыль: ${battle.rewards.gold}`,
+        `Награда: +${battle.rewards.experience} опыта · +${battle.rewards.gold} пыли`,
         ...(battle.rewards.droppedRune ? [`Руна: ${battle.rewards.droppedRune.name}`] : []),
       ]
     : [];
 
   return [
-    `${battle.status === 'COMPLETED' ? '🏁 Завершённый бой' : '⚔️ Активный бой'}`,
+    `${battle.status === 'COMPLETED' ? '🏁 Завершённый бой' : '⚔️ Бой'}`,
     '',
     battleStateLine,
+    nextStepLine.trim(),
     '',
-    renderBattleActorStats('👤 Ваши боевые статы', battle.player),
+    renderBattleActorStats('👤 Вы', battle.player),
     '',
-    renderBattleActorStats('👾 Статы врага', battle.enemy),
+    renderBattleActorStats('👾 Враг', battle.enemy),
     '',
-    `Ход: ${battle.turnOwner === 'PLAYER' ? 'игрок' : 'враг'}`,
-    '',
-    'Последние события:',
+    'Что произошло:',
     log || 'Пока без событий.',
     ...rewardLines,
   ].join('\n');

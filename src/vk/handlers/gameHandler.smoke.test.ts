@@ -1,7 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { createAppServices, type AppServices } from '../../app/composition-root';
+import { AppError } from '../../shared/domain/AppError';
 import type { BattleView, PlayerState } from '../../shared/types/game';
+import { createRuneKeyboard } from '../keyboards';
 import { GameHandler } from './gameHandler';
 
 interface ReplyCall {
@@ -239,6 +241,9 @@ const createServices = (): AppServices => {
     moveRuneCursor: {
       execute: vi.fn().mockResolvedValue(runePlayer),
     } as unknown as AppServices['moveRuneCursor'],
+    selectRunePageSlot: {
+      execute: vi.fn().mockResolvedValue(runePlayer),
+    } as unknown as AppServices['selectRunePageSlot'],
     equipCurrentRune: {
       execute: vi.fn().mockResolvedValue(runePlayer),
     } as unknown as AppServices['equipCurrentRune'],
@@ -269,6 +274,7 @@ describe('GameHandler smoke', () => {
 
     expect(services.registerPlayer.execute).toHaveBeenCalledWith(1001);
     expect(replies[0]?.message).toContain('Добро пожаловать');
+    expect(replies[0]?.message).toContain('Учебный бой');
   });
 
   it('проходит сценарий обучения и входа в бой', async () => {
@@ -282,8 +288,8 @@ describe('GameHandler smoke', () => {
 
     expect(services.enterTutorialMode.execute).toHaveBeenCalledWith(1001);
     expect(services.exploreLocation.execute).toHaveBeenCalledWith(1001);
-    expect(getReplyCalls(locationContext)[0]?.message).toContain('Учебная зона и приключения');
-    expect(getReplyCalls(exploreContext)[0]?.message).toContain('Активный бой');
+    expect(getReplyCalls(locationContext)[0]?.message).toContain('Обучение');
+    expect(getReplyCalls(exploreContext)[0]?.message).toContain('⚔️ Бой');
   });
 
   it('проходит сценарий завершения боя', async () => {
@@ -295,8 +301,8 @@ describe('GameHandler smoke', () => {
 
     expect(services.performBattleAction.execute).toHaveBeenCalledWith(1001);
     expect(getReplyCalls(ctx)[0]?.message).toContain('Завершённый бой');
-    expect(getReplyCalls(ctx)[0]?.message).toContain('ПОБЕДА');
-    expect(getReplyCalls(ctx)[0]?.message).toContain('Победа. Нажмите «⚔️ Исследовать»');
+    expect(getReplyCalls(ctx)[0]?.message).toContain('Победа.');
+    expect(getReplyCalls(ctx)[0]?.message).toContain('Нажмите «⚔️ Новый бой»');
   });
 
   it('проходит сценарий рун и алтаря без прямой правки transport-описаний', async () => {
@@ -309,9 +315,37 @@ describe('GameHandler smoke', () => {
     await handler.handle(altarContext as never);
 
     expect(services.getRuneCollection.execute).toHaveBeenCalledTimes(2);
+    expect(getReplyCalls(runeContext)[0]?.message).toContain('Руны и мастерская');
     expect(getReplyCalls(runeContext)[0]?.message).toContain('Архетип: Уголь');
-    expect(getReplyCalls(runeContext)[0]?.message).toContain('Активная: Импульс углей');
-    expect(getReplyCalls(altarContext)[0]?.message).toContain('Алтарь рун');
+    expect(getReplyCalls(runeContext)[0]?.message).toContain('Импульс углей');
+    expect(getReplyCalls(altarContext)[0]?.message).toContain('Руны и мастерская');
+  });
+
+  it('выбирает руну через слот на странице', async () => {
+    const services = createServices();
+    const handler = new GameHandler(services);
+    const ctx = createFakeContext({ command: 'руна слот 1' });
+
+    await handler.handle(ctx as never);
+
+    expect(services.selectRunePageSlot.execute).toHaveBeenCalledWith(1001, 0);
+    expect(getReplyCalls(ctx)[0]?.message).toContain('Руны и мастерская');
+  });
+
+  it('возвращает rune hub keyboard при выборе пустого слота', async () => {
+    const services = createServices();
+    const handler = new GameHandler(services);
+    const ctx = createFakeContext({ command: 'руна слот 4' });
+
+    vi.mocked(services.selectRunePageSlot.execute).mockRejectedValueOnce(
+      new AppError('rune_slot_not_found', 'На этой позиции нет руны. Выберите другой слот на странице.'),
+    );
+
+    await handler.handle(ctx as never);
+
+    const replies = getReplyCalls(ctx);
+    expect(replies[0]?.message).toContain('На этой позиции нет руны');
+    expect(JSON.stringify(replies[0]?.keyboard)).toBe(JSON.stringify(createRuneKeyboard()));
   });
 
   it('проходит сценарий пропуска обучения', async () => {
@@ -322,6 +356,6 @@ describe('GameHandler smoke', () => {
     await handler.handle(ctx as never);
 
     expect(services.skipTutorial.execute).toHaveBeenCalledWith(1001);
-    expect(getReplyCalls(ctx)[0]?.message).toContain('Рекомендуемая сложность');
+    expect(getReplyCalls(ctx)[0]?.message).toContain('Рекомендуемый уровень угрозы');
   });
 });

@@ -173,6 +173,31 @@
 - повторные `создать`, `сломать` и reroll-команды больше не должны уводить осколки в минус или повторно возвращать награду за уже удалённую руну;
 - боевой лог наград больше не показывает внутренние коды вида `usual: 2`, а пишет человекочитаемые названия осколков.
 
+## [0.08] - 2026-04-17
+
+### Commit
+
+- `worktree` — `feat: modernize rune hub and smooth early combat`
+
+### Added
+
+- paging helper'ы рунной коллекции в [`src/modules/runes/domain/rune-collection.ts`](src/modules/runes/domain/rune-collection.ts) и тесты [`src/modules/runes/domain/rune-collection.test.ts`](src/modules/runes/domain/rune-collection.test.ts);
+- новые боевые и балансные тесты [`src/modules/combat/domain/battle-engine.test.ts`](src/modules/combat/domain/battle-engine.test.ts), [`src/modules/world/domain/enemy-scaling.test.ts`](src/modules/world/domain/enemy-scaling.test.ts), [`src/modules/runes/domain/rune-factory.test.ts`](src/modules/runes/domain/rune-factory.test.ts).
+
+### Changed
+
+- VK rune UX собран в единый paged hub: экран [`renderRuneScreen()`](src/vk/presenters/messages.ts) показывает до четырёх рун на странице, выбор по слотам и быстрые действия без листания по одной руне;
+- battle presentation стал компактнее и ориентирован на событие и следующий шаг, а завершённый бой теперь ведёт в новый забег через отдельную кнопку `⚔️ Новый бой`;
+- после регистрации новый игрок получает tutorial-first keyboard вместо немедленного выброса в полное главное меню;
+- стартовые статы новых персонажей, первые мобы Тёмного леса и правило первого хода выровнены под более честный early game;
+- случайные природные rune drops теперь ограничены по максимальной редкости в зависимости от уровня локации, чтобы старт не ломался lucky jackpot'ом.
+
+### Fixed
+
+- коллекция рун больше не упирается в устаревший one-by-one browsing как единственный способ найти нужную руну;
+- первый боевой цикл больше не должен так часто ощущаться как auto-loss из-за слабого стартового героя и перегретых стартовых мобов;
+- adaptive difficulty теперь меньше переоценивает intelligence и magic defence до появления полноценной магической боевой системы.
+
 ## Шаблон следующей записи
 
 ### [0.03] - YYYY-MM-DD

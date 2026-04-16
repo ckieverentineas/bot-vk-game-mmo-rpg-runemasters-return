@@ -15,6 +15,7 @@ import { EquipCurrentRune } from '../modules/runes/application/use-cases/EquipCu
 import { GetRuneCollection } from '../modules/runes/application/use-cases/GetRuneCollection';
 import { MoveRuneCursor } from '../modules/runes/application/use-cases/MoveRuneCursor';
 import { RerollCurrentRuneStat } from '../modules/runes/application/use-cases/RerollCurrentRuneStat';
+import { SelectRunePageSlot } from '../modules/runes/application/use-cases/SelectRunePageSlot';
 import { UnequipCurrentRune } from '../modules/runes/application/use-cases/UnequipCurrentRune';
 import { PrismaGameRepository } from '../modules/shared/infrastructure/prisma/PrismaGameRepository';
 import { prisma } from '../database/client';
@@ -33,6 +34,7 @@ export interface AppServices {
   performBattleAction: PerformBattleAction;
   getRuneCollection: GetRuneCollection;
   moveRuneCursor: MoveRuneCursor;
+  selectRunePageSlot: SelectRunePageSlot;
   equipCurrentRune: EquipCurrentRune;
   unequipCurrentRune: UnequipCurrentRune;
   craftRune: CraftRune;
@@ -57,6 +59,7 @@ export const createAppServices = (): AppServices => {
     performBattleAction: new PerformBattleAction(repository),
     getRuneCollection: new GetRuneCollection(repository),
     moveRuneCursor: new MoveRuneCursor(repository),
+    selectRunePageSlot: new SelectRunePageSlot(repository),
     equipCurrentRune: new EquipCurrentRune(repository),
     unequipCurrentRune: new UnequipCurrentRune(repository),
     craftRune: new CraftRune(repository),

@@ -16,6 +16,8 @@ describe('normalizeCommand', () => {
   it('нормализует исторические алиасы навигации по рунам', () => {
     expect(normalizeCommand('++РУНА')).toBe(gameCommands.nextRune);
     expect(normalizeCommand('--руна')).toBe(gameCommands.previousRune);
+    expect(normalizeCommand('>>руна')).toBe(gameCommands.nextRunePage);
+    expect(normalizeCommand('<<руна')).toBe(gameCommands.previousRunePage);
   });
 
   it('не ломает неизвестные текстовые команды', () => {

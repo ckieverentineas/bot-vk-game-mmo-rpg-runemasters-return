@@ -11,12 +11,12 @@ const createPlayerState = (overrides: Partial<PlayerState> = {}): PlayerState =>
   experience: 0,
   gold: 0,
   baseStats: {
-    health: 4,
-    attack: 2,
-    defence: 1,
-    magicDefence: 0,
-    dexterity: 1,
-    intelligence: 0,
+    health: 8,
+    attack: 4,
+    defence: 3,
+    magicDefence: 1,
+    dexterity: 3,
+    intelligence: 1,
   },
   allocationPoints: {
     health: 0,
@@ -93,6 +93,48 @@ describe('resolveAdaptiveAdventureLocationLevel', () => {
     });
 
     expect(resolveAdaptiveAdventureLocationLevel(boostedPlayer)).toBeGreaterThan(resolveAdaptiveAdventureLocationLevel(basePlayer));
+  });
+
+  it('не переоценивает магические статы без полноценной боевой системы заклинаний', () => {
+    const attackPlayer = createPlayerState({
+      level: 10,
+      runes: [
+        {
+          id: 'rune-attack',
+          name: 'Руна давления',
+          rarity: 'EPIC',
+          health: 6,
+          attack: 8,
+          defence: 2,
+          magicDefence: 0,
+          dexterity: 3,
+          intelligence: 0,
+          isEquipped: true,
+          createdAt: '2026-04-12T00:00:00.000Z',
+        },
+      ],
+    });
+
+    const magicPlayer = createPlayerState({
+      level: 10,
+      runes: [
+        {
+          id: 'rune-magic',
+          name: 'Руна эха',
+          rarity: 'EPIC',
+          health: 6,
+          attack: 0,
+          defence: 2,
+          magicDefence: 8,
+          dexterity: 3,
+          intelligence: 8,
+          isEquipped: true,
+          createdAt: '2026-04-12T00:00:00.000Z',
+        },
+      ],
+    });
+
+    expect(resolveAdaptiveAdventureLocationLevel(attackPlayer)).toBeGreaterThan(resolveAdaptiveAdventureLocationLevel(magicPlayer));
   });
 });
 

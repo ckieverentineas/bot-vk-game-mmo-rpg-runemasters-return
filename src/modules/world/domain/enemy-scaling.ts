@@ -83,7 +83,7 @@ export const buildPlayerSnapshot = (playerId: number, vkId: number, stats: StatB
 });
 
 export const resolveInitialTurnOwner = (playerDexterity: number, enemyDexterity: number): TurnOwner => (
-  playerDexterity >= enemyDexterity ? 'PLAYER' : 'ENEMY'
+  playerDexterity + 1 >= enemyDexterity ? 'PLAYER' : 'ENEMY'
 );
 
 export const describeEncounter = (biome: BiomeView, enemy: BattleEnemySnapshot): string => (

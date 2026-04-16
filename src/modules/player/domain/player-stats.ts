@@ -64,9 +64,9 @@ const calculateCombatPower = (stats: StatBlock): number => (
   stats.health
   + stats.attack * 4
   + stats.defence * 3
-  + stats.magicDefence * 2
-  + stats.dexterity * 2
-  + stats.intelligence * 2
+  + stats.magicDefence * 0.5
+  + stats.dexterity * 1.5
+  + stats.intelligence * 0.5
 );
 
 export const isPlayerInTutorial = (player: Pick<PlayerState, 'locationLevel'>): boolean => (

@@ -1,4 +1,5 @@
 import type { StatKey } from '../../shared/types/game';
+import { runeCollectionPageSize } from '../../modules/runes/domain/rune-collection';
 
 export const gameCommands = {
   start: 'начать',
@@ -23,6 +24,12 @@ export const gameCommands = {
   destroyRune: 'сломать',
   nextRune: '+руна',
   previousRune: '-руна',
+  nextRunePage: 'руны >',
+  previousRunePage: 'руны <',
+  selectRuneSlot1: 'руна слот 1',
+  selectRuneSlot2: 'руна слот 2',
+  selectRuneSlot3: 'руна слот 3',
+  selectRuneSlot4: 'руна слот 4',
   increaseAttack: '+атк',
   increaseHealth: '+здр',
   increaseDefence: '+фзащ',
@@ -55,8 +62,19 @@ type RuneStatRerollCommand =
   | typeof gameCommands.rerollDexterity
   | typeof gameCommands.rerollIntelligence;
 
-type RuneCursorCommand = typeof gameCommands.nextRune | typeof gameCommands.previousRune;
-type RuneCursorDelta = 1 | -1;
+type RuneCursorCommand =
+  | typeof gameCommands.nextRune
+  | typeof gameCommands.previousRune
+  | typeof gameCommands.nextRunePage
+  | typeof gameCommands.previousRunePage;
+
+type RuneSlotCommand =
+  | typeof gameCommands.selectRuneSlot1
+  | typeof gameCommands.selectRuneSlot2
+  | typeof gameCommands.selectRuneSlot3
+  | typeof gameCommands.selectRuneSlot4;
+
+type RuneCursorDelta = number;
 
 const hasOwn = <T extends object>(record: T, key: PropertyKey): key is keyof T => Object.prototype.hasOwnProperty.call(record, key);
 
@@ -81,7 +99,16 @@ const runeStatRerollCommandMap = {
 const runeCursorCommandMap = {
   [gameCommands.nextRune]: 1,
   [gameCommands.previousRune]: -1,
+  [gameCommands.nextRunePage]: runeCollectionPageSize,
+  [gameCommands.previousRunePage]: -runeCollectionPageSize,
 } satisfies Readonly<Record<RuneCursorCommand, RuneCursorDelta>>;
+
+const runePageSlotCommandMap = {
+  [gameCommands.selectRuneSlot1]: 0,
+  [gameCommands.selectRuneSlot2]: 1,
+  [gameCommands.selectRuneSlot3]: 2,
+  [gameCommands.selectRuneSlot4]: 3,
+} satisfies Readonly<Record<RuneSlotCommand, 0 | 1 | 2 | 3>>;
 
 export const commandAliases: Readonly<Record<string, GameCommand>> = {
   'меню': gameCommands.backToMenu,
@@ -90,6 +117,8 @@ export const commandAliases: Readonly<Record<string, GameCommand>> = {
   'в мир': gameCommands.returnToAdventure,
   '++руна': gameCommands.nextRune,
   '--руна': gameCommands.previousRune,
+  '>>руна': gameCommands.nextRunePage,
+  '<<руна': gameCommands.previousRunePage,
   '~+руна': gameCommands.nextRune,
   '~-руна': gameCommands.previousRune,
 };
@@ -116,6 +145,14 @@ export const resolveRuneCursorDeltaCommand = (command: string): RuneCursorDelta 
   }
 
   return runeCursorCommandMap[command];
+};
+
+export const resolveRunePageSlotCommand = (command: string): 0 | 1 | 2 | 3 | null => {
+  if (!hasOwn(runePageSlotCommandMap, command)) {
+    return null;
+  }
+
+  return runePageSlotCommandMap[command];
 };
 
 export const isSkillPreviewCommand = (command: string): boolean => (

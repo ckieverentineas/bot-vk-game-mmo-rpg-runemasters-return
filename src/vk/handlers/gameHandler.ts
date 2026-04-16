@@ -8,12 +8,13 @@ import {
   gameCommands,
   isSkillPreviewCommand,
   resolveRuneCursorDeltaCommand,
+  resolveRunePageSlotCommand,
   resolveRuneStatRerollCommand,
   resolveStatAllocationCommand,
 } from '../commands/catalog';
 import {
-  createAltarKeyboard,
   createBattleKeyboard,
+  createBattleResultKeyboard,
   createEntryKeyboard,
   createMainMenuKeyboard,
   createProfileKeyboard,
@@ -53,7 +54,11 @@ export class GameHandler {
     try {
       if (command === gameCommands.start) {
         const result = await this.services.registerPlayer.execute(vkId);
-        await this.reply(ctx, renderWelcome(result.player, result.created), createMainMenuKeyboard());
+        await this.reply(
+          ctx,
+          renderWelcome(result.player, result.created),
+          result.created ? createTutorialKeyboard(result.player) : createMainMenuKeyboard(),
+        );
         return;
       }
 
@@ -110,27 +115,27 @@ export class GameHandler {
         }
         case gameCommands.runeCollection: {
           const player = await this.services.getRuneCollection.execute(vkId);
-          await this.replyWithRuneCollection(ctx, player);
+          await this.replyWithRuneHub(ctx, player);
           return;
         }
         case gameCommands.equipRune: {
           const player = await this.services.equipCurrentRune.execute(vkId);
-          await this.replyWithRuneCollection(ctx, player);
+          await this.replyWithRuneHub(ctx, player);
           return;
         }
         case gameCommands.unequipRune: {
           const player = await this.services.unequipCurrentRune.execute(vkId);
-          await this.replyWithRuneCollection(ctx, player);
+          await this.replyWithRuneHub(ctx, player);
           return;
         }
         case gameCommands.altar: {
           const player = await this.services.getRuneCollection.execute(vkId);
-          await this.replyWithAltar(ctx, player);
+          await this.replyWithRuneHub(ctx, player);
           return;
         }
         case gameCommands.craftRune: {
           const player = await this.services.craftRune.execute(vkId);
-          await this.replyWithAltar(ctx, player);
+          await this.replyWithRuneHub(ctx, player);
           return;
         }
         case gameCommands.rerollRuneMenu: {
@@ -140,7 +145,7 @@ export class GameHandler {
         }
         case gameCommands.destroyRune: {
           const player = await this.services.destroyCurrentRune.execute(vkId);
-          await this.replyWithAltar(ctx, player);
+          await this.replyWithRuneHub(ctx, player);
           return;
         }
         default: {
@@ -170,7 +175,14 @@ export class GameHandler {
     const runeCursorDelta = resolveRuneCursorDeltaCommand(command);
     if (runeCursorDelta !== null) {
       const player = await this.services.moveRuneCursor.execute(vkId, runeCursorDelta);
-      await this.replyWithRuneCollection(ctx, player);
+      await this.replyWithRuneHub(ctx, player);
+      return;
+    }
+
+    const runePageSlot = resolveRunePageSlotCommand(command);
+    if (runePageSlot !== null) {
+      const player = await this.services.selectRunePageSlot.execute(vkId, runePageSlot);
+      await this.replyWithRuneHub(ctx, player);
       return;
     }
 
@@ -227,12 +239,8 @@ export class GameHandler {
     await this.reply(ctx, renderLocation(player), createTutorialKeyboard(player));
   }
 
-  private async replyWithRuneCollection(ctx: Context, player: PlayerState): Promise<void> {
+  private async replyWithRuneHub(ctx: Context, player: PlayerState): Promise<void> {
     await this.reply(ctx, renderRuneScreen(player), createRuneKeyboard());
-  }
-
-  private async replyWithAltar(ctx: Context, player: PlayerState): Promise<void> {
-    await this.reply(ctx, renderAltar(player), createAltarKeyboard());
   }
 
   private async replyWithBattle(ctx: Context, battle: BattleView): Promise<void> {
@@ -242,26 +250,33 @@ export class GameHandler {
   private async replyWithBattleSkillsPreview(ctx: Context, vkId: number): Promise<void> {
     const battle = await this.services.getActiveBattle.execute(vkId);
 
-      await this.reply(
-        ctx,
-        [
-          '🌀 Сейчас в бою доступна базовая атака.',
-          'Экипированная руна уже усиливает ваши характеристики.',
-          'Отдельные активные навыки рун готовятся следующим боевым слоем.',
-          'Пока лучший ход — следить за боем и добивать врага обычной атакой.',
-          '',
-          renderBattle(battle),
-        ].join('\n'),
+    await this.reply(
+      ctx,
+      [
+        '🔮 Сейчас руна даёт бонусы к характеристикам, а бой идёт через базовую атаку.',
+        'Активные рунные навыки готовятся следующим боевым слоем.',
+        'Пока лучший ход — выбирать сильную руну и держать темп через «⚔️ Атака».',
+        '',
+        renderBattle(battle),
+      ].join('\n'),
       this.resolveBattleKeyboard(battle),
     );
   }
 
   private resolveBattleKeyboard(battle: BattleView): ReplyKeyboard {
-    return battle.status === 'ACTIVE' ? createBattleKeyboard() : createMainMenuKeyboard();
+    return battle.status === 'ACTIVE' ? createBattleKeyboard() : createBattleResultKeyboard();
   }
 
   private resolveErrorKeyboard(errorCode: string): ReplyKeyboard {
-    return errorCode === 'player_not_found' ? createEntryKeyboard() : createMainMenuKeyboard();
+    if (errorCode === 'player_not_found') {
+      return createEntryKeyboard();
+    }
+
+    if (['runes_not_found', 'rune_not_found', 'rune_slot_not_found'].includes(errorCode)) {
+      return createRuneKeyboard();
+    }
+
+    return createMainMenuKeyboard();
   }
 
   private async reply(ctx: Context, message: string, keyboard: ReplyKeyboard): Promise<void> {

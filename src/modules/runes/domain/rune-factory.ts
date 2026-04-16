@@ -5,6 +5,7 @@ import type { RuneDraft, RuneRarity, RuneView, StatKey } from '../../../shared/t
 import { applyRuneArchetype, getRuneArchetype, listRuneArchetypes } from './rune-abilities';
 
 const defaultStatPool: readonly StatKey[] = ['health', 'attack', 'defence', 'magicDefence', 'dexterity', 'intelligence'];
+const naturalRarityOrder: readonly RuneRarity[] = ['USUAL', 'UNUSUAL', 'RARE', 'EPIC', 'LEGENDARY', 'MYTHICAL'];
 
 const randomInt = (min: number, max: number): number => Math.floor(Math.random() * (max - min + 1)) + min;
 
@@ -22,7 +23,7 @@ const createArchetypeStatPool = (archetypeCode: string): readonly StatKey[] => {
 
 export class RuneFactory {
   public static create(locationLevel: number, forcedRarity?: RuneRarity): RuneDraft {
-    const rarity = forcedRarity ?? this.rollRarity();
+    const rarity = forcedRarity ?? this.rollRarity(this.resolveNaturalRarityCap(locationLevel));
     const profile = gameBalance.runes.profiles[rarity];
     const archetype = randomItem(listRuneArchetypes());
     const statPool = createArchetypeStatPool(archetype.code);
@@ -65,8 +66,10 @@ export class RuneFactory {
     return nextRune;
   }
 
-  private static rollRarity(): RuneRarity {
-    const entries = Object.entries(gameBalance.runes.profiles) as Array<[RuneRarity, typeof gameBalance.runes.profiles[RuneRarity]]>;
+  private static rollRarity(maxRarity: RuneRarity): RuneRarity {
+    const maxIndex = naturalRarityOrder.indexOf(maxRarity);
+    const allowedRarities = naturalRarityOrder.slice(0, maxIndex + 1);
+    const entries = allowedRarities.map((rarity) => [rarity, gameBalance.runes.profiles[rarity]] as const);
     const totalWeight = entries.reduce((sum, [, profile]) => sum + profile.weight, 0);
     let roll = randomInt(1, totalWeight);
 
@@ -84,5 +87,25 @@ export class RuneFactory {
     const profile = gameBalance.runes.profiles[rarity];
     const levelBonus = Math.floor(locationLevel / 10);
     return randomInt(1, profile.maxStatRoll + levelBonus);
+  }
+
+  private static resolveNaturalRarityCap(locationLevel: number): RuneRarity {
+    if (locationLevel >= 120) {
+      return 'MYTHICAL';
+    }
+
+    if (locationLevel >= 70) {
+      return 'LEGENDARY';
+    }
+
+    if (locationLevel >= 35) {
+      return 'EPIC';
+    }
+
+    if (locationLevel >= 15) {
+      return 'RARE';
+    }
+
+    return 'UNUSUAL';
   }
 }
