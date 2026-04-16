@@ -1,0 +1,310 @@
+import { describe, expect, it, vi } from 'vitest';
+
+import type { BattleView, RuneDraft, StatBlock } from '../../../../shared/types/game';
+import { PrismaGameRepository } from './PrismaGameRepository';
+
+const createPlayerRecord = () => ({
+  id: 1,
+  userId: 10,
+  level: 3,
+  experience: 12,
+  gold: 7,
+  baseHealth: 8,
+  baseAttack: 4,
+  baseDefence: 3,
+  baseMagicDefence: 1,
+  baseDexterity: 2,
+  baseIntelligence: 1,
+  createdAt: new Date('2026-04-12T00:00:00.000Z'),
+  updatedAt: new Date('2026-04-12T00:00:00.000Z'),
+  user: {
+    vkId: 1001,
+  },
+  allocation: {
+    health: 0,
+    attack: 0,
+    defence: 0,
+    magicDefence: 0,
+    dexterity: 0,
+    intelligence: 0,
+  },
+  progress: {
+    playerId: 1,
+    unspentStatPoints: 1,
+    locationLevel: 1,
+    currentRuneIndex: 0,
+    activeBattleId: null,
+    tutorialState: 'SKIPPED',
+    victories: 2,
+    victoryStreak: 1,
+    defeats: 0,
+    defeatStreak: 0,
+    mobsKilled: 2,
+    highestLocationLevel: 2,
+    updatedAt: new Date('2026-04-12T00:00:00.000Z'),
+  },
+  inventory: {
+    playerId: 1,
+    usualShards: 15,
+    unusualShards: 4,
+    rareShards: 1,
+    epicShards: 0,
+    legendaryShards: 0,
+    mythicalShards: 0,
+    leather: 0,
+    bone: 0,
+    herb: 0,
+    essence: 0,
+    metal: 0,
+    crystal: 0,
+    updatedAt: new Date('2026-04-12T00:00:00.000Z'),
+  },
+  runes: [],
+});
+
+const createBattleRow = (overrides: Partial<Record<string, unknown>> = {}) => ({
+  id: 'battle-1',
+  playerId: 1,
+  status: 'ACTIVE',
+  battleType: 'PVE',
+  locationLevel: 1,
+  biomeCode: 'initium',
+  enemyCode: 'slime',
+  enemyName: 'Слизень',
+  turnOwner: 'PLAYER',
+  playerSnapshot: JSON.stringify({
+    playerId: 1,
+    name: 'Рунный мастер #1001',
+    attack: 4,
+    defence: 3,
+    magicDefence: 1,
+    dexterity: 2,
+    intelligence: 1,
+    maxHealth: 8,
+    currentHealth: 8,
+    maxMana: 4,
+    currentMana: 4,
+  }),
+  enemySnapshot: JSON.stringify({
+    code: 'slime',
+    name: 'Слизень',
+    kind: 'enemy',
+    isElite: false,
+    isBoss: false,
+    attack: 2,
+    defence: 0,
+    magicDefence: 0,
+    dexterity: 1,
+    intelligence: 0,
+    maxHealth: 5,
+    currentHealth: 5,
+    maxMana: 0,
+    currentMana: 0,
+    experienceReward: 4,
+    goldReward: 2,
+    runeDropChance: 0,
+    attackText: 'бьёт',
+  }),
+  log: JSON.stringify(['Враг найден.']),
+  result: null,
+  rewardsSnapshot: null,
+  createdAt: new Date('2026-04-12T00:00:00.000Z'),
+  updatedAt: new Date('2026-04-12T00:00:00.000Z'),
+  ...overrides,
+});
+
+const createBattleView = (overrides: Partial<BattleView> = {}): BattleView => ({
+  id: 'battle-1',
+  playerId: 1,
+  status: 'COMPLETED',
+  battleType: 'PVE',
+  locationLevel: 1,
+  biomeCode: 'initium',
+  enemyCode: 'slime',
+  turnOwner: 'PLAYER',
+  player: {
+    playerId: 1,
+    name: 'Рунный мастер #1001',
+    attack: 4,
+    defence: 3,
+    magicDefence: 1,
+    dexterity: 2,
+    intelligence: 1,
+    maxHealth: 8,
+    currentHealth: 8,
+    maxMana: 4,
+    currentMana: 4,
+  },
+  enemy: {
+    code: 'slime',
+    name: 'Слизень',
+    kind: 'enemy',
+    isElite: false,
+    isBoss: false,
+    attack: 2,
+    defence: 0,
+    magicDefence: 0,
+    dexterity: 1,
+    intelligence: 0,
+    maxHealth: 5,
+    currentHealth: 0,
+    maxMana: 0,
+    currentMana: 0,
+    experienceReward: 4,
+    goldReward: 2,
+    runeDropChance: 0,
+    attackText: 'бьёт',
+  },
+  log: ['Победа.'],
+  result: 'VICTORY',
+  rewards: {
+    experience: 4,
+    gold: 2,
+    shards: { USUAL: 2 },
+    droppedRune: null,
+  },
+  createdAt: '2026-04-12T00:00:00.000Z',
+  updatedAt: '2026-04-12T00:00:00.000Z',
+  ...overrides,
+});
+
+const createRuneDraft = (): RuneDraft => ({
+  runeCode: 'rune-1',
+  archetypeCode: 'ember',
+  passiveAbilityCodes: ['ember_heart'],
+  activeAbilityCodes: ['ember_pulse'],
+  name: 'Обычная руна Уголь',
+  rarity: 'USUAL',
+  isEquipped: false,
+  health: 1,
+  attack: 2,
+  defence: 0,
+  magicDefence: 0,
+  dexterity: 0,
+  intelligence: 0,
+});
+
+const createStats = (): StatBlock => ({
+  health: 1,
+  attack: 3,
+  defence: 0,
+  magicDefence: 0,
+  dexterity: 0,
+  intelligence: 0,
+});
+
+const createPrismaMock = () => {
+  const tx = {
+    player: {
+      findUnique: vi.fn(),
+      update: vi.fn(),
+    },
+    playerProgress: {
+      update: vi.fn(),
+      updateMany: vi.fn(),
+    },
+    playerInventory: {
+      update: vi.fn(),
+      updateMany: vi.fn(),
+    },
+    rune: {
+      create: vi.fn(),
+      updateMany: vi.fn(),
+      deleteMany: vi.fn(),
+    },
+    battleSession: {
+      findFirst: vi.fn(),
+      findUnique: vi.fn(),
+      create: vi.fn(),
+      updateMany: vi.fn(),
+      delete: vi.fn(),
+    },
+  };
+
+  const prisma = {
+    ...tx,
+    $transaction: vi.fn(async (callback: (client: typeof tx) => Promise<unknown>) => callback(tx)),
+  };
+
+  return {
+    prisma,
+    tx,
+    repository: new PrismaGameRepository(prisma as never),
+  };
+};
+
+describe('PrismaGameRepository release hardening', () => {
+  it('does not craft a rune when shards were already spent', async () => {
+    const { repository, tx } = createPrismaMock();
+
+    tx.playerInventory.updateMany.mockResolvedValue({ count: 0 });
+
+    await expect(repository.craftRune(1, 'USUAL', createRuneDraft())).rejects.toMatchObject({
+      code: 'not_enough_shards',
+    });
+
+    expect(tx.rune.create).not.toHaveBeenCalled();
+    expect(tx.playerInventory.updateMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({
+        playerId: 1,
+        usualShards: { gte: 10 },
+      }),
+    }));
+  });
+
+  it('does not reroll rune stats when the last shard is gone', async () => {
+    const { repository, tx } = createPrismaMock();
+
+    tx.playerInventory.updateMany.mockResolvedValue({ count: 0 });
+
+    await expect(repository.rerollRuneStat(1, 'rune-1', 'USUAL', createStats())).rejects.toMatchObject({
+      code: 'not_enough_shards',
+    });
+
+    expect(tx.rune.updateMany).not.toHaveBeenCalled();
+  });
+
+  it('does not refund shards when the rune was already destroyed', async () => {
+    const { repository, tx } = createPrismaMock();
+
+    tx.rune.deleteMany.mockResolvedValue({ count: 0 });
+
+    await expect(repository.destroyRune(1, 'rune-1', { usualShards: 2 })).rejects.toMatchObject({
+      code: 'rune_not_found',
+    });
+
+    expect(tx.playerInventory.update).not.toHaveBeenCalled();
+  });
+
+  it('reuses an existing active battle instead of creating a duplicate', async () => {
+    const { repository, tx } = createPrismaMock();
+    const existingBattle = createBattleRow();
+
+    tx.battleSession.findFirst.mockResolvedValue(existingBattle);
+    tx.playerProgress.update.mockResolvedValue({});
+
+    const battle = await repository.createBattle(1, createBattleView({ status: 'ACTIVE', result: null, rewards: null }));
+
+    expect(battle.id).toBe(existingBattle.id);
+    expect(tx.battleSession.create).not.toHaveBeenCalled();
+    expect(tx.playerProgress.update).toHaveBeenCalledWith({
+      where: { playerId: 1 },
+      data: { activeBattleId: existingBattle.id },
+    });
+  });
+
+  it('treats repeated battle finalization as idempotent', async () => {
+    const { repository, tx } = createPrismaMock();
+
+    tx.battleSession.updateMany.mockResolvedValue({ count: 0 });
+    tx.player.findUnique.mockResolvedValue(createPlayerRecord());
+
+    const player = await repository.finalizeBattle(1, createBattleView(), null);
+
+    expect(player.playerId).toBe(1);
+    expect(tx.player.update).not.toHaveBeenCalled();
+    expect(tx.playerProgress.update).not.toHaveBeenCalled();
+    expect(tx.playerInventory.update).not.toHaveBeenCalled();
+    expect(tx.rune.create).not.toHaveBeenCalled();
+  });
+});

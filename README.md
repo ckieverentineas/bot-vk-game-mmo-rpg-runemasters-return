@@ -8,6 +8,8 @@ Runemasters Return — VK MMO RPG на TypeScript с модульным игро
 - игровая петля: регистрация, интро-обучение, профиль, прокачка, исследование, бой, руны и алтарь;
 - Prisma-схема и сиды мира для SQLite;
 - централизованный каталог VK-команд и единый builder клавиатур;
+- защита от дублирования наград, отрицательных остатков инвентаря и повторного создания активных боёв;
+- более ясные сообщения onboarding/боя с явным следующим шагом для игрока;
 - типобезопасные утилиты сериализации и commit-based релизная политика.
 
 ## Рельсы проекта
@@ -18,6 +20,8 @@ Runemasters Return — VK MMO RPG на TypeScript с модульным игро
 - `src/modules/shared/application/require-player.ts` — единая точка загрузки игрока и консистентных ошибок для use-case слоя;
 - `src/shared/utils/json.ts` — единая точка для JSON clone/parse/stringify;
 - `src/tooling/release` — правила версионирования, content validation, preflight-проверка и скрипты `npm run content:validate` / `npm run release:status` / `npm run release:preflight`;
+- `src/vk/handlers/gameHandler.smoke.test.ts` — smoke-проверки пользовательских сценариев через transport orchestration без реального VK API;
+- `src/modules/shared/infrastructure/prisma/PrismaGameRepository.test.ts` — регрессионные тесты на idempotency, underflow-защиту инвентаря и защиту от дублирования боевых/рунных мутаций;
 - `npm run check` — быстрый прогон typecheck + tests + build перед изменениями и коммитом.
 
 ## Технологии
@@ -33,6 +37,9 @@ Runemasters Return — VK MMO RPG на TypeScript с модульным игро
 
 ```text
 bot-vk-game-mmo-rpg-runemasters-return/
+├── .github/
+│   └── workflows/
+│       └── ci.yml
 ├── prisma/
 │   └── schema.prisma
 ├── src/
@@ -62,11 +69,12 @@ bot-vk-game-mmo-rpg-runemasters-return/
 ├── ARCHITECTURE.md
 ├── CHANGELOG.md
 ├── PLAN.md
+├── RELEASE_CHECKLIST.md
 ├── QUICKSTART.md
 └── package.json
 ```
 
-Подробная архитектурная карта лежит в `ARCHITECTURE.md`, а текущий план масштабирования — в `PLAN.md`.
+Подробная архитектурная карта лежит в `ARCHITECTURE.md`, текущий план масштабирования — в `PLAN.md`, а единый релизный чек-лист — в `RELEASE_CHECKLIST.md`.
 
 ## Установка
 
@@ -112,6 +120,7 @@ npm run content:validate
 npm run test
 npm run check
 npm run release:status
+npm run release:summary
 npm run release:preflight
 npm run db:generate
 npm run db:push
@@ -146,7 +155,7 @@ npm run db:studio
 
 - `исследовать`
 - `атака`
-- `навыки` / `спелл` — пока показывают заглушку будущей рунной боевой системы;
+- `навыки` / `спелл` — показывают текущий статус боевой системы: пока в бою доступна базовая атака, а руна усиливает характеристики героя;
 
 Ручной выбор уровня локации больше не используется. Теперь игра сама подбирает сложность на основе:
 
@@ -174,7 +183,7 @@ npm run db:studio
 2. Проверьте, не нарушает ли изменение контентные инварианты в `src/content/*` и `src/config/game-balance.ts`.
 3. Реализуйте чистую доменную логику в `src/modules/*/domain`.
 4. Подключите use-case в `src/modules/*/application` и протащите его в `src/app/composition-root.ts`.
-5. Обновите `README.md`, `CHANGELOG.md`, `PLAN.md` и при необходимости `ARCHITECTURE.md`.
+5. Обновите `README.md`, `CHANGELOG.md`, `PLAN.md`, `RELEASE_CHECKLIST.md` и при необходимости `ARCHITECTURE.md`.
 6. Перед коммитом прогоните `npm run check`.
 7. Перед быстрой выкладкой прогоните `npm run release:preflight`.
 
@@ -186,11 +195,13 @@ npm run db:studio
 - если в базе остался «битый» активный бой с уже мёртвым игроком или врагом, он автоматически завершается при следующем обращении к бою;
 - после поражений сложность адаптивно снижается, чтобы игра не зажимала игрока в безнадёжных боях;
 - после серии побед сложность постепенно растёт сама, без ручных `+ур` и `-ур`.
+- повторные клики по бою и рунным операциям не должны дублировать награды или уводить осколки в минус.
 
 ## Keyboard-first интерфейс
 
 - вход в игру, обучение, бой, профиль, инвентарь, алтарь, руны и удаление персонажа доступны кнопками;
 - старые текстовые команды всё ещё распознаются для совместимости, но основной сценарий рассчитан на клавиатуру VK;
+- экраны приветствия, обучения, рун и боя подсказывают следующий шаг прямо в сообщении;
 - если персонажа нет, бот показывает стартовую клавиатуру только с кнопкой `начать`.
 
 ## Версионирование и changelog
@@ -199,5 +210,14 @@ npm run db:studio
 - это значит, что `100` коммитов = версия `1.00`, `245` коммитов = версия `2.45`;
 - `npm run content:validate` проверяет сиды мира, рунный контент и базовый баланс до сборки и релиза;
 - текущий статус можно посмотреть через `npm run release:status`;
+- `npm run release:summary` собирает краткое release summary из git-истории относительно последней changelog-записи;
 - перед выкладкой изменений стоит прогонять `npm run release:preflight`, чтобы проверить документацию, релизные рельсы и остановить релиз при пропущенных или пустых обязательных файлах;
+- `.github/workflows/ci.yml` повторяет минимальный релизный пайплайн в CI;
+- локальный и CI-процесс зафиксирован в `RELEASE_CHECKLIST.md`;
 - пользовательские изменения фиксируются в `CHANGELOG.md`.
+
+## Smoke-проверки
+
+- ключевые пользовательские сценарии `старт`, `обучение`, `бой`, `руны` и `пропуск обучения` покрыты в `src/vk/handlers/gameHandler.smoke.test.ts`;
+- smoke-уровень проходит через `GameHandler`, command routing и presenters, поэтому ловит регрессии transport orchestration;
+- тесты не требуют реального VK API и не поднимают настоящую VK-сессию, что делает их пригодными для локального прогона и CI.

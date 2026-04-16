@@ -149,6 +149,30 @@
 - `release:summary` теперь опирается на последнюю закоммиченную changelog-запись и не теряет недокументированные коммиты из-за локального черновика;
 - `release:summary --range` больше не подставляет необработанный ввод в shell-команду.
 
+## [0.07] - 2026-04-16
+
+### Commit
+
+- `worktree` — `fix: harden release candidate against duplicate battle and rune mutations`
+
+### Added
+
+- repository-level регрессионные тесты [`src/modules/shared/infrastructure/prisma/PrismaGameRepository.test.ts`](src/modules/shared/infrastructure/prisma/PrismaGameRepository.test.ts) на идемпотентность финализации боя, underflow-защиту инвентаря и reuse активного боя;
+- дополнительные smoke-ожидания для новых player-facing CTA в [`src/vk/handlers/gameHandler.smoke.test.ts`](src/vk/handlers/gameHandler.smoke.test.ts).
+
+### Changed
+
+- [`PrismaGameRepository`](src/modules/shared/infrastructure/prisma/PrismaGameRepository.ts) теперь проводит craft/reroll/destroy рун атомарно, не допускает отрицательных остатков инвентаря и повторно использует уже активный бой вместо создания дубликата;
+- сохранение и финализация боя больше не должны повторно применять прогресс и награды, если один и тот же бой прилетел повторным входящим событием;
+- [`renderWelcome()`](src/vk/presenters/messages.ts:42), [`renderLocation()`](src/vk/presenters/messages.ts:119), [`renderRuneScreen()`](src/vk/presenters/messages.ts:140), [`renderAltar()`](src/vk/presenters/messages.ts:157) и [`renderBattle()`](src/vk/presenters/messages.ts:228) стали короче и добавили явный следующий шаг;
+- клавиатуры рун и алтаря получили более понятные labels в [`src/vk/keyboards/index.ts`](src/vk/keyboards/index.ts).
+
+### Fixed
+
+- спам `атака` больше не должен дублировать опыт, пыль, осколки и rune-drop при повторной финализации одного и того же боя;
+- повторные `создать`, `сломать` и reroll-команды больше не должны уводить осколки в минус или повторно возвращать награду за уже удалённую руну;
+- боевой лог наград больше не показывает внутренние коды вида `usual: 2`, а пишет человекочитаемые названия осколков.
+
 ## Шаблон следующей записи
 
 ### [0.03] - YYYY-MM-DD

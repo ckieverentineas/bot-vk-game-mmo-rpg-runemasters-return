@@ -50,8 +50,8 @@ const mainMenuLayout: KeyboardLayout = [
     { label: '⚔️ Исследовать', command: gameCommands.explore, color: Keyboard.POSITIVE_COLOR },
   ],
   [
-    { label: '🔮 Алтарь', command: gameCommands.altar, color: Keyboard.POSITIVE_COLOR },
-    { label: '💎 Руна', command: gameCommands.runeCollection, color: Keyboard.NEGATIVE_COLOR },
+    { label: '🔮 Алтарь рун', command: gameCommands.altar, color: Keyboard.POSITIVE_COLOR },
+    { label: '💎 Мои руны', command: gameCommands.runeCollection, color: Keyboard.NEGATIVE_COLOR },
   ],
 ];
 
@@ -90,8 +90,8 @@ const runeLayout: KeyboardLayout = [
     { label: '❌ Снять', command: gameCommands.unequipRune, color: Keyboard.NEGATIVE_COLOR },
   ],
   [
-    { label: '+Руна', command: gameCommands.nextRune, color: Keyboard.SECONDARY_COLOR },
-    { label: '-Руна', command: gameCommands.previousRune, color: Keyboard.SECONDARY_COLOR },
+    { label: '➡️ Следующая', command: gameCommands.nextRune, color: Keyboard.SECONDARY_COLOR },
+    { label: '⬅️ Предыдущая', command: gameCommands.previousRune, color: Keyboard.SECONDARY_COLOR },
   ],
   [{ label: '◀ Меню', command: gameCommands.backToMenu, color: Keyboard.SECONDARY_COLOR }],
 ];
@@ -102,25 +102,25 @@ const altarLayout: KeyboardLayout = [
     { label: '✨ СОЗДАТЬ', command: gameCommands.craftRune, color: Keyboard.POSITIVE_COLOR },
   ],
   [
-    { label: '+Руна', command: gameCommands.nextRune, color: Keyboard.SECONDARY_COLOR },
-    { label: '-Руна', command: gameCommands.previousRune, color: Keyboard.SECONDARY_COLOR },
+    { label: '➡️ Следующая', command: gameCommands.nextRune, color: Keyboard.SECONDARY_COLOR },
+    { label: '⬅️ Предыдущая', command: gameCommands.previousRune, color: Keyboard.SECONDARY_COLOR },
   ],
-  [{ label: '💔 СЛОМАТЬ', command: gameCommands.destroyRune, color: Keyboard.NEGATIVE_COLOR }],
+  [{ label: '🗑️ Распылить', command: gameCommands.destroyRune, color: Keyboard.NEGATIVE_COLOR }],
   [{ label: '◀ Меню', command: gameCommands.backToMenu, color: Keyboard.SECONDARY_COLOR }],
 ];
 
 const runeRerollLayout: KeyboardLayout = [
   [
-    { label: '~АТК', command: gameCommands.rerollAttack, color: Keyboard.PRIMARY_COLOR },
-    { label: '~ЗДР', command: gameCommands.rerollHealth, color: Keyboard.PRIMARY_COLOR },
+    { label: '↻ АТК', command: gameCommands.rerollAttack, color: Keyboard.PRIMARY_COLOR },
+    { label: '↻ ЗДР', command: gameCommands.rerollHealth, color: Keyboard.PRIMARY_COLOR },
   ],
   [
-    { label: '~ЛВК', command: gameCommands.rerollDexterity, color: Keyboard.PRIMARY_COLOR },
-    { label: '~ИНТ', command: gameCommands.rerollIntelligence, color: Keyboard.PRIMARY_COLOR },
+    { label: '↻ ЛВК', command: gameCommands.rerollDexterity, color: Keyboard.PRIMARY_COLOR },
+    { label: '↻ ИНТ', command: gameCommands.rerollIntelligence, color: Keyboard.PRIMARY_COLOR },
   ],
   [
-    { label: '~ФЗАЩ', command: gameCommands.rerollDefence, color: Keyboard.PRIMARY_COLOR },
-    { label: '~МЗАЩ', command: gameCommands.rerollMagicDefence, color: Keyboard.PRIMARY_COLOR },
+    { label: '↻ ФЗАЩ', command: gameCommands.rerollDefence, color: Keyboard.PRIMARY_COLOR },
+    { label: '↻ МЗАЩ', command: gameCommands.rerollMagicDefence, color: Keyboard.PRIMARY_COLOR },
   ],
   [{ label: '◀ Меню', command: gameCommands.backToMenu, color: Keyboard.SECONDARY_COLOR }],
 ];

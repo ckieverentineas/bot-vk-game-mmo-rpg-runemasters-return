@@ -49,6 +49,18 @@ const buildInventoryDeltaInput = (delta: InventoryDelta): Record<string, { incre
   return data;
 };
 
+const buildInventoryAvailabilityWhere = (playerId: number, delta: InventoryDelta): Prisma.PlayerInventoryWhereInput => {
+  const where: Prisma.PlayerInventoryWhereInput = { playerId };
+
+  for (const [key, value] of Object.entries(delta)) {
+    if (value !== undefined && value < 0) {
+      where[key as keyof Prisma.PlayerInventoryWhereInput] = { gte: Math.abs(value) } as never;
+    }
+  }
+
+  return where;
+};
+
 const defaultBattlePlayerSnapshot = (playerId: number): BattleView['player'] => ({
   playerId,
   name: 'Рунный мастер',
@@ -92,6 +104,23 @@ const mapBattlePersistence = (battle: PersistedBattleState) => ({
   log: stringifyJson(battle.log, '[]'),
   result: battle.result,
   rewardsSnapshot: battle.rewards ? stringifyJson(battle.rewards, 'null') : null,
+});
+
+const mapRuneDraftPersistence = (playerId: number, rune: RuneDraft, isEquipped = rune.isEquipped) => ({
+  playerId,
+  runeCode: rune.runeCode ?? null,
+  archetypeCode: rune.archetypeCode ?? null,
+  passiveAbilityCodes: stringifyJson(rune.passiveAbilityCodes ?? [], '[]'),
+  activeAbilityCodes: stringifyJson(rune.activeAbilityCodes ?? [], '[]'),
+  name: rune.name,
+  rarity: rune.rarity,
+  health: rune.health,
+  attack: rune.attack,
+  defence: rune.defence,
+  magicDefence: rune.magicDefence,
+  dexterity: rune.dexterity,
+  intelligence: rune.intelligence,
+  isEquipped,
 });
 
 export class PrismaGameRepository implements GameRepository {
@@ -266,26 +295,38 @@ export class PrismaGameRepository implements GameRepository {
 
   public async createRune(playerId: number, rune: RuneDraft): Promise<PlayerState> {
     await this.prisma.rune.create({
-      data: {
-        playerId,
-        name: rune.name,
-        rarity: rune.rarity,
-        health: rune.health,
-        attack: rune.attack,
-        defence: rune.defence,
-        magicDefence: rune.magicDefence,
-        dexterity: rune.dexterity,
-        intelligence: rune.intelligence,
-        isEquipped: rune.isEquipped,
-      },
+      data: mapRuneDraftPersistence(playerId, rune),
     });
 
     return this.requirePlayer(playerId);
   }
 
+  public async craftRune(playerId: number, rarity: RuneRarity, rune: RuneDraft): Promise<PlayerState> {
+    return this.prisma.$transaction(async (tx) => {
+      const shardField = gameBalance.runes.profiles[rarity].shardField;
+      const spent = await tx.playerInventory.updateMany({
+        where: buildInventoryAvailabilityWhere(playerId, { [shardField]: -gameBalance.runes.craftCost }),
+        data: {
+          [shardField]: { increment: -gameBalance.runes.craftCost },
+        } as Prisma.PlayerInventoryUpdateManyMutationInput,
+      });
+
+      if (spent.count === 0) {
+        throw new AppError('not_enough_shards', 'Осколков уже не хватает для создания руны. Обновите экран и попробуйте снова.');
+      }
+
+      await tx.rune.create({
+        data: mapRuneDraftPersistence(playerId, rune),
+      });
+
+      const updatedPlayer = await this.requirePlayerRecord(tx, playerId);
+      return this.mapPlayer(updatedPlayer);
+    });
+  }
+
   public async updateRuneStats(playerId: number, runeId: string, stats: StatBlock): Promise<PlayerState> {
-    await this.prisma.rune.update({
-      where: { id: runeId },
+    const updated = await this.prisma.rune.updateMany({
+      where: { id: runeId, playerId },
       data: {
         health: stats.health,
         attack: stats.attack,
@@ -296,15 +337,81 @@ export class PrismaGameRepository implements GameRepository {
       },
     });
 
+    if (updated.count === 0) {
+      throw new AppError('rune_not_found', 'Выбранная руна уже недоступна. Откройте коллекцию ещё раз.');
+    }
+
     return this.requirePlayer(playerId);
   }
 
+  public async rerollRuneStat(playerId: number, runeId: string, rarity: RuneRarity, stats: StatBlock): Promise<PlayerState> {
+    return this.prisma.$transaction(async (tx) => {
+      const shardField = gameBalance.runes.profiles[rarity].shardField;
+      const spent = await tx.playerInventory.updateMany({
+        where: buildInventoryAvailabilityWhere(playerId, { [shardField]: -1 }),
+        data: {
+          [shardField]: { increment: -1 },
+        } as Prisma.PlayerInventoryUpdateManyMutationInput,
+      });
+
+      if (spent.count === 0) {
+        throw new AppError('not_enough_shards', 'Осколок уже потрачен. Обновите экран и попробуйте снова.');
+      }
+
+      const updatedRune = await tx.rune.updateMany({
+        where: { id: runeId, playerId },
+        data: {
+          health: stats.health,
+          attack: stats.attack,
+          defence: stats.defence,
+          magicDefence: stats.magicDefence,
+          dexterity: stats.dexterity,
+          intelligence: stats.intelligence,
+        },
+      });
+
+      if (updatedRune.count === 0) {
+        throw new AppError('rune_not_found', 'Выбранная руна уже недоступна. Откройте алтарь ещё раз.');
+      }
+
+      const updatedPlayer = await this.requirePlayerRecord(tx, playerId);
+      return this.mapPlayer(updatedPlayer);
+    });
+  }
+
   public async deleteRune(playerId: number, runeId: string): Promise<PlayerState> {
-    await this.prisma.rune.deleteMany({
+    const deleted = await this.prisma.rune.deleteMany({
       where: { id: runeId, playerId },
     });
 
+    if (deleted.count === 0) {
+      throw new AppError('rune_not_found', 'Выбранная руна уже недоступна. Откройте коллекцию ещё раз.');
+    }
+
     return this.requirePlayer(playerId);
+  }
+
+  public async destroyRune(playerId: number, runeId: string, refund: InventoryDelta): Promise<PlayerState> {
+    return this.prisma.$transaction(async (tx) => {
+      const deleted = await tx.rune.deleteMany({
+        where: { id: runeId, playerId },
+      });
+
+      if (deleted.count === 0) {
+        throw new AppError('rune_not_found', 'Эта руна уже недоступна. Откройте алтарь ещё раз.');
+      }
+
+      const inventoryUpdate = buildInventoryDeltaInput(refund);
+      if (Object.keys(inventoryUpdate).length > 0) {
+        await tx.playerInventory.update({
+          where: { playerId },
+          data: inventoryUpdate as Prisma.PlayerInventoryUpdateInput,
+        });
+      }
+
+      const updatedPlayer = await this.requirePlayerRecord(tx, playerId);
+      return this.mapPlayer(updatedPlayer);
+    });
   }
 
   public async adjustInventory(playerId: number, delta: InventoryDelta): Promise<PlayerState> {
@@ -313,10 +420,14 @@ export class PrismaGameRepository implements GameRepository {
       return this.requirePlayer(playerId);
     }
 
-    await this.prisma.playerInventory.update({
-      where: { playerId },
-      data: data as Prisma.PlayerInventoryUpdateInput,
+    const updated = await this.prisma.playerInventory.updateMany({
+      where: buildInventoryAvailabilityWhere(playerId, delta),
+      data: data as Prisma.PlayerInventoryUpdateManyMutationInput,
     });
+
+    if (updated.count === 0) {
+      throw new AppError('inventory_underflow', 'Ресурсов уже не хватает. Обновите экран и попробуйте снова.');
+    }
 
     return this.requirePlayer(playerId);
   }
@@ -387,6 +498,23 @@ export class PrismaGameRepository implements GameRepository {
 
   public async createBattle(playerId: number, battle: CreateBattleInput): Promise<BattleView> {
     const created = await this.prisma.$transaction(async (tx) => {
+      const existingBattle = await tx.battleSession.findFirst({
+        where: {
+          playerId,
+          status: 'ACTIVE',
+        },
+        orderBy: { createdAt: 'asc' },
+      });
+
+      if (existingBattle) {
+        await tx.playerProgress.update({
+          where: { playerId },
+          data: { activeBattleId: existingBattle.id },
+        });
+
+        return existingBattle;
+      }
+
       const persistedBattle = mapBattlePersistence(battle);
 
       const battleRow = await tx.battleSession.create({
@@ -401,10 +529,37 @@ export class PrismaGameRepository implements GameRepository {
         },
       });
 
-      await tx.playerProgress.update({
-        where: { playerId },
+      const claimedProgress = await tx.playerProgress.updateMany({
+        where: {
+          playerId,
+          activeBattleId: null,
+        },
         data: { activeBattleId: battleRow.id },
       });
+
+      if (claimedProgress.count === 0) {
+        const fallbackBattle = await tx.battleSession.findFirst({
+          where: {
+            playerId,
+            status: 'ACTIVE',
+          },
+          orderBy: { createdAt: 'asc' },
+        });
+
+        if (fallbackBattle && fallbackBattle.id !== battleRow.id) {
+          await tx.playerProgress.update({
+            where: { playerId },
+            data: { activeBattleId: fallbackBattle.id },
+          });
+          await tx.battleSession.delete({ where: { id: battleRow.id } });
+          return fallbackBattle;
+        }
+
+        await tx.playerProgress.update({
+          where: { playerId },
+          data: { activeBattleId: battleRow.id },
+        });
+      }
 
       return battleRow;
     });
@@ -425,9 +580,37 @@ export class PrismaGameRepository implements GameRepository {
   }
 
   public async saveBattle(battle: BattleView): Promise<BattleView> {
-    const updated = await this.prisma.battleSession.update({
-      where: { id: battle.id },
-      data: mapBattlePersistence(battle),
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const persistedBattle = mapBattlePersistence(battle);
+      const saved = await tx.battleSession.updateMany({
+        where: {
+          id: battle.id,
+          status: 'ACTIVE',
+        },
+        data: persistedBattle,
+      });
+
+      if (saved.count === 0) {
+        const currentBattle = await tx.battleSession.findUnique({
+          where: { id: battle.id },
+        });
+
+        if (!currentBattle) {
+          throw new AppError('battle_not_found', 'Активный бой уже недоступен. Начните новый бой.');
+        }
+
+        return currentBattle;
+      }
+
+      const currentBattle = await tx.battleSession.findUnique({
+        where: { id: battle.id },
+      });
+
+      if (!currentBattle) {
+        throw new AppError('battle_not_found', 'Активный бой уже недоступен. Начните новый бой.');
+      }
+
+      return currentBattle;
     });
 
     return this.mapBattle(updated);
@@ -435,13 +618,22 @@ export class PrismaGameRepository implements GameRepository {
 
   public async finalizeBattle(playerId: number, battle: BattleView, droppedRune: RuneDraft | null): Promise<PlayerState> {
     return this.prisma.$transaction(async (tx) => {
+      const persistedBattle = mapBattlePersistence(battle);
+      const finalized = await tx.battleSession.updateMany({
+        where: {
+          id: battle.id,
+          status: 'ACTIVE',
+        },
+        data: persistedBattle,
+      });
+
+      if (finalized.count === 0) {
+        const updatedPlayer = await this.requirePlayerRecord(tx, playerId);
+        return this.mapPlayer(updatedPlayer);
+      }
+
       const player = await this.requirePlayerRecord(tx, playerId);
       const currentPlayer = this.mapPlayer(player);
-
-      await tx.battleSession.update({
-        where: { id: battle.id },
-        data: mapBattlePersistence(battle),
-      });
 
       let nextLevel = player.level;
       let nextExperience = player.experience;
@@ -545,18 +737,7 @@ export class PrismaGameRepository implements GameRepository {
 
       if (droppedRune) {
         await tx.rune.create({
-          data: {
-            playerId,
-            name: droppedRune.name,
-            rarity: droppedRune.rarity,
-            health: droppedRune.health,
-            attack: droppedRune.attack,
-            defence: droppedRune.defence,
-            magicDefence: droppedRune.magicDefence,
-            dexterity: droppedRune.dexterity,
-            intelligence: droppedRune.intelligence,
-            isEquipped: false,
-          },
+          data: mapRuneDraftPersistence(playerId, droppedRune, false),
         });
       }
 
@@ -656,6 +837,10 @@ export class PrismaGameRepository implements GameRepository {
         : emptyInventory(),
       runes: player.runes.map((rune): RuneView => ({
         id: rune.id,
+        runeCode: rune.runeCode,
+        archetypeCode: rune.archetypeCode,
+        passiveAbilityCodes: parseJson<string[]>(rune.passiveAbilityCodes, []),
+        activeAbilityCodes: parseJson<string[]>(rune.activeAbilityCodes, []),
         name: rune.name,
         rarity: rune.rarity as RuneRarity,
         health: rune.health,

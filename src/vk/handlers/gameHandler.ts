@@ -242,15 +242,16 @@ export class GameHandler {
   private async replyWithBattleSkillsPreview(ctx: Context, vkId: number): Promise<void> {
     const battle = await this.services.getActiveBattle.execute(vkId);
 
-    await this.reply(
-      ctx,
-      [
-        '🌀 Рунные навыки будут отдельной системой.',
-        'Базовая боевая петля сейчас завязана на обычной атаке.',
-        'Следующим слоем развития станут активные и пассивные эффекты от экипированных рун.',
-        '',
-        renderBattle(battle),
-      ].join('\n'),
+      await this.reply(
+        ctx,
+        [
+          '🌀 Сейчас в бою доступна базовая атака.',
+          'Экипированная руна уже усиливает ваши характеристики.',
+          'Отдельные активные навыки рун готовятся следующим боевым слоем.',
+          'Пока лучший ход — следить за боем и добивать врага обычной атакой.',
+          '',
+          renderBattle(battle),
+        ].join('\n'),
       this.resolveBattleKeyboard(battle),
     );
   }

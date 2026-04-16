@@ -20,7 +20,6 @@ export class DestroyCurrentRune {
     const shardField = gameBalance.runes.profiles[rune.rarity].shardField;
     const shardReward = Math.max(1, gameBalance.runes.profiles[rune.rarity].lines * 2);
 
-    await this.repository.deleteRune(player.playerId, rune.id);
-    return this.repository.adjustInventory(player.playerId, { [shardField]: shardReward });
+    return this.repository.destroyRune(player.playerId, rune.id, { [shardField]: shardReward });
   }
 }

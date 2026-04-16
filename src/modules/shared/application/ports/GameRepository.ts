@@ -6,6 +6,7 @@ import type {
   MobTemplateView,
   PlayerState,
   RuneDraft,
+  RuneRarity,
   StatBlock,
 } from '../../../../shared/types/game';
 
@@ -22,8 +23,11 @@ export interface GameRepository {
   saveRuneCursor(playerId: number, currentRuneIndex: number): Promise<PlayerState>;
   equipRune(playerId: number, runeId: string | null): Promise<PlayerState>;
   createRune(playerId: number, rune: RuneDraft): Promise<PlayerState>;
+  craftRune(playerId: number, rarity: RuneRarity, rune: RuneDraft): Promise<PlayerState>;
   updateRuneStats(playerId: number, runeId: string, stats: StatBlock): Promise<PlayerState>;
+  rerollRuneStat(playerId: number, runeId: string, rarity: RuneRarity, stats: StatBlock): Promise<PlayerState>;
   deleteRune(playerId: number, runeId: string): Promise<PlayerState>;
+  destroyRune(playerId: number, runeId: string, refund: InventoryDelta): Promise<PlayerState>;
   adjustInventory(playerId: number, delta: InventoryDelta): Promise<PlayerState>;
   findBiomeForLocationLevel(locationLevel: number): Promise<BiomeView | null>;
   listMobTemplatesForBiome(biomeCode: string): Promise<MobTemplateView[]>;

@@ -8,3 +8,4 @@ coverage/
 .idea/
 *.log
 .DS_Store
+.kilo

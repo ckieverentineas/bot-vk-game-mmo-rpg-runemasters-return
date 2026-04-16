@@ -23,10 +23,8 @@ export class RerollCurrentRuneStat {
       throw new AppError('not_enough_shards', 'Для изменения стата нужен хотя бы один осколок той же редкости.');
     }
 
-    await this.repository.adjustInventory(player.playerId, { [shardField]: -1 });
-
     const nextRune = RuneFactory.rerollStat(rune, stat, player.locationLevel);
-    return this.repository.updateRuneStats(player.playerId, rune.id, {
+    return this.repository.rerollRuneStat(player.playerId, rune.id, rune.rarity, {
       health: nextRune.health,
       attack: nextRune.attack,
       defence: nextRune.defence,

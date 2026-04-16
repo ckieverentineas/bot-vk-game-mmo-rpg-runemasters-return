@@ -2,10 +2,19 @@ import type { BattleView, RuneDraft, RuneRarity } from '../../../shared/types/ga
 import { RuneFactory } from '../../runes/domain/rune-factory';
 import { appendBattleLog, cloneBattle } from './battle-utils';
 
+const shardTitles: Record<RuneRarity, string> = {
+  USUAL: 'обычных осколков',
+  UNUSUAL: 'необычных осколков',
+  RARE: 'редких осколков',
+  EPIC: 'эпических осколков',
+  LEGENDARY: 'легендарных осколков',
+  MYTHICAL: 'мифических осколков',
+};
+
 const formatShardRewards = (rewards: Partial<Record<RuneRarity, number>>): string => {
   const parts = Object.entries(rewards)
     .filter(([, amount]) => amount !== undefined && amount > 0)
-    .map(([rarity, amount]) => `${rarity.toLowerCase()}: ${amount}`);
+    .map(([rarity, amount]) => `${shardTitles[rarity as RuneRarity]}: ${amount}`);
 
   return parts.length > 0 ? parts.join(', ') : 'без осколков';
 };

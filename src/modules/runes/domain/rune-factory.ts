@@ -2,31 +2,36 @@ import { gameBalance } from '../../../config/game-balance';
 import { emptyStats } from '../../player/domain/player-stats';
 import type { RuneDraft, RuneRarity, RuneView, StatKey } from '../../../shared/types/game';
 
-const statPool: StatKey[] = ['health', 'attack', 'defence', 'magicDefence', 'dexterity', 'intelligence'];
+import { applyRuneArchetype, getRuneArchetype, listRuneArchetypes } from './rune-abilities';
 
-const runeThemes: Record<StatKey, string[]> = {
-  health: ['Живучести', 'Крови', 'Стойкости'],
-  attack: ['Натиска', 'Клинка', 'Ярости'],
-  defence: ['Щита', 'Оплота', 'Камня'],
-  magicDefence: ['Покрова', 'Завесы', 'Печати'],
-  dexterity: ['Ветра', 'Шага', 'Рывка'],
-  intelligence: ['Разума', 'Эха', 'Тайны'],
-};
+const defaultStatPool: readonly StatKey[] = ['health', 'attack', 'defence', 'magicDefence', 'dexterity', 'intelligence'];
 
 const randomInt = (min: number, max: number): number => Math.floor(Math.random() * (max - min + 1)) + min;
 
 const randomItem = <T>(items: readonly T[]): T => items[randomInt(0, items.length - 1)];
 
+const createArchetypeStatPool = (archetypeCode: string): readonly StatKey[] => {
+  const archetype = getRuneArchetype(archetypeCode);
+
+  return [
+    ...defaultStatPool,
+    ...archetype.preferredStats,
+    ...archetype.preferredStats,
+  ];
+};
+
 export class RuneFactory {
   public static create(locationLevel: number, forcedRarity?: RuneRarity): RuneDraft {
     const rarity = forcedRarity ?? this.rollRarity();
     const profile = gameBalance.runes.profiles[rarity];
-    const rune: RuneDraft = {
+    const archetype = randomItem(listRuneArchetypes());
+    const statPool = createArchetypeStatPool(archetype.code);
+    const rune = applyRuneArchetype({
       ...emptyStats(),
-      name: profile.title,
+      name: `${profile.title} ${archetype.name}`,
       rarity,
       isEquipped: false,
-    };
+    }, archetype.code);
 
     const bonusLines = locationLevel >= 25 && rarity !== 'USUAL' ? 1 : 0;
     const lineCount = profile.lines + bonusLines;
@@ -36,14 +41,15 @@ export class RuneFactory {
       rune[statKey] += this.rollStatValue(rarity, locationLevel);
     }
 
-    const dominantStat = this.resolveDominantStat(rune);
-    rune.name = `${profile.title} ${randomItem(runeThemes[dominantStat])}`;
-
     return rune;
   }
 
   public static rerollStat(rune: RuneDraft | RuneView, statKey: StatKey, locationLevel: number): RuneDraft {
     const nextRune: RuneDraft = {
+      runeCode: rune.runeCode,
+      archetypeCode: rune.archetypeCode,
+      activeAbilityCodes: rune.activeAbilityCodes ? [...rune.activeAbilityCodes] : undefined,
+      passiveAbilityCodes: rune.passiveAbilityCodes ? [...rune.passiveAbilityCodes] : undefined,
       name: rune.name,
       rarity: rune.rarity,
       isEquipped: rune.isEquipped,
@@ -79,9 +85,4 @@ export class RuneFactory {
     const levelBonus = Math.floor(locationLevel / 10);
     return randomInt(1, profile.maxStatRoll + levelBonus);
   }
-
-  private static resolveDominantStat(rune: RuneDraft): StatKey {
-    return statPool.reduce<StatKey>((best, current) => (rune[current] > rune[best] ? current : best), 'attack');
-  }
 }
-

@@ -1,5 +1,6 @@
 import { gameBalance } from '../../config/game-balance';
 import { derivePlayerStats, getEquippedRune, getSelectedRune, isPlayerInTutorial, resolveAdaptiveAdventureLocationLevel } from '../../modules/player/domain/player-stats';
+import { describeRuneContent } from '../../modules/runes/domain/rune-abilities';
 import type { BattleView, PlayerState, RuneView, StatBlock } from '../../shared/types/game';
 
 const formatStatBlock = (stats: StatBlock): string => [
@@ -16,9 +17,17 @@ const formatRune = (rune: RuneView | null): string => {
     return 'Руна не выбрана.';
   }
 
+  const runeContent = describeRuneContent(rune);
+  const abilityLines = [
+    ...runeContent.passiveAbilities.map((ability) => `🛡️ Пассивная: ${ability.name}`),
+    ...runeContent.activeAbilities.map((ability) => `🌀 Активная: ${ability.name}`),
+  ];
+
   return [
     `${rune.isEquipped ? '✅' : '💎'} ${rune.name}`,
-    `Редкость: ${rune.rarity}`,
+    `Редкость: ${gameBalance.runes.profiles[rune.rarity].title}`,
+    ...(runeContent.archetype ? [`Архетип: ${runeContent.archetype.name}`] : []),
+    ...(abilityLines.length > 0 ? ['', 'Способности:', ...abilityLines] : []),
     formatStatBlock({
       health: rune.health,
       attack: rune.attack,
@@ -35,17 +44,21 @@ export const renderWelcome = (player: PlayerState, created: boolean): string => 
       '🎮 Добро пожаловать в Runemasters Return!',
       '',
       `Создан новый рунный мастер #${player.vkId}.`,
-      'Старт: нулевой интро-биом обучения.',
+      'Вы начинаете в безопасной учебной зоне.',
       `Стартовые осколки: обычные ${player.inventory.usualShards}, необычные ${player.inventory.unusualShards}, редкие ${player.inventory.rareShards}.`,
+      '',
+      'Первый шаг: нажмите «⚔️ Учебный бой».',
     ].join('\n')
   : [
       '🎮 Ваш мастер уже существует.',
       '',
       `Уровень: ${player.level}`,
       isPlayerInTutorial(player)
-        ? 'Режим: обучение в нулевом биоме.'
-        : `Уровень текущей угрозы: ${resolveAdaptiveAdventureLocationLevel(player)}.`,
+        ? 'Сейчас доступен учебный бой в безопасной зоне.'
+        : `Текущая рекомендуемая сложность: ${resolveAdaptiveAdventureLocationLevel(player)}.`,
       `Свободные очки: ${player.unspentStatPoints}`,
+      '',
+      `Следующий шаг: ${isPlayerInTutorial(player) ? 'нажмите «⚔️ Учебный бой».' : 'нажмите «⚔️ Исследовать».'}`,
     ].join('\n');
 
 export const renderMainMenu = (player: PlayerState): string => {
@@ -104,44 +117,53 @@ export const renderInventory = (player: PlayerState): string => [
 ].join('\n');
 
 export const renderLocation = (player: PlayerState): string => [
-  '📘 Обучение и умная сложность',
+  '📘 Учебная зона и приключения',
   '',
   player.tutorialState === 'ACTIVE'
-    ? 'Обучение ещё не завершено. Нулевой биом подготовлен как безопасный вход в игру.'
+    ? 'Обучение ещё не завершено. Это безопасная зона для первого боя и знакомства с базовой петлёй.'
     : player.tutorialState === 'SKIPPED'
-      ? 'Обучение было пропущено. При желании его можно снова пройти как тренировку.'
-      : 'Обучение завершено. Вы можете вернуться в него для повторной тренировки.',
+      ? 'Обучение было пропущено. Сюда можно вернуться позже для тренировки.'
+      : 'Обучение завершено. Сюда можно вернуться для спокойной тренировки.',
   '',
   isPlayerInTutorial(player)
-    ? 'Сейчас активен интро-биом. Здесь противники должны быть по зубам даже после серии поражений.'
-    : 'Сейчас активен режим приключений. Сложность подбирается автоматически по статам, уровню и серии боёв.',
-  `🎯 Рекомендуемая угроза в приключениях: ${resolveAdaptiveAdventureLocationLevel(player)}`,
-  `🧭 Максимально пройденная угроза: ${player.highestLocationLevel}`,
+    ? 'Сейчас вы в учебной зоне. Враги здесь мягче и подходят для первого боя.'
+    : 'Сейчас вы в приключениях. Сложность подбирается автоматически по силе героя и серии боёв.',
+  `🎯 Рекомендуемая сложность в приключениях: ${resolveAdaptiveAdventureLocationLevel(player)}`,
+  `🧭 Максимально пройденная сложность: ${player.highestLocationLevel}`,
   player.defeatStreak > 0
-    ? `🛡️ После поражений подряд (${player.defeatStreak}) игра снижает давление и подбирает более мягких мобов.`
+    ? `🛡️ После поражений подряд (${player.defeatStreak}) враги становятся слабее, чтобы вы быстрее вернулись в ритм.`
     : `🔥 Серия побед подряд: ${player.victoryStreak}`,
+  '',
+  `Следующий шаг: ${isPlayerInTutorial(player) ? 'нажмите «⚔️ Учебный бой».' : 'нажмите «⚔️ Исследовать».'}`,
 ].join('\n');
 
 export const renderRuneScreen = (player: PlayerState): string => {
   const selectedRune = getSelectedRune(player);
 
   return [
-    '🔮 Коллекция рун',
+    '💎 Мои руны',
     '',
     `Всего рун: ${player.runes.length}`,
     `Текущий индекс: ${player.runes.length > 0 ? player.currentRuneIndex + 1 : 0}/${player.runes.length}`,
     '',
     formatRune(selectedRune),
+    '',
+    selectedRune
+      ? 'Следующий шаг: выберите руну кнопками ниже и нажмите «Надеть» или «Снять».'
+      : 'Следующий шаг: откройте «Алтарь рун», чтобы создать первую руну.',
   ].join('\n');
 };
 
 export const renderAltar = (player: PlayerState): string => [
   '🕯️ Алтарь рун',
   '',
+  'Мои руны — для просмотра и экипировки. Алтарь — для создания, изменения и распыления выбранной руны.',
+  '',
   renderRuneScreen(player),
   '',
-  `Создание руны стоит ${gameBalance.runes.craftCost} осколков одной редкости.`,
-  'Изменение стата требует 1 осколок той же редкости.',
+  `Новая руна создаётся из ${gameBalance.runes.craftCost} осколков одной редкости.`,
+  'Изменение характеристики требует 1 осколок той же редкости, что и руна.',
+  'Распыление возвращает часть осколков выбранной руны.',
 ].join('\n');
 
 const renderBar = (current: number, max: number, filled: string, empty: string, width = 10): string => {
@@ -204,7 +226,14 @@ const renderBattleActorStats = (
 ].join('\n');
 
 export const renderBattle = (battle: BattleView): string => {
-  const log = [...battle.log].slice(-6).reverse().join('\n');
+  const log = [...battle.log].slice(-4).reverse().join('\n');
+  const battleStateLine = battle.status === 'ACTIVE'
+    ? battle.turnOwner === 'PLAYER'
+      ? 'Ваш ход: нажмите «⚔️ Атака».'
+      : 'Ход врага: дождитесь результата текущего обмена.'
+    : battle.result === 'VICTORY'
+      ? 'Победа. Нажмите «⚔️ Исследовать», чтобы сразу начать новый бой.'
+      : 'Поражение. Откройте «👤 Профиль», чтобы усилить героя, или начните новый бой.';
 
   const rewardLines = battle.status === 'COMPLETED' && battle.rewards
     ? [
@@ -219,13 +248,15 @@ export const renderBattle = (battle: BattleView): string => {
   return [
     `${battle.status === 'COMPLETED' ? '🏁 Завершённый бой' : '⚔️ Активный бой'}`,
     '',
+    battleStateLine,
+    '',
     renderBattleActorStats('👤 Ваши боевые статы', battle.player),
     '',
     renderBattleActorStats('👾 Статы врага', battle.enemy),
     '',
     `Ход: ${battle.turnOwner === 'PLAYER' ? 'игрок' : 'враг'}`,
     '',
-    'Журнал боя: новое сверху, старое снизу',
+    'Последние события:',
     log || 'Пока без событий.',
     ...rewardLines,
   ].join('\n');

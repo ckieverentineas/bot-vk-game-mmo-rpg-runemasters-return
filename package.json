@@ -16,6 +16,7 @@
     "db:seed": "tsx src/database/seed.ts",
     "content:validate": "tsx src/tooling/release/content-validation.ts",
     "release:status": "tsx src/tooling/release/release-status.ts",
+    "release:summary": "tsx src/tooling/release/release-summary.ts",
     "release:preflight": "tsx src/tooling/release/release-preflight.ts",
     "lint": "tsc --noEmit -p tsconfig.json",
     "test": "vitest run --passWithNoTests"
