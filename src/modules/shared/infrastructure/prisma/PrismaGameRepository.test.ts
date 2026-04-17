@@ -1,7 +1,13 @@
+import { readFileSync } from 'node:fs';
+
 import { describe, expect, it, vi } from 'vitest';
 
 import type { BattleView, RuneDraft, StatBlock } from '../../../../shared/types/game';
 import { PrismaGameRepository } from './PrismaGameRepository';
+
+const readFixture = <T>(fileName: string): T => JSON.parse(
+  readFileSync(new URL(`./fixtures/${fileName}`, import.meta.url), 'utf8'),
+) as T;
 
 const createPlayerRecord = () => ({
   id: 1,
@@ -68,6 +74,7 @@ const createBattleRow = (overrides: Partial<Record<string, unknown>> = {}) => ({
   status: 'ACTIVE',
   battleType: 'PVE',
   actionRevision: 0,
+  battleSnapshot: null,
   playerLoadoutSnapshot: null,
   locationLevel: 1,
   biomeCode: 'initium',
@@ -303,6 +310,37 @@ describe('PrismaGameRepository release hardening', () => {
     });
   });
 
+  it('writes the versioned battle snapshot contract when saving battle state', async () => {
+    const { repository, tx } = createPrismaMock();
+    const persistedBattle = createBattleRow({
+      actionRevision: 1,
+      battleSnapshot: JSON.stringify(readFixture('battle-snapshot-v1.json')),
+    });
+
+    tx.battleSession.updateMany.mockResolvedValue({ count: 1 });
+    tx.battleSession.findFirst.mockResolvedValue(persistedBattle);
+
+    const saved = await repository.saveBattle(createBattleView({
+      status: 'ACTIVE',
+      result: null,
+      rewards: null,
+      enemy: {
+        ...createBattleView().enemy,
+        currentHealth: 5,
+      },
+      actionRevision: 0,
+    }));
+
+    expect(saved.actionRevision).toBe(1);
+    const persistedSnapshot = JSON.parse((tx.battleSession.updateMany.mock.calls[0]?.[0]?.data?.battleSnapshot as string) ?? '{}');
+    expect(persistedSnapshot.actionRevision).toBe(1);
+    expect(tx.battleSession.updateMany).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
+        battleSnapshot: expect.any(String),
+      }),
+    }));
+  });
+
   it('treats repeated battle finalization as idempotent', async () => {
     const { repository, tx } = createPrismaMock();
     const persistedBattle = createBattleRow({
@@ -375,61 +413,8 @@ describe('PrismaGameRepository release hardening', () => {
     const { repository, tx } = createPrismaMock();
 
     tx.battleSession.findFirst.mockResolvedValue(createBattleRow({
-      playerSnapshot: JSON.stringify({
-        playerId: 1,
-        name: 'Рунный мастер #1001',
-        attack: 4,
-        defence: 3,
-        magicDefence: 1,
-        dexterity: 2,
-        intelligence: 1,
-        maxHealth: 8,
-        currentHealth: 8,
-        maxMana: 4,
-        currentMana: 1,
-        guardPoints: 3,
-        runeLoadout: {
-          runeId: 'rune-1',
-          runeName: 'Руна Пламени',
-          archetypeCode: 'ember',
-          archetypeName: 'Штурм',
-          passiveAbilityCodes: ['ember_heart'],
-          activeAbility: {
-            code: 'ember_pulse',
-            name: 'Импульс углей',
-            manaCost: 3,
-            cooldownTurns: 2,
-            currentCooldown: 1,
-          },
-        },
-      }),
-      enemySnapshot: JSON.stringify({
-        code: 'slime',
-        name: 'Слизень',
-        kind: 'wolf',
-        isElite: false,
-        isBoss: false,
-        attack: 2,
-        defence: 0,
-        magicDefence: 0,
-        dexterity: 1,
-        intelligence: 0,
-        maxHealth: 5,
-        currentHealth: 5,
-        maxMana: 0,
-        currentMana: 0,
-        experienceReward: 4,
-        goldReward: 2,
-        runeDropChance: 0,
-        attackText: 'бьёт',
-        intent: {
-          code: 'HEAVY_STRIKE',
-          title: 'Тяжёлый удар',
-          description: 'Следующая атака врага будет сильнее обычной.',
-          bonusAttack: 3,
-        },
-        hasUsedSignatureMove: false,
-      }),
+      playerSnapshot: JSON.stringify(readFixture('battle-player-legacy.json')),
+      enemySnapshot: JSON.stringify(readFixture('battle-enemy-legacy.json')),
     }));
 
     const battle = await repository.getActiveBattle(1);
@@ -503,32 +488,8 @@ describe('PrismaGameRepository release hardening', () => {
         schemaVersion: 99,
       }),
       playerSnapshot: JSON.stringify({
-        playerId: 1,
-        name: 'Рунный мастер #1001',
-        attack: 4,
-        defence: 3,
-        magicDefence: 1,
-        dexterity: 2,
-        intelligence: 1,
-        maxHealth: 8,
-        currentHealth: 8,
-        maxMana: 4,
-        currentMana: 4,
+        ...readFixture<Record<string, unknown>>('battle-player-legacy.json'),
         guardPoints: 1,
-        runeLoadout: {
-          runeId: 'rune-1',
-          runeName: 'Руна Пламени',
-          archetypeCode: 'ember',
-          archetypeName: 'Штурм',
-          passiveAbilityCodes: ['ember_heart'],
-          activeAbility: {
-            code: 'ember_pulse',
-            name: 'Импульс углей',
-            manaCost: 3,
-            cooldownTurns: 2,
-            currentCooldown: 1,
-          },
-        },
       }),
     }));
 
@@ -537,5 +498,58 @@ describe('PrismaGameRepository release hardening', () => {
     expect(battle?.player.runeLoadout?.runeId).toBe('rune-1');
     expect(battle?.player.runeLoadout?.activeAbility?.currentCooldown).toBe(1);
     expect(battle?.player.guardPoints).toBe(1);
+  });
+
+  it('hydrates the canonical battle state from the versioned battle snapshot contract', async () => {
+    const { repository, tx } = createPrismaMock();
+
+    tx.battleSession.findFirst.mockResolvedValue(createBattleRow({
+      battleSnapshot: JSON.stringify(readFixture('battle-snapshot-v1.json')),
+      playerSnapshot: JSON.stringify({ playerId: 1, name: 'Legacy fallback' }),
+      enemySnapshot: JSON.stringify({ code: 'legacy-enemy', name: 'Legacy fallback' }),
+      log: JSON.stringify(['legacy']),
+    }));
+
+    const battle = await repository.getActiveBattle(1);
+
+    expect(battle?.player.currentHealth).toBe(7);
+    expect(battle?.player.runeLoadout?.activeAbility?.currentCooldown).toBe(1);
+    expect(battle?.enemy.intent?.code).toBe('HEAVY_STRIKE');
+    expect(battle?.log).toContain('🛡️ Защита смягчает удар на 2 урона.');
+  });
+
+  it('falls back to legacy columns when the persisted battle snapshot is from a newer schema', async () => {
+    const { repository, tx } = createPrismaMock();
+
+    tx.battleSession.findFirst.mockResolvedValue(createBattleRow({
+      battleSnapshot: JSON.stringify(readFixture('battle-snapshot-future.json')),
+      playerSnapshot: JSON.stringify(readFixture('battle-player-legacy.json')),
+      enemySnapshot: JSON.stringify(readFixture('battle-enemy-legacy.json')),
+    }));
+
+    const battle = await repository.getActiveBattle(1);
+
+    expect(battle?.player.currentHealth).toBe(8);
+    expect(battle?.enemy.kind).toBe('wolf');
+  });
+
+  it('falls back to newer legacy columns when a rollback left the versioned battle snapshot stale', async () => {
+    const { repository, tx } = createPrismaMock();
+
+    tx.battleSession.findFirst.mockResolvedValue(createBattleRow({
+      actionRevision: 1,
+      battleSnapshot: JSON.stringify(readFixture('battle-snapshot-v1.json')),
+      playerSnapshot: JSON.stringify({
+        ...readFixture<Record<string, unknown>>('battle-player-legacy.json'),
+        currentHealth: 5,
+      }),
+      log: JSON.stringify(['legacy-after-rollback']),
+    }));
+
+    const battle = await repository.getActiveBattle(1);
+
+    expect(battle?.actionRevision).toBe(1);
+    expect(battle?.player.currentHealth).toBe(5);
+    expect(battle?.log).toEqual(['legacy-after-rollback']);
   });
 });

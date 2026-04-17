@@ -114,6 +114,7 @@ model BattleSession {
   status          String   @default("ACTIVE")
   battleType      String   @default("PVE")
   actionRevision  Int      @default(0)
+  battleSnapshot  String?
   playerLoadoutSnapshot String? 
   locationLevel   Int
   biomeCode       String

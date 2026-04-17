@@ -17,6 +17,7 @@ import type {
   RuneView,
   StatBlock,
 } from '../../../../shared/types/game';
+import { buildBattleSnapshot, isBattleSnapshot, type BattleSnapshot } from '../../domain/contracts/battle-snapshot';
 import { emptyInventory, emptyStats, resolveAdaptiveAdventureLocationLevel, resolveLevelProgression, shardFieldForRarity } from '../../../player/domain/player-stats';
 import { buildLoadoutSnapshotFromBattle, isLoadoutSnapshot, projectBattleRuneLoadout, type LoadoutSnapshot } from '../../domain/contracts/loadout-snapshot';
 import { createAppliedRewardLedgerEntry } from '../../domain/contracts/reward-ledger';
@@ -108,6 +109,11 @@ interface ParsedLoadoutSnapshot {
   readonly fallbackToBattleSnapshot: boolean;
 }
 
+interface ParsedBattleSnapshot {
+  readonly snapshot: BattleSnapshot | null;
+  readonly fallbackToLegacyColumns: boolean;
+}
+
 const parsePersistedLoadoutSnapshot = (value: string | null): ParsedLoadoutSnapshot => {
   if (!value) {
     return {
@@ -140,6 +146,38 @@ const parsePersistedLoadoutSnapshot = (value: string | null): ParsedLoadoutSnaps
   };
 };
 
+const parsePersistedBattleSnapshot = (value: string | null): ParsedBattleSnapshot => {
+  if (!value) {
+    return {
+      snapshot: null,
+      fallbackToLegacyColumns: false,
+    };
+  }
+
+  let parsed: unknown;
+
+  try {
+    parsed = JSON.parse(value);
+  } catch {
+    return {
+      snapshot: null,
+      fallbackToLegacyColumns: true,
+    };
+  }
+
+  if (!isBattleSnapshot(parsed)) {
+    return {
+      snapshot: null,
+      fallbackToLegacyColumns: true,
+    };
+  }
+
+  return {
+    snapshot: parsed,
+    fallbackToLegacyColumns: false,
+  };
+};
+
 const hydrateBattlePlayerSnapshot = (
   playerId: number,
   snapshot: BattleView['player'],
@@ -168,10 +206,19 @@ const isStaleBattleMutation = (
   && currentBattle.actionRevision > expectedRevision
 );
 
+const shouldUseVersionedBattleSnapshot = (
+  snapshot: BattleSnapshot | null,
+  actionRevision: number,
+): snapshot is BattleSnapshot => (
+  snapshot !== null
+  && snapshot.actionRevision === actionRevision
+);
+
 const mapBattlePersistence = (battle: PersistedBattleState) => ({
   status: battle.status,
   turnOwner: battle.turnOwner,
   actionRevision: battle.actionRevision,
+  battleSnapshot: stringifyJson(buildBattleSnapshot(battle), '{}'),
   playerLoadoutSnapshot: battle.player.runeLoadout
     ? stringifyJson(buildLoadoutSnapshotFromBattle(battle.player.runeLoadout), 'null')
     : null,
@@ -691,6 +738,10 @@ export class PrismaGameRepository implements GameRepository {
       const persistedBattle = mapBattlePersistence(battle);
       const { actionRevision: expectedRevision, ...persistedState } = persistedBattle;
       void expectedRevision;
+      const nextBattleSnapshot = stringifyJson(buildBattleSnapshot({
+        ...battle,
+        actionRevision: battle.actionRevision + 1,
+      }), '{}');
       const saved = await tx.battleSession.updateMany({
         where: {
           id: battle.id,
@@ -700,6 +751,7 @@ export class PrismaGameRepository implements GameRepository {
         },
         data: {
           ...persistedState,
+          battleSnapshot: nextBattleSnapshot,
           actionRevision: {
             increment: 1,
           },
@@ -747,6 +799,10 @@ export class PrismaGameRepository implements GameRepository {
       const persistedBattle = mapBattlePersistence(battle);
       const { actionRevision: expectedRevision, ...persistedState } = persistedBattle;
       void expectedRevision;
+      const nextBattleSnapshot = stringifyJson(buildBattleSnapshot({
+        ...battle,
+        actionRevision: battle.actionRevision + 1,
+      }), '{}');
       const finalized = await tx.battleSession.updateMany({
         where: {
           id: battle.id,
@@ -756,6 +812,7 @@ export class PrismaGameRepository implements GameRepository {
         },
         data: {
           ...persistedState,
+          battleSnapshot: nextBattleSnapshot,
           actionRevision: {
             increment: 1,
           },
@@ -1071,6 +1128,7 @@ export class PrismaGameRepository implements GameRepository {
     status: string;
     battleType: string;
     actionRevision: number;
+    battleSnapshot?: string | null;
     playerLoadoutSnapshot?: string | null;
     locationLevel: number;
     biomeCode: string;
@@ -1084,10 +1142,24 @@ export class PrismaGameRepository implements GameRepository {
     createdAt: Date;
     updatedAt: Date;
   }): BattleView {
+    const persistedBattleSnapshot = parsePersistedBattleSnapshot(battle.battleSnapshot ?? null);
     const playerSnapshot = parseJson<BattleView['player']>(battle.playerSnapshot, defaultBattlePlayerSnapshot(battle.playerId));
+    const enemySnapshot = parseJson<BattleView['enemy']>(battle.enemySnapshot, defaultBattleEnemySnapshot(battle.enemyCode));
+    const battleLog = parseJson<BattleView['log']>(battle.log, []);
+    const rewardsSnapshot = parseJson<BattleView['rewards']>(battle.rewardsSnapshot, null);
     const persistedLoadoutSnapshot = parsePersistedLoadoutSnapshot(battle.playerLoadoutSnapshot ?? null);
 
-    if (persistedLoadoutSnapshot.fallbackToBattleSnapshot && !playerSnapshot.runeLoadout) {
+    const battleSnapshot = shouldUseVersionedBattleSnapshot(persistedBattleSnapshot.snapshot, battle.actionRevision)
+      ? persistedBattleSnapshot.snapshot
+      : {
+      player: playerSnapshot,
+      enemy: enemySnapshot,
+      log: battleLog,
+      result: battle.result as BattleView['result'],
+      rewards: rewardsSnapshot,
+    };
+
+    if (persistedLoadoutSnapshot.fallbackToBattleSnapshot && !battleSnapshot.player.runeLoadout) {
       throw new AppError('loadout_snapshot_invalid', 'Снимок рунной сборки боя повреждён. Начните новый бой.');
     }
 
@@ -1101,11 +1173,11 @@ export class PrismaGameRepository implements GameRepository {
       biomeCode: battle.biomeCode,
       enemyCode: battle.enemyCode,
       turnOwner: battle.turnOwner as BattleView['turnOwner'],
-      player: hydrateBattlePlayerSnapshot(battle.playerId, playerSnapshot, persistedLoadoutSnapshot.snapshot),
-      enemy: parseJson<BattleView['enemy']>(battle.enemySnapshot, defaultBattleEnemySnapshot(battle.enemyCode)),
-      log: parseJson<BattleView['log']>(battle.log, []),
-      result: battle.result as BattleView['result'],
-      rewards: parseJson<BattleView['rewards']>(battle.rewardsSnapshot, null),
+      player: hydrateBattlePlayerSnapshot(battle.playerId, battleSnapshot.player, persistedLoadoutSnapshot.snapshot),
+      enemy: battleSnapshot.enemy,
+      log: battleSnapshot.log,
+      result: battleSnapshot.result,
+      rewards: battleSnapshot.rewards,
       createdAt: battle.createdAt.toISOString(),
       updatedAt: battle.updatedAt.toISOString(),
     };

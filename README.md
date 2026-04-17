@@ -23,6 +23,7 @@ Runemasters Return — VK MMO RPG на TypeScript с модульным игро
 - versioned platform contracts для боевой рунной сборки и reward claims: `LoadoutSnapshot`, `RewardIntent`, `RewardLedger`;
 - exact-once reward ledger и canonical battle finalization защищают победную награду от replay/reroll по повторным входящим событиям;
 - battle mutation revision защищает активный бой от stale overwrite при спаме и transport retry;
+- versioned `BattleSnapshot` и checked-in compatibility fixtures страхуют save/load battle state перед будущими миграциями;
 - типобезопасные утилиты сериализации и commit-based релизная политика.
 
 ## Школы и архетипы
@@ -43,7 +44,7 @@ Runemasters Return — VK MMO RPG на TypeScript с модульным игро
 - `src/modules/shared/application/require-player.ts` — единая точка загрузки игрока и консистентных ошибок для use-case слоя;
 - `src/modules/shared/domain/contracts/*` — versioned контракты persistence-уровня для боевой сборки и reward claim flow;
 - `src/shared/utils/json.ts` — единая точка для JSON clone/parse/stringify;
-- `docs/platform/retry-handling-rules.md`, `docs/qa/reward-duplication-matrix.md`, `docs/testing/concurrency-critical-use-cases.md` — зафиксированные retry/concurrency rails для critical reward-bearing flows;
+- `docs/platform/retry-handling-rules.md`, `docs/platform/persistence-versioning-rules.md`, `docs/qa/reward-duplication-matrix.md`, `docs/testing/concurrency-critical-use-cases.md` — зафиксированные retry/concurrency rails и versioning policy для critical battle/reward flows;
 - `src/modules/runes/domain/rune-collection.ts` — paging helper'ы рунной коллекции поверх существующего `currentRuneIndex` без новой persistence-схемы;
 - `src/tooling/release` — правила версионирования, content validation, preflight-проверка и скрипты `npm run content:validate` / `npm run release:status` / `npm run release:preflight`;
 - `src/vk/handlers/gameHandler.smoke.test.ts` — smoke-проверки пользовательских сценариев через transport orchestration без реального VK API;

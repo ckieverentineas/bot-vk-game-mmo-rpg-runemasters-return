@@ -1,0 +1,158 @@
+import type {
+  BattleEnemyIntentCode,
+  BattleEnemySnapshot,
+  BattlePlayerSnapshot,
+  BattleResult,
+  BattleRewardView,
+  BattleRuneLoadoutSnapshot,
+  BattleView,
+  RuneDraft,
+  RuneRarity,
+} from '../../../../shared/types/game';
+
+import { hasSchemaVersion, isJsonRecord } from './versioned-contract';
+
+export const BATTLE_SNAPSHOT_SCHEMA_VERSION = 1 as const;
+
+export interface BattleSnapshotV1 {
+  readonly schemaVersion: typeof BATTLE_SNAPSHOT_SCHEMA_VERSION;
+  readonly actionRevision: number;
+  readonly player: BattlePlayerSnapshot;
+  readonly enemy: BattleEnemySnapshot;
+  readonly log: string[];
+  readonly result: BattleResult | null;
+  readonly rewards: BattleRewardView | null;
+}
+
+export type BattleSnapshot = BattleSnapshotV1;
+
+const battleEnemyIntentCodes: readonly BattleEnemyIntentCode[] = ['HEAVY_STRIKE', 'GUARD_BREAK'];
+const rewardRarities: readonly RuneRarity[] = ['USUAL', 'UNUSUAL', 'RARE', 'EPIC', 'LEGENDARY', 'MYTHICAL'];
+
+const isString = (value: unknown): value is string => typeof value === 'string';
+const isNullableString = (value: unknown): value is string | null => value === null || isString(value);
+const isNumber = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value) && value >= 0;
+const isStringArray = (value: unknown): value is string[] => Array.isArray(value) && value.every(isString);
+const isRuneRarity = (value: unknown): value is RuneRarity => isString(value) && rewardRarities.includes(value as RuneRarity);
+
+const isRuneDraft = (value: unknown): value is RuneDraft => (
+  isJsonRecord(value)
+  && isNullableString(value.runeCode ?? null)
+  && isNullableString(value.archetypeCode ?? null)
+  && isString(value.name)
+  && isRuneRarity(value.rarity)
+  && typeof value.isEquipped === 'boolean'
+  && isNumber(value.health)
+  && isNumber(value.attack)
+  && isNumber(value.defence)
+  && isNumber(value.magicDefence)
+  && isNumber(value.dexterity)
+  && isNumber(value.intelligence)
+  && (value.passiveAbilityCodes === undefined || isStringArray(value.passiveAbilityCodes))
+  && (value.activeAbilityCodes === undefined || isStringArray(value.activeAbilityCodes))
+);
+
+const isBattleRuneActionSnapshot = (value: unknown): value is NonNullable<BattleRuneLoadoutSnapshot['activeAbility']> => (
+  isJsonRecord(value)
+  && isString(value.code)
+  && isString(value.name)
+  && isNumber(value.manaCost)
+  && isNumber(value.cooldownTurns)
+  && isNumber(value.currentCooldown)
+);
+
+const isBattleRuneLoadoutSnapshot = (value: unknown): value is BattleRuneLoadoutSnapshot => (
+  isJsonRecord(value)
+  && isString(value.runeId)
+  && isString(value.runeName)
+  && isNullableString(value.archetypeCode)
+  && isNullableString(value.archetypeName)
+  && isStringArray(value.passiveAbilityCodes)
+  && (value.activeAbility === null || isBattleRuneActionSnapshot(value.activeAbility))
+);
+
+const isBattlePlayerSnapshot = (value: unknown): value is BattlePlayerSnapshot => (
+  isJsonRecord(value)
+  && isNumber(value.playerId)
+  && isString(value.name)
+  && isNumber(value.attack)
+  && isNumber(value.defence)
+  && isNumber(value.magicDefence)
+  && isNumber(value.dexterity)
+  && isNumber(value.intelligence)
+  && isNumber(value.maxHealth)
+  && isNumber(value.currentHealth)
+  && isNumber(value.maxMana)
+  && isNumber(value.currentMana)
+  && (value.runeLoadout === undefined || value.runeLoadout === null || isBattleRuneLoadoutSnapshot(value.runeLoadout))
+  && (value.guardPoints === undefined || isNumber(value.guardPoints))
+);
+
+const isBattleEnemyIntentSnapshot = (value: unknown): value is NonNullable<BattleEnemySnapshot['intent']> => (
+  isJsonRecord(value)
+  && isString(value.code)
+  && battleEnemyIntentCodes.includes(value.code as BattleEnemyIntentCode)
+  && isString(value.title)
+  && isString(value.description)
+  && isNumber(value.bonusAttack)
+  && (value.shattersGuard === undefined || typeof value.shattersGuard === 'boolean')
+);
+
+const isBattleEnemySnapshot = (value: unknown): value is BattleEnemySnapshot => (
+  isJsonRecord(value)
+  && isString(value.code)
+  && isString(value.name)
+  && isString(value.kind)
+  && typeof value.isElite === 'boolean'
+  && typeof value.isBoss === 'boolean'
+  && isNumber(value.attack)
+  && isNumber(value.defence)
+  && isNumber(value.magicDefence)
+  && isNumber(value.dexterity)
+  && isNumber(value.intelligence)
+  && isNumber(value.maxHealth)
+  && isNumber(value.currentHealth)
+  && isNumber(value.maxMana)
+  && isNumber(value.currentMana)
+  && isNumber(value.experienceReward)
+  && isNumber(value.goldReward)
+  && isNumber(value.runeDropChance)
+  && isString(value.attackText)
+  && (value.intent === undefined || value.intent === null || isBattleEnemyIntentSnapshot(value.intent))
+  && (value.hasUsedSignatureMove === undefined || typeof value.hasUsedSignatureMove === 'boolean')
+);
+
+const isRewardShardMap = (value: unknown): value is BattleRewardView['shards'] => (
+  isJsonRecord(value)
+  && Object.entries(value).every(([key, amount]) => isRuneRarity(key) && isNumber(amount))
+);
+
+const isBattleRewardView = (value: unknown): value is BattleRewardView => (
+  isJsonRecord(value)
+  && isNumber(value.experience)
+  && isNumber(value.gold)
+  && isRewardShardMap(value.shards)
+  && (value.droppedRune === null || isRuneDraft(value.droppedRune))
+);
+
+export const isBattleSnapshot = (value: unknown): value is BattleSnapshot => (
+  hasSchemaVersion(value, BATTLE_SNAPSHOT_SCHEMA_VERSION)
+  && isNumber(value.actionRevision)
+  && isBattlePlayerSnapshot(value.player)
+  && isBattleEnemySnapshot(value.enemy)
+  && isStringArray(value.log)
+  && (value.result === null || value.result === 'VICTORY' || value.result === 'DEFEAT')
+  && (value.rewards === null || isBattleRewardView(value.rewards))
+);
+
+export const buildBattleSnapshot = (
+  battle: Pick<BattleView, 'actionRevision' | 'player' | 'enemy' | 'log' | 'result' | 'rewards'>,
+): BattleSnapshot => ({
+  schemaVersion: BATTLE_SNAPSHOT_SCHEMA_VERSION,
+  actionRevision: battle.actionRevision,
+  player: battle.player,
+  enemy: battle.enemy,
+  log: [...battle.log],
+  result: battle.result,
+  rewards: battle.rewards,
+});

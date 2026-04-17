@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { BattleView, RuneView } from '../../../../shared/types/game';
 
+import { buildBattleSnapshot, isBattleSnapshot } from './battle-snapshot';
 import { buildLoadoutSnapshot, projectBattleRuneLoadout } from './loadout-snapshot';
 import { createAppliedRewardLedgerEntry } from './reward-ledger';
 import { createBattleVictoryRewardIntent } from './reward-intent';
@@ -115,5 +116,16 @@ describe('battle platform contracts', () => {
       sourceId: 'battle-1',
       playerId: 1,
     });
+  });
+
+  it('builds a versioned battle snapshot contract for persisted battle state', () => {
+    const snapshot = buildBattleSnapshot(createBattle());
+
+    expect(snapshot.schemaVersion).toBe(1);
+    expect(snapshot.actionRevision).toBe(1);
+    expect(isBattleSnapshot(snapshot)).toBe(true);
+    expect(snapshot.player.playerId).toBe(1);
+    expect(snapshot.enemy.code).toBe('slime');
+    expect(snapshot.rewards?.gold).toBe(2);
   });
 });

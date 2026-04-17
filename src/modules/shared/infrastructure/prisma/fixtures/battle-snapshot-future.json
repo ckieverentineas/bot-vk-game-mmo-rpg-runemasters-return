@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 99,
+  "actionRevision": 0,
+  "player": {
+    "playerId": 1
+  },
+  "enemy": {
+    "code": "slime"
+  },
+  "log": [],
+  "result": null,
+  "rewards": null
+}

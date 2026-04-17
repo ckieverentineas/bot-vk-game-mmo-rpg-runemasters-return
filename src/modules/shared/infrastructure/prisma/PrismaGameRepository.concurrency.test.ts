@@ -215,6 +215,48 @@ describe.sequential('PrismaGameRepository concurrency rails', () => {
     expect(staleLogs).toBe(1);
   });
 
+  it('prefers the fresh versioned battle snapshot over stale legacy columns when revisions match', async () => {
+    const player = await createPlayer(2008);
+    const activeBattle = await repository.createBattle(player.playerId, createBattleInput(player.playerId));
+    const savedBattle = await repository.saveBattle({
+      ...activeBattle,
+      turnOwner: 'ENEMY',
+      player: {
+        ...activeBattle.player,
+        currentHealth: 6,
+      },
+      enemy: {
+        ...activeBattle.enemy,
+        currentHealth: 3,
+      },
+      log: [...activeBattle.log, '⚔️ Версионированный snapshot теперь главный.'],
+    });
+
+    const persistedBattle = await prisma.battleSession.findUnique({
+      where: { id: savedBattle.id },
+    });
+
+    expect(persistedBattle?.battleSnapshot).toBeTruthy();
+    const persistedSnapshot = JSON.parse(persistedBattle?.battleSnapshot ?? '{}') as { actionRevision?: number };
+    expect(persistedSnapshot.actionRevision).toBe(savedBattle.actionRevision);
+
+    await prisma.battleSession.update({
+      where: { id: savedBattle.id },
+      data: {
+        playerSnapshot: JSON.stringify({
+          ...savedBattle.player,
+          currentHealth: 1,
+        }),
+        log: JSON.stringify(['legacy-stale']),
+      },
+    });
+
+    const reloadedBattle = await repository.getActiveBattle(player.playerId);
+
+    expect(reloadedBattle?.player.currentHealth).toBe(6);
+    expect(reloadedBattle?.log).toEqual(savedBattle.log);
+  });
+
   it('returns the canonical victory result on parallel finalizeBattle calls', async () => {
     const player = await createPlayer(2003);
     const activeBattle = await repository.createBattle(player.playerId, createBattleInput(player.playerId));

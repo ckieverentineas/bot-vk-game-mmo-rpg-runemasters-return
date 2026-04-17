@@ -367,6 +367,30 @@
 - parallel finalize одного и того же победного боя больше не должно начислять награду или rune drop больше одного раза;
 - parallel craft / reroll / destroy с последним бюджетом теперь имеют реальную Prisma-backed regression coverage, а не только mock-level ожидания.
 
+## [0.16] - 2026-04-18
+
+### Commit
+
+- `worktree` — `feat: version battle snapshots for migration safety`
+
+### Added
+
+- versioned contract `BattleSnapshot` в [`src/modules/shared/domain/contracts/battle-snapshot.ts`](src/modules/shared/domain/contracts/battle-snapshot.ts) и additive Prisma-column [`BattleSession.battleSnapshot`](prisma/schema.prisma) для mutable battle JSON;
+- checked-in compatibility fixtures в [`src/modules/shared/infrastructure/prisma/fixtures`](src/modules/shared/infrastructure/prisma/fixtures) для legacy battle snapshots, current `schemaVersion: 1` payload и future-version fallback case;
+- policy doc [`docs/platform/persistence-versioning-rules.md`](docs/platform/persistence-versioning-rules.md) для battle/loadout/reward persistence versioning.
+
+### Changed
+
+- [`PrismaGameRepository`](src/modules/shared/infrastructure/prisma/PrismaGameRepository.ts) теперь dual-writes versioned `battleSnapshot`, но по-прежнему умеет читать legacy `playerSnapshot` / `enemySnapshot` / `log` / `rewardsSnapshot` как compatibility fallback;
+- repository tests и contract tests теперь проверяют versioned battle hydration, fixture-based legacy fallback и future-version fallback behavior;
+- release docs и roadmap синхронизированы под battle snapshot versioning и compatibility fixtures.
+
+### Fixed
+
+- save/load active battle больше не зависит только от raw JSON колонок без явной схемы версии;
+- unsupported future battle snapshot version теперь не ломает загрузку боя, если legacy snapshot columns ещё доступны для safe fallback;
+- migration safety вокруг battle persistence больше не остаётся неявной и без checked-in fixtures.
+
 ## Шаблон следующей записи
 
 ### [0.03] - YYYY-MM-DD

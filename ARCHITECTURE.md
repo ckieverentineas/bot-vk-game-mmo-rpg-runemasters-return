@@ -172,6 +172,7 @@ src/
 - параллельно в `BattleSession.playerLoadoutSnapshot` теперь живёт versioned `LoadoutSnapshot`, который переживает save/load независимо от cooldown/runtime-полей;
 - canonical reward write-path больше не опирается только на `battle.rewards`, а фиксирует `RewardIntent` и append-only `RewardLedger` для exact-once claim semantics.
 - `BattleSession.actionRevision` стал compare-and-swap guard для active battle mutations, чтобы stale branch не мог перезаписать более новый turn state.
+- `BattleSession.battleSnapshot` стал versioned envelope для mutable battle JSON, а legacy `playerSnapshot` / `enemySnapshot` / `log` / `rewardsSnapshot` остаются compatibility fallback до отдельного migration window; при rollback/new-runtime re-entry версия battle snapshot доверяется только если её `actionRevision` совпадает с revision строки.
 
 Следующий shipped tactics layer добавляет ещё локальные боевые контракты внутри snapshot:
 
@@ -214,6 +215,7 @@ src/
 - создание нового боя повторно использует уже активную сессию, если она ещё не завершена.
 - победная награда теперь получает отдельный versioned `RewardIntent` и сохраняется в `RewardLedgerRecord`, чтобы повторный retry возвращал canonical battle result вместо повторного reroll.
 - stale active-battle mutation логируется как `battle_stale_action_rejected`, а critical concurrency cases зафиксированы в `docs/testing/concurrency-critical-use-cases.md`.
+- battle persistence versioning и checked-in fixtures теперь описаны отдельно в `docs/platform/persistence-versioning-rules.md`, чтобы rollback/fallback policy не оставалась “в коде по умолчанию”.
 
 ### 9. Smoke verification
 

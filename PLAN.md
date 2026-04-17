@@ -466,10 +466,10 @@ Runemasters Return должен решать это через **школы ру
 - [ ] Разделить source-of-truth state и derived read models
 - [ ] Ввести schema versioning для:
   - [ ] player state
-  - [ ] battle snapshot
+  - [x] battle snapshot
   - [x] loadout state
   - [x] reward claim records
-- [ ] Подготовить compatibility test fixtures для будущих миграций
+- [x] Подготовить compatibility test fixtures для будущих миграций
 
 ### 11.3 Combat / progression rules
 
@@ -952,3 +952,4 @@ Runemasters Return должен решать это через **школы ру
 - **2026-04-17:** добавлен production control layer: current quarter, 30/60/90 days, dependency map, cut rules, execution checkpoints, review rhythm.
 - **2026-04-17:** зафиксированы versioned `LoadoutSnapshot`, `RewardIntent` и `RewardLedger`; battle reward finalize-path переведён на canonical exact-once reward claim через ledger.
 - **2026-04-18:** battle persistence получил `actionRevision` compare-and-swap guard; добавлены duplication matrix, retry rules и Prisma-backed concurrency tests для critical battle/rune flows.
+- **2026-04-18:** battle persistence получил versioned `BattleSnapshot` и checked-in compatibility fixtures; legacy raw battle columns оставлены как fallback до отдельного migration window.
