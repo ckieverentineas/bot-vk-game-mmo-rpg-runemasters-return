@@ -16,6 +16,12 @@ import {
   shouldEnemyPrepareGuardBreak,
   shouldEnemyPrepareHeavyStrike,
 } from './battle-tactics';
+import {
+  resolveEchoIntentAttackBonus,
+  resolveEmberAttackBonus,
+  resolveStoneGuardCapBonus,
+  resolveStoneGuardGainBonus,
+} from './battle-rune-passives';
 
 const finalizeBattle = (battle: BattleView, result: BattleResult): BattleView => {
   battle.status = 'COMPLETED';
@@ -124,8 +130,11 @@ export class BattleEngine {
     const nextBattle = cloneBattle(battle);
     this.assertPlayerTurn(nextBattle);
 
-    const guardGain = resolveDefendGuardGain(nextBattle.player);
-    const nextGuard = Math.min(resolveGuardCap(nextBattle.player), getGuardPoints(nextBattle.player) + guardGain);
+    const guardGain = resolveDefendGuardGain(nextBattle.player) + resolveStoneGuardGainBonus(nextBattle);
+    const nextGuard = Math.min(
+      resolveGuardCap(nextBattle.player) + resolveStoneGuardCapBonus(nextBattle),
+      getGuardPoints(nextBattle.player) + guardGain,
+    );
     nextBattle.player.guardPoints = nextGuard;
     nextBattle.log = appendBattleLog(
       nextBattle.log,
@@ -212,9 +221,18 @@ export class BattleEngine {
   }
 
   private static performAttack(nextBattle: BattleView): BattleView {
-    const damage = calculatePhysicalDamage(nextBattle.player.attack, nextBattle.enemy.defence);
-    nextBattle.enemy.currentHealth = Math.max(0, nextBattle.enemy.currentHealth - damage);
-    nextBattle.log = appendBattleLog(nextBattle.log, `⚔️ Вы наносите ${damage} урона врагу ${nextBattle.enemy.name}.`);
+    const baseDamage = calculatePhysicalDamage(nextBattle.player.attack, nextBattle.enemy.defence);
+    const emberBonus = resolveEmberAttackBonus(nextBattle);
+    const echoBonus = resolveEchoIntentAttackBonus(nextBattle);
+    const totalDamage = baseDamage + emberBonus + echoBonus;
+
+    nextBattle.enemy.currentHealth = Math.max(0, nextBattle.enemy.currentHealth - totalDamage);
+    nextBattle.log = appendBattleLog(
+      nextBattle.log,
+      `⚔️ Вы наносите ${totalDamage} урона врагу ${nextBattle.enemy.name}.`,
+      ...(emberBonus > 0 ? [`🔥 Школа Угля усиливает атаку ещё на ${emberBonus}.`] : []),
+      ...(echoBonus > 0 ? [`🧠 Эхо разума считывает намерение врага и добавляет ${echoBonus} магического урона.`] : []),
+    );
 
     if (nextBattle.enemy.currentHealth === 0) {
       return finalizeBattle(nextBattle, 'VICTORY');

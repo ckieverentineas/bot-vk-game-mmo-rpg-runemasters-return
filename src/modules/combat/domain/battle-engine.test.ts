@@ -126,6 +126,21 @@ describe('BattleEngine', () => {
     expect(resolved.log.some((entry) => entry.includes('Импульс углей'))).toBe(true);
   });
 
+  it('школа угля усиливает базовую атаку постоянным давлением', () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0.5);
+    const battle = createBattle({
+      enemy: {
+        ...createBattle().enemy,
+        currentHealth: 8,
+      },
+    });
+
+    const resolved = BattleEngine.attack(battle);
+
+    expect(resolved.enemy.currentHealth).toBe(3);
+    expect(resolved.log.some((entry) => entry.includes('Школа Угля'))).toBe(true);
+  });
+
   it('даёт игроку универсальную защиту вместо атаки', () => {
     const battle = createBattle();
 
@@ -134,6 +149,55 @@ describe('BattleEngine', () => {
     expect(resolved.turnOwner).toBe('ENEMY');
     expect(resolved.player.guardPoints).toBeGreaterThan(0);
     expect(resolved.log.some((entry) => entry.includes('защитную стойку'))).toBe(true);
+  });
+
+  it('школа камня усиливает защитную стойку', () => {
+    const battle = createBattle({
+      player: {
+        ...createBattle().player,
+        runeLoadout: {
+          ...createBattle().player.runeLoadout!,
+          archetypeCode: 'stone',
+          archetypeName: 'Камень',
+          passiveAbilityCodes: ['stone_guard'],
+          activeAbility: null,
+        },
+      },
+    });
+
+    const resolved = BattleEngine.defend(battle);
+
+    expect(resolved.player.guardPoints).toBe(4);
+  });
+
+  it('школа эха превращает телеграф врага в усиленную атаку', () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0.5);
+    const battle = createBattle({
+      player: {
+        ...createBattle().player,
+        runeLoadout: {
+          ...createBattle().player.runeLoadout!,
+          archetypeCode: 'echo',
+          archetypeName: 'Эхо',
+          passiveAbilityCodes: ['echo_mind'],
+          activeAbility: null,
+        },
+      },
+      enemy: {
+        ...createBattle().enemy,
+        intent: {
+          code: 'HEAVY_STRIKE',
+          title: 'Тяжёлый удар',
+          description: 'Следующая атака врага будет сильнее обычной.',
+          bonusAttack: 3,
+        },
+      },
+    });
+
+    const resolved = BattleEngine.attack(battle);
+
+    expect(resolved.enemy.currentHealth).toBe(3);
+    expect(resolved.log.some((entry) => entry.includes('Эхо разума'))).toBe(true);
   });
 
   it('телеграфирует тяжёлый удар у подходящего врага вместо обычной атаки', () => {

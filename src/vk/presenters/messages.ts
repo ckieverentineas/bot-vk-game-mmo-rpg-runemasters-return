@@ -9,6 +9,7 @@ import {
 import { resolveDefendGuardGain } from '../../modules/combat/domain/battle-tactics';
 import { describeRuneContent } from '../../modules/runes/domain/rune-abilities';
 import { buildRuneCollectionPage } from '../../modules/runes/domain/rune-collection';
+import { getRuneSchoolPresentation } from '../../modules/runes/domain/rune-schools';
 import type { BattleView, PlayerState, RuneView, StatBlock } from '../../shared/types/game';
 
 const formatStatBlock = (stats: StatBlock): string => [
@@ -83,6 +84,7 @@ const formatRune = (rune: RuneView | null): string => {
   }
 
   const runeContent = describeRuneContent(rune);
+  const school = getRuneSchoolPresentation(rune.archetypeCode);
   const passiveLines = runeContent.passiveAbilities.map((ability) => formatAbilityLine('🛡️', ability.name, []));
   const activeLines = runeContent.activeAbilities.map((ability) => formatAbilityLine(
     '🌀',
@@ -96,7 +98,7 @@ const formatRune = (rune: RuneView | null): string => {
   return [
     `${rune.isEquipped ? '✅ Экипирована' : '💠 Выбрана'}: ${rune.name}`,
     `Редкость: ${gameBalance.runes.profiles[rune.rarity].title}`,
-    ...(runeContent.archetype ? [`Архетип: ${runeContent.archetype.name}`] : []),
+    ...(school ? [`Школа: ${school.name}`, school.styleLine, school.battleLine] : []),
     `Бонусы: ${formatRuneStatSummary({
       health: rune.health,
       attack: rune.attack,
@@ -136,6 +138,7 @@ export const renderMainMenu = (player: PlayerState): string => {
   const stats = derivePlayerStats(player);
   const equippedRune = getEquippedRune(player);
   const inTutorial = isPlayerInTutorial(player);
+  const equippedSchool = getRuneSchoolPresentation(equippedRune?.archetypeCode);
 
   return [
     '🏰 Главное меню Runemasters Return',
@@ -148,6 +151,7 @@ export const renderMainMenu = (player: PlayerState): string => {
     `🎯 Свободные очки: ${player.unspentStatPoints}`,
     `🧭 Максимально пройденная угроза: ${player.highestLocationLevel}`,
     `🔮 Экипирована: ${equippedRune ? equippedRune.name : 'нет руны'}`,
+    ...(equippedSchool ? [`🜂 Ваш стиль: школа ${equippedSchool.name.toLowerCase()}.`] : []),
     player.defeatStreak > 0
       ? `🛡️ Поражений подряд: ${player.defeatStreak}. Сложность уже смягчена.`
       : `🔥 Побед подряд: ${player.victoryStreak}`,
@@ -230,11 +234,15 @@ export const renderRuneScreen = (player: PlayerState): string => {
     '',
     `Всего рун: ${player.runes.length} · Страница ${page.pageNumber}/${page.totalPages}`,
     `Экипирована: ${equippedRune ? equippedRune.name : 'нет руны'}`,
+    ...(equippedRune ? (() => {
+      const school = getRuneSchoolPresentation(equippedRune.archetypeCode);
+      return school ? [`Текущий стиль: школа ${school.name.toLowerCase()}.`] : [];
+    })() : []),
     '',
     'Список на этой странице:',
     ...page.entries.map((entry) => {
-      const runeContent = describeRuneContent(entry.rune);
-      return `${entry.isSelected ? '▶️' : '▫️'} ${entry.slot + 1}. ${entry.rune.isEquipped ? '✅ ' : ''}${entry.rune.name} — ${runeContent.archetype?.name ?? 'без архетипа'} · ${formatRuneStatSummary(entry.rune)}`;
+      const school = getRuneSchoolPresentation(entry.rune.archetypeCode);
+      return `${entry.isSelected ? '▶️' : '▫️'} ${entry.slot + 1}. ${entry.rune.isEquipped ? '✅ ' : ''}${entry.rune.name} — ${school?.name ?? 'без школы'} · ${formatRuneStatSummary(entry.rune)}`;
     }),
     '',
     formatRune(selectedRune),
@@ -311,9 +319,11 @@ const renderBattleRuneState = (battle: BattleView): string => {
     return '🔮 Без экипированной руны: доступна только базовая атака.';
   }
 
+  const school = getRuneSchoolPresentation(runeLoadout.archetypeCode);
+
   const activeAbility = runeLoadout.activeAbility;
   if (!activeAbility) {
-    return `🔮 ${runeLoadout.runeName}: работают только пассивные бонусы.`;
+    return `🔮 ${runeLoadout.runeName}: школа ${school?.name ?? 'неизвестна'}. ${school?.passiveLine ?? 'Эта руна играет через постоянный пассивный эффект.'}`;
   }
 
   const state = activeAbility.currentCooldown > 0
@@ -326,7 +336,7 @@ const renderBattleRuneState = (battle: BattleView): string => {
     ? ` · защита ${battle.player.guardPoints}`
     : '';
 
-  return `🔮 ${runeLoadout.runeName}: «${activeAbility.name}» · ${activeAbility.manaCost} маны · ${state}${guardLine}`;
+  return `🔮 ${runeLoadout.runeName}: школа ${school?.name ?? 'неизвестна'} · «${activeAbility.name}» · ${activeAbility.manaCost} маны · ${state}${guardLine}`;
 };
 
 const renderBattleEnemyIntent = (battle: BattleView): string | null => {
@@ -341,15 +351,16 @@ const renderBattleEnemyIntent = (battle: BattleView): string | null => {
 const renderBattleActionState = (battle: BattleView): string => {
   const defendGain = resolveDefendGuardGain(battle.player);
   const activeAbility = battle.player.runeLoadout?.activeAbility ?? null;
+  const school = getRuneSchoolPresentation(battle.player.runeLoadout?.archetypeCode);
   const runeRole = !activeAbility
-    ? null
+    ? school?.passiveLine ?? null
     : activeAbility.code === 'ember_pulse'
       ? 'сильный магический удар'
       : activeAbility.code === 'gale_step'
         ? 'удар + защита на следующий вражеский ход'
         : 'особое действие руны';
   const runeLine = !activeAbility
-    ? '🌀 Рунное действие — у текущей руны нет активного боевого навыка.'
+    ? `🌀 Школа ${school?.name ?? 'руны'} — ${runeRole ?? 'работает через постоянный пассивный эффект.'}`
     : activeAbility.currentCooldown > 0
       ? `🌀 ${activeAbility.name} — ${runeRole}. Откат: ${activeAbility.currentCooldown} хода.`
       : battle.player.currentMana < activeAbility.manaCost
@@ -397,7 +408,13 @@ export const renderBattle = (battle: BattleView): string => {
     ? [
         '',
         `Награда: +${battle.rewards.experience} опыта · +${battle.rewards.gold} пыли`,
-        ...(battle.rewards.droppedRune ? [`Руна: ${battle.rewards.droppedRune.name}`] : []),
+        ...(battle.rewards.droppedRune ? (() => {
+          const droppedSchool = getRuneSchoolPresentation(battle.rewards?.droppedRune?.archetypeCode);
+          return [
+            `Руна: ${battle.rewards.droppedRune.name}`,
+            ...(droppedSchool ? [`Школа: ${droppedSchool.name}. ${droppedSchool.styleLine}`] : []),
+          ];
+        })() : []),
       ]
     : [];
 

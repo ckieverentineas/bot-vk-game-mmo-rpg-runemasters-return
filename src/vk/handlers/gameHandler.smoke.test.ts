@@ -425,7 +425,8 @@ describe('GameHandler smoke', () => {
 
     expect(services.getRuneCollection.execute).toHaveBeenCalledTimes(2);
     expect(getReplyCalls(runeContext)[0]?.message).toContain('Руны и мастерская');
-    expect(getReplyCalls(runeContext)[0]?.message).toContain('Архетип: Уголь');
+    expect(getReplyCalls(runeContext)[0]?.message).toContain('Школа: Уголь');
+    expect(getReplyCalls(runeContext)[0]?.message).toContain('Школа давления');
     expect(getReplyCalls(runeContext)[0]?.message).toContain('Импульс углей');
     expect(getReplyCalls(altarContext)[0]?.message).toContain('Руны и мастерская');
   });

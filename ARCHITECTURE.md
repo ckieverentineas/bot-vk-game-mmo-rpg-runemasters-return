@@ -162,12 +162,14 @@ src/
 - active rune loadout игрока;
 - состояние маны и отката активного действия;
 - временную защиту/guard как часть player snapshot, а не transport-состояния.
+- passive school identity остаётся derivable из `passiveAbilityCodes`, а не требует отдельной persistence-схемы.
 
 Следующий shipped tactics layer добавляет ещё локальные боевые контракты внутри snapshot:
 
 - `DEFEND` как универсальное действие игрока, работающее через уже существующий `guardPoints`;
 - `enemy.intent` для телеграфируемого тяжёлого удара без выхода в отдельную AI-state-machine.
 - тот же `enemy.intent` теперь несёт и anti-guard pattern, поэтому игроку приходится читать не только “когда защищаться”, но и “когда защита будет плохим ответом”.
+- battle-only passive resolver добавляет school identity поверх существующего snapshot-контракта без миграции базы и без новых transport-owned состояний.
 
 ### 7. Адаптивная сложность
 

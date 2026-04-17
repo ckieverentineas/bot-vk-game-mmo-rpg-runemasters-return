@@ -151,6 +151,12 @@ Runemasters Return **не копирует Skyrim/Oblivion**. Мы берём т
 
 ##### B2 — First stable school roster
 
+**Current progress:**
+
+- [x] player-facing слой больше показывает `школу`, а не `архетип`;
+- [x] Уголь, Камень и Эхо получили battle-visible identity уже в текущем loop;
+- [ ] довести стартовый roster до полного school-v1 без “пустых” ощущений;
+
 - **Player impact:** игрок начинает чувствовать разницу между стилями боя.
 - **Scope:**
   - довести до полноценного v1 минимум 3–4 стартовых школы;
