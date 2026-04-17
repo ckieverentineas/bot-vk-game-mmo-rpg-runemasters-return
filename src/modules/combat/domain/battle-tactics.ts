@@ -12,6 +12,11 @@ const heavyStrikeEnemyKinds = new Set<BattleEnemySnapshot['kind']>([
   'demon',
 ]);
 
+const guardBreakEnemyKinds = new Set<BattleEnemySnapshot['kind']>([
+  'slime',
+  'mage',
+]);
+
 export const resolveGuardCap = (player: Pick<BattlePlayerSnapshot, 'defence' | 'dexterity'>): number => (
   4 + player.defence + Math.floor(player.dexterity / 2)
 );
@@ -36,9 +41,29 @@ export const shouldEnemyPrepareHeavyStrike = (enemy: BattleEnemySnapshot): boole
   && enemy.currentHealth <= Math.ceil(enemy.maxHealth * 0.6)
 );
 
+export const enemySupportsGuardBreak = (enemy: Pick<BattleEnemySnapshot, 'kind' | 'isElite' | 'isBoss'>): boolean => (
+  enemy.isBoss || guardBreakEnemyKinds.has(enemy.kind)
+);
+
+export const shouldEnemyPrepareGuardBreak = (enemy: BattleEnemySnapshot): boolean => (
+  enemySupportsGuardBreak(enemy)
+  && !enemy.intent
+  && !(enemy.hasUsedSignatureMove ?? false)
+  && enemy.currentHealth > 0
+  && enemy.currentHealth <= Math.ceil(enemy.maxHealth * 0.6)
+);
+
 export const createHeavyStrikeIntent = (enemy: Pick<BattleEnemySnapshot, 'attack'>): BattleEnemyIntentSnapshot => ({
   code: 'HEAVY_STRIKE',
   title: 'Тяжёлый удар',
   description: 'Следующая атака врага будет сильнее обычной. Защита поможет пережить этот ход.',
   bonusAttack: Math.max(2, Math.floor(enemy.attack * 0.75)),
+});
+
+export const createGuardBreakIntent = (enemy: Pick<BattleEnemySnapshot, 'attack' | 'kind'>): BattleEnemyIntentSnapshot => ({
+  code: 'GUARD_BREAK',
+  title: enemy.kind === 'slime' ? 'Кислотный прорыв' : 'Пробивающий удар',
+  description: 'Следующий удар разобьёт защиту. Лучше давить уроном сейчас, а не тратить ход на защиту.',
+  bonusAttack: Math.max(1, Math.floor(enemy.attack * 0.35)),
+  shattersGuard: true,
 });

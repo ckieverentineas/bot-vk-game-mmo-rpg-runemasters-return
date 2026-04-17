@@ -341,13 +341,20 @@ const renderBattleEnemyIntent = (battle: BattleView): string | null => {
 const renderBattleActionState = (battle: BattleView): string => {
   const defendGain = resolveDefendGuardGain(battle.player);
   const activeAbility = battle.player.runeLoadout?.activeAbility ?? null;
+  const runeRole = !activeAbility
+    ? null
+    : activeAbility.code === 'ember_pulse'
+      ? 'сильный магический удар'
+      : activeAbility.code === 'gale_step'
+        ? 'удар + защита на следующий вражеский ход'
+        : 'особое действие руны';
   const runeLine = !activeAbility
     ? '🌀 Рунное действие — у текущей руны нет активного боевого навыка.'
     : activeAbility.currentCooldown > 0
-      ? `🌀 ${activeAbility.name} — откат: ${activeAbility.currentCooldown} хода.`
+      ? `🌀 ${activeAbility.name} — ${runeRole}. Откат: ${activeAbility.currentCooldown} хода.`
       : battle.player.currentMana < activeAbility.manaCost
-        ? `🌀 ${activeAbility.name} — нужно ${activeAbility.manaCost} маны.`
-        : `🌀 ${activeAbility.name} — готово. ${activeAbility.manaCost} маны.`;
+        ? `🌀 ${activeAbility.name} — ${runeRole}. Нужно ${activeAbility.manaCost} маны.`
+        : `🌀 ${activeAbility.name} — ${runeRole}. Готово, ${activeAbility.manaCost} маны.`;
 
   return [
     'Доступные действия:',

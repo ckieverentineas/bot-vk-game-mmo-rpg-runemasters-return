@@ -185,6 +185,55 @@ describe('BattleEngine', () => {
     expect(resolved.turnOwner).toBe('PLAYER');
   });
 
+  it('телеграфирует пробивающий удар у подходящего врага', () => {
+    const battle = createBattle({
+      turnOwner: 'ENEMY',
+      enemy: {
+        ...createBattle().enemy,
+        kind: 'slime',
+        name: 'Синий слизень',
+        currentHealth: 6,
+        maxHealth: 12,
+      },
+    });
+
+    const resolved = BattleEngine.resolveEnemyTurn(battle);
+
+    expect(resolved.turnOwner).toBe('PLAYER');
+    expect(resolved.enemy.intent?.code).toBe('GUARD_BREAK');
+    expect(resolved.log.some((entry) => entry.includes('сработает хуже'))).toBe(true);
+  });
+
+  it('пробивающий удар ломает защиту перед уроном', () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0.5);
+    const battle = createBattle({
+      turnOwner: 'ENEMY',
+      player: {
+        ...createBattle().player,
+        guardPoints: 5,
+      },
+      enemy: {
+        ...createBattle().enemy,
+        kind: 'slime',
+        intent: {
+          code: 'GUARD_BREAK',
+          title: 'Кислотный прорыв',
+          description: 'Следующий удар разобьёт защиту.',
+          bonusAttack: 2,
+          shattersGuard: true,
+        },
+        hasUsedSignatureMove: false,
+      },
+    });
+
+    const resolved = BattleEngine.resolveEnemyTurn(battle);
+
+    expect(resolved.enemy.intent).toBeNull();
+    expect(resolved.player.guardPoints).toBe(0);
+    expect(resolved.player.currentHealth).toBeLessThan(8);
+    expect(resolved.log.some((entry) => entry.includes('разбивает вашу защиту'))).toBe(true);
+  });
+
   it('снижает откат после вражеского хода и расходует рунную защиту', () => {
     vi.spyOn(Math, 'random').mockReturnValue(0.5);
     const battle = createBattle({

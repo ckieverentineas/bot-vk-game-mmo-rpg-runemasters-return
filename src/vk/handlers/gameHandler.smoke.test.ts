@@ -388,6 +388,32 @@ describe('GameHandler smoke', () => {
     expect(getReplyCalls(ctx)[0]?.message).toContain('Тяжёлый удар');
   });
 
+  it('показывает телеграф пробивающего удара врага', async () => {
+    const services = createServices();
+    vi.mocked(services.getActiveBattle.execute).mockResolvedValueOnce(createBattle({
+      enemy: {
+        ...createBattle().enemy,
+        intent: {
+          code: 'GUARD_BREAK',
+          title: 'Кислотный прорыв',
+          description: 'Следующий удар разобьёт защиту. Лучше давить уроном сейчас, а не тратить ход на защиту.',
+          bonusAttack: 2,
+          shattersGuard: true,
+        },
+      },
+    }));
+    vi.mocked(services.performBattleAction.execute).mockRejectedValueOnce(
+      new AppError('enemy_turn', 'Сейчас ход противника.'),
+    );
+    const handler = new GameHandler(services);
+    const ctx = createFakeContext({ command: 'защита' });
+
+    await handler.handle(ctx as never);
+
+    expect(getReplyCalls(ctx)[0]?.message).toContain('Кислотный прорыв');
+    expect(getReplyCalls(ctx)[0]?.message).toContain('тратить ход на защиту');
+  });
+
   it('проходит сценарий рун и алтаря без прямой правки transport-описаний', async () => {
     const services = createServices();
     const handler = new GameHandler(services);

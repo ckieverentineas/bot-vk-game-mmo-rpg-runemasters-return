@@ -9,7 +9,39 @@
 - `ARCHITECTURE.md` = архитектурные границы и инварианты;
 - `RELEASE_CHECKLIST.md` = как выпускаем изменения.
 
-## 2. Текущий срез продукта
+## 2. Product direction
+
+### Основная коррекция курса
+
+Runemasters Return **не копирует Skyrim/Oblivion**. Мы берём только высокоуровневое вдохновение от RPG-фантазии школ, билдов и постепенного раскрытия силы.
+
+Наша собственная формула:
+
+- **базовая атака** всегда остаётся доступной и полезной;
+- **рунические школы** — главный слой билд-идентичности;
+- **редкость** определяет, сколько школьных техник руна может нести, а не только размер цифр;
+- **синергии** добавляются позже как награда за сборку, а не как стартовая перегрузка системы.
+
+### Product pillars
+
+1. **Basic attack is evergreen**
+   - игрок никогда не остаётся без понятного действия;
+   - атака — baseline, а не “кнопка для тех, кому не повезло с билдом”.
+
+2. **Rune schools define identity**
+   - школа отвечает за стиль, фантазию и роль в бою;
+   - игрок должен помнить не просто “у меня редкая руна”, а “я играю через школу Х”.
+
+3. **Rarity expands loadout breadth**
+   - редкость в первую очередь открывает больше carried skills / слотов / вариантов сборки;
+   - raw stat growth остаётся вторичным слоем.
+
+4. **Synergies are earned depth**
+   - сначала школа должна работать сама по себе;
+   - потом — простые same-school synergy;
+   - только затем — сложные межшкольные связки.
+
+## 3. Текущий срез продукта
 
 ### Что уже доставлено
 
@@ -19,8 +51,8 @@
 - paged rune hub вместо листания по одной руне;
 - compact event-first battle presentation;
 - первый playable rune combat slice: активные рунные действия, cooldown/mana state и боевой action resolver;
-- tutorial reward loop с гарантированной первой активной руной и post-tutorial objective layer;
-- первый tactics layer: универсальная защита, телеграф тяжёлого удара врага и более явный action block в бою;
+- post-tutorial objective layer;
+- базовый tactics layer: `атака`, `защита`, `рунное действие`, enemy intent, telegraphed threat patterns;
 - release rails: `check`, `content:validate`, `release:preflight`, smoke tests, CI.
 
 ### Текущий вердикт
@@ -29,12 +61,13 @@
 
 ### Почему ещё не релиз
 
-- в бою уже есть базовая развилка `атака / защита / рунное действие`, но enemy pattern set пока ещё слишком узкий;
-- rune fantasy уже работает в core loop, но depth и counterplay пока слишком тонкие;
-- mid-session и next-session мотивация пока слабые;
-- контента и battle variety пока мало для устойчивого retention.
+- школы рун пока ощущаются как прототипы, а не как полноценные билд-направления;
+- редкость всё ещё слишком близка к stat-growth, а не к loadout-growth;
+- синергии почти не раскрыты;
+- игроку пока не хватает сильного school-driven return motivation;
+- контент школ и ранняя discoverability пока слишком узкие для устойчивого retention.
 
-## 3. Правила roadmap
+## 4. Правила roadmap
 
 ### Статусы
 
@@ -47,199 +80,273 @@
 ### Приоритеты
 
 - `P0` — без этого нельзя прийти к сильному core loop;
-- `P1` — усиливает удержание и глубину после закрытия P0;
+- `P1` — усиливает удержание после закрытия P0;
 - `P2` — расширяет игру после стабилизации основы.
 
 ### Definition of done для каждой инициативы
 
 - доменная логика лежит в `domain`, а не расползается по VK transport;
-- есть automated tests на критичные happy path и failure path;
+- есть automated tests на critical happy/failure path;
 - нет регрессии по duplicate rewards, inventory underflow и stale state;
 - player-facing поведение зафиксировано в `README.md` / `CHANGELOG.md` / `PLAN.md`;
 - `npm run check` и `npm run release:preflight` проходят.
 
-## 4. Active roadmap
+### Term rules
 
-### 4.1 DONE
+- player-facing: **базовая атака**, **школы рун**, **рунные техники / рунные навыки**, **редкость расширяет loadout**;
+- dev/internal: можно использовать `archetype` только как legacy/internal термин;
+- не использовать в документации формулировки вида:
+  - “Skyrim clone”;
+  - “Oblivion clone”;
+  - “руны заменяют базовый бой”;
+  - “редкость = просто больше цифр”.
 
-#### [done][P0] Milestone A — сделать рунную fantasy реальной в бою
+## 5. Active roadmap
+
+### 5.1 DONE
+
+#### [done][P0] Milestone A — Combat foundation and baseline clarity
+
+**Цель:** построить надёжный, детерминированный и читаемый baseline бой.
+
+##### A1 — Battle state contract
+
+- [x] battle snapshot устойчив к recovery и finalize;
+- [x] новые действия не ломают active battle idempotency;
+- [x] есть тесты на action resolution, save/recovery и invalid action paths.
+
+##### A2 — First playable rune payoff
+
+- [x] игрок получает первую meaningful rune payoff уже в первом игровом цикле;
+- [x] кнопка preview ушла, рунное действие реально влияет на бой;
+- [x] tutorial reward loop доводит до первой активной руны.
+
+##### A3 — Baseline tactics
+
+- [x] `защита` как universal utility;
+- [x] первый telegraphed threat (`Тяжёлый удар`);
+- [x] второй telegraphed threat (`guard-break`), чтобы защита не была единственным правильным ответом;
+- [x] battle UI показывает доступные действия и намерение врага.
+
+### 5.2 NOW
+
+#### [now][P0] Milestone B — сделать школы рун главным слоем билдов
 
 **Почему это важно**
 
-Сейчас игрок видит руны, архетипы и способности, но в реальном бою почти не принимает решений. Это главный product blocker.
+Базовый бой уже достаточно понятен. Следующий настоящий продуктовый рывок — не ещё одна универсальная кнопка, а перевод глубины в **школы рун**.
 
-##### Initiative A1 — новый боевой state contract
+##### B1 — Rune school contract
 
-- **Player impact:** открывает реальные боевые действия кроме базовой атаки.
+- **Player impact:** у игрока появляется ясная build-идентичность.
 - **Scope:**
-  - расширить `BattleView` под action/effect/cooldown/status state;
-  - ввести единый battle action resolver;
-  - подготовить persistence/recovery для нового боевого состояния;
-  - начать вытаскивать RNG из `Math.random()` в контролируемые seams.
-- **Out of scope:** PvP, глубокий combo engine, десятки статусов.
-- **Dependencies:** нет.
+  - закрепить модель `school -> rune -> skills -> battle choices`;
+  - decouple школу, ability и rarity в roadmap и будущих контрактах;
+  - перестать мыслить школами как “ещё одним archetype label”.
+- **Out of scope:** свободная multi-school сборка и сложный synergy engine.
 - **Acceptance:**
-  - [x] battle snapshot устойчив к recovery и finalize;
-  - [x] новые действия не ломают active battle idempotency;
-  - [x] есть тесты на action resolution, save/recovery и invalid action paths.
+  - [ ] в документации и будущем implementation plan школа = основная identity axis;
+  - [ ] basic attack формально остаётся evergreen baseline;
+  - [ ] rarity описывается как loadout growth, а не как stat inflation.
 
-##### Initiative A2 — первый playable rune combat slice
+##### B2 — First stable school roster
 
-- **Player impact:** игрок реально чувствует, что руна меняет бой.
+- **Player impact:** игрок начинает чувствовать разницу между стилями боя.
 - **Scope:**
-  - 2–3 исполняемых рунных действия для стартовых архетипов;
-  - tutorial beat: `получил руну -> экипировал -> использовал в бою`;
-  - battle UI показывает доступность, стоимость и результат действия.
-- **Out of scope:** полноценные skill trees, сложные синергии, full archetype roster.
-- **Dependencies:** `A1`.
+  - довести до полноценного v1 минимум 3–4 стартовых школы;
+  - текущие proto-schools (`Уголь`, `Камень`, `Шквал`, `Эхо`) либо подтверждаются, либо переоформляются в более чистый school model;
+  - у каждой стартовой школы: 1 понятная роль, 1 читаемый active lane, 1 реальный passive lane.
+- **Out of scope:** сразу 8–10 школ.
 - **Acceptance:**
-  - [x] в первом игровом цикле игрок использует хотя бы одно действие руны;
-  - [x] кнопка preview больше не обещает несуществующий payoff;
-  - [x] rune action читается в логе боя и влияет на исход.
+  - [ ] каждая стартовая школа меняет решения в бою, а не только цифры;
+  - [ ] passive-only школы больше не выглядят “недоделанными”; 
+  - [ ] игрок может различить школы без чтения длинной справки.
 
-##### Initiative A3 — post-tutorial objective layer
+##### B3 — School expansion queue
 
-- **Player impact:** после первого tutorial win игрок понимает, что делать дальше и зачем возвращаться.
+- **Player impact:** появляется ожидание будущих билдов и фантазий.
 - **Scope:**
-  - mission-like next goals в сообщениях;
-  - явный путь: первый реальный бой, первый stat spend, первая экипированная руна, первый repeat win;
-  - context-aware CTA на ключевых экранах.
-- **Out of scope:** большая квестовая система.
-- **Dependencies:** можно делать параллельно с `A2`.
+  - подготовить expansion queue школ после стабилизации v1;
+  - кандидаты следующей волны: **Некромантия**, **Иллюзии**, затем другие школы по результатам playtest;
+  - каждая новая школа должна иметь не только fantasy, но и боевую роль.
+- **Out of scope:** немедленная реализация всех школ.
 - **Acceptance:**
-  - [x] после tutorial игрок получает один ясный следующий goal;
-  - [x] первый loss, первый rune drop и первый stat point не оставляют игрока без guidance;
-  - [x] help layer не превращается в стену текста.
+  - [ ] у roadmap есть явная очередь школ после v1;
+  - [ ] necromancy / illusion внесены как planned schools, а не “когда-нибудь”; 
+  - [ ] новая школа без роли не допускается в delivery queue.
 
-### 4.2 NOW
+##### B4 — School-first onboarding and UX
 
-#### [now][P0] Milestone B — дать бою вторую глубину, а не вторую кнопку
-
-##### Initiative B1 — enemy patterns и universal combat actions
-
-**Current progress:**
-
-- [x] универсальная `Защита` как базовое боевое действие;
-- [x] первый enemy intent: телеграфируемый `Тяжёлый удар`;
-- [ ] расширить набор enemy patterns и второй universal action, если он всё ещё нужен после playtest.
-
-- **Player impact:** бой перестаёт быть чистой DPS-гонкой.
+- **Player impact:** игрок понимает, что базовая атака — основа, а школа — его стиль.
 - **Scope:**
-  - 1–2 универсальных действия кроме атаки;
-  - несколько телеграфируемых enemy patterns: shielded, charging, fragile caster, enraged beast;
-  - battle copy объясняет, что произошло и почему выбор mattered.
-- **Out of scope:** сложный AI, большой zoo статусов.
-
-##### Initiative B2 — stat model и adaptive difficulty retune
-
-- **Player impact:** игрок больше не попадает в trap picks, а recommended threat ближе к реальной сложности.
-- **Scope:**
-  - переоценить value `intelligence`, `magicDefence`, `dexterity` после появления новых действий;
-  - привязать adaptive difficulty к реальной win power, а не к красивым цифрам;
-  - убрать явные dominant builds ранней игры.
-- **Out of scope:** финальный эндгейм-баланс.
-
-##### Initiative B3 — battle QA hardening
-
-- **Player impact:** меньше багов в реальных multi-turn боях.
-- **Scope:**
-  - duplicate-submit, stale keyboard, re-entry, enemy-first, invalid action tests;
-  - deterministic combat tests и manual smoke paths для новых боевых правил.
-- **Out of scope:** broad automation platform beyond current test stack.
+  - переписать framing вокруг школ, а не вокруг “ещё одной рунной кнопки”;
+  - объяснять редкость через carried skills / loadout breadth;
+  - добавить сравнение школ и near-term promise на ранних экранах.
+- **Out of scope:** encyclopedia-style codex.
+- **Acceptance:**
+  - [ ] onboarding объясняет: attack baseline -> school identity -> rarity expands school kit;
+  - [ ] player-facing copy не использует `archetype`;
+  - [ ] battle/rune UI обещает стиль, а не только resource state.
 
 #### Exit criteria для Milestone B
 
-- [ ] в обычном бою есть хотя бы 2–3 осмысленных решения;
-- [ ] нет явного one-build meta в стартовом сегменте;
-- [ ] recommended threat не врёт игроку;
-- [ ] расширенный battle flow покрыт unit + smoke tests.
+- [ ] у игрока есть минимум 3 действительно разные school fantasies;
+- [ ] базовая атака остаётся полезной на всех ранних стадиях;
+- [ ] школы читаются как главный build layer;
+- [ ] ранний player journey создаёт “я хочу попробовать другую школу”.
 
-### 4.3 NEXT
+### 5.3 NEXT
 
-#### [next][P1] Milestone C — progression, economy, return motivation
+#### [next][P0] Milestone C — rarity-based loadout growth
 
-##### Initiative C1 — short-term progression ladder
+**Почему это важно**
 
-- **Player impact:** появляется reason to return tomorrow, а не только “ещё один бой”.
+Школы без хорошей модели редкости быстро превращаются в гонку статов. Редкость должна расширять school kit, а не ломать баланс голыми числами.
+
+##### C1 — Rarity profile model
+
+- **Player impact:** rarer rune feels broader, not just bigger.
 - **Scope:**
-  - 2–3 коротких goals на несколько боёв;
-  - заметный next unlock в горизонте 1–2 сессий;
-  - build identity growth поверх выбранной руны/стиля боя.
+  - закрепить правила: сколько active/passive capacity даёт каждая редкость;
+  - ограничить raw stat contribution рун как вторичный слой;
+  - исключить ситуацию “лучшая редкость всегда сильнее любой школы”.
+- **Suggested ladder:**
+  - обычная — school tag + 1 простой эффект;
+  - необычная — 1 активный или 1 пассивный school effect;
+  - редкая — 1 active + 1 passive;
+  - эпическая — второй passive / modifier quality step;
+  - легендарная+ — keystone/synergy capacity, а не новый multiplicative damage layer.
 
-##### Initiative C2 — economy sinks и reward loop
+##### C2 — Pre-battle loadout growth
 
-- **Player impact:** ресурсы становятся meaningful, а крафт/реролл не сводятся к одной кнопке без выбора.
+- **Player impact:** игрок собирает loadout до боя, а не спамит всё сразу в бою.
 - **Scope:**
-  - gold/material sinks;
-  - повторяемые и aspirational sinks для shard economy;
-  - anti-inflation rails и reward banding по уровням/биомам.
+  - rarity unlocks selectable school package;
+  - ранняя версия остаётся с одним `RUNE_SKILL` button в бою;
+  - complexity растёт через pre-battle choice, а не через 5 кнопок сразу.
+- **Out of scope:** multiple in-battle rune buttons, mid-battle swapping.
 
-##### Initiative C3 — content-to-transport separation
+##### C3 — Targeted drops and chaseability
 
-- **Player impact:** косвенный, но критичный для скорости поставки контента без случайных VK regression.
+- **Player impact:** игрок охотится за школой, а не только молится RNG.
 - **Scope:**
-  - отделить контентные таблицы от transport-описаний;
-  - подготовить DTO/application contracts там, где VK handler начинает разрастаться;
-  - не допустить, чтобы новые руны/мобы требовали точечных правок в transport.
+  - разные источники/биомы/цели начинают тяготеть к школам;
+  - у игрока есть способ преследовать нужный school fantasy;
+  - rarity chase не превращается в pure casino.
+- **Out of scope:** большой crafting simulator.
 
 #### Exit criteria для Milestone C
 
-- [ ] у каждой главной валюты есть repeatable sink и aspirational sink;
-- [ ] игрок уходит из сессии с понятным near-term goal;
-- [ ] новые контентные сущности добавляются без касания VK handler логики;
-- [ ] balance и content validation ловят сломанные tuning changes до релиза.
+- [ ] редкость объясняется как loadout expansion, а не как простая инфляция чисел;
+- [ ] higher rarity не убивает relevance базовой атаки и низкой редкости;
+- [ ] игрок может chase'ить школу целенаправленно;
+- [ ] loadout legality и backward compatibility покрыты тестами.
 
-### 4.4 PARKED
+### 5.4 NEXT
 
-#### [parked][P2] Milestone D — breadth before launch scale-out
+#### [next][P1] Milestone D — first synergies and return motivation
 
-Сюда не заходим, пока core loop не станет по-настоящему удерживающим.
+**Почему это важно**
 
-- предметы как отдельный build layer;
-- полноценный crafting layer;
-- квесты и сезонные ивенты;
+Без синергий и near-term goals система школ останется красивой, но быстро выгорит. Нужна минимальная причина возвращаться ради сборки.
+
+##### D1 — Same-school starter synergies
+
+- **Player impact:** появляется первый “build clicked” moment.
+- **Scope:**
+  - сначала только простые deterministic same-school связки;
+  - synergy = setup -> payoff, без proc-web хаоса;
+  - cross-school synergies позже.
+
+##### D2 — Short-term build goals
+
+- **Player impact:** игрок уходит из сессии с ясным school-driven next goal.
+- **Scope:**
+  - 2–3 коротких цели на 1–2 сессии;
+  - прогресс к следующей школьной технике / rarity breakpoint / synergy unlock;
+  - явные next-step prompts.
+
+##### D3 — Economy around builds
+
+- **Player impact:** ресурсы начинают работать на buildcraft, а не только на reroll spam.
+- **Scope:**
+  - school-targeted sinks;
+  - anti-inflation rails;
+  - отсутствие salvage-positive loops.
+
+#### Exit criteria для Milestone D
+
+- [ ] игрок видит первый реальный synergy payoff;
+- [ ] у каждой сессии есть school-driven next target;
+- [ ] economy не позволяет brute-force ломать progression;
+- [ ] low-rarity runes не обесцениваются слишком рано.
+
+### 5.5 LATER
+
+#### [later][P1] Milestone E — controlled depth and expansion schools
+
+- новые школы второй волны: **Некромантия**, **Иллюзии**, затем другие;
+- больше enemy patterns как поддержка school play, а не как замена school depth;
+- keystone passives и limited cross-school synergies;
+- school-driven progression map и stronger long-session retention.
+
+### 5.6 PARKED
+
+#### [parked][P2] Milestone F — scale-out after the core is proven
+
+Сюда не заходим, пока школы, редкость и базовая loop не станут реально удерживающими.
+
+- freeform cross-school combo engine;
+- несколько активных кнопок школы одновременно как основной стандарт;
+- mid-battle respec/loadout swap;
+- большой school roster с первого дня;
 - PvP;
-- большой metagame поверх коллекции рун;
-- multi-channel transport scaling beyond VK.
+- масштабный crafting/metagame до стабилизации core loop.
 
-## 5. Milestone view
+## 6. Milestone view
 
-### Milestone A — Rune combat foundation
+### Milestone A — Combat foundation and baseline clarity
 
-- A1. Новый боевой state contract
-- A2. Первый playable rune combat slice
-- A3. Post-tutorial objective layer
+- battle snapshot / resolver / recovery / idempotency;
+- first active rune payoff;
+- baseline tactics and enemy intent.
 
-**Ship gate:** к концу milestone игрок должен не просто получить руну, а прожать её в бою и захотеть повторить этот опыт.
+**Ship gate:** игрок понимает бой и чувствует первый рунный payoff.
 
-### Milestone B — Combat depth and fairness
+### Milestone B — Rune schools as the main build layer
 
-- B1. Enemy patterns и новые действия
-- B2. Retune статов и adaptive difficulty
-- B3. QA hardening
+- school contract;
+- стартовый roster;
+- expansion queue;
+- school-first onboarding.
 
-**Ship gate:** бой должен быть интересен ко второй сессии, а не только понятен в первой.
+**Ship gate:** игрок выбирает не просто руну, а школу.
 
-### Milestone C — Retention and progression
+### Milestone C — Rarity-based loadout growth
 
-- C1. Short-term progression ladder
-- C2. Economy sinks и reward loop
-- C3. Content/transport separation
+- rarity profiles;
+- pre-battle loadout breadth;
+- targeted chase.
 
-**Ship gate:** игрок должен завершать сессию с ясным “зачем вернуться”.
+**Ship gate:** редкость ощущается как “моя школа раскрывается шире”, а не как “мне просто повезло на цифры”.
 
-### Milestone D — Release candidate
+### Milestone D — First synergies and return motivation
 
-В релизную прямую выходим только после A+B+C.
+- same-school starter synergies;
+- short-term goals;
+- build economy.
 
-**Release blockers before public launch:**
+**Ship gate:** игрок уходит из сессии с ясным “что я дособеру дальше”.
 
-- core loop ещё недостаточно глубокий;
-- progression cadence ещё не доказан на нескольких сессиях;
-- content breadth пока недостаточен для устойчивого repeat play;
-- release smoke должен покрывать не только техническую зелень, но и compelling player journey.
+### Milestone E — Controlled depth
 
-## 6. Release gates для roadmap-инициатив
+- новые школы второй волны;
+- keystones и limited cross-school synergies;
+- deeper encounter variety.
+
+**Ship gate:** игра уже не просто про первую руну, а про разные school fantasies и их chaseability.
+
+## 7. Release gates для roadmap-инициатив
 
 ### Обязательные automated checks
 
@@ -250,49 +357,55 @@
 
 ### Обязательные manual smoke paths
 
-- регистрация -> tutorial fight -> первый real fight;
+- регистрация -> tutorial fight -> первая school rune;
 - rune hub: page navigation -> slot selection -> equip -> craft -> reroll -> destroy;
 - active battle recovery после re-entry;
 - victory/defeat flows без duplicate rewards;
-- first-loss и first-return UX.
+- first-loss и first-return UX;
+- school-driven payoff: игрок понимает, чем одна школа отличается от другой;
+- rarity-driven payoff: игрок понимает, что редкость расширила loadout, а не просто дала +цифры.
 
 ### Обязательные docs updates
 
 - `README.md` — если меняется player-facing flow;
 - `CHANGELOG.md` — для shipped изменений;
-- `ARCHITECTURE.md` — если меняется контракт battle/rune state;
+- `ARCHITECTURE.md` — если меняется контракт battle/rune/loadout state;
 - `RELEASE_CHECKLIST.md` — если меняется ship procedure или smoke path.
 
-## 7. Метрики готовности
+## 8. Метрики готовности
 
 ### Продуктовые
 
-- бой перестаёт быть `attack-only` по факту, а не только по UI;
-- у игрока есть заметимый first-session rune payoff;
-- есть понятный near-term goal на следующую сессию;
-- разные руны/архетипы ведут к разным решениям, а не только к разным цифрам.
+- базовая атака остаётся релевантной;
+- минимум 3 школы ощущаются как разные стили;
+- игрок получает first-session school payoff;
+- редкость меняет breadth сборки, а не только числа;
+- есть ясный near-term build goal на следующую сессию.
 
 ### Технические
 
 - battle state детерминированно тестируется и восстанавливается;
 - нет duplicate reward regressions и inventory underflow regressions;
 - transport остаётся тонким;
-- контент и баланс валидируются до релиза.
+- контент и баланс валидируются до релиза;
+- новые school/rarity/loadout контракты не ломают legacy hydration.
 
-## 8. Appendix — shipped foundations
+## 9. Appendix — shipped foundations
 
 - модульная архитектура `domain / application / infrastructure / transport`;
 - единый каталог команд и keyboard-first transport;
 - recovery зависших боёв и Prisma idempotency rails;
 - commit-based versioning, CI и release preflight;
 - paged rune hub и compact battle UI;
+- baseline tactics layer с enemy intent;
 - early-game smoothing и rarity caps для natural rune drops.
 
-## 9. Правило обновления
+## 10. Правило обновления
 
 Этот файл обновляется при каждом крупном изменении:
 
 - продуктового приоритета;
 - структуры roadmap;
 - архитектурной границы, которая влияет на delivery order;
+- определения школ, редкости или loadout growth;
 - release gate или definition of done.

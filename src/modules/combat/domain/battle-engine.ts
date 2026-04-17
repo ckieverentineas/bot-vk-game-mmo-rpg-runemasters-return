@@ -8,10 +8,12 @@ import type {
 } from '../../../shared/types/game';
 import { appendBattleLog, calculatePhysicalDamage, cloneBattle } from './battle-utils';
 import {
+  createGuardBreakIntent,
   createHeavyStrikeIntent,
   resolveDefendGuardGain,
   resolveGaleGuardGain,
   resolveGuardCap,
+  shouldEnemyPrepareGuardBreak,
   shouldEnemyPrepareHeavyStrike,
 } from './battle-tactics';
 
@@ -76,12 +78,19 @@ const resolveEnemyAttack = (
   battle: BattleView,
   attack: number,
   attackText: string,
+  options: { shattersGuard?: boolean } = {},
 ): void => {
+  const shatteredGuard = options.shattersGuard ? getGuardPoints(battle.player) : 0;
+  if (options.shattersGuard && shatteredGuard > 0) {
+    battle.player.guardPoints = 0;
+  }
+
   const rawDamage = calculatePhysicalDamage(attack, battle.player.defence);
   const { blockedDamage, dealtDamage } = consumeGuardAgainstDamage(battle.player, rawDamage);
 
   battle.log = appendBattleLog(
     battle.log,
+    ...(shatteredGuard > 0 ? [`💥 Враг разбивает вашу защиту на ${shatteredGuard}.`] : []),
     ...(blockedDamage > 0 ? [`🛡️ Защита смягчает удар на ${blockedDamage} урона.`] : []),
     dealtDamage > 0
       ? attackText.replace('{damage}', `${dealtDamage}`)
@@ -164,6 +173,21 @@ export class BattleEngine {
 
     if (nextBattle.enemy.intent?.code === 'HEAVY_STRIKE') {
       return this.resolveHeavyStrike(nextBattle);
+    }
+
+    if (nextBattle.enemy.intent?.code === 'GUARD_BREAK') {
+      return this.resolveGuardBreak(nextBattle);
+    }
+
+    if (shouldEnemyPrepareGuardBreak(nextBattle.enemy)) {
+      nextBattle.enemy.intent = createGuardBreakIntent(nextBattle.enemy);
+      nextBattle.log = appendBattleLog(
+        nextBattle.log,
+        `⚠️ ${nextBattle.enemy.name} готовит «${nextBattle.enemy.intent.title}». Защита на следующий ход сработает хуже обычного.`,
+      );
+      tickRuneCooldown(nextBattle);
+      nextBattle.turnOwner = 'PLAYER';
+      return nextBattle;
     }
 
     if (shouldEnemyPrepareHeavyStrike(nextBattle.enemy)) {
@@ -256,6 +280,30 @@ export class BattleEngine {
       nextBattle,
       nextBattle.enemy.attack + intent.bonusAttack,
       `💥 ${nextBattle.enemy.name} проводит «${intent.title}» и наносит {damage} урона.`,
+    );
+
+    if (nextBattle.player.currentHealth === 0) {
+      return finalizeBattle(nextBattle, 'DEFEAT');
+    }
+
+    tickRuneCooldown(nextBattle);
+    nextBattle.turnOwner = 'PLAYER';
+    return nextBattle;
+  }
+
+  private static resolveGuardBreak(nextBattle: BattleView): BattleView {
+    const intent = nextBattle.enemy.intent;
+    if (!intent) {
+      return nextBattle;
+    }
+
+    nextBattle.enemy.intent = null;
+    nextBattle.enemy.hasUsedSignatureMove = true;
+    resolveEnemyAttack(
+      nextBattle,
+      nextBattle.enemy.attack + intent.bonusAttack,
+      `🧪 ${nextBattle.enemy.name} проводит «${intent.title}» и наносит {damage} урона.`,
+      { shattersGuard: intent.shattersGuard },
     );
 
     if (nextBattle.player.currentHealth === 0) {
