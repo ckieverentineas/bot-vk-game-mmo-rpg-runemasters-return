@@ -103,6 +103,7 @@ const createBattle = (overrides: Partial<BattleView> = {}): BattleView => ({
   playerId: 1,
   status: 'ACTIVE',
   battleType: 'PVE',
+  actionRevision: 0,
   locationLevel: 0,
   biomeCode: 'initium',
   enemyCode: 'training-wisp',

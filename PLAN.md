@@ -511,12 +511,14 @@ Runemasters Return должен решать это через **школы ру
 
 ### 11.5 QA / abuse rails
 
-- [ ] Собрать reward duplication matrix
-- [ ] Ввести stale action rejection rules
+- [x] Собрать reward duplication matrix
+- [x] Ввести stale action rejection rules
 - [ ] Зафиксировать repeated command / retry handling
+  - [x] battle mutation retries и stale overwrite rules
+  - [ ] broader multi-budget command dedupe вне текущих critical one-budget rails
 - [ ] Зафиксировать RNG authority rules для reroll / drop / craft
 - [ ] Подготовить alt-account / guild / PvP abuse checklist
-- [ ] Добавить обязательные concurrency tests на critical use cases
+- [x] Добавить обязательные concurrency tests на critical use cases
 
 ### 11.6 Exit gate for Phase 1
 
@@ -949,3 +951,4 @@ Runemasters Return должен решать это через **школы ру
 - **2026-04-17:** PLAN.md переписан в формат подробного execution roadmap с фазами, чекбоксами, датами, release gates и ethical guardrails.
 - **2026-04-17:** добавлен production control layer: current quarter, 30/60/90 days, dependency map, cut rules, execution checkpoints, review rhythm.
 - **2026-04-17:** зафиксированы versioned `LoadoutSnapshot`, `RewardIntent` и `RewardLedger`; battle reward finalize-path переведён на canonical exact-once reward claim через ledger.
+- **2026-04-18:** battle persistence получил `actionRevision` compare-and-swap guard; добавлены duplication matrix, retry rules и Prisma-backed concurrency tests для critical battle/rune flows.

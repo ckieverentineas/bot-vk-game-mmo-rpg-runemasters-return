@@ -29,6 +29,7 @@ const createBattle = (): BattleView => ({
   playerId: 1,
   status: 'COMPLETED',
   battleType: 'PVE',
+  actionRevision: 1,
   locationLevel: 1,
   biomeCode: 'initium',
   enemyCode: 'slime',

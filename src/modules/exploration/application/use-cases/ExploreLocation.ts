@@ -40,6 +40,7 @@ export class ExploreLocation {
     const battle = await this.repository.createBattle(currentPlayer.playerId, {
       status: 'ACTIVE',
       battleType: 'PVE',
+      actionRevision: 0,
       locationLevel,
       biomeCode: biome.code,
       enemyCode: template.code,

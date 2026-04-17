@@ -38,7 +38,7 @@ const playerInclude = {
 type PlayerRecord = Prisma.PlayerGetPayload<{ include: typeof playerInclude }>;
 type TransactionClient = Prisma.TransactionClient;
 
-type PersistedBattleState = Pick<BattleView, 'status' | 'turnOwner' | 'player' | 'enemy' | 'log' | 'result' | 'rewards'>;
+type PersistedBattleState = Pick<BattleView, 'status' | 'turnOwner' | 'player' | 'enemy' | 'log' | 'result' | 'rewards' | 'actionRevision'>;
 
 const buildInventoryDeltaInput = (delta: InventoryDelta): Record<string, { increment: number }> => {
   const data: Record<string, { increment: number }> = {};
@@ -160,9 +160,18 @@ const hydrateBattlePlayerSnapshot = (
   };
 };
 
+const isStaleBattleMutation = (
+  expectedRevision: number,
+  currentBattle: { status: string; actionRevision: number },
+): boolean => (
+  currentBattle.status === 'ACTIVE'
+  && currentBattle.actionRevision > expectedRevision
+);
+
 const mapBattlePersistence = (battle: PersistedBattleState) => ({
   status: battle.status,
   turnOwner: battle.turnOwner,
+  actionRevision: battle.actionRevision,
   playerLoadoutSnapshot: battle.player.runeLoadout
     ? stringifyJson(buildLoadoutSnapshotFromBattle(battle.player.runeLoadout), 'null')
     : null,
@@ -192,6 +201,37 @@ const mapRuneDraftPersistence = (playerId: number, rune: RuneDraft, isEquipped =
 
 export class PrismaGameRepository implements GameRepository {
   public constructor(private readonly prisma: PrismaClient) {}
+
+  private async logStaleBattleMutation(
+    client: TransactionClient | PrismaClient,
+    playerId: number,
+    battle: Pick<BattleView, 'id' | 'status' | 'actionRevision'>,
+    actualRevision: number,
+  ): Promise<void> {
+    const player = await client.player.findUnique({
+      where: { id: playerId },
+      include: {
+        user: true,
+      },
+    });
+
+    if (!player) {
+      return;
+    }
+
+    await client.gameLog.create({
+      data: {
+        userId: player.userId,
+        action: 'battle_stale_action_rejected',
+        details: stringifyJson({
+          battleId: battle.id,
+          status: battle.status,
+          expectedRevision: battle.actionRevision,
+          actualRevision,
+        }, '{}'),
+      },
+    });
+  }
 
   private mapBiome(biome: { id: number; code: string; name: string; description: string; minLevel: number; maxLevel: number }): BiomeView {
     return {
@@ -649,13 +689,21 @@ export class PrismaGameRepository implements GameRepository {
   public async saveBattle(battle: BattleView): Promise<BattleView> {
     const updated = await this.prisma.$transaction(async (tx) => {
       const persistedBattle = mapBattlePersistence(battle);
+      const { actionRevision: expectedRevision, ...persistedState } = persistedBattle;
+      void expectedRevision;
       const saved = await tx.battleSession.updateMany({
         where: {
           id: battle.id,
           playerId: battle.playerId,
           status: 'ACTIVE',
+          actionRevision: battle.actionRevision,
         },
-        data: persistedBattle,
+        data: {
+          ...persistedState,
+          actionRevision: {
+            increment: 1,
+          },
+        },
       });
 
       if (saved.count === 0) {
@@ -668,6 +716,10 @@ export class PrismaGameRepository implements GameRepository {
 
         if (!currentBattle) {
           throw new AppError('battle_not_found', 'Активный бой уже недоступен. Начните новый бой.');
+        }
+
+        if (isStaleBattleMutation(battle.actionRevision, currentBattle)) {
+          await this.logStaleBattleMutation(tx, battle.playerId, battle, currentBattle.actionRevision);
         }
 
         return currentBattle;
@@ -693,13 +745,21 @@ export class PrismaGameRepository implements GameRepository {
   public async finalizeBattle(playerId: number, battle: BattleView): Promise<FinalizeBattleResult> {
     return this.prisma.$transaction(async (tx) => {
       const persistedBattle = mapBattlePersistence(battle);
+      const { actionRevision: expectedRevision, ...persistedState } = persistedBattle;
+      void expectedRevision;
       const finalized = await tx.battleSession.updateMany({
         where: {
           id: battle.id,
           playerId,
           status: 'ACTIVE',
+          actionRevision: battle.actionRevision,
         },
-        data: persistedBattle,
+        data: {
+          ...persistedState,
+          actionRevision: {
+            increment: 1,
+          },
+        },
       });
 
       const currentBattle = await tx.battleSession.findFirst({
@@ -714,6 +774,10 @@ export class PrismaGameRepository implements GameRepository {
       }
 
       if (finalized.count === 0) {
+        if (isStaleBattleMutation(battle.actionRevision, currentBattle)) {
+          await this.logStaleBattleMutation(tx, playerId, battle, currentBattle.actionRevision);
+        }
+
         const updatedPlayer = await this.requirePlayerRecord(tx, playerId);
         return {
           player: this.mapPlayer(updatedPlayer),
@@ -1006,6 +1070,7 @@ export class PrismaGameRepository implements GameRepository {
     playerId: number;
     status: string;
     battleType: string;
+    actionRevision: number;
     playerLoadoutSnapshot?: string | null;
     locationLevel: number;
     biomeCode: string;
@@ -1031,6 +1096,7 @@ export class PrismaGameRepository implements GameRepository {
       playerId: battle.playerId,
       status: battle.status as BattleView['status'],
       battleType: battle.battleType as BattleView['battleType'],
+      actionRevision: battle.actionRevision,
       locationLevel: battle.locationLevel,
       biomeCode: battle.biomeCode,
       enemyCode: battle.enemyCode,

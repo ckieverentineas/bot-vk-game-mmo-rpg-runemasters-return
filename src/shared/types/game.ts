@@ -211,6 +211,7 @@ export interface BattleView {
   playerId: number;
   status: BattleStatus;
   battleType: 'PVE';
+  actionRevision: number;
   locationLevel: number;
   biomeCode: string;
   enemyCode: string;

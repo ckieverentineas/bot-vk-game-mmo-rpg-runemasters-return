@@ -343,6 +343,30 @@
 - save/load active battle теперь может восстановить battle rune loadout из versioned contract даже если legacy `playerSnapshot` ещё не содержит этих полей;
 - unsupported loadout snapshot version без legacy fallback больше не маскируется молча под пустое состояние.
 
+## [0.15] - 2026-04-18
+
+### Commit
+
+- `worktree` — `feat: harden battle retries with concurrency rails`
+
+### Added
+
+- Prisma-backed concurrency regression lane в [`src/modules/shared/infrastructure/prisma/PrismaGameRepository.concurrency.test.ts`](src/modules/shared/infrastructure/prisma/PrismaGameRepository.concurrency.test.ts) для active battle mutations, reward finalization и critical rune spend flows;
+- docs bundle для retry/concurrency safety: [`docs/platform/retry-handling-rules.md`](docs/platform/retry-handling-rules.md), [`docs/qa/reward-duplication-matrix.md`](docs/qa/reward-duplication-matrix.md), [`docs/testing/concurrency-critical-use-cases.md`](docs/testing/concurrency-critical-use-cases.md);
+- новый battle audit log `battle_stale_action_rejected` для stale overwrite rejection на active battle.
+
+### Changed
+
+- [`BattleSession`](prisma/schema.prisma) получил `actionRevision`, а [`PrismaGameRepository`](src/modules/shared/infrastructure/prisma/PrismaGameRepository.ts) теперь проводит `saveBattle()` и `finalizeBattle()` через compare-and-swap по revision;
+- duplicate/stale battle branches теперь возвращают canonical latest state вместо перезаписи более нового turn state;
+- release docs и roadmap синхронизированы под duplication matrix, retry rules и mandatory concurrency coverage.
+
+### Fixed
+
+- спам боевых действий больше не должен давать stale branch шанс затереть более новый active battle state;
+- parallel finalize одного и того же победного боя больше не должно начислять награду или rune drop больше одного раза;
+- parallel craft / reroll / destroy с последним бюджетом теперь имеют реальную Prisma-backed regression coverage, а не только mock-level ожидания.
+
 ## Шаблон следующей записи
 
 ### [0.03] - YYYY-MM-DD

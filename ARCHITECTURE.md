@@ -171,6 +171,7 @@ src/
 - `BattlePlayerSnapshot.runeLoadout` остаётся battle read-model'ю;
 - параллельно в `BattleSession.playerLoadoutSnapshot` теперь живёт versioned `LoadoutSnapshot`, который переживает save/load независимо от cooldown/runtime-полей;
 - canonical reward write-path больше не опирается только на `battle.rewards`, а фиксирует `RewardIntent` и append-only `RewardLedger` для exact-once claim semantics.
+- `BattleSession.actionRevision` стал compare-and-swap guard для active battle mutations, чтобы stale branch не мог перезаписать более новый turn state.
 
 Следующий shipped tactics layer добавляет ещё локальные боевые контракты внутри snapshot:
 
@@ -212,6 +213,7 @@ src/
 - уничтожение руны и возврат осколков выполняются атомарно, чтобы повторный `сломать` не дублировал награду;
 - создание нового боя повторно использует уже активную сессию, если она ещё не завершена.
 - победная награда теперь получает отдельный versioned `RewardIntent` и сохраняется в `RewardLedgerRecord`, чтобы повторный retry возвращал canonical battle result вместо повторного reroll.
+- stale active-battle mutation логируется как `battle_stale_action_rejected`, а critical concurrency cases зафиксированы в `docs/testing/concurrency-critical-use-cases.md`.
 
 ### 9. Smoke verification
 

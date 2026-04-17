@@ -8,6 +8,7 @@ const createBattle = (overrides: Partial<BattleView> = {}): BattleView => ({
   playerId: 1,
   status: 'ACTIVE',
   battleType: 'PVE',
+  actionRevision: 0,
   locationLevel: 1,
   biomeCode: 'dark-forest',
   enemyCode: 'blue-slime',
