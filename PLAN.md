@@ -20,6 +20,7 @@
 - compact event-first battle presentation;
 - первый playable rune combat slice: активные рунные действия, cooldown/mana state и боевой action resolver;
 - tutorial reward loop с гарантированной первой активной руной и post-tutorial objective layer;
+- первый tactics layer: универсальная защита, телеграф тяжёлого удара врага и более явный action block в бою;
 - release rails: `check`, `content:validate`, `release:preflight`, smoke tests, CI.
 
 ### Текущий вердикт
@@ -28,7 +29,7 @@
 
 ### Почему ещё не релиз
 
-- в бою всё ещё мало решений вне стартовых рунных действий;
+- в бою уже есть базовая развилка `атака / защита / рунное действие`, но enemy pattern set пока ещё слишком узкий;
 - rune fantasy уже работает в core loop, но depth и counterplay пока слишком тонкие;
 - mid-session и next-session мотивация пока слабые;
 - контента и battle variety пока мало для устойчивого retention.
@@ -115,6 +116,12 @@
 #### [now][P0] Milestone B — дать бою вторую глубину, а не вторую кнопку
 
 ##### Initiative B1 — enemy patterns и universal combat actions
+
+**Current progress:**
+
+- [x] универсальная `Защита` как базовое боевое действие;
+- [x] первый enemy intent: телеграфируемый `Тяжёлый удар`;
+- [ ] расширить набор enemy patterns и второй universal action, если он всё ещё нужен после playtest.
 
 - **Player impact:** бой перестаёт быть чистой DPS-гонкой.
 - **Scope:**

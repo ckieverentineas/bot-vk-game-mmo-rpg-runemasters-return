@@ -6,6 +6,7 @@ import {
   isPlayerInTutorial,
   resolveAdaptiveAdventureLocationLevel,
 } from '../../modules/player/domain/player-stats';
+import { resolveDefendGuardGain } from '../../modules/combat/domain/battle-tactics';
 import { describeRuneContent } from '../../modules/runes/domain/rune-abilities';
 import { buildRuneCollectionPage } from '../../modules/runes/domain/rune-collection';
 import type { BattleView, PlayerState, RuneView, StatBlock } from '../../shared/types/game';
@@ -328,9 +329,38 @@ const renderBattleRuneState = (battle: BattleView): string => {
   return `🔮 ${runeLoadout.runeName}: «${activeAbility.name}» · ${activeAbility.manaCost} маны · ${state}${guardLine}`;
 };
 
+const renderBattleEnemyIntent = (battle: BattleView): string | null => {
+  const intent = battle.enemy.intent;
+  if (!intent) {
+    return null;
+  }
+
+  return `⚠️ Намерение врага: ${intent.title}. ${intent.description}`;
+};
+
+const renderBattleActionState = (battle: BattleView): string => {
+  const defendGain = resolveDefendGuardGain(battle.player);
+  const activeAbility = battle.player.runeLoadout?.activeAbility ?? null;
+  const runeLine = !activeAbility
+    ? '🌀 Рунное действие — у текущей руны нет активного боевого навыка.'
+    : activeAbility.currentCooldown > 0
+      ? `🌀 ${activeAbility.name} — откат: ${activeAbility.currentCooldown} хода.`
+      : battle.player.currentMana < activeAbility.manaCost
+        ? `🌀 ${activeAbility.name} — нужно ${activeAbility.manaCost} маны.`
+        : `🌀 ${activeAbility.name} — готово. ${activeAbility.manaCost} маны.`;
+
+  return [
+    'Доступные действия:',
+    '⚔️ Атака — стабильный урон.',
+    `🛡️ Защита — готовит ${defendGain} защиты на следующий удар.`,
+    runeLine,
+  ].join('\n');
+};
+
 export const renderBattle = (battle: BattleView): string => {
   const log = [...battle.log].slice(-3).reverse().join('\n');
   const activeAbility = battle.player.runeLoadout?.activeAbility ?? null;
+  const enemyIntentLine = renderBattleEnemyIntent(battle);
   const runeSkillReady = !!activeAbility
     && activeAbility.currentCooldown <= 0
     && battle.player.currentMana >= activeAbility.manaCost;
@@ -344,9 +374,11 @@ export const renderBattle = (battle: BattleView): string => {
 
   const nextStepLine = battle.status === 'ACTIVE'
     ? battle.turnOwner === 'PLAYER'
-      ? runeSkillReady
-        ? `Действие: Нажмите «⚔️ Атака» или «🌀 ${activeAbility?.name}». `
-        : 'Действие: Нажмите «⚔️ Атака». '
+      ? enemyIntentLine
+        ? 'Ваш ход: враг готовит тяжёлый удар — защита сейчас особенно полезна.'
+        : runeSkillReady
+          ? `Ваш ход: выберите между «⚔️ Атака», «🛡️ Защита» и «🌀 ${activeAbility?.name}».`
+          : 'Ваш ход: выберите между «⚔️ Атака» и «🛡️ Защита». '
       : 'Дождитесь завершения обмена ударами.'
     : battle.result === 'VICTORY'
       ? battle.rewards?.droppedRune
@@ -367,8 +399,10 @@ export const renderBattle = (battle: BattleView): string => {
     '',
     battleStateLine,
     nextStepLine.trim(),
+    ...(enemyIntentLine ? [enemyIntentLine] : []),
     renderBattleRuneState(battle),
     '',
+    ...(battle.status === 'ACTIVE' && battle.turnOwner === 'PLAYER' ? [renderBattleActionState(battle), ''] : []),
     renderBattleActorStats('👤 Вы', battle.player),
     '',
     renderBattleActorStats('👾 Враг', battle.enemy),

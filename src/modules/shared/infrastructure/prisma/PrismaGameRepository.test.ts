@@ -351,6 +351,33 @@ describe('PrismaGameRepository release hardening', () => {
           },
         },
       }),
+      enemySnapshot: JSON.stringify({
+        code: 'slime',
+        name: 'Слизень',
+        kind: 'wolf',
+        isElite: false,
+        isBoss: false,
+        attack: 2,
+        defence: 0,
+        magicDefence: 0,
+        dexterity: 1,
+        intelligence: 0,
+        maxHealth: 5,
+        currentHealth: 5,
+        maxMana: 0,
+        currentMana: 0,
+        experienceReward: 4,
+        goldReward: 2,
+        runeDropChance: 0,
+        attackText: 'бьёт',
+        intent: {
+          code: 'HEAVY_STRIKE',
+          title: 'Тяжёлый удар',
+          description: 'Следующая атака врага будет сильнее обычной.',
+          bonusAttack: 3,
+        },
+        hasUsedSignatureMove: false,
+      }),
     }));
 
     const battle = await repository.getActiveBattle(1);
@@ -358,5 +385,7 @@ describe('PrismaGameRepository release hardening', () => {
     expect(battle?.player.guardPoints).toBe(3);
     expect(battle?.player.runeLoadout?.activeAbility?.currentCooldown).toBe(1);
     expect(battle?.player.currentMana).toBe(1);
+    expect(battle?.enemy.intent?.code).toBe('HEAVY_STRIKE');
+    expect(battle?.enemy.hasUsedSignatureMove).toBe(false);
   });
 });

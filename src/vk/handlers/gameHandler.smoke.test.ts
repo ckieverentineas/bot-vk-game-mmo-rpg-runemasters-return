@@ -141,6 +141,8 @@ const createBattle = (overrides: Partial<BattleView> = {}): BattleView => ({
     goldReward: 2,
     runeDropChance: 0,
     attackText: 'касается искрой',
+    intent: null,
+    hasUsedSignatureMove: false,
   },
   log: ['🗺️ Порог Инициации: на вас выходит обычный враг Учебный огонёк.'],
   result: null,
@@ -292,6 +294,7 @@ describe('GameHandler smoke', () => {
     expect(services.exploreLocation.execute).toHaveBeenCalledWith(1001);
     expect(getReplyCalls(locationContext)[0]?.message).toContain('Обучение');
     expect(getReplyCalls(exploreContext)[0]?.message).toContain('⚔️ Бой');
+    expect(getReplyCalls(exploreContext)[0]?.message).toContain('Доступные действия');
   });
 
   it('проходит сценарий завершения боя', async () => {
@@ -338,6 +341,51 @@ describe('GameHandler smoke', () => {
     expect(services.performBattleAction.execute).toHaveBeenCalledWith(1001, 'RUNE_SKILL');
     expect(getReplyCalls(ctx)[0]?.message).toContain('Импульс углей');
     expect(getReplyCalls(ctx)[0]?.message).toContain('🌀');
+  });
+
+  it('использует универсальную защиту в бою', async () => {
+    const services = createServices();
+    const defendBattle = createBattle({
+      player: {
+        ...createBattle().player,
+        guardPoints: 2,
+      },
+      log: ['🛡️ Вы занимаете защитную стойку и готовите защиту на 2 урона.'],
+      turnOwner: 'ENEMY',
+    });
+    vi.mocked(services.performBattleAction.execute).mockResolvedValueOnce(defendBattle);
+    const handler = new GameHandler(services);
+    const ctx = createFakeContext({ command: 'защита' });
+
+    await handler.handle(ctx as never);
+
+    expect(services.performBattleAction.execute).toHaveBeenCalledWith(1001, 'DEFEND');
+    expect(getReplyCalls(ctx)[0]?.message).toContain('защитную стойку');
+  });
+
+  it('показывает телеграф тяжёлого удара врага', async () => {
+    const services = createServices();
+    vi.mocked(services.getActiveBattle.execute).mockResolvedValueOnce(createBattle({
+      enemy: {
+        ...createBattle().enemy,
+        intent: {
+          code: 'HEAVY_STRIKE',
+          title: 'Тяжёлый удар',
+          description: 'Следующая атака врага будет сильнее обычной. Защита поможет пережить этот ход.',
+          bonusAttack: 3,
+        },
+      },
+    }));
+    vi.mocked(services.performBattleAction.execute).mockRejectedValueOnce(
+      new AppError('enemy_turn', 'Сейчас ход противника.'),
+    );
+    const handler = new GameHandler(services);
+    const ctx = createFakeContext({ command: 'атака' });
+
+    await handler.handle(ctx as never);
+
+    expect(getReplyCalls(ctx)[0]?.message).toContain('Намерение врага');
+    expect(getReplyCalls(ctx)[0]?.message).toContain('Тяжёлый удар');
   });
 
   it('проходит сценарий рун и алтаря без прямой правки transport-описаний', async () => {

@@ -96,6 +96,8 @@ const defaultBattleEnemySnapshot = (enemyCode: string): BattleView['enemy'] => (
   goldReward: 0,
   runeDropChance: 0,
   attackText: 'атакует',
+  intent: null,
+  hasUsedSignatureMove: false,
 });
 
 const mapBattlePersistence = (battle: PersistedBattleState) => ({

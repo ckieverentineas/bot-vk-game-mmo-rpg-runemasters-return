@@ -11,6 +11,7 @@ describe('normalizeCommand', () => {
   it('нормализует алиасы обучения и возврата в мир', () => {
     expect(normalizeCommand('обучение')).toBe(gameCommands.location);
     expect(normalizeCommand('в мир')).toBe(gameCommands.returnToAdventure);
+    expect(normalizeCommand('блок')).toBe(gameCommands.defend);
   });
 
   it('нормализует исторические алиасы навигации по рунам', () => {

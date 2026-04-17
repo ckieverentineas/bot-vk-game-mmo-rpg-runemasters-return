@@ -106,6 +106,10 @@ export class GameHandler {
           await this.useBattleAction(ctx, vkId, 'ATTACK');
           return;
         }
+        case gameCommands.defend: {
+          await this.useBattleAction(ctx, vkId, 'DEFEND');
+          return;
+        }
         case gameCommands.skills:
         case gameCommands.spell: {
           await this.useBattleAction(ctx, vkId, 'RUNE_SKILL');

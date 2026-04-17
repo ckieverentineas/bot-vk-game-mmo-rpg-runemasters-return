@@ -65,6 +65,8 @@ export const buildEnemySnapshot = (template: MobTemplateView, locationLevel: num
     goldReward: Math.max(template.baseGold, Math.floor(template.baseGold + locationLevel)),
     runeDropChance: template.runeDropChance,
     attackText: template.attackText,
+    intent: null,
+    hasUsedSignatureMove: false,
   };
 };
 

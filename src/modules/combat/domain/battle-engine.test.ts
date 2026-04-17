@@ -59,6 +59,8 @@ const createBattle = (overrides: Partial<BattleView> = {}): BattleView => ({
     goldReward: 4,
     runeDropChance: 0,
     attackText: 'бьёт',
+    intent: null,
+    hasUsedSignatureMove: false,
   },
   log: ['Враг найден.'],
   result: null,
@@ -122,6 +124,65 @@ describe('BattleEngine', () => {
     expect(resolved.player.runeLoadout?.activeAbility?.currentCooldown).toBe(2);
     expect(resolved.turnOwner).toBe('ENEMY');
     expect(resolved.log.some((entry) => entry.includes('Импульс углей'))).toBe(true);
+  });
+
+  it('даёт игроку универсальную защиту вместо атаки', () => {
+    const battle = createBattle();
+
+    const resolved = BattleEngine.defend(battle);
+
+    expect(resolved.turnOwner).toBe('ENEMY');
+    expect(resolved.player.guardPoints).toBeGreaterThan(0);
+    expect(resolved.log.some((entry) => entry.includes('защитную стойку'))).toBe(true);
+  });
+
+  it('телеграфирует тяжёлый удар у подходящего врага вместо обычной атаки', () => {
+    const battle = createBattle({
+      turnOwner: 'ENEMY',
+      enemy: {
+        ...createBattle().enemy,
+        kind: 'wolf',
+        name: 'Лесной волк',
+        currentHealth: 8,
+        maxHealth: 12,
+      },
+    });
+
+    const resolved = BattleEngine.resolveEnemyTurn(battle);
+
+    expect(resolved.turnOwner).toBe('PLAYER');
+    expect(resolved.enemy.intent?.code).toBe('HEAVY_STRIKE');
+    expect(resolved.log.some((entry) => entry.includes('готовит'))).toBe(true);
+  });
+
+  it('разыгрывает тяжёлый удар после телеграфа и сбрасывает намерение', () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0.5);
+    const battle = createBattle({
+      turnOwner: 'ENEMY',
+      player: {
+        ...createBattle().player,
+        guardPoints: 2,
+      },
+      enemy: {
+        ...createBattle().enemy,
+        kind: 'wolf',
+        name: 'Лесной волк',
+        intent: {
+          code: 'HEAVY_STRIKE',
+          title: 'Тяжёлый удар',
+          description: 'Следующая атака врага будет сильнее обычной.',
+          bonusAttack: 3,
+        },
+        hasUsedSignatureMove: false,
+      },
+    });
+
+    const resolved = BattleEngine.resolveEnemyTurn(battle);
+
+    expect(resolved.enemy.intent).toBeNull();
+    expect(resolved.enemy.hasUsedSignatureMove).toBe(true);
+    expect(resolved.player.currentHealth).toBeLessThan(8);
+    expect(resolved.turnOwner).toBe('PLAYER');
   });
 
   it('снижает откат после вражеского хода и расходует рунную защиту', () => {

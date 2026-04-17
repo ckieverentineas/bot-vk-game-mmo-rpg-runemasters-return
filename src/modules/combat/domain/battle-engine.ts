@@ -7,6 +7,13 @@ import type {
   BattleView,
 } from '../../../shared/types/game';
 import { appendBattleLog, calculatePhysicalDamage, cloneBattle } from './battle-utils';
+import {
+  createHeavyStrikeIntent,
+  resolveDefendGuardGain,
+  resolveGaleGuardGain,
+  resolveGuardCap,
+  shouldEnemyPrepareHeavyStrike,
+} from './battle-tactics';
 
 const finalizeBattle = (battle: BattleView, result: BattleResult): BattleView => {
   battle.status = 'COMPLETED';
@@ -49,11 +56,48 @@ const spendRuneManaAndSetCooldown = (battle: BattleView, ability: BattleRuneActi
   ability.currentCooldown = ability.cooldownTurns;
 };
 
+const consumeGuardAgainstDamage = (
+  player: BattlePlayerSnapshot,
+  rawDamage: number,
+): { blockedDamage: number; dealtDamage: number } => {
+  const guardPoints = getGuardPoints(player);
+  const blockedDamage = Math.min(guardPoints, rawDamage);
+  const dealtDamage = rawDamage - blockedDamage;
+
+  player.guardPoints = Math.max(0, guardPoints - blockedDamage);
+
+  return {
+    blockedDamage,
+    dealtDamage,
+  };
+};
+
+const resolveEnemyAttack = (
+  battle: BattleView,
+  attack: number,
+  attackText: string,
+): void => {
+  const rawDamage = calculatePhysicalDamage(attack, battle.player.defence);
+  const { blockedDamage, dealtDamage } = consumeGuardAgainstDamage(battle.player, rawDamage);
+
+  battle.log = appendBattleLog(
+    battle.log,
+    ...(blockedDamage > 0 ? [`🛡️ Защита смягчает удар на ${blockedDamage} урона.`] : []),
+    dealtDamage > 0
+      ? attackText.replace('{damage}', `${dealtDamage}`)
+      : '🛡️ Враг бьёт, но защита принимает весь удар на себя.',
+  );
+
+  battle.player.currentHealth = Math.max(0, battle.player.currentHealth - dealtDamage);
+};
+
 export class BattleEngine {
   public static performPlayerAction(battle: BattleView, action: BattleActionType): BattleView {
     switch (action) {
       case 'ATTACK':
         return this.attack(battle);
+      case 'DEFEND':
+        return this.defend(battle);
       case 'RUNE_SKILL':
         return this.useRuneSkill(battle);
       default:
@@ -65,6 +109,22 @@ export class BattleEngine {
     const nextBattle = cloneBattle(battle);
     this.assertPlayerTurn(nextBattle);
     return this.performAttack(nextBattle);
+  }
+
+  public static defend(battle: BattleView): BattleView {
+    const nextBattle = cloneBattle(battle);
+    this.assertPlayerTurn(nextBattle);
+
+    const guardGain = resolveDefendGuardGain(nextBattle.player);
+    const nextGuard = Math.min(resolveGuardCap(nextBattle.player), getGuardPoints(nextBattle.player) + guardGain);
+    nextBattle.player.guardPoints = nextGuard;
+    nextBattle.log = appendBattleLog(
+      nextBattle.log,
+      `🛡️ Вы занимаете защитную стойку и готовите защиту на ${guardGain} урона.`,
+    );
+    nextBattle.turnOwner = 'ENEMY';
+
+    return nextBattle;
   }
 
   public static useRuneSkill(battle: BattleView): BattleView {
@@ -102,22 +162,22 @@ export class BattleEngine {
       return nextBattle;
     }
 
-    const rawDamage = calculatePhysicalDamage(nextBattle.enemy.attack, nextBattle.player.defence);
-    const guardPoints = getGuardPoints(nextBattle.player);
-    const blockedDamage = Math.min(guardPoints, rawDamage);
-    const dealtDamage = rawDamage - blockedDamage;
+    if (nextBattle.enemy.intent?.code === 'HEAVY_STRIKE') {
+      return this.resolveHeavyStrike(nextBattle);
+    }
 
-    nextBattle.player.guardPoints = Math.max(0, guardPoints - blockedDamage);
+    if (shouldEnemyPrepareHeavyStrike(nextBattle.enemy)) {
+      nextBattle.enemy.intent = createHeavyStrikeIntent(nextBattle.enemy);
+      nextBattle.log = appendBattleLog(
+        nextBattle.log,
+        `⚠️ ${nextBattle.enemy.name} готовит «${nextBattle.enemy.intent.title}». Следующий удар будет сильнее обычного.`,
+      );
+      tickRuneCooldown(nextBattle);
+      nextBattle.turnOwner = 'PLAYER';
+      return nextBattle;
+    }
 
-    nextBattle.log = appendBattleLog(
-      nextBattle.log,
-      ...(blockedDamage > 0 ? [`🛡️ Рунная защита смягчает удар на ${blockedDamage} урона.`] : []),
-      dealtDamage > 0
-        ? `👾 ${nextBattle.enemy.name} ${nextBattle.enemy.attackText} и наносит ${dealtDamage} урона.`
-        : `👾 ${nextBattle.enemy.name} ${nextBattle.enemy.attackText}, но руна гасит весь урон.`,
-    );
-
-    nextBattle.player.currentHealth = Math.max(0, nextBattle.player.currentHealth - dealtDamage);
+    resolveEnemyAttack(nextBattle, nextBattle.enemy.attack, `👾 ${nextBattle.enemy.name} ${nextBattle.enemy.attackText} и наносит {damage} урона.`);
     if (nextBattle.player.currentHealth === 0) {
       return finalizeBattle(nextBattle, 'DEFEAT');
     }
@@ -163,8 +223,8 @@ export class BattleEngine {
   private static performGaleStep(nextBattle: BattleView, activeAbility: BattleRuneActionSnapshot): BattleView {
     const strikePower = Math.max(1, Math.floor(nextBattle.player.attack * 0.75) + Math.floor(nextBattle.player.dexterity / 2));
     const damage = calculatePhysicalDamage(strikePower, nextBattle.enemy.defence);
-    const guardGain = 2 + Math.floor(nextBattle.player.dexterity / 2);
-    const guardCap = 4 + nextBattle.player.defence + Math.floor(nextBattle.player.dexterity / 2);
+    const guardGain = resolveGaleGuardGain(nextBattle.player);
+    const guardCap = resolveGuardCap(nextBattle.player);
 
     nextBattle.enemy.currentHealth = Math.max(0, nextBattle.enemy.currentHealth - damage);
     nextBattle.player.guardPoints = Math.min(guardCap, getGuardPoints(nextBattle.player) + guardGain);
@@ -181,6 +241,29 @@ export class BattleEngine {
     }
 
     nextBattle.turnOwner = 'ENEMY';
+    return nextBattle;
+  }
+
+  private static resolveHeavyStrike(nextBattle: BattleView): BattleView {
+    const intent = nextBattle.enemy.intent;
+    if (!intent) {
+      return nextBattle;
+    }
+
+    nextBattle.enemy.intent = null;
+    nextBattle.enemy.hasUsedSignatureMove = true;
+    resolveEnemyAttack(
+      nextBattle,
+      nextBattle.enemy.attack + intent.bonusAttack,
+      `💥 ${nextBattle.enemy.name} проводит «${intent.title}» и наносит {damage} урона.`,
+    );
+
+    if (nextBattle.player.currentHealth === 0) {
+      return finalizeBattle(nextBattle, 'DEFEAT');
+    }
+
+    tickRuneCooldown(nextBattle);
+    nextBattle.turnOwner = 'PLAYER';
     return nextBattle;
   }
 

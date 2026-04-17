@@ -82,14 +82,14 @@ const profileLayout: KeyboardLayout = [
 const createBattleSkillButton = (battle: BattleView): KeyboardButtonDefinition => {
   const activeAbility = battle.player.runeLoadout?.activeAbility ?? null;
   if (!activeAbility) {
-    return { label: '🔮 Бонус руны', command: gameCommands.skills, color: Keyboard.SECONDARY_COLOR };
+    return { label: '🔮 Рунное действие', command: gameCommands.skills, color: Keyboard.SECONDARY_COLOR };
   }
 
   const isReady = activeAbility.currentCooldown <= 0 && battle.player.currentMana >= activeAbility.manaCost;
   const labelSuffix = activeAbility.currentCooldown > 0
-    ? ` ⏳${activeAbility.currentCooldown}`
+    ? ` · КД ${activeAbility.currentCooldown}`
     : battle.player.currentMana < activeAbility.manaCost
-      ? ` ${activeAbility.manaCost}✦`
+      ? ` · ${activeAbility.manaCost} маны`
       : '';
 
   return {
@@ -162,7 +162,10 @@ export const createEntryKeyboard = (): KeyboardBuilder => buildKeyboard(entryLay
 export const createProfileKeyboard = (): KeyboardBuilder => buildKeyboard(profileLayout);
 
 export const createBattleKeyboard = (battle: BattleView): KeyboardBuilder => buildKeyboard([
-  [{ label: '⚔️ Атака', command: gameCommands.attack, color: Keyboard.POSITIVE_COLOR }],
+  [
+    { label: '⚔️ Атака', command: gameCommands.attack, color: Keyboard.POSITIVE_COLOR },
+    { label: '🛡️ Защита', command: gameCommands.defend, color: Keyboard.PRIMARY_COLOR },
+  ],
   [createBattleSkillButton(battle)],
 ]);
 

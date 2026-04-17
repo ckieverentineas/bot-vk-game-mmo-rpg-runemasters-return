@@ -1,8 +1,9 @@
 export type StatKey = 'health' | 'attack' | 'defence' | 'magicDefence' | 'dexterity' | 'intelligence';
 export type TurnOwner = 'PLAYER' | 'ENEMY';
-export type BattleActionType = 'ATTACK' | 'RUNE_SKILL';
+export type BattleActionType = 'ATTACK' | 'DEFEND' | 'RUNE_SKILL';
 export type BattleStatus = 'ACTIVE' | 'COMPLETED';
 export type BattleResult = 'VICTORY' | 'DEFEAT';
+export type BattleEnemyIntentCode = 'HEAVY_STRIKE';
 export type TutorialState = 'ACTIVE' | 'SKIPPED' | 'COMPLETED';
 export type RuneRarity = 'USUAL' | 'UNUSUAL' | 'RARE' | 'EPIC' | 'LEGENDARY' | 'MYTHICAL';
 export type ShardField = 'usualShards' | 'unusualShards' | 'rareShards' | 'epicShards' | 'legendaryShards' | 'mythicalShards';
@@ -165,6 +166,15 @@ export interface BattleEnemySnapshot {
   goldReward: number;
   runeDropChance: number;
   attackText: string;
+  intent?: BattleEnemyIntentSnapshot | null;
+  hasUsedSignatureMove?: boolean;
+}
+
+export interface BattleEnemyIntentSnapshot {
+  code: BattleEnemyIntentCode;
+  title: string;
+  description: string;
+  bonusAttack: number;
 }
 
 export interface BattleRewardView {
