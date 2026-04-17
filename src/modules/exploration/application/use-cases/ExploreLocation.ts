@@ -2,10 +2,11 @@ import { AppError } from '../../../../shared/domain/AppError';
 import type { BattleView } from '../../../../shared/types/game';
 import { finalizeRecoveredBattleIfNeeded } from '../../../combat/application/finalize-recovered-battle';
 import { BattleEngine } from '../../../combat/domain/battle-engine';
-import { derivePlayerStats, resolveEncounterLocationLevel } from '../../../player/domain/player-stats';
+import { buildBattlePlayerSnapshot } from '../../../combat/domain/build-battle-player-snapshot';
+import { derivePlayerStats, getEquippedRune, resolveEncounterLocationLevel } from '../../../player/domain/player-stats';
 import { requirePlayerById, requirePlayerByVkId } from '../../../shared/application/require-player';
 import type { GameRepository } from '../../../shared/application/ports/GameRepository';
-import { buildEnemySnapshot, buildPlayerSnapshot, describeEncounter, pickEncounterTemplate, resolveInitialTurnOwner } from '../../../world/domain/enemy-scaling';
+import { buildEnemySnapshot, describeEncounter, pickEncounterTemplate, resolveInitialTurnOwner } from '../../../world/domain/enemy-scaling';
 
 export class ExploreLocation {
   public constructor(private readonly repository: GameRepository) {}
@@ -17,7 +18,7 @@ export class ExploreLocation {
     const activeBattle = await this.repository.getActiveBattle(player.playerId);
 
     if (activeBattle) {
-      const recoveredBattle = await finalizeRecoveredBattleIfNeeded(this.repository, player.playerId, activeBattle);
+      const recoveredBattle = await finalizeRecoveredBattleIfNeeded(this.repository, player, activeBattle);
 
       if (!recoveredBattle.recovered) {
         return activeBattle;
@@ -43,7 +44,7 @@ export class ExploreLocation {
       biomeCode: biome.code,
       enemyCode: template.code,
       turnOwner: resolveInitialTurnOwner(playerStats.dexterity, enemy.dexterity),
-      player: buildPlayerSnapshot(currentPlayer.playerId, vkId, playerStats),
+        player: buildBattlePlayerSnapshot(currentPlayer.playerId, vkId, playerStats, getEquippedRune(currentPlayer)),
       enemy,
       log: [describeEncounter(biome, enemy)],
       result: null,

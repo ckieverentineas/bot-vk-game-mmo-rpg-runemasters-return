@@ -119,6 +119,8 @@ const createBattle = (overrides: Partial<BattleView> = {}): BattleView => ({
     currentHealth: 8,
     maxMana: 4,
     currentMana: 4,
+    runeLoadout: null,
+    guardPoints: 0,
   },
   enemy: {
     code: 'training-wisp',
@@ -299,10 +301,43 @@ describe('GameHandler smoke', () => {
 
     await handler.handle(ctx as never);
 
-    expect(services.performBattleAction.execute).toHaveBeenCalledWith(1001);
+    expect(services.performBattleAction.execute).toHaveBeenCalledWith(1001, 'ATTACK');
     expect(getReplyCalls(ctx)[0]?.message).toContain('Завершённый бой');
     expect(getReplyCalls(ctx)[0]?.message).toContain('Победа.');
     expect(getReplyCalls(ctx)[0]?.message).toContain('Нажмите «⚔️ Новый бой»');
+  });
+
+  it('использует рунное действие в бою', async () => {
+    const services = createServices();
+    const runeSkillBattle = createBattle({
+      player: {
+        ...createBattle().player,
+        runeLoadout: {
+          runeId: 'rune-1',
+          runeName: 'Эпическая руна Уголь',
+          archetypeCode: 'ember',
+          archetypeName: 'Уголь',
+          passiveAbilityCodes: ['ember_heart'],
+          activeAbility: {
+            code: 'ember_pulse',
+            name: 'Импульс углей',
+            manaCost: 3,
+            cooldownTurns: 2,
+            currentCooldown: 0,
+          },
+        },
+      },
+      log: ['🌀 Импульс углей прожигает Учебный огонёк на 5 урона.'],
+    });
+    vi.mocked(services.performBattleAction.execute).mockResolvedValueOnce(runeSkillBattle);
+    const handler = new GameHandler(services);
+    const ctx = createFakeContext({ command: 'навыки' });
+
+    await handler.handle(ctx as never);
+
+    expect(services.performBattleAction.execute).toHaveBeenCalledWith(1001, 'RUNE_SKILL');
+    expect(getReplyCalls(ctx)[0]?.message).toContain('Импульс углей');
+    expect(getReplyCalls(ctx)[0]?.message).toContain('🌀');
   });
 
   it('проходит сценарий рун и алтаря без прямой правки transport-описаний', async () => {
@@ -346,6 +381,22 @@ describe('GameHandler smoke', () => {
     const replies = getReplyCalls(ctx);
     expect(replies[0]?.message).toContain('На этой позиции нет руны');
     expect(JSON.stringify(replies[0]?.keyboard)).toBe(JSON.stringify(createRuneKeyboard()));
+  });
+
+  it('оставляет игрока в боевом контексте при повторном stale нажатии атаки', async () => {
+    const services = createServices();
+    const handler = new GameHandler(services);
+    const ctx = createFakeContext({ command: 'атака' });
+
+    vi.mocked(services.performBattleAction.execute).mockRejectedValueOnce(
+      new AppError('enemy_turn', 'Сейчас ход противника.'),
+    );
+
+    await handler.handle(ctx as never);
+
+    const replies = getReplyCalls(ctx);
+    expect(replies[0]?.message).toContain('Сейчас ход противника');
+    expect(replies[0]?.message).toContain('⚔️ Бой');
   });
 
   it('проходит сценарий пропуска обучения', async () => {

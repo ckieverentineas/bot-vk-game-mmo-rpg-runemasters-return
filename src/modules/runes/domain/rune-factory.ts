@@ -22,10 +22,10 @@ const createArchetypeStatPool = (archetypeCode: string): readonly StatKey[] => {
 };
 
 export class RuneFactory {
-  public static create(locationLevel: number, forcedRarity?: RuneRarity): RuneDraft {
+  public static create(locationLevel: number, forcedRarity?: RuneRarity, forcedArchetypeCode?: string): RuneDraft {
     const rarity = forcedRarity ?? this.rollRarity(this.resolveNaturalRarityCap(locationLevel));
     const profile = gameBalance.runes.profiles[rarity];
-    const archetype = randomItem(listRuneArchetypes());
+    const archetype = forcedArchetypeCode ? getRuneArchetype(forcedArchetypeCode) : randomItem(listRuneArchetypes());
     const statPool = createArchetypeStatPool(archetype.code);
     const rune = applyRuneArchetype({
       ...emptyStats(),

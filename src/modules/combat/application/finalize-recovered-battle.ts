@@ -1,8 +1,9 @@
-import type { BattleView } from '../../../shared/types/game';
+import type { BattleView, PlayerState } from '../../../shared/types/game';
 
 import type { GameRepository } from '../../shared/application/ports/GameRepository';
 import { recoverInvalidActiveBattle } from '../domain/recover-active-battle';
 import { RewardEngine } from '../domain/reward-engine';
+import { resolveVictoryRewardOptions } from './resolve-victory-reward-options';
 
 interface RecoveredBattleFinalization {
   readonly battle: BattleView;
@@ -11,7 +12,7 @@ interface RecoveredBattleFinalization {
 
 export const finalizeRecoveredBattleIfNeeded = async (
   repository: GameRepository,
-  playerId: number,
+  player: Pick<PlayerState, 'playerId' | 'tutorialState' | 'runes'>,
   battle: BattleView,
 ): Promise<RecoveredBattleFinalization> => {
   const recoveredBattle = recoverInvalidActiveBattle(battle);
@@ -24,10 +25,10 @@ export const finalizeRecoveredBattleIfNeeded = async (
   }
 
   const rewardResolution = recoveredBattle.result === 'VICTORY'
-    ? RewardEngine.applyVictoryRewards(recoveredBattle)
+    ? RewardEngine.applyVictoryRewards(recoveredBattle, resolveVictoryRewardOptions(player, recoveredBattle))
     : { battle: recoveredBattle, droppedRune: null };
 
-  await repository.finalizeBattle(playerId, rewardResolution.battle, rewardResolution.droppedRune);
+  await repository.finalizeBattle(player.playerId, rewardResolution.battle, rewardResolution.droppedRune);
 
   return {
     battle: rewardResolution.battle,

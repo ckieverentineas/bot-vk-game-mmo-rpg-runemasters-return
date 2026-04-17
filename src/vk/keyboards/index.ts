@@ -1,7 +1,7 @@
 import { Keyboard } from 'vk-io';
 
 import { isPlayerInTutorial } from '../../modules/player/domain/player-stats';
-import type { PlayerState } from '../../shared/types/game';
+import type { BattleView, PlayerState } from '../../shared/types/game';
 import type { GameCommand } from '../commands/catalog';
 import { gameCommands } from '../commands/catalog';
 
@@ -79,13 +79,33 @@ const profileLayout: KeyboardLayout = [
   [{ label: '🗑️ Удалить персонажа', command: gameCommands.deletePlayer, color: Keyboard.NEGATIVE_COLOR }],
 ];
 
-const battleLayout: KeyboardLayout = [
-  [{ label: '⚔️ Атака', command: gameCommands.attack, color: Keyboard.POSITIVE_COLOR }],
-  [{ label: '🔮 Бонус руны', command: gameCommands.skills, color: Keyboard.SECONDARY_COLOR }],
-];
+const createBattleSkillButton = (battle: BattleView): KeyboardButtonDefinition => {
+  const activeAbility = battle.player.runeLoadout?.activeAbility ?? null;
+  if (!activeAbility) {
+    return { label: '🔮 Бонус руны', command: gameCommands.skills, color: Keyboard.SECONDARY_COLOR };
+  }
 
-const battleResultLayout: KeyboardLayout = [
-  [{ label: '⚔️ Новый бой', command: gameCommands.explore, color: Keyboard.POSITIVE_COLOR }],
+  const isReady = activeAbility.currentCooldown <= 0 && battle.player.currentMana >= activeAbility.manaCost;
+  const labelSuffix = activeAbility.currentCooldown > 0
+    ? ` ⏳${activeAbility.currentCooldown}`
+    : battle.player.currentMana < activeAbility.manaCost
+      ? ` ${activeAbility.manaCost}✦`
+      : '';
+
+  return {
+    label: `🌀 ${activeAbility.name}${labelSuffix}`,
+    command: gameCommands.skills,
+    color: isReady ? Keyboard.PRIMARY_COLOR : Keyboard.SECONDARY_COLOR,
+  };
+};
+
+const createBattleResultLayout = (battle: BattleView): KeyboardLayout => [
+  battle.rewards?.droppedRune
+    ? [
+        { label: '🔮 Руны', command: gameCommands.runeCollection, color: Keyboard.PRIMARY_COLOR },
+        { label: '⚔️ Новый бой', command: gameCommands.explore, color: Keyboard.POSITIVE_COLOR },
+      ]
+    : [{ label: '⚔️ Новый бой', command: gameCommands.explore, color: Keyboard.POSITIVE_COLOR }],
   [
     { label: '👤 Профиль', command: gameCommands.profile, color: Keyboard.PRIMARY_COLOR },
     { label: '◀ Главное меню', command: gameCommands.backToMenu, color: Keyboard.SECONDARY_COLOR },
@@ -141,9 +161,12 @@ export const createEntryKeyboard = (): KeyboardBuilder => buildKeyboard(entryLay
 
 export const createProfileKeyboard = (): KeyboardBuilder => buildKeyboard(profileLayout);
 
-export const createBattleKeyboard = (): KeyboardBuilder => buildKeyboard(battleLayout);
+export const createBattleKeyboard = (battle: BattleView): KeyboardBuilder => buildKeyboard([
+  [{ label: '⚔️ Атака', command: gameCommands.attack, color: Keyboard.POSITIVE_COLOR }],
+  [createBattleSkillButton(battle)],
+]);
 
-export const createBattleResultKeyboard = (): KeyboardBuilder => buildKeyboard(battleResultLayout);
+export const createBattleResultKeyboard = (battle: BattleView): KeyboardBuilder => buildKeyboard(createBattleResultLayout(battle));
 
 export const createRuneKeyboard = (): KeyboardBuilder => buildKeyboard(runeLayout);
 

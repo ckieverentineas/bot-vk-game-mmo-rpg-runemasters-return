@@ -14,4 +14,11 @@ describe('RuneFactory rarity rails', () => {
 
     expect(rune.rarity).toBe('EPIC');
   });
+
+  it('позволяет зафиксировать архетип для обучающей награды', () => {
+    const rune = RuneFactory.create(1, 'UNUSUAL', 'ember');
+
+    expect(rune.archetypeCode).toBe('ember');
+    expect(rune.activeAbilityCodes).toEqual(['ember_pulse']);
+  });
 });

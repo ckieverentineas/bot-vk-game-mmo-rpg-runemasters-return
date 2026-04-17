@@ -24,6 +24,21 @@ const createBattle = (overrides: Partial<BattleView> = {}): BattleView => ({
     currentHealth: 8,
     maxMana: 4,
     currentMana: 4,
+    runeLoadout: {
+      runeId: 'rune-1',
+      runeName: 'Руна Уголь',
+      archetypeCode: 'ember',
+      archetypeName: 'Уголь',
+      passiveAbilityCodes: ['ember_heart'],
+      activeAbility: {
+        code: 'ember_pulse',
+        name: 'Импульс углей',
+        manaCost: 3,
+        cooldownTurns: 2,
+        currentCooldown: 0,
+      },
+    },
+    guardPoints: 0,
   },
   enemy: {
     code: 'blue-slime',
@@ -95,5 +110,74 @@ describe('BattleEngine', () => {
 
     expect(resolved.player.currentHealth).toBe(4);
     expect(resolved.turnOwner).toBe('PLAYER');
+  });
+
+  it('позволяет применить рунный навык и тратит ману с откатом', () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0.5);
+    const battle = createBattle();
+
+    const resolved = BattleEngine.useRuneSkill(battle);
+
+    expect(resolved.player.currentMana).toBe(1);
+    expect(resolved.player.runeLoadout?.activeAbility?.currentCooldown).toBe(2);
+    expect(resolved.turnOwner).toBe('ENEMY');
+    expect(resolved.log.some((entry) => entry.includes('Импульс углей'))).toBe(true);
+  });
+
+  it('снижает откат после вражеского хода и расходует рунную защиту', () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0.5);
+    const battle = createBattle({
+      turnOwner: 'ENEMY',
+      player: {
+        ...createBattle().player,
+        runeLoadout: {
+          ...createBattle().player.runeLoadout!,
+          activeAbility: {
+            ...createBattle().player.runeLoadout!.activeAbility!,
+            code: 'gale_step',
+            name: 'Шаг шквала',
+            manaCost: 2,
+            cooldownTurns: 2,
+            currentCooldown: 2,
+          },
+        },
+        guardPoints: 3,
+      },
+      enemy: {
+        ...createBattle().enemy,
+        attack: 6,
+      },
+    });
+
+    const resolved = BattleEngine.resolveEnemyTurn(battle);
+
+    expect(resolved.player.guardPoints).toBe(0);
+    expect(resolved.player.runeLoadout?.activeAbility?.currentCooldown).toBe(1);
+    expect(resolved.player.currentHealth).toBeLessThan(8);
+  });
+
+  it('не позволяет gale step бесконечно накапливать защиту', () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0.5);
+    const battle = createBattle({
+      player: {
+        ...createBattle().player,
+        runeLoadout: {
+          ...createBattle().player.runeLoadout!,
+          activeAbility: {
+            ...createBattle().player.runeLoadout!.activeAbility!,
+            code: 'gale_step',
+            name: 'Шаг шквала',
+            manaCost: 2,
+            cooldownTurns: 2,
+            currentCooldown: 0,
+          },
+        },
+        guardPoints: 99,
+      },
+    });
+
+    const resolved = BattleEngine.useRuneSkill(battle);
+
+    expect(resolved.player.guardPoints).toBeLessThanOrEqual(8);
   });
 });

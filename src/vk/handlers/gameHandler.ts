@@ -2,11 +2,10 @@ import type { Context } from 'vk-io';
 
 import type { AppServices } from '../../app/composition-root';
 import { AppError, isAppError } from '../../shared/domain/AppError';
-import type { BattleView, PlayerState } from '../../shared/types/game';
+import type { BattleActionType, BattleView, PlayerState } from '../../shared/types/game';
 import { Logger } from '../../utils/logger';
 import {
   gameCommands,
-  isSkillPreviewCommand,
   resolveRuneCursorDeltaCommand,
   resolveRunePageSlotCommand,
   resolveRuneStatRerollCommand,
@@ -104,13 +103,12 @@ export class GameHandler {
           return;
         }
         case gameCommands.attack: {
-          const battle = await this.services.performBattleAction.execute(vkId);
-          await this.replyWithBattle(ctx, battle);
+          await this.useBattleAction(ctx, vkId, 'ATTACK');
           return;
         }
         case gameCommands.skills:
         case gameCommands.spell: {
-          await this.replyWithBattleSkillsPreview(ctx, vkId);
+          await this.useBattleAction(ctx, vkId, 'RUNE_SKILL');
           return;
         }
         case gameCommands.runeCollection: {
@@ -193,11 +191,6 @@ export class GameHandler {
       return;
     }
 
-    if (isSkillPreviewCommand(command)) {
-      await this.replyWithBattleSkillsPreview(ctx, vkId);
-      return;
-    }
-
     throw new AppError('unknown_command', 'Неизвестная команда. Используйте кнопки меню или старые текстовые команды.');
   }
 
@@ -247,24 +240,37 @@ export class GameHandler {
     await this.reply(ctx, renderBattle(battle), this.resolveBattleKeyboard(battle));
   }
 
-  private async replyWithBattleSkillsPreview(ctx: Context, vkId: number): Promise<void> {
-    const battle = await this.services.getActiveBattle.execute(vkId);
+  private async useBattleAction(ctx: Context, vkId: number, action: BattleActionType): Promise<void> {
+    try {
+      const battle = await this.services.performBattleAction.execute(vkId, action);
+      await this.replyWithBattle(ctx, battle);
+    } catch (error) {
+      if (isAppError(error)) {
+        const activeBattle = await this.safeGetActiveBattle(vkId);
+        if (activeBattle) {
+          await this.reply(
+            ctx,
+            [error.message, '', renderBattle(activeBattle)].join('\n'),
+            this.resolveBattleKeyboard(activeBattle),
+          );
+          return;
+        }
+      }
 
-    await this.reply(
-      ctx,
-      [
-        '🔮 Сейчас руна даёт бонусы к характеристикам, а бой идёт через базовую атаку.',
-        'Активные рунные навыки готовятся следующим боевым слоем.',
-        'Пока лучший ход — выбирать сильную руну и держать темп через «⚔️ Атака».',
-        '',
-        renderBattle(battle),
-      ].join('\n'),
-      this.resolveBattleKeyboard(battle),
-    );
+      throw error;
+    }
+  }
+
+  private async safeGetActiveBattle(vkId: number): Promise<BattleView | null> {
+    try {
+      return await this.services.getActiveBattle.execute(vkId);
+    } catch {
+      return null;
+    }
   }
 
   private resolveBattleKeyboard(battle: BattleView): ReplyKeyboard {
-    return battle.status === 'ACTIVE' ? createBattleKeyboard() : createBattleResultKeyboard();
+    return battle.status === 'ACTIVE' ? createBattleKeyboard(battle) : createBattleResultKeyboard(battle);
   }
 
   private resolveErrorKeyboard(errorCode: string): ReplyKeyboard {

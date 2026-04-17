@@ -307,4 +307,56 @@ describe('PrismaGameRepository release hardening', () => {
     expect(tx.playerInventory.update).not.toHaveBeenCalled();
     expect(tx.rune.create).not.toHaveBeenCalled();
   });
+
+  it('hydrates legacy battle snapshots without rune combat fields', async () => {
+    const { repository, tx } = createPrismaMock();
+
+    tx.battleSession.findFirst.mockResolvedValue(createBattleRow());
+
+    const battle = await repository.getActiveBattle(1);
+
+    expect(battle?.player.runeLoadout ?? null).toBeNull();
+    expect(battle?.player.guardPoints ?? 0).toBe(0);
+  });
+
+  it('preserves rune cooldown and guard state when reading persisted battles', async () => {
+    const { repository, tx } = createPrismaMock();
+
+    tx.battleSession.findFirst.mockResolvedValue(createBattleRow({
+      playerSnapshot: JSON.stringify({
+        playerId: 1,
+        name: 'Рунный мастер #1001',
+        attack: 4,
+        defence: 3,
+        magicDefence: 1,
+        dexterity: 2,
+        intelligence: 1,
+        maxHealth: 8,
+        currentHealth: 8,
+        maxMana: 4,
+        currentMana: 1,
+        guardPoints: 3,
+        runeLoadout: {
+          runeId: 'rune-1',
+          runeName: 'Руна Уголь',
+          archetypeCode: 'ember',
+          archetypeName: 'Уголь',
+          passiveAbilityCodes: ['ember_heart'],
+          activeAbility: {
+            code: 'ember_pulse',
+            name: 'Импульс углей',
+            manaCost: 3,
+            cooldownTurns: 2,
+            currentCooldown: 1,
+          },
+        },
+      }),
+    }));
+
+    const battle = await repository.getActiveBattle(1);
+
+    expect(battle?.player.guardPoints).toBe(3);
+    expect(battle?.player.runeLoadout?.activeAbility?.currentCooldown).toBe(1);
+    expect(battle?.player.currentMana).toBe(1);
+  });
 });

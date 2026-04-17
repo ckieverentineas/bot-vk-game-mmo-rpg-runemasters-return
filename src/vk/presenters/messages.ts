@@ -51,6 +51,31 @@ const formatAbilityLine = (prefix: string, name: string, details: string[]): str
   `${prefix} ${name}${details.length > 0 ? ` · ${details.join(' · ')}` : ''}`
 );
 
+const resolvePlayerObjective = (player: PlayerState): string => {
+  if (player.tutorialState === 'ACTIVE') {
+    return '🎯 Цель: пройдите учебный бой и заберите первую боевую руну.';
+  }
+
+  if (player.unspentStatPoints > 0) {
+    return '🎯 Цель: откройте профиль и распределите свободное очко силы.';
+  }
+
+  if (player.runes.length === 0) {
+    return '🎯 Цель: выиграйте ещё бой или создайте первую руну в мастерской.';
+  }
+
+  const equippedRune = getEquippedRune(player);
+  if (!equippedRune) {
+    return '🎯 Цель: откройте «🔮 Руны» и наденьте руну перед следующим боем.';
+  }
+
+  if (describeRuneContent(equippedRune).activeAbilities.length > 0 && player.victories <= 2) {
+    return '🎯 Цель: войдите в бой и примените активное действие экипированной руны.';
+  }
+
+  return '🎯 Цель: ищите более сильную руну и поднимайте уровень угрозы дальше.';
+};
+
 const formatRune = (rune: RuneView | null): string => {
   if (!rune) {
     return 'Руна не выбрана.';
@@ -125,6 +150,7 @@ export const renderMainMenu = (player: PlayerState): string => {
     player.defeatStreak > 0
       ? `🛡️ Поражений подряд: ${player.defeatStreak}. Сложность уже смягчена.`
       : `🔥 Побед подряд: ${player.victoryStreak}`,
+    resolvePlayerObjective(player),
     '',
     `⚔️ Боевая мощь: АТК ${stats.attack} / ЗДР ${stats.health}`,
   ].join('\n');
@@ -178,6 +204,7 @@ export const renderLocation = (player: PlayerState): string => [
   player.defeatStreak > 0
     ? `🛡️ После поражений подряд (${player.defeatStreak}) враги становятся слабее, чтобы вы быстрее вернулись в ритм.`
     : `🔥 Серия побед подряд: ${player.victoryStreak}`,
+  resolvePlayerObjective(player),
   '',
   `Следующий шаг: ${isPlayerInTutorial(player) ? 'нажмите «⚔️ Учебный бой».' : 'нажмите «⚔️ Исследовать».'}`,
 ].join('\n');
@@ -211,6 +238,9 @@ export const renderRuneScreen = (player: PlayerState): string => {
     '',
     formatRune(selectedRune),
     '',
+    ...(selectedRune && !selectedRune.isEquipped && (selectedRune.activeAbilityCodes?.length ?? 0) > 0
+      ? ['Подсказка: наденьте эту руну, чтобы её активное действие появилось прямо в бою.', '']
+      : []),
     `Создать руну: ${gameBalance.runes.craftCost} одинаковых осколков.`,
     'Перековка свойства: 1 осколок той же редкости.',
     'Распыление: возвращает часть осколков выбранной руны.',
@@ -270,11 +300,40 @@ const renderBattleActorStats = (
   `🏷️ ${actor.name}`,
   `❤️ ${actor.currentHealth}/${actor.maxHealth} HP`,
   `🟥 ${renderBar(actor.currentHealth, actor.maxHealth, '█', '░')}`,
+  `💙 ${actor.currentMana}/${actor.maxMana} маны`,
   `⚔️ АТК ${actor.attack} · 🛡️ ЗАЩ ${actor.defence} · 💨 ЛВК ${actor.dexterity}`,
 ].join('\n');
 
+const renderBattleRuneState = (battle: BattleView): string => {
+  const runeLoadout = battle.player.runeLoadout ?? null;
+  if (!runeLoadout) {
+    return '🔮 Без экипированной руны: доступна только базовая атака.';
+  }
+
+  const activeAbility = runeLoadout.activeAbility;
+  if (!activeAbility) {
+    return `🔮 ${runeLoadout.runeName}: работают только пассивные бонусы.`;
+  }
+
+  const state = activeAbility.currentCooldown > 0
+    ? `откат ${activeAbility.currentCooldown} хода`
+    : battle.player.currentMana < activeAbility.manaCost
+      ? `нужно ${activeAbility.manaCost} маны`
+      : 'готово';
+
+  const guardLine = (battle.player.guardPoints ?? 0) > 0
+    ? ` · защита ${battle.player.guardPoints}`
+    : '';
+
+  return `🔮 ${runeLoadout.runeName}: «${activeAbility.name}» · ${activeAbility.manaCost} маны · ${state}${guardLine}`;
+};
+
 export const renderBattle = (battle: BattleView): string => {
   const log = [...battle.log].slice(-3).reverse().join('\n');
+  const activeAbility = battle.player.runeLoadout?.activeAbility ?? null;
+  const runeSkillReady = !!activeAbility
+    && activeAbility.currentCooldown <= 0
+    && battle.player.currentMana >= activeAbility.manaCost;
   const battleStateLine = battle.status === 'ACTIVE'
     ? battle.turnOwner === 'PLAYER'
       ? 'Ваш ход.'
@@ -285,10 +344,14 @@ export const renderBattle = (battle: BattleView): string => {
 
   const nextStepLine = battle.status === 'ACTIVE'
     ? battle.turnOwner === 'PLAYER'
-      ? 'Действие: Нажмите «⚔️ Атака». '
+      ? runeSkillReady
+        ? `Действие: Нажмите «⚔️ Атака» или «🌀 ${activeAbility?.name}». `
+        : 'Действие: Нажмите «⚔️ Атака». '
       : 'Дождитесь завершения обмена ударами.'
     : battle.result === 'VICTORY'
-      ? 'Действие: Нажмите «⚔️ Новый бой». '
+      ? battle.rewards?.droppedRune
+        ? 'Действие: Откройте «🔮 Руны», наденьте новую руну и вернитесь в бой. '
+        : 'Действие: Нажмите «⚔️ Новый бой». '
       : 'Действие: усилите героя в профиле или начните бой снова.';
 
   const rewardLines = battle.status === 'COMPLETED' && battle.rewards
@@ -304,6 +367,7 @@ export const renderBattle = (battle: BattleView): string => {
     '',
     battleStateLine,
     nextStepLine.trim(),
+    renderBattleRuneState(battle),
     '',
     renderBattleActorStats('👤 Вы', battle.player),
     '',

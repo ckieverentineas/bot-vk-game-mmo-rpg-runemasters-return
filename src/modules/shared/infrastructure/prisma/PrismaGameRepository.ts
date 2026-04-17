@@ -73,6 +73,8 @@ const defaultBattlePlayerSnapshot = (playerId: number): BattleView['player'] => 
   currentHealth: 1,
   maxMana: 0,
   currentMana: 0,
+  runeLoadout: null,
+  guardPoints: 0,
 });
 
 const defaultBattleEnemySnapshot = (enemyCode: string): BattleView['enemy'] => ({

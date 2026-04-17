@@ -16,7 +16,7 @@ export class GetActiveBattle {
       throw new AppError('battle_not_found', 'Сейчас нет активного боя. Сначала используйте «исследовать».');
     }
 
-    const recoveredBattle = await finalizeRecoveredBattleIfNeeded(this.repository, player.playerId, activeBattle);
+    const recoveredBattle = await finalizeRecoveredBattleIfNeeded(this.repository, player, activeBattle);
     if (recoveredBattle.recovered) {
       throw new AppError('battle_not_found', 'Активный бой уже завершён. Начните новый через «исследовать».');
     }

@@ -155,6 +155,3 @@ export const resolveRunePageSlotCommand = (command: string): 0 | 1 | 2 | 3 | nul
   return runePageSlotCommandMap[command];
 };
 
-export const isSkillPreviewCommand = (command: string): boolean => (
-  command === gameCommands.skills || command === gameCommands.spell
-);

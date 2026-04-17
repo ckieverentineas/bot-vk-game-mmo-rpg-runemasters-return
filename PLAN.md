@@ -18,6 +18,8 @@
 - idempotency-защита боевых и рунных мутаций;
 - paged rune hub вместо листания по одной руне;
 - compact event-first battle presentation;
+- первый playable rune combat slice: активные рунные действия, cooldown/mana state и боевой action resolver;
+- tutorial reward loop с гарантированной первой активной руной и post-tutorial objective layer;
 - release rails: `check`, `content:validate`, `release:preflight`, smoke tests, CI.
 
 ### Текущий вердикт
@@ -26,8 +28,8 @@
 
 ### Почему ещё не релиз
 
-- бой всё ещё слишком близок к `attack-only`;
-- rune fantasy сильнее в интерфейсе и описаниях, чем в реальном боевом действии;
+- в бою всё ещё мало решений вне стартовых рунных действий;
+- rune fantasy уже работает в core loop, но depth и counterplay пока слишком тонкие;
 - mid-session и next-session мотивация пока слабые;
 - контента и battle variety пока мало для устойчивого retention.
 
@@ -57,9 +59,9 @@
 
 ## 4. Active roadmap
 
-### 4.1 NOW
+### 4.1 DONE
 
-#### [now][P0] Milestone A — сделать рунную fantasy реальной в бою
+#### [done][P0] Milestone A — сделать рунную fantasy реальной в бою
 
 **Почему это важно**
 
@@ -76,9 +78,9 @@
 - **Out of scope:** PvP, глубокий combo engine, десятки статусов.
 - **Dependencies:** нет.
 - **Acceptance:**
-  - [ ] battle snapshot устойчив к recovery и finalize;
-  - [ ] новые действия не ломают active battle idempotency;
-  - [ ] есть тесты на action resolution, save/recovery и invalid action paths.
+  - [x] battle snapshot устойчив к recovery и finalize;
+  - [x] новые действия не ломают active battle idempotency;
+  - [x] есть тесты на action resolution, save/recovery и invalid action paths.
 
 ##### Initiative A2 — первый playable rune combat slice
 
@@ -90,9 +92,9 @@
 - **Out of scope:** полноценные skill trees, сложные синергии, full archetype roster.
 - **Dependencies:** `A1`.
 - **Acceptance:**
-  - [ ] в первом игровом цикле игрок использует хотя бы одно действие руны;
-  - [ ] кнопка preview больше не обещает несуществующий payoff;
-  - [ ] rune action читается в логе боя и влияет на исход.
+  - [x] в первом игровом цикле игрок использует хотя бы одно действие руны;
+  - [x] кнопка preview больше не обещает несуществующий payoff;
+  - [x] rune action читается в логе боя и влияет на исход.
 
 ##### Initiative A3 — post-tutorial objective layer
 
@@ -104,13 +106,13 @@
 - **Out of scope:** большая квестовая система.
 - **Dependencies:** можно делать параллельно с `A2`.
 - **Acceptance:**
-  - [ ] после tutorial игрок получает один ясный следующий goal;
-  - [ ] первый loss, первый rune drop и первый stat point не оставляют игрока без guidance;
-  - [ ] help layer не превращается в стену текста.
+  - [x] после tutorial игрок получает один ясный следующий goal;
+  - [x] первый loss, первый rune drop и первый stat point не оставляют игрока без guidance;
+  - [x] help layer не превращается в стену текста.
 
-### 4.2 NEXT
+### 4.2 NOW
 
-#### [next][P0] Milestone B — дать бою вторую глубину, а не вторую кнопку
+#### [now][P0] Milestone B — дать бою вторую глубину, а не вторую кнопку
 
 ##### Initiative B1 — enemy patterns и universal combat actions
 
@@ -145,9 +147,9 @@
 - [ ] recommended threat не врёт игроку;
 - [ ] расширенный battle flow покрыт unit + smoke tests.
 
-### 4.3 LATER
+### 4.3 NEXT
 
-#### [later][P1] Milestone C — progression, economy, return motivation
+#### [next][P1] Milestone C — progression, economy, return motivation
 
 ##### Initiative C1 — short-term progression ladder
 

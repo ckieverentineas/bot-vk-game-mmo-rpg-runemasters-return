@@ -198,6 +198,31 @@
 - первый боевой цикл больше не должен так часто ощущаться как auto-loss из-за слабого стартового героя и перегретых стартовых мобов;
 - adaptive difficulty теперь меньше переоценивает intelligence и magic defence до появления полноценной магической боевой системы.
 
+## [0.09] - 2026-04-17
+
+### Commit
+
+- `worktree` — `feat: ship first playable rune combat slice`
+
+### Added
+
+- новый battle state contract с rune loadout snapshot, mana/cooldown state и защитным guard-эффектом прямо в боевом snapshot'е;
+- боевые тесты на активные рунные действия и tutorial reward rails в [`src/modules/combat/domain/battle-engine.test.ts`](src/modules/combat/domain/battle-engine.test.ts) и [`src/modules/combat/domain/reward-engine.test.ts`](src/modules/combat/domain/reward-engine.test.ts);
+- helper [`buildBattlePlayerSnapshot()`](src/modules/combat/domain/build-battle-player-snapshot.ts), который связывает экипированную руну и боевое состояние без новой Prisma-схемы.
+
+### Changed
+
+- команды `навыки` / `спелл` теперь больше не preview-заглушка, а запускают реальное боевое действие экипированной руны, если оно доступно;
+- tutorial victory теперь гарантирует первую активную руну и ведёт игрока в loop `получил руну -> надел -> применил в бою`;
+- battle UI показывает состояние руны, ману, откат, защиту и более ясный next step после победы/дропа руны;
+- `PerformBattleAction` и recovery flow теперь работают через единый battle action resolver, а не только через базовую атаку.
+
+### Fixed
+
+- rune fantasy больше не обрывается на описаниях: как минимум часть активных рун действительно влияет на бой;
+- игрок после tutorial больше не остаётся без явной следующей цели;
+- stale нажатия по рунному действию при отсутствии маны/откате теперь возвращают боевой экран с понятной ошибкой, а не выбрасывают игрока из flow.
+
 ## Шаблон следующей записи
 
 ### [0.03] - YYYY-MM-DD

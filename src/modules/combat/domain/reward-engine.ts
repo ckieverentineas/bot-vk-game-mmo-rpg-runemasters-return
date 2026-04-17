@@ -19,8 +19,15 @@ const formatShardRewards = (rewards: Partial<Record<RuneRarity, number>>): strin
   return parts.length > 0 ? parts.join(', ') : 'без осколков';
 };
 
+export interface VictoryRewardOptions {
+  readonly forcedRune?: RuneDraft | null;
+}
+
 export class RewardEngine {
-  public static applyVictoryRewards(battle: BattleView): { battle: BattleView; droppedRune: RuneDraft | null } {
+  public static applyVictoryRewards(
+    battle: BattleView,
+    options: VictoryRewardOptions = {},
+  ): { battle: BattleView; droppedRune: RuneDraft | null } {
     const nextBattle = cloneBattle(battle);
     if (nextBattle.rewards === null) {
       return { battle: nextBattle, droppedRune: null };
@@ -38,9 +45,11 @@ export class RewardEngine {
       shardRewards.RARE = 1 + Math.floor(nextBattle.locationLevel / 40);
     }
 
-    const droppedRune = Math.random() * 100 <= nextBattle.enemy.runeDropChance
-      ? RuneFactory.create(nextBattle.locationLevel)
-      : null;
+    const droppedRune = options.forcedRune ?? (
+      Math.random() * 100 <= nextBattle.enemy.runeDropChance
+        ? RuneFactory.create(nextBattle.locationLevel)
+        : null
+    );
 
     nextBattle.rewards = {
       ...nextBattle.rewards,

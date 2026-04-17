@@ -1,5 +1,6 @@
 export type StatKey = 'health' | 'attack' | 'defence' | 'magicDefence' | 'dexterity' | 'intelligence';
 export type TurnOwner = 'PLAYER' | 'ENEMY';
+export type BattleActionType = 'ATTACK' | 'RUNE_SKILL';
 export type BattleStatus = 'ACTIVE' | 'COMPLETED';
 export type BattleResult = 'VICTORY' | 'DEFEAT';
 export type TutorialState = 'ACTIVE' | 'SKIPPED' | 'COMPLETED';
@@ -124,6 +125,25 @@ export interface BattlePlayerSnapshot {
   currentHealth: number;
   maxMana: number;
   currentMana: number;
+  runeLoadout?: BattleRuneLoadoutSnapshot | null;
+  guardPoints?: number;
+}
+
+export interface BattleRuneActionSnapshot {
+  code: string;
+  name: string;
+  manaCost: number;
+  cooldownTurns: number;
+  currentCooldown: number;
+}
+
+export interface BattleRuneLoadoutSnapshot {
+  runeId: string;
+  runeName: string;
+  archetypeCode: string | null;
+  archetypeName: string | null;
+  passiveAbilityCodes: string[];
+  activeAbility: BattleRuneActionSnapshot | null;
 }
 
 export interface BattleEnemySnapshot {
