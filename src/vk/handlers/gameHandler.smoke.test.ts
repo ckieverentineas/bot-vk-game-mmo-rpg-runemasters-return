@@ -166,7 +166,7 @@ const createServices = (): AppServices => {
         archetypeCode: 'ember',
         passiveAbilityCodes: ['ember_heart'],
         activeAbilityCodes: ['ember_pulse'],
-        name: 'Эпическая руна Уголь',
+        name: 'Эпическая руна Пламени',
         rarity: 'EPIC',
         isEquipped: false,
         health: 5,
@@ -317,9 +317,9 @@ describe('GameHandler smoke', () => {
         ...createBattle().player,
         runeLoadout: {
           runeId: 'rune-1',
-          runeName: 'Эпическая руна Уголь',
+          runeName: 'Эпическая руна Пламени',
           archetypeCode: 'ember',
-          archetypeName: 'Уголь',
+          archetypeName: 'Штурм',
           passiveAbilityCodes: ['ember_heart'],
           activeAbility: {
             code: 'ember_pulse',
@@ -425,8 +425,8 @@ describe('GameHandler smoke', () => {
 
     expect(services.getRuneCollection.execute).toHaveBeenCalledTimes(2);
     expect(getReplyCalls(runeContext)[0]?.message).toContain('Руны и мастерская');
-    expect(getReplyCalls(runeContext)[0]?.message).toContain('Школа: Уголь');
-    expect(getReplyCalls(runeContext)[0]?.message).toContain('Школа давления');
+    expect(getReplyCalls(runeContext)[0]?.message).toContain('Школа: Пламя');
+    expect(getReplyCalls(runeContext)[0]?.message).toContain('Роль: Штурм');
     expect(getReplyCalls(runeContext)[0]?.message).toContain('Импульс углей');
     expect(getReplyCalls(altarContext)[0]?.message).toContain('Руны и мастерская');
   });

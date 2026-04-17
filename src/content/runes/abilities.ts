@@ -35,6 +35,17 @@ export const abilitySeed = [
     tags: ['passive', 'defence', 'stone'],
   },
   {
+    code: 'stone_bastion',
+    name: 'Каменный отпор',
+    description: 'Активный ответ школы Камня: даёт защиту и удерживает темп против опасных ходов врага.',
+    kind: 'ACTIVE',
+    target: 'SELF',
+    runeArchetypeCode: 'stone',
+    manaCost: 2,
+    cooldownTurns: 2,
+    tags: ['active', 'defence', 'stone'],
+  },
+  {
     code: 'gale_step',
     name: 'Шаг шквала',
     description: 'Активный манёвр, который должен лечь в будущую систему темпа и инициативы.',

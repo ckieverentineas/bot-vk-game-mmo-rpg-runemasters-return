@@ -60,7 +60,7 @@ const createBattle = (): BattleView => ({
 });
 
 const tutorialRune: RuneDraft = {
-  name: 'Необычная руна Уголь',
+  name: 'Необычная руна Пламени',
   rarity: 'UNUSUAL',
   isEquipped: false,
   archetypeCode: 'ember',
@@ -80,6 +80,6 @@ describe('RewardEngine', () => {
 
     expect(rewarded.droppedRune).toEqual(tutorialRune);
     expect(rewarded.battle.rewards?.droppedRune).toEqual(tutorialRune);
-    expect(rewarded.battle.log.some((entry) => entry.includes('Необычная руна Уголь'))).toBe(true);
+    expect(rewarded.battle.log.some((entry) => entry.includes('Необычная руна Пламени'))).toBe(true);
   });
 });

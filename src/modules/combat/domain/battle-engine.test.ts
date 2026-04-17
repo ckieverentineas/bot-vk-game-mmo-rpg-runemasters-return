@@ -26,9 +26,9 @@ const createBattle = (overrides: Partial<BattleView> = {}): BattleView => ({
     currentMana: 4,
     runeLoadout: {
       runeId: 'rune-1',
-      runeName: 'Руна Уголь',
+      runeName: 'Руна Пламени',
       archetypeCode: 'ember',
-      archetypeName: 'Уголь',
+      archetypeName: 'Штурм',
       passiveAbilityCodes: ['ember_heart'],
       activeAbility: {
         code: 'ember_pulse',
@@ -126,7 +126,7 @@ describe('BattleEngine', () => {
     expect(resolved.log.some((entry) => entry.includes('Импульс углей'))).toBe(true);
   });
 
-  it('школа угля усиливает базовую атаку постоянным давлением', () => {
+  it('школа пламени усиливает базовую атаку постоянным давлением', () => {
     vi.spyOn(Math, 'random').mockReturnValue(0.5);
     const battle = createBattle({
       enemy: {
@@ -138,7 +138,7 @@ describe('BattleEngine', () => {
     const resolved = BattleEngine.attack(battle);
 
     expect(resolved.enemy.currentHealth).toBe(3);
-    expect(resolved.log.some((entry) => entry.includes('Школа Угля'))).toBe(true);
+    expect(resolved.log.some((entry) => entry.includes('Школа Пламени'))).toBe(true);
   });
 
   it('даёт игроку универсальную защиту вместо атаки', () => {
@@ -151,14 +151,14 @@ describe('BattleEngine', () => {
     expect(resolved.log.some((entry) => entry.includes('защитную стойку'))).toBe(true);
   });
 
-  it('школа камня усиливает защитную стойку', () => {
+  it('школа тверди усиливает защитную стойку', () => {
     const battle = createBattle({
       player: {
         ...createBattle().player,
         runeLoadout: {
           ...createBattle().player.runeLoadout!,
           archetypeCode: 'stone',
-          archetypeName: 'Камень',
+          archetypeName: 'Страж',
           passiveAbilityCodes: ['stone_guard'],
           activeAbility: null,
         },
@@ -170,7 +170,46 @@ describe('BattleEngine', () => {
     expect(resolved.player.guardPoints).toBe(4);
   });
 
-  it('школа эха превращает телеграф врага в усиленную атаку', () => {
+  it('школа тверди даёт активный отпор против опасного хода', () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0.5);
+    const battle = createBattle({
+      player: {
+        ...createBattle().player,
+        defence: 5,
+        runeLoadout: {
+          ...createBattle().player.runeLoadout!,
+          archetypeCode: 'stone',
+          archetypeName: 'Страж',
+          passiveAbilityCodes: ['stone_guard'],
+          activeAbility: {
+            code: 'stone_bastion',
+            name: 'Каменный отпор',
+            manaCost: 2,
+            cooldownTurns: 2,
+            currentCooldown: 0,
+          },
+        },
+      },
+      enemy: {
+        ...createBattle().enemy,
+        intent: {
+          code: 'HEAVY_STRIKE',
+          title: 'Тяжёлый удар',
+          description: 'Следующая атака врага будет сильнее обычной.',
+          bonusAttack: 3,
+        },
+      },
+    });
+
+    const resolved = BattleEngine.useRuneSkill(battle);
+
+    expect(resolved.player.currentMana).toBe(2);
+    expect(resolved.player.guardPoints).toBeGreaterThanOrEqual(6);
+    expect(resolved.log.some((entry) => entry.includes('Каменный отпор'))).toBe(true);
+    expect(resolved.log.some((entry) => entry.includes('Школа Тверди'))).toBe(true);
+  });
+
+  it('школа прорицания превращает телеграф врага в усиленную атаку', () => {
     vi.spyOn(Math, 'random').mockReturnValue(0.5);
     const battle = createBattle({
       player: {
@@ -178,7 +217,7 @@ describe('BattleEngine', () => {
         runeLoadout: {
           ...createBattle().player.runeLoadout!,
           archetypeCode: 'echo',
-          archetypeName: 'Эхо',
+          archetypeName: 'Провидец',
           passiveAbilityCodes: ['echo_mind'],
           activeAbility: null,
         },
@@ -197,7 +236,7 @@ describe('BattleEngine', () => {
     const resolved = BattleEngine.attack(battle);
 
     expect(resolved.enemy.currentHealth).toBe(3);
-    expect(resolved.log.some((entry) => entry.includes('Эхо разума'))).toBe(true);
+    expect(resolved.log.some((entry) => entry.includes('Школа Прорицания'))).toBe(true);
   });
 
   it('телеграфирует тяжёлый удар у подходящего врага вместо обычной атаки', () => {

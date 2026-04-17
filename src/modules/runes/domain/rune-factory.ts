@@ -3,6 +3,7 @@ import { emptyStats } from '../../player/domain/player-stats';
 import type { RuneDraft, RuneRarity, RuneView, StatKey } from '../../../shared/types/game';
 
 import { applyRuneArchetype, getRuneArchetype, listRuneArchetypes } from './rune-abilities';
+import { getRuneSchoolPresentation } from './rune-schools';
 
 const defaultStatPool: readonly StatKey[] = ['health', 'attack', 'defence', 'magicDefence', 'dexterity', 'intelligence'];
 const naturalRarityOrder: readonly RuneRarity[] = ['USUAL', 'UNUSUAL', 'RARE', 'EPIC', 'LEGENDARY', 'MYTHICAL'];
@@ -26,10 +27,11 @@ export class RuneFactory {
     const rarity = forcedRarity ?? this.rollRarity(this.resolveNaturalRarityCap(locationLevel));
     const profile = gameBalance.runes.profiles[rarity];
     const archetype = forcedArchetypeCode ? getRuneArchetype(forcedArchetypeCode) : randomItem(listRuneArchetypes());
+    const school = getRuneSchoolPresentation(archetype.code);
     const statPool = createArchetypeStatPool(archetype.code);
     const rune = applyRuneArchetype({
       ...emptyStats(),
-      name: `${profile.title} ${archetype.name}`,
+      name: `${profile.title} руна ${school?.runeTitle ?? archetype.name}`,
       rarity,
       isEquipped: false,
     }, archetype.code);

@@ -165,6 +165,8 @@ export class BattleEngine {
     switch (activeAbility.code) {
       case 'ember_pulse':
         return this.performEmberPulse(nextBattle, activeAbility);
+      case 'stone_bastion':
+        return this.performStoneBastion(nextBattle, activeAbility);
       case 'gale_step':
         return this.performGaleStep(nextBattle, activeAbility);
       default:
@@ -230,8 +232,8 @@ export class BattleEngine {
     nextBattle.log = appendBattleLog(
       nextBattle.log,
       `⚔️ Вы наносите ${totalDamage} урона врагу ${nextBattle.enemy.name}.`,
-      ...(emberBonus > 0 ? [`🔥 Школа Угля усиливает атаку ещё на ${emberBonus}.`] : []),
-      ...(echoBonus > 0 ? [`🧠 Эхо разума считывает намерение врага и добавляет ${echoBonus} магического урона.`] : []),
+      ...(emberBonus > 0 ? [`🔥 Школа Пламени усиливает атаку ещё на ${emberBonus}.`] : []),
+      ...(echoBonus > 0 ? [`🧠 Школа Прорицания считывает намерение врага и добавляет ${echoBonus} магического урона.`] : []),
     );
 
     if (nextBattle.enemy.currentHealth === 0) {
@@ -251,6 +253,34 @@ export class BattleEngine {
     nextBattle.log = appendBattleLog(
       nextBattle.log,
       `🌀 ${activeAbility.name} прожигает ${nextBattle.enemy.name} на ${damage} урона.`,
+      `💙 Мана: ${nextBattle.player.currentMana}/${nextBattle.player.maxMana}.`,
+    );
+
+    if (nextBattle.enemy.currentHealth === 0) {
+      return finalizeBattle(nextBattle, 'VICTORY');
+    }
+
+    nextBattle.turnOwner = 'ENEMY';
+    return nextBattle;
+  }
+
+  private static performStoneBastion(nextBattle: BattleView, activeAbility: BattleRuneActionSnapshot): BattleView {
+    const damage = calculatePhysicalDamage(
+      Math.max(1, Math.floor(nextBattle.player.attack * 0.6) + Math.floor(nextBattle.player.defence / 2)),
+      nextBattle.enemy.defence,
+    );
+    const intentBonus = nextBattle.enemy.intent?.code === 'HEAVY_STRIKE' ? 2 : 0;
+    const guardGain = resolveDefendGuardGain(nextBattle.player) + resolveStoneGuardGainBonus(nextBattle) + 1 + intentBonus;
+    const guardCap = resolveGuardCap(nextBattle.player) + resolveStoneGuardCapBonus(nextBattle);
+
+    nextBattle.enemy.currentHealth = Math.max(0, nextBattle.enemy.currentHealth - damage);
+    nextBattle.player.guardPoints = Math.min(guardCap, getGuardPoints(nextBattle.player) + guardGain);
+    spendRuneManaAndSetCooldown(nextBattle, activeAbility);
+
+    nextBattle.log = appendBattleLog(
+      nextBattle.log,
+      `🌀 ${activeAbility.name} наносит ${damage} урона и поднимает каменную защиту на ${guardGain}.`,
+      ...(intentBonus > 0 ? ['🪨 Школа Тверди укрепляется ещё сильнее против заранее раскрытой угрозы.'] : []),
       `💙 Мана: ${nextBattle.player.currentMana}/${nextBattle.player.maxMana}.`,
     );
 

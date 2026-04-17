@@ -4,6 +4,7 @@ import type { RuneDraft } from '../../../shared/types/game';
 
 import { applyRuneArchetype, describeRuneContent } from './rune-abilities';
 import { RuneFactory } from './rune-factory';
+import { getRuneSchoolPresentation } from './rune-schools';
 
 const createBaseRune = (): RuneDraft => ({
   name: 'Тестовая руна',
@@ -32,9 +33,9 @@ describe('describeRuneContent', () => {
     const rune = applyRuneArchetype(createBaseRune(), 'stone');
     const description = describeRuneContent(rune);
 
-    expect(description.archetype?.name).toBe('Камень');
+    expect(description.archetype?.name).toBe('Страж');
     expect(description.passiveAbilities.map(({ code }) => code)).toEqual(['stone_guard']);
-    expect(description.activeAbilities).toEqual([]);
+    expect(description.activeAbilities.map(({ code }) => code)).toEqual(['stone_bastion']);
   });
 });
 
@@ -42,9 +43,10 @@ describe('RuneFactory.create', () => {
   it('создаёт руну с привязанным архетипом и способностями из контента', () => {
     const rune = RuneFactory.create(20, 'EPIC');
     const description = describeRuneContent(rune);
+    const school = getRuneSchoolPresentation(rune.archetypeCode);
 
     expect(rune.archetypeCode).toBeTruthy();
-    expect(rune.name).toContain(description.archetype?.name ?? '');
+    expect(rune.name).toContain(school?.runeTitle ?? description.archetype?.name ?? '');
     expect(description.passiveAbilities.length + description.activeAbilities.length).toBeGreaterThan(0);
   });
 

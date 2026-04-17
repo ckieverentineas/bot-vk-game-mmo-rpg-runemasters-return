@@ -173,7 +173,7 @@ const createRuneDraft = (): RuneDraft => ({
   archetypeCode: 'ember',
   passiveAbilityCodes: ['ember_heart'],
   activeAbilityCodes: ['ember_pulse'],
-  name: 'Обычная руна Уголь',
+  name: 'Обычная руна Пламени',
   rarity: 'USUAL',
   isEquipped: false,
   health: 1,
@@ -338,9 +338,9 @@ describe('PrismaGameRepository release hardening', () => {
         guardPoints: 3,
         runeLoadout: {
           runeId: 'rune-1',
-          runeName: 'Руна Уголь',
+          runeName: 'Руна Пламени',
           archetypeCode: 'ember',
-          archetypeName: 'Уголь',
+          archetypeName: 'Штурм',
           passiveAbilityCodes: ['ember_heart'],
           activeAbility: {
             code: 'ember_pulse',

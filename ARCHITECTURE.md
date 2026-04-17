@@ -138,6 +138,8 @@ src/
 - консистентность рунных архетипов и способностей;
 - базовые ограничения игрового баланса и стартовой конфигурации.
 
+Текущее правило: `archetypeCode` остаётся внутренним content/storage key, а player-facing **школа** выводится через отдельный read-model поверх этого key. Это позволяет развести fantasy-domain и combat-role без миграции базы на раннем этапе.
+
 Эта валидация запускается через `npm run content:validate`, входит в `npm run check`, включена в `npm run release:preflight` и вызывается перед [`seed()`](src/database/seed.ts:5), чтобы не заливать битый контент в базу.
 
 ### 5. Общие application guard'ы
