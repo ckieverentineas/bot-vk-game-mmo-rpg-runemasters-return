@@ -166,6 +166,12 @@ src/
 - временную защиту/guard как часть player snapshot, а не transport-состояния.
 - passive school identity остаётся derivable из `passiveAbilityCodes`, а не требует отдельной persistence-схемы.
 
+Следующий foundation-срез закрепляет это уже как platform contract:
+
+- `BattlePlayerSnapshot.runeLoadout` остаётся battle read-model'ю;
+- параллельно в `BattleSession.playerLoadoutSnapshot` теперь живёт versioned `LoadoutSnapshot`, который переживает save/load независимо от cooldown/runtime-полей;
+- canonical reward write-path больше не опирается только на `battle.rewards`, а фиксирует `RewardIntent` и append-only `RewardLedger` для exact-once claim semantics.
+
 Следующий shipped tactics layer добавляет ещё локальные боевые контракты внутри snapshot:
 
 - `DEFEND` как универсальное действие игрока, работающее через уже существующий `guardPoints`;
@@ -205,6 +211,7 @@ src/
 - расход осколков идёт через guarded `updateMany`, поэтому инвентарь не должен уходить в отрицательные значения;
 - уничтожение руны и возврат осколков выполняются атомарно, чтобы повторный `сломать` не дублировал награду;
 - создание нового боя повторно использует уже активную сессию, если она ещё не завершена.
+- победная награда теперь получает отдельный versioned `RewardIntent` и сохраняется в `RewardLedgerRecord`, чтобы повторный retry возвращал canonical battle result вместо повторного reroll.
 
 ### 9. Smoke verification
 

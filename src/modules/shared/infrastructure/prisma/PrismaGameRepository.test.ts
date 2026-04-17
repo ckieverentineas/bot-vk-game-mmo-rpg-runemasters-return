@@ -67,6 +67,7 @@ const createBattleRow = (overrides: Partial<Record<string, unknown>> = {}) => ({
   playerId: 1,
   status: 'ACTIVE',
   battleType: 'PVE',
+  playerLoadoutSnapshot: null,
   locationLevel: 1,
   biomeCode: 'initium',
   enemyCode: 'slime',
@@ -212,12 +213,19 @@ const createPrismaMock = () => {
       updateMany: vi.fn(),
       deleteMany: vi.fn(),
     },
+    rewardLedgerRecord: {
+      create: vi.fn(),
+      findUnique: vi.fn(),
+    },
     battleSession: {
       findFirst: vi.fn(),
       findUnique: vi.fn(),
       create: vi.fn(),
       updateMany: vi.fn(),
       delete: vi.fn(),
+    },
+    gameLog: {
+      create: vi.fn(),
     },
   };
 
@@ -295,17 +303,59 @@ describe('PrismaGameRepository release hardening', () => {
 
   it('treats repeated battle finalization as idempotent', async () => {
     const { repository, tx } = createPrismaMock();
+    const persistedBattle = createBattleRow({
+      status: 'COMPLETED',
+      result: 'VICTORY',
+      rewardsSnapshot: JSON.stringify(createBattleView().rewards),
+    });
 
     tx.battleSession.updateMany.mockResolvedValue({ count: 0 });
     tx.player.findUnique.mockResolvedValue(createPlayerRecord());
+    tx.battleSession.findFirst.mockResolvedValue(persistedBattle);
 
-    const player = await repository.finalizeBattle(1, createBattleView(), null);
+    const finalized = await repository.finalizeBattle(1, createBattleView());
 
-    expect(player.playerId).toBe(1);
+    expect(finalized.player.playerId).toBe(1);
+    expect(finalized.battle.id).toBe(persistedBattle.id);
     expect(tx.player.update).not.toHaveBeenCalled();
     expect(tx.playerProgress.update).not.toHaveBeenCalled();
     expect(tx.playerInventory.update).not.toHaveBeenCalled();
     expect(tx.rune.create).not.toHaveBeenCalled();
+    expect(tx.rewardLedgerRecord.create).not.toHaveBeenCalled();
+  });
+
+  it('creates a reward ledger entry for the canonical victory reward', async () => {
+    const { repository, tx } = createPrismaMock();
+    const persistedBattle = createBattleRow({
+      status: 'COMPLETED',
+      result: 'VICTORY',
+      rewardsSnapshot: JSON.stringify(createBattleView().rewards),
+    });
+
+    tx.battleSession.updateMany.mockResolvedValue({ count: 1 });
+    tx.player.findUnique.mockResolvedValue(createPlayerRecord());
+    tx.player.update.mockResolvedValue({});
+    tx.playerProgress.update.mockResolvedValue({});
+    tx.playerInventory.update.mockResolvedValue({});
+    tx.battleSession.findFirst.mockResolvedValue(persistedBattle);
+
+    const finalized = await repository.finalizeBattle(1, createBattleView());
+
+    expect(finalized.battle.status).toBe('COMPLETED');
+    expect(tx.rewardLedgerRecord.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        playerId: 1,
+        ledgerKey: 'battle-victory:battle-1',
+        sourceType: 'BATTLE_VICTORY',
+        sourceId: 'battle-1',
+        status: 'APPLIED',
+      }),
+    });
+    expect(tx.gameLog.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        action: 'reward_claim_applied',
+      }),
+    });
   });
 
   it('hydrates legacy battle snapshots without rune combat fields', async () => {
@@ -387,5 +437,103 @@ describe('PrismaGameRepository release hardening', () => {
     expect(battle?.player.currentMana).toBe(1);
     expect(battle?.enemy.intent?.code).toBe('HEAVY_STRIKE');
     expect(battle?.enemy.hasUsedSignatureMove).toBe(false);
+  });
+
+  it('hydrates battle rune loadout from the frozen loadout snapshot contract', async () => {
+    const { repository, tx } = createPrismaMock();
+
+    tx.battleSession.findFirst.mockResolvedValue(createBattleRow({
+      playerLoadoutSnapshot: JSON.stringify({
+        schemaVersion: 1,
+        runeId: 'rune-1',
+        runeName: 'Руна Пламени',
+        archetypeCode: 'ember',
+        passiveAbilityCodes: ['ember_heart'],
+        activeAbility: {
+          code: 'ember_pulse',
+          name: 'Импульс углей',
+          manaCost: 3,
+          cooldownTurns: 2,
+        },
+      }),
+      playerSnapshot: JSON.stringify({
+        playerId: 1,
+        name: 'Рунный мастер #1001',
+        attack: 4,
+        defence: 3,
+        magicDefence: 1,
+        dexterity: 2,
+        intelligence: 1,
+        maxHealth: 8,
+        currentHealth: 8,
+        maxMana: 4,
+        currentMana: 4,
+      }),
+    }));
+
+    const battle = await repository.getActiveBattle(1);
+
+    expect(battle?.player.runeLoadout?.runeId).toBe('rune-1');
+    expect(battle?.player.runeLoadout?.activeAbility?.currentCooldown).toBe(0);
+    expect(battle?.player.runeLoadout?.archetypeName).toBe('Штурм');
+  });
+
+  it('rejects unsupported loadout snapshot versions instead of silently masking them', async () => {
+    const { repository, tx } = createPrismaMock();
+
+    tx.battleSession.findFirst.mockResolvedValue(createBattleRow({
+      playerLoadoutSnapshot: JSON.stringify({
+        schemaVersion: 99,
+        runeId: 'rune-1',
+      }),
+    }));
+
+    await expect(repository.getActiveBattle(1)).rejects.toMatchObject({
+      code: 'loadout_snapshot_invalid',
+    });
+  });
+
+  it('falls back to the legacy battle loadout when the versioned snapshot is newer than the runtime', async () => {
+    const { repository, tx } = createPrismaMock();
+
+    tx.battleSession.findFirst.mockResolvedValue(createBattleRow({
+      playerLoadoutSnapshot: JSON.stringify({
+        schemaVersion: 99,
+      }),
+      playerSnapshot: JSON.stringify({
+        playerId: 1,
+        name: 'Рунный мастер #1001',
+        attack: 4,
+        defence: 3,
+        magicDefence: 1,
+        dexterity: 2,
+        intelligence: 1,
+        maxHealth: 8,
+        currentHealth: 8,
+        maxMana: 4,
+        currentMana: 4,
+        guardPoints: 1,
+        runeLoadout: {
+          runeId: 'rune-1',
+          runeName: 'Руна Пламени',
+          archetypeCode: 'ember',
+          archetypeName: 'Штурм',
+          passiveAbilityCodes: ['ember_heart'],
+          activeAbility: {
+            code: 'ember_pulse',
+            name: 'Импульс углей',
+            manaCost: 3,
+            cooldownTurns: 2,
+            currentCooldown: 1,
+          },
+        },
+      }),
+    }));
+
+    const battle = await repository.getActiveBattle(1);
+
+    expect(battle?.player.runeLoadout?.runeId).toBe('rune-1');
+    expect(battle?.player.runeLoadout?.activeAbility?.currentCooldown).toBe(1);
+    expect(battle?.player.guardPoints).toBe(1);
   });
 });

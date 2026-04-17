@@ -18,7 +18,10 @@ import type {
   StatBlock,
 } from '../../../../shared/types/game';
 import { emptyInventory, emptyStats, resolveAdaptiveAdventureLocationLevel, resolveLevelProgression, shardFieldForRarity } from '../../../player/domain/player-stats';
-import type { GameRepository } from '../../application/ports/GameRepository';
+import { buildLoadoutSnapshotFromBattle, isLoadoutSnapshot, projectBattleRuneLoadout, type LoadoutSnapshot } from '../../domain/contracts/loadout-snapshot';
+import { createAppliedRewardLedgerEntry } from '../../domain/contracts/reward-ledger';
+import { createBattleVictoryRewardIntent } from '../../domain/contracts/reward-intent';
+import type { FinalizeBattleResult, GameRepository } from '../../application/ports/GameRepository';
 
 const playerInclude = {
   user: true,
@@ -100,9 +103,69 @@ const defaultBattleEnemySnapshot = (enemyCode: string): BattleView['enemy'] => (
   hasUsedSignatureMove: false,
 });
 
+interface ParsedLoadoutSnapshot {
+  readonly snapshot: LoadoutSnapshot | null;
+  readonly fallbackToBattleSnapshot: boolean;
+}
+
+const parsePersistedLoadoutSnapshot = (value: string | null): ParsedLoadoutSnapshot => {
+  if (!value) {
+    return {
+      snapshot: null,
+      fallbackToBattleSnapshot: false,
+    };
+  }
+
+  let parsed: unknown;
+
+  try {
+    parsed = JSON.parse(value);
+  } catch {
+    return {
+      snapshot: null,
+      fallbackToBattleSnapshot: true,
+    };
+  }
+
+  if (!isLoadoutSnapshot(parsed)) {
+    return {
+      snapshot: null,
+      fallbackToBattleSnapshot: true,
+    };
+  }
+
+  return {
+    snapshot: parsed,
+    fallbackToBattleSnapshot: false,
+  };
+};
+
+const hydrateBattlePlayerSnapshot = (
+  playerId: number,
+  snapshot: BattleView['player'],
+  loadoutSnapshot: LoadoutSnapshot | null,
+): BattleView['player'] => {
+  const fallback = defaultBattlePlayerSnapshot(playerId);
+  const currentCooldown = snapshot.runeLoadout?.activeAbility?.currentCooldown ?? 0;
+  const normalizedLoadout = projectBattleRuneLoadout(
+    loadoutSnapshot ?? buildLoadoutSnapshotFromBattle(snapshot.runeLoadout ?? null),
+    currentCooldown,
+  );
+
+  return {
+    ...fallback,
+    ...snapshot,
+    runeLoadout: normalizedLoadout,
+    guardPoints: snapshot.guardPoints ?? fallback.guardPoints,
+  };
+};
+
 const mapBattlePersistence = (battle: PersistedBattleState) => ({
   status: battle.status,
   turnOwner: battle.turnOwner,
+  playerLoadoutSnapshot: battle.player.runeLoadout
+    ? stringifyJson(buildLoadoutSnapshotFromBattle(battle.player.runeLoadout), 'null')
+    : null,
   playerSnapshot: stringifyJson(battle.player, '{}'),
   enemySnapshot: stringifyJson(battle.enemy, '{}'),
   log: stringifyJson(battle.log, '[]'),
@@ -589,14 +652,18 @@ export class PrismaGameRepository implements GameRepository {
       const saved = await tx.battleSession.updateMany({
         where: {
           id: battle.id,
+          playerId: battle.playerId,
           status: 'ACTIVE',
         },
         data: persistedBattle,
       });
 
       if (saved.count === 0) {
-        const currentBattle = await tx.battleSession.findUnique({
-          where: { id: battle.id },
+        const currentBattle = await tx.battleSession.findFirst({
+          where: {
+            id: battle.id,
+            playerId: battle.playerId,
+          },
         });
 
         if (!currentBattle) {
@@ -606,8 +673,11 @@ export class PrismaGameRepository implements GameRepository {
         return currentBattle;
       }
 
-      const currentBattle = await tx.battleSession.findUnique({
-        where: { id: battle.id },
+      const currentBattle = await tx.battleSession.findFirst({
+        where: {
+          id: battle.id,
+          playerId: battle.playerId,
+        },
       });
 
       if (!currentBattle) {
@@ -620,24 +690,46 @@ export class PrismaGameRepository implements GameRepository {
     return this.mapBattle(updated);
   }
 
-  public async finalizeBattle(playerId: number, battle: BattleView, droppedRune: RuneDraft | null): Promise<PlayerState> {
+  public async finalizeBattle(playerId: number, battle: BattleView): Promise<FinalizeBattleResult> {
     return this.prisma.$transaction(async (tx) => {
       const persistedBattle = mapBattlePersistence(battle);
       const finalized = await tx.battleSession.updateMany({
         where: {
           id: battle.id,
+          playerId,
           status: 'ACTIVE',
         },
         data: persistedBattle,
       });
 
+      const currentBattle = await tx.battleSession.findFirst({
+        where: {
+          id: battle.id,
+          playerId,
+        },
+      });
+
+      if (!currentBattle) {
+        throw new AppError('battle_not_found', 'Активный бой уже недоступен. Начните новый бой.');
+      }
+
       if (finalized.count === 0) {
         const updatedPlayer = await this.requirePlayerRecord(tx, playerId);
-        return this.mapPlayer(updatedPlayer);
+        return {
+          player: this.mapPlayer(updatedPlayer),
+          battle: this.mapBattle(currentBattle),
+        };
       }
 
       const player = await this.requirePlayerRecord(tx, playerId);
       const currentPlayer = this.mapPlayer(player);
+      const rewardIntent = battle.result === 'VICTORY'
+        ? createBattleVictoryRewardIntent(playerId, battle)
+        : null;
+
+      if (battle.result === 'VICTORY' && !rewardIntent) {
+        throw new AppError('battle_reward_missing', 'Нельзя завершить победный бой без зафиксированной награды.');
+      }
 
       let nextLevel = player.level;
       let nextExperience = player.experience;
@@ -653,12 +745,17 @@ export class PrismaGameRepository implements GameRepository {
       let nextTutorialState = currentPlayer.tutorialState;
       const inventoryDelta: InventoryDelta = {};
 
-      if (battle.result === 'VICTORY' && battle.rewards) {
-        const progression = resolveLevelProgression(player.level, player.experience, battle.rewards.experience, nextUnspentStatPoints);
+      if (battle.result === 'VICTORY' && rewardIntent) {
+        const progression = resolveLevelProgression(
+          player.level,
+          player.experience,
+          rewardIntent.payload.experience,
+          nextUnspentStatPoints,
+        );
         nextLevel = progression.level;
         nextExperience = progression.experience;
         nextUnspentStatPoints = progression.unspentStatPoints;
-        nextGold = player.gold + battle.rewards.gold;
+        nextGold = player.gold + rewardIntent.payload.gold;
         nextVictories += 1;
         nextVictoryStreak += 1;
         nextDefeatStreak = 0;
@@ -668,7 +765,7 @@ export class PrismaGameRepository implements GameRepository {
           nextHighestLocationLevel = Math.max(currentPlayer.highestLocationLevel, battle.locationLevel);
         }
 
-        for (const [rarity, amount] of Object.entries(battle.rewards.shards) as Array<[RuneRarity, number | undefined]>) {
+        for (const [rarity, amount] of Object.entries(rewardIntent.payload.shards) as Array<[RuneRarity, number | undefined]>) {
           if (amount !== undefined && amount > 0) {
             const shardField = shardFieldForRarity(rarity);
             inventoryDelta[shardField] = (inventoryDelta[shardField] ?? 0) + amount;
@@ -739,14 +836,57 @@ export class PrismaGameRepository implements GameRepository {
         });
       }
 
-      if (droppedRune) {
+      if (rewardIntent?.payload.droppedRune) {
         await tx.rune.create({
-          data: mapRuneDraftPersistence(playerId, droppedRune, false),
+          data: mapRuneDraftPersistence(playerId, rewardIntent.payload.droppedRune, false),
+        });
+      }
+
+      if (rewardIntent) {
+        const appliedAt = new Date();
+        const rewardLedger = createAppliedRewardLedgerEntry(rewardIntent, appliedAt.toISOString());
+
+        await tx.rewardLedgerRecord.create({
+          data: {
+            playerId,
+            ledgerKey: rewardLedger.ledgerKey,
+            sourceType: rewardLedger.sourceType,
+            sourceId: rewardLedger.sourceId,
+            status: rewardLedger.status,
+            entrySnapshot: stringifyJson(rewardLedger, '{}'),
+            appliedAt,
+          },
+        });
+
+        await tx.gameLog.create({
+          data: {
+            userId: player.userId,
+            action: 'reward_claim_applied',
+            details: stringifyJson({
+              ledgerKey: rewardLedger.ledgerKey,
+              sourceType: rewardLedger.sourceType,
+              sourceId: rewardLedger.sourceId,
+            }, '{}'),
+          },
         });
       }
 
       const updatedPlayer = await this.requirePlayerRecord(tx, playerId);
-      return this.mapPlayer(updatedPlayer);
+      const finalizedBattle = await tx.battleSession.findFirst({
+        where: {
+          id: battle.id,
+          playerId,
+        },
+      });
+
+      if (!finalizedBattle) {
+        throw new AppError('battle_not_found', 'Активный бой уже недоступен. Начните новый бой.');
+      }
+
+      return {
+        player: this.mapPlayer(updatedPlayer),
+        battle: this.mapBattle(finalizedBattle),
+      };
     });
   }
 
@@ -866,6 +1006,7 @@ export class PrismaGameRepository implements GameRepository {
     playerId: number;
     status: string;
     battleType: string;
+    playerLoadoutSnapshot?: string | null;
     locationLevel: number;
     biomeCode: string;
     enemyCode: string;
@@ -878,6 +1019,13 @@ export class PrismaGameRepository implements GameRepository {
     createdAt: Date;
     updatedAt: Date;
   }): BattleView {
+    const playerSnapshot = parseJson<BattleView['player']>(battle.playerSnapshot, defaultBattlePlayerSnapshot(battle.playerId));
+    const persistedLoadoutSnapshot = parsePersistedLoadoutSnapshot(battle.playerLoadoutSnapshot ?? null);
+
+    if (persistedLoadoutSnapshot.fallbackToBattleSnapshot && !playerSnapshot.runeLoadout) {
+      throw new AppError('loadout_snapshot_invalid', 'Снимок рунной сборки боя повреждён. Начните новый бой.');
+    }
+
     return {
       id: battle.id,
       playerId: battle.playerId,
@@ -887,7 +1035,7 @@ export class PrismaGameRepository implements GameRepository {
       biomeCode: battle.biomeCode,
       enemyCode: battle.enemyCode,
       turnOwner: battle.turnOwner as BattleView['turnOwner'],
-      player: parseJson<BattleView['player']>(battle.playerSnapshot, defaultBattlePlayerSnapshot(battle.playerId)),
+      player: hydrateBattlePlayerSnapshot(battle.playerId, playerSnapshot, persistedLoadoutSnapshot.snapshot),
       enemy: parseJson<BattleView['enemy']>(battle.enemySnapshot, defaultBattleEnemySnapshot(battle.enemyCode)),
       log: parseJson<BattleView['log']>(battle.log, []),
       result: battle.result as BattleView['result'],

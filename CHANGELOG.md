@@ -316,22 +316,32 @@
 ### Commit
 
 - `worktree` — `feat: separate player-facing schools from internal archetypes`
+- `worktree` — `feat: freeze reward and loadout persistence contracts`
 
 ### Added
 
 - явная модель `школа -> архетип` в `PLAN.md` и `README.md`, чтобы продуктовая и техническая терминология больше не конфликтовали;
-- player-facing school presentation layer теперь хранит не только fantasy и play pattern, но и роль стартового архетипа.
+- player-facing school presentation layer теперь хранит не только fantasy и play pattern, но и роль стартового архетипа;
+- versioned platform contracts `LoadoutSnapshot`, `RewardIntent` и `RewardLedger` в [`src/modules/shared/domain/contracts`](src/modules/shared/domain/contracts);
+- тесты на новые persistence-контракты и repository-level replay/loadout hydration regressions в [`src/modules/shared/domain/contracts/contracts.test.ts`](src/modules/shared/domain/contracts/contracts.test.ts) и [`src/modules/shared/infrastructure/prisma/PrismaGameRepository.test.ts`](src/modules/shared/infrastructure/prisma/PrismaGameRepository.test.ts);
+- новая Prisma-модель `RewardLedgerRecord` в [`prisma/schema.prisma`](prisma/schema.prisma) для append-only audit trail по reward claim'ам.
 
 ### Changed
 
 - стартовые player-facing школы переименованы в более сильные fantasy-домены: **Пламя**, **Твердь**, **Буря**, **Прорицание**;
 - legacy `archetypeCode` сохранён как внутренний key, но архетип в контенте и snapshot теперь трактуется как боевая роль: **Штурм**, **Страж**, **Налётчик**, **Провидец**;
-- rune screen, battle screen, reward copy и main menu теперь объясняют игроку не только школу, но и её роль.
+- rune screen, battle screen, reward copy и main menu теперь объясняют игроку не только школу, но и её роль;
+- [`buildBattlePlayerSnapshot()`](src/modules/combat/domain/build-battle-player-snapshot.ts) теперь собирает battle loadout через versioned `LoadoutSnapshot`, а [`PrismaGameRepository`](src/modules/shared/infrastructure/prisma/PrismaGameRepository.ts) сохраняет этот snapshot отдельно от battle runtime state;
+- победная финализация боя теперь возвращает canonical persisted battle и записывает exact-once reward claim в ledger вместо раздельного write-path по `droppedRune`;
+- battle reward copy в [`renderBattle()`](src/vk/presenters/messages.ts:409) теперь прямо говорит игроку, что это именно награда за победу.
 
 ### Fixed
 
 - публичный слой больше не опирается на черновые названия вроде `Уголь` и `Камень` как на финальные школы;
-- различие между “магическим путём” и “боевым стилем” теперь задокументировано и лучше читается в продукте.
+- различие между “магическим путём” и “боевым стилем” теперь задокументировано и лучше читается в продукте;
+- повторный retry / replay завершённого победного боя больше не должен показывать локально переролленную награду, если canonical результат уже был сохранён;
+- save/load active battle теперь может восстановить battle rune loadout из versioned contract даже если legacy `playerSnapshot` ещё не содержит этих полей;
+- unsupported loadout snapshot version без legacy fallback больше не маскируется молча под пустое состояние.
 
 ## Шаблон следующей записи
 

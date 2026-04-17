@@ -10,6 +10,11 @@ import type {
   StatBlock,
 } from '../../../../shared/types/game';
 
+export interface FinalizeBattleResult {
+  readonly player: PlayerState;
+  readonly battle: BattleView;
+}
+
 export interface GameRepository {
   findPlayerByVkId(vkId: number): Promise<PlayerState | null>;
   findPlayerById(playerId: number): Promise<PlayerState | null>;
@@ -34,6 +39,6 @@ export interface GameRepository {
   createBattle(playerId: number, battle: CreateBattleInput): Promise<BattleView>;
   getActiveBattle(playerId: number): Promise<BattleView | null>;
   saveBattle(battle: BattleView): Promise<BattleView>;
-  finalizeBattle(playerId: number, battle: BattleView, droppedRune: RuneDraft | null): Promise<PlayerState>;
+  finalizeBattle(playerId: number, battle: BattleView): Promise<FinalizeBattleResult>;
   log(userId: number, action: string, details: unknown): Promise<void>;
 }

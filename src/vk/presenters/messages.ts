@@ -409,7 +409,7 @@ export const renderBattle = (battle: BattleView): string => {
   const rewardLines = battle.status === 'COMPLETED' && battle.rewards
     ? [
         '',
-        `Награда: +${battle.rewards.experience} опыта · +${battle.rewards.gold} пыли`,
+        `Награда за победу: +${battle.rewards.experience} опыта · +${battle.rewards.gold} пыли`,
         ...(battle.rewards.droppedRune ? (() => {
           const droppedSchool = getRuneSchoolPresentation(battle.rewards?.droppedRune?.archetypeCode);
           return [

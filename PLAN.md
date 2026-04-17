@@ -1,435 +1,951 @@
-# PLAN — Runemasters Return Roadmap
+# PLAN — Runemasters Return
 
-## 1. Назначение
+> Исполнительный roadmap проекта от текущего состояния до релиза 1.0 и после него.
+> Текущая дата планирования: 2026-04-17.
 
-Этот файл — рабочий roadmap проекта.
+## 1. Snapshot
 
-- `PLAN.md` = куда идём и в каком порядке;
-- `CHANGELOG.md` = что уже доставлено;
-- `ARCHITECTURE.md` = архитектурные границы и инварианты;
-- `RELEASE_CHECKLIST.md` = как выпускаем изменения.
+- **Текущая фаза:** Foundation & Platform
+- **Следующий контрольный рубеж:** Vertical Slice scope lock
+- **Продуктовый вердикт:** `iterate`
+- **Целевое окно релиза 1.0:** `H1 2028`
+- **Общая уверенность:** `medium`
+- **Главные риски:** различимость школ, пустой midgame, наградные дюпы, content throughput, social/PvP abuse
+- **Связанные документы:** `README.md`, `ARCHITECTURE.md`, `CHANGELOG.md`, `RELEASE_CHECKLIST.md`
 
-## 2. Product direction
+### 1.1 Current quarter objectives
 
-### Основная коррекция курса
+| Objective | Measure of done | Owner role | Check date | Status |
+|---|---|---|---|---|
+| Зафиксировать обещание релиза 1.0 и явный out-of-scope | 1.0 promise и cut-list утверждены в плане | Producer / Product | 2026-05-01 | In progress |
+| Заморозить библиотеку стартовых школ и ladder редкости | school bible v1 и rarity ladder v1 согласованы | Game Design + Balance | 2026-05-15 | In progress |
+| Зафиксировать loadout/reward/schema contracts | есть контрактный пакет и test-plan на миграции | Gameplay / Platform | 2026-05-31 | Planned |
+| Зафиксировать onboarding / return UX и telemetry frame | UX map и telemetry plan утверждены | Content / UX | 2026-06-15 | Planned |
+| Собрать abuse/dependency matrix для Vertical Slice | blocker list, dependency table и concurrency backlog готовы | QA / Release | 2026-06-30 | Planned |
 
-Runemasters Return **не копирует Skyrim/Oblivion**. Мы берём только высокоуровневое вдохновение от RPG-фантазии школ, билдов и постепенного раскрытия силы.
+### 1.2 Next 30 / 60 / 90 days
 
-Наша собственная формула:
+#### By 2026-05-17
 
-- **базовая атака** всегда остаётся доступной и полезной;
-- **рунические школы** — главный слой билд-идентичности;
-- **архетипы** — боевые роли внутри школ, а не замена школам;
-- **редкость** определяет, сколько школьных техник руна может нести, а не только размер цифр;
-- **синергии** добавляются позже как награда за сборку, а не как стартовая перегрузка системы.
+- [ ] Утвердить 1.0 promise и explicit out-of-scope
+- [ ] Утвердить стартовые школы и ruleset редкости
+- [ ] Утвердить owner model и review rhythm
 
-### School vs archetype
+#### By 2026-06-17
 
-- **Школа** = fantasy namespace, drop fantasy, progression line, набор техник и будущих синергий.
-- **Архетип** = боевой паттерн внутри школы: давление, стойкость, темп, punish, контроль и т.д.
-- **Правило v1:** на старте каждая школа может идти с **одним starter archetype**, чтобы не перегрузить UI и баланс.
-- **Правило v2+:** позже одна школа может раскрыться в несколько archetype-вариантов, но только после стабилизации school-first core loop.
+- [ ] Заморозить `SchoolDefinition`, `LoadoutSnapshot`, `RewardIntent`, `RewardLedger`
+- [ ] Подготовить onboarding / return UX brief
+- [ ] Подготовить telemetry plan и abuse matrix v1
 
-Текущая стартовая раскладка v1:
+#### By 2026-07-17
 
-- **Школа Пламени** → архетип **Штурм**
-- **Школа Тверди** → архетип **Страж**
-- **Школа Бури** → архетип **Налётчик**
-- **Школа Прорицания** → архетип **Провидец**
+- [ ] Подготовить migration fixtures и concurrency test backlog
+- [ ] Подготовить content pipeline plan и validators scope
+- [ ] Пройти mid-quarter risk review по готовности Vertical Slice
 
-### Product pillars
+### 1.3 Current blockers and watchlist
 
-1. **Basic attack is evergreen**
-   - игрок никогда не остаётся без понятного действия;
-   - атака — baseline, а не “кнопка для тех, кому не повезло с билдом”.
+| Blocker / risk | Impact | Owner role | Target resolution | Status |
+|---|---|---|---|---|
+| Библия стартовых школ ещё не заморожена | Нельзя честно начать Vertical Slice content production | Game Design | 2026-05 | At risk |
+| Контракты loadout/reward/schema ещё не стабилизированы | Высокий риск rework в progression и save-state | Gameplay / Platform | 2026-05 | At risk |
+| Нет финального dependency map для Q2–Q3 | Скрытые блокеры могут сорвать scope lock | Producer / Product | 2026-05 | In progress |
+| Telemetry и review cadence ещё не оформлены как ритуал | Будет трудно принимать cut/go решения на evidence | Release / Analytics | 2026-06 | Planned |
+| Abuse matrix для social/PvP ещё не собрана | Есть риск обещать unsafe scope слишком рано | QA / Release | 2026-06 | Planned |
 
-2. **Rune schools define identity**
-   - школа отвечает за fantasy и долгую build-ось;
-   - архетип отвечает за то, как именно эта школа играет в бою;
-   - игрок должен помнить не просто “у меня редкая руна”, а “я играю через школу Х и архетип Y”.
+## 2. Как пользоваться этим планом
 
-3. **Rarity expands loadout breadth**
-   - редкость в первую очередь открывает больше carried skills / слотов / вариантов сборки;
-   - raw stat growth остаётся вторичным слоем.
+### 2.1 Статусы
 
-4. **Synergies are earned depth**
-   - сначала школа должна работать сама по себе;
-   - потом — простые same-school synergy;
-   - только затем — сложные межшкольные связки.
+- `Not started` — ещё не начинали
+- `Planned` — входит в утверждённый roadmap
+- `In progress` — активная фаза работы
+- `At risk` — есть риск по срокам, качеству или зависимости
+- `Blocked` — ждёт решения/зависимости
+- `Done` — завершено и прошло definition of done
+- `Deferred` — сознательно перенесено
+- `Cut` — сознательно вырезано из текущего объёма
 
-## 3. Текущий срез продукта
+### 2.2 Формат дат
 
-### Что уже доставлено
+- Используем только **примерные окна**, а не фальшивую точность.
+- Примеры: `Q2 2026`, `Q4 2026`, `H1 2027`, `H2 2028`.
+- Сдвиг на одно окно допустим, если предыдущий exit gate не закрыт.
 
-- tutorial-first старт и keyboard-first VK flow;
-- adaptive difficulty без ручного выбора уровня угрозы;
-- idempotency-защита боевых и рунных мутаций;
-- paged rune hub вместо листания по одной руне;
-- compact event-first battle presentation;
-- первый playable rune combat slice: активные рунные действия, cooldown/mana state и боевой action resolver;
-- post-tutorial objective layer;
-- базовый tactics layer: `атака`, `защита`, `рунное действие`, enemy intent, telegraphed threat patterns;
-- release rails: `check`, `content:validate`, `release:preflight`, smoke tests, CI.
+### 2.3 Правила чекбоксов
 
-### Текущий вердикт
+- `[x]` — реально доставлено и проверено
+- `[ ]` — ещё не выполнено
+- Не уходим глубже **трёх уровней вложенности**
+- Фичу нельзя считать закрытой, пока не закрыты её тесты, UX, docs и abuse-check при наличии наград
 
-`iterate`
+### 2.4 Owner model
 
-### Почему ещё не релиз
+Для roadmap используются **роли-владельцы**, даже если фактически часть ролей совмещается одним человеком.
 
-- школы рун пока ощущаются как прототипы, а не как полноценные билд-направления;
-- редкость всё ещё слишком близка к stat-growth, а не к loadout-growth;
-- синергии почти не раскрыты;
-- игроку пока не хватает сильного school-driven return motivation;
-- контент школ и ранняя discoverability пока слишком узкие для устойчивого retention.
+- **Producer / Product** — приоритеты, scope, go/no-go, cut/defer решения
+- **Game Design** — школы, fantasy, encounter roles, progression value
+- **Gameplay / Platform** — доменные контракты, data safety, tooling, migration stability
+- **Content / UX** — onboarding, return UX, player-facing copy, discoverability
+- **Balance** — школы, economy, PvE/PvP power curve, anti-dominance tuning
+- **QA / Release** — exploit sweep, smoke coverage, release gates, rollback readiness
 
-## 4. Правила roadmap
+Правило:
 
-### Статусы
+- у каждого committed deliverable должен быть **primary owner role**;
+- у каждого phase gate должен быть **review owner**;
+- если owner не определён, deliverable не считается committed.
 
-- `done` — уже доставлено;
-- `now` — активная очередь, делаем следующим;
-- `next` — готово к старту после блока `now`;
-- `later` — ценно, но ещё не планируем в ближайший цикл;
-- `parked` — сознательно отложено.
+### 2.5 Scope classes
 
-### Приоритеты
+- **Committed** — обязано войти в текущую фазу или релизный scope
+- **Stretch** — делаем только если committed часть зелёная и нет риска для gate
+- **Optional / Later** — идея или усиление, не влияющее на ближайший gate
 
-- `P0` — без этого нельзя прийти к сильному core loop;
-- `P1` — усиливает удержание после закрытия P0;
-- `P2` — расширяет игру после стабилизации основы.
+Правило:
 
-### Definition of done для каждой инициативы
+- ближний горизонт (`текущий квартал`, `следующие 90 дней`, `активная фаза`) должен быть в основном `Committed`;
+- дальний горизонт допускает outcome-driven формулировки без ложной точности.
 
-- доменная логика лежит в `domain`, а не расползается по VK transport;
-- есть automated tests на critical happy/failure path;
-- нет регрессии по duplicate rewards, inventory underflow и stale state;
-- player-facing поведение зафиксировано в `README.md` / `CHANGELOG.md` / `PLAN.md`;
-- `npm run check` и `npm run release:preflight` проходят.
+### 2.6 Review rhythm
 
-### Term rules
+#### Weekly checkpoint
 
-- player-facing primary layer: **базовая атака**, **школы рун**, **рунные техники / рунные навыки**, **редкость расширяет loadout**;
-- secondary/system layer: **архетип** = боевой стиль внутри школы;
-- не использовать в документации формулировки вида:
-  - “Skyrim clone”;
-  - “Oblivion clone”;
-  - “руны заменяют базовый бой”;
-  - “редкость = просто больше цифр”.
+- что сдвинулось;
+- что проскользнуло по сроку;
+- новые блокеры;
+- какие решения нужны на этой неделе;
+- RAG-статус по потокам: gameplay, content, tech, UX, telemetry, QA, release.
 
-## 5. Active roadmap
+#### Monthly production review
 
-### 5.1 DONE
+- phase health;
+- evidence gained;
+- scope changes proposed;
+- новые зависимости и риски;
+- кандидаты на cut/defer;
+- go/no-go recommendation по следующему рубежу.
 
-#### [done][P0] Milestone A — Combat foundation and baseline clarity
+#### Phase exit review
 
-**Цель:** построить надёжный, детерминированный и читаемый baseline бой.
+- planned exit criteria vs actual evidence;
+- открытые блокеры;
+- принятный quality debt;
+- deferred items;
+- решение: `go` / `go with cuts` / `no-go`.
 
-##### A1 — Battle state contract
+### 2.7 Update rule
 
-- [x] battle snapshot устойчив к recovery и finalize;
-- [x] новые действия не ломают active battle idempotency;
-- [x] есть тесты на action resolution, save/recovery и invalid action paths.
+- `PLAN.md` обновляется минимум **раз в неделю** в активной фазе;
+- phase status обновляется на monthly review;
+- чекбокс нельзя закрывать “по ощущению” — нужен результат и evidence;
+- если пункт два review-периода подряд в `At risk`, он уходит в cut/defer review.
 
-##### A2 — First playable rune payoff
+## 3. Locked product direction
 
-- [x] игрок получает первую meaningful rune payoff уже в первом игровом цикле;
-- [x] кнопка preview ушла, рунное действие реально влияет на бой;
-- [x] tutorial reward loop доводит до первой активной руны.
+### 3.1 Проблема игрока
 
-##### A3 — Baseline tactics
+Большинство chat-based RPG быстро превращаются в:
 
-- [x] `защита` как universal utility;
-- [x] первый telegraphed threat (`Тяжёлый удар`);
-- [x] второй telegraphed threat (`guard-break`), чтобы защита не была единственным правильным ответом;
-- [x] battle UI показывает доступные действия и намерение врага.
+- гринд без личности;
+- ложный выбор между почти одинаковыми билдами;
+- ежедневки ради галочки;
+- гонку цифр без сильной fantasy-оси.
 
-### 5.2 NOW
+Runemasters Return должен решать это через **школы рун как главную build-ось**, короткие, но умные сессии и честный возврат в игру без давления и FOMO.
 
-#### [now][P0] Milestone B — сделать школы рун главным слоем билдов
+### 3.2 Target fantasy
 
-**Почему это важно**
+Игрок — **мастер школы рун**, который:
 
-Базовый бой уже достаточно понятен. Следующий настоящий продуктовый рывок — не ещё одна универсальная кнопка, а перевод глубины в **школы рун**.
+- строит узнаваемый стиль боя;
+- читает намерения врага и отвечает осмысленно;
+- собирает рунную сборку, а не просто больше цифр;
+- растёт в силе, знании, репутации и вкладе в мир;
+- возвращается ради новых решений, а не из-за страха потери.
+
+### 3.3 Неподвижные продуктовые правила
 
-##### B1 — Rune school contract
+- **Basic attack is evergreen** — базовая атака всегда полезна
+- **Schools first** — школа рун = главная identity-ось
+- **Rarity expands loadout breadth** — редкость расширяет сборку, а не ломает баланс голой силой
+- **Synergy is earned depth** — синергии открываются позже как награда за понимание системы
+- **PvE-first** — PvE остаётся главным ядром игры
+- **Social is asynchronous by default** — социальный слой строится вокруг асинхронной кооперации
+- **PvP is optional and late** — PvP не обязателен для core progression
+- **Ethical retention only** — без подлых психологических ловушек и FOMO-механик
+
+### 3.4 Player-facing термины
+
+Используем:
+
+- **базовая атака**
+- **школа рун**
+- **рунная техника / рунный навык**
+- **редкость расширяет сборку**
+- **стиль боя**
+
+Не используем как player-facing язык:
+
+- `архетип`
+- `lane`
+- `proc`
+- `contract`
+- `synergy engine`
+
+## 4. Ethical guardrails и red lines
+
+### 4.1 Что для нас допустимо
+
+- weekly-flexible прогресс вместо жёстких daily-цепей;
+- catch-up для вернувшихся игроков;
+- архив сезонных хроник и повтор контента;
+- косметический и статусный престиж;
+- асинхронные совместные цели;
+- награды за mastery, curiosity, belonging и expression.
+
+### 4.2 Что запрещено
+
+- hard streak reset;
+- “пропустил день — потерял лучшую награду”;
+- узкие power-окна, где пропуск делает аккаунт слабее навсегда;
+- guilt UX и panic messaging;
+- коллективные штрафы за отсутствие игрока;
+- near-miss/gacha-психология как основа chase;
+- mandatory PvP ради базовой силы;
+- reward-структуры, где альты выгоднее честной игры.
 
-- **Player impact:** у игрока появляется ясная build-идентичность.
-- **Scope:**
-  - закрепить модель `school -> rune -> skills -> battle choices`;
-  - decouple школу, archetype, ability и rarity в roadmap и будущих контрактах;
-  - закрепить правило: школа = fantasy axis, archetype = combat-role axis.
-- **Out of scope:** свободная multi-school сборка и сложный synergy engine.
-- **Acceptance:**
-  - [ ] в документации и будущем implementation plan школа = основная identity axis;
-  - [ ] архетип формализован как подслой школы, а не как конкурирующая сущность;
-  - [ ] basic attack формально остаётся evergreen baseline;
-  - [ ] rarity описывается как loadout growth, а не как stat inflation.
+## 5. Scope frame
+
+### 5.1 В scope для 1.0
+
+- core PvE loop с strong school identity;
+- 4 стартовые школы в сильном состоянии;
+- rarity-based loadout growth;
+- targeted chase по школам;
+- midgame и proto-endgame активности;
+- circles / social-lite в асинхронном формате;
+- optional async PvP v1;
+- ethical season-chronicle framework;
+- стабильные release rails, tests, telemetry и anti-abuse основы.
 
-##### B2 — First stable school roster
+### 5.2 Явно вне scope для 1.0
 
-**Current progress:**
+- real-time PvP;
+- open PvP / ganking;
+- рынок между игроками и свободная торговля;
+- territory control и guild wars;
+- 8+ школ на старте;
+- глубокий crafting simulator;
+- mandatory attendance systems;
+- жесткие seasonal wipes;
+- power-exclusive FOMO events.
 
-- [x] player-facing слой больше показывает `школу`, а не `архетип`;
-- [x] Пламя, Твердь и Прорицание получили battle-visible identity уже в текущем loop;
-- [x] Твердь доведена до первого полного school package: passive lane + active lane;
-- [ ] довести стартовый roster до полного school-v1 без “пустых” ощущений;
+### 5.3 Post-launch кандидаты
 
-- **Player impact:** игрок начинает чувствовать разницу между стилями боя.
-- **Scope:**
-  - довести до полноценного v1 минимум 3–4 стартовых школы;
-  - текущие starter schools (`Пламя`, `Твердь`, `Буря`, `Прорицание`) доводятся до чистой school/archetype модели;
-  - у каждой стартовой школы: 1 понятная роль, 1 читаемый active lane, 1 реальный passive lane.
-- **Out of scope:** сразу 8–10 школ.
-- **Acceptance:**
-  - [ ] каждая стартовая школа меняет решения в бою, а не только цифры;
-  - [ ] passive-only школы больше не выглядят “недоделанными”; 
-  - [ ] игрок может различить школы без чтения длинной справки.
+- школы второй волны;
+- doctrines / advanced mastery;
+- draft / limited PvP;
+- world-state metagame;
+- deeper cooperative rituals;
+- curated long-tail prestige systems.
 
-##### B3 — School expansion queue
+## 6. Roadmap overview
+
+| Phase | Window | Primary outcome | Status | Exit gate |
+|---|---|---|---|---|
+| Shipped foundation | done | Базовый playable combat + tutorial + rune slice | Done | Уже в продукте |
+| Foundation & Platform | Q2–Q3 2026 | Зафиксировать правила игры и платформенные контракты | In progress | Vertical Slice scope lock |
+| Vertical Slice | Q4 2026 | Доказать сильный school-first early-to-mid loop | Planned | Slice fun + readability + stability |
+| Closed Alpha | H1 2027 | Собрать feature shape релиза 1.0 | Planned | Alpha gate |
+| Open Beta / Soft Launch | H2 2027 | Отладить onboarding, economy, social и live-ops v1 | Planned | Beta / soft-launch gate |
+| Release 1.0 | H1 2028 | Выпустить честную PvE-first social build-RPG | Planned | Launch gate |
+| Post-launch Year 1 | H2 2028–H1 2029 | Углубить mastery, контент и social systems без потери ясности | Planned | Quarterly reviews |
+| Year 2+ Direction | H2 2029+ | Расширять мир и долгую ценность без drift в exploit/FOMO | Planned | Annual strategy review |
 
-- **Player impact:** появляется ожидание будущих билдов и фантазий.
-- **Scope:**
-  - подготовить expansion queue школ после стабилизации v1;
-  - кандидаты следующей волны: **Некромантия**, **Иллюзии**, затем другие школы по результатам playtest;
-  - каждая новая школа должна иметь не только fantasy, но и боевую роль.
-- **Out of scope:** немедленная реализация всех школ.
-- **Acceptance:**
-  - [ ] у roadmap есть явная очередь школ после v1;
-  - [ ] necromancy / illusion внесены как planned schools, а не “когда-нибудь”; 
-  - [ ] новая школа без роли не допускается в delivery queue.
+### 6.1 Critical dependency map
 
-##### B4 — School-first onboarding and UX
+| Dependency | Почему критично | Нужна к фазе | Owner role | Target | Status | Fallback |
+|---|---|---|---|---|---|---|
+| Библия стартовых школ и rarity ladder | Без неё content и balance будут переделываться | Vertical Slice | Game Design + Balance | 2026-05 | In progress | сократить количество школ в slice |
+| `LoadoutSnapshot` + `RewardLedger` + schema versioning | Без этого высокий риск rework и unsafe saves | Vertical Slice / Alpha | Gameplay / Platform | 2026-06 | Planned | уменьшить loadout breadth в slice |
+| Content pipeline и validators | Без этого скорость производства контента не будет проверяема | Alpha | Gameplay / Platform + Content | 2026-08 | Planned | урезать объём контента до узкого проверяемого набора |
+| Telemetry + dashboards | Без evidence нельзя принимать beta / launch решения | Alpha / Beta | Release / Analytics | 2026-08 | Planned | сузить аудиторию тестов и задержать wider rollout |
+| Migration harness и compatibility fixtures | Без этого Beta и 1.0 рискуют сломать сейвы | Alpha / Beta | Gameplay / Platform + QA | 2026-08 | Planned | заморозить save-breaking изменения раньше |
+| Circles safety rails | Без этого social launch станет abuse surface | Beta / 1.0 | Gameplay / Platform + QA | 2027-06 | Planned | ship circles как минимальный ritual/profile layer |
+| PvP normalization + anti-abuse | Без этого optional PvP подорвёт честность игры | Beta / 1.0 | Balance + QA | 2027-09 | Planned | ship 1.0 без ranked PvP |
+| Live-ops archive / compensation rules | Без этого сезоны будут unsafe и токсичны | Beta / 1.0 | Producer / Release | 2027-10 | Planned | ship 1.0 без deep chronicle rewards |
 
-- **Player impact:** игрок понимает, что базовая атака — основа, а школа — его стиль.
-- **Scope:**
-  - переписать framing вокруг школ, а не вокруг “ещё одной рунной кнопки”;
-  - объяснять редкость через carried skills / loadout breadth;
-  - добавить сравнение школ и near-term promise на ранних экранах.
-- **Out of scope:** encyclopedia-style codex.
-- **Acceptance:**
-  - [ ] onboarding объясняет: attack baseline -> school identity -> rarity expands school kit;
-  - [ ] player-facing copy не использует `archetype`;
-  - [ ] battle/rune UI обещает стиль, а не только resource state.
+## 7. Global definition of done
 
-#### Exit criteria для Milestone B
+Любой существенный пункт roadmap считается закрытым только если:
 
-- [ ] у игрока есть минимум 3 действительно разные school fantasies;
-- [ ] базовая атака остаётся полезной на всех ранних стадиях;
-- [ ] школы читаются как главный build layer;
-- [ ] ранний player journey создаёт “я хочу попробовать другую школу”.
+- [ ] Доменные правила реализованы в `domain` / `application`, а не размазаны по transport
+- [ ] Есть automated tests на happy path и critical edge cases
+- [ ] Player-facing copy проверена на ясность
+- [ ] Добавлена telemetry, если изменение влияет на опыт игрока или экономику
+- [ ] Пройден exploit/abuse review, если цикл выдаёт награды, прогресс или социальную власть
+- [ ] Обновлены `PLAN.md`, `README.md`, `CHANGELOG.md`, `ARCHITECTURE.md` или `RELEASE_CHECKLIST.md`, если это нужно по изменению
+- [ ] `npm run check` и `npm run release:preflight` проходят
+- [ ] Нет незакрытого launch-blocking dependency
 
-### 5.3 NEXT
+## 8. Global release gates
 
-#### [next][P0] Milestone C — rarity-based loadout growth
+### 8.1 Gameplay gate
 
-**Почему это важно**
+- [ ] Игрок может словами объяснить, чем одна школа отличается от другой
+- [ ] Базовая атака остаётся полезной в early/mid game
+- [ ] Редкость ощущается как рост вариантов, а не как обязательный power cliff
+- [ ] Есть минимум один school-driven reason to return after a session
 
-Школы без хорошей модели редкости быстро превращаются в гонку статов. Редкость должна расширять school kit, а не ломать баланс голыми числами.
+### 8.2 Technical gate
 
-##### C1 — Rarity profile model
+- [ ] Battle state детерминированно тестируется и восстанавливается
+- [ ] Награды выдаются через idempotent flow
+- [ ] Save/load/migration policy формализована и проверяется тестами
+- [ ] Rollback/hotfix path описан и хотя бы один раз репетирован
 
-- **Player impact:** rarer rune feels broader, not just bigger.
-- **Scope:**
-  - закрепить правила: сколько active/passive capacity даёт каждая редкость;
-  - ограничить raw stat contribution рун как вторичный слой;
-  - исключить ситуацию “лучшая редкость всегда сильнее любой школы”.
-- **Suggested ladder:**
-  - обычная — school tag + 1 простой эффект;
-  - необычная — 1 активный или 1 пассивный school effect;
-  - редкая — 1 active + 1 passive;
-  - эпическая — второй passive / modifier quality step;
-  - легендарная+ — keystone/synergy capacity, а не новый multiplicative damage layer.
+### 8.3 Economy and abuse gate
 
-##### C2 — Pre-battle loadout growth
+- [ ] Нет известных duplicate reward путей в shipped scope
+- [ ] Нет salvage-positive или reroll-positive печатных петель
+- [ ] PvP/social rewards защищены от repeated-opponent и alt abuse
+- [ ] Resource faucets/sinks наблюдаемы и интерпретируемы
 
-- **Player impact:** игрок собирает loadout до боя, а не спамит всё сразу в бою.
-- **Scope:**
-  - rarity unlocks selectable school package;
-  - ранняя версия остаётся с одним `RUNE_SKILL` button в бою;
-  - complexity растёт через pre-battle choice, а не через 5 кнопок сразу.
-- **Out of scope:** multiple in-battle rune buttons, mid-battle swapping.
+### 8.4 UX gate
 
-##### C3 — Targeted drops and chaseability
+- [ ] Первый school payoff приходит быстро и читаемо
+- [ ] Игрок понимает, что делать дальше после первой, третьей и седьмой сессии
+- [ ] В UI нет необходимости читать длинные системные простыни ради базовых решений
+- [ ] Return UX не использует guilt/FOMO copy
 
-- **Player impact:** игрок охотится за школой, а не только молится RNG.
-- **Scope:**
-  - разные источники/биомы/цели начинают тяготеть к школам;
-  - у игрока есть способ преследовать нужный school fantasy;
-  - rarity chase не превращается в pure casino.
-- **Out of scope:** большой crafting simulator.
+### 8.5 Release / ops gate
+
+- [ ] Monitoring, alerts, support runbooks и known-issues workflow готовы
+- [ ] Feature flags и staged rollout доступны для high-risk systems
+- [ ] Есть audit trail для наград, важной экономики и PvP settlement
+- [ ] Команда способна поддерживать cadence без постоянного crunch
 
-#### Exit criteria для Milestone C
+### 8.6 Scope control and cut rules
+
+- [ ] Beta защищает релиз, а не мечту: всё, что не критично для core loop, onboarding, stability, save integrity и ethical live-ops, может быть вырезано
+- [ ] Если у фичи нет измеримого success criterion, она не считается committed scope
+- [ ] Если критическая зависимость ушла в `At risk`, все зависящие stretch-пункты автоматически идут в cut review
+- [ ] Если фича не доказана playtest/telemetry evidence к Beta content lock, она переносится
+- [ ] Если operational risk выше player value для 1.0, фича переносится
+- [ ] Если milestone slip по critical path больше 2 недель, запускается обязательный cut/defer review
 
-- [ ] редкость объясняется как loadout expansion, а не как простая инфляция чисел;
-- [ ] higher rarity не убивает relevance базовой атаки и низкой редкости;
-- [ ] игрок может chase'ить школу целенаправленно;
-- [ ] loadout legality и backward compatibility покрыты тестами.
-
-### 5.4 NEXT
-
-#### [next][P1] Milestone D — first synergies and return motivation
-
-**Почему это важно**
-
-Без синергий и near-term goals система школ останется красивой, но быстро выгорит. Нужна минимальная причина возвращаться ради сборки.
-
-##### D1 — Same-school starter synergies
-
-- **Player impact:** появляется первый “build clicked” moment.
-- **Scope:**
-  - сначала только простые deterministic same-school связки;
-  - synergy = setup -> payoff, без proc-web хаоса;
-  - cross-school synergies позже.
-
-##### D2 — Short-term build goals
-
-- **Player impact:** игрок уходит из сессии с ясным school-driven next goal.
-- **Scope:**
-  - 2–3 коротких цели на 1–2 сессии;
-  - прогресс к следующей школьной технике / rarity breakpoint / synergy unlock;
-  - явные next-step prompts.
-
-##### D3 — Economy around builds
-
-- **Player impact:** ресурсы начинают работать на buildcraft, а не только на reroll spam.
-- **Scope:**
-  - school-targeted sinks;
-  - anti-inflation rails;
-  - отсутствие salvage-positive loops.
-
-#### Exit criteria для Milestone D
-
-- [ ] игрок видит первый реальный synergy payoff;
-- [ ] у каждой сессии есть school-driven next target;
-- [ ] economy не позволяет brute-force ломать progression;
-- [ ] low-rarity runes не обесцениваются слишком рано.
-
-### 5.5 LATER
-
-#### [later][P1] Milestone E — controlled depth and expansion schools
-
-- новые школы второй волны: **Некромантия**, **Иллюзии**, затем другие;
-- больше enemy patterns как поддержка school play, а не как замена school depth;
-- keystone passives и limited cross-school synergies;
-- school-driven progression map и stronger long-session retention.
-
-### 5.6 PARKED
-
-#### [parked][P2] Milestone F — scale-out after the core is proven
-
-Сюда не заходим, пока школы, редкость и базовая loop не станут реально удерживающими.
-
-- freeform cross-school combo engine;
-- несколько активных кнопок школы одновременно как основной стандарт;
-- mid-battle respec/loadout swap;
-- большой school roster с первого дня;
-- PvP;
-- масштабный crafting/metagame до стабилизации core loop.
-
-## 6. Milestone view
-
-### Milestone A — Combat foundation and baseline clarity
-
-- battle snapshot / resolver / recovery / idempotency;
-- first active rune payoff;
-- baseline tactics and enemy intent.
-
-**Ship gate:** игрок понимает бой и чувствует первый рунный payoff.
-
-### Milestone B — Rune schools as the main build layer
-
-- school contract;
-- стартовый roster;
-- expansion queue;
-- school-first onboarding.
-
-**Ship gate:** игрок выбирает не просто руну, а школу.
-
-### Milestone C — Rarity-based loadout growth
-
-- rarity profiles;
-- pre-battle loadout breadth;
-- targeted chase.
-
-**Ship gate:** редкость ощущается как “моя школа раскрывается шире”, а не как “мне просто повезло на цифры”.
-
-### Milestone D — First synergies and return motivation
-
-- same-school starter synergies;
-- short-term goals;
-- build economy.
-
-**Ship gate:** игрок уходит из сессии с ясным “что я дособеру дальше”.
-
-### Milestone E — Controlled depth
-
-- новые школы второй волны;
-- keystones и limited cross-school synergies;
-- deeper encounter variety.
-
-**Ship gate:** игра уже не просто про первую руну, а про разные school fantasies и их chaseability.
-
-## 7. Release gates для roadmap-инициатив
-
-### Обязательные automated checks
-
-- `npm run check`
-- `npm run release:preflight`
-- unit tests на доменную механику
-- smoke tests на ключевой player journey
-
-### Обязательные manual smoke paths
-
-- регистрация -> tutorial fight -> первая school rune;
-- rune hub: page navigation -> slot selection -> equip -> craft -> reroll -> destroy;
-- active battle recovery после re-entry;
-- victory/defeat flows без duplicate rewards;
-- first-loss и first-return UX;
-- school-driven payoff: игрок понимает, чем одна школа отличается от другой;
-- rarity-driven payoff: игрок понимает, что редкость расширила loadout, а не просто дала +цифры.
-
-### Обязательные docs updates
-
-- `README.md` — если меняется player-facing flow;
-- `CHANGELOG.md` — для shipped изменений;
-- `ARCHITECTURE.md` — если меняется контракт battle/rune/loadout state;
-- `RELEASE_CHECKLIST.md` — если меняется ship procedure или smoke path.
-
-## 8. Метрики готовности
-
-### Продуктовые
-
-- базовая атака остаётся релевантной;
-- минимум 3 школы ощущаются как разные стили;
-- игрок получает first-session school payoff;
-- редкость меняет breadth сборки, а не только числа;
-- есть ясный near-term build goal на следующую сессию.
-
-### Технические
-
-- battle state детерминированно тестируется и восстанавливается;
-- нет duplicate reward regressions и inventory underflow regressions;
-- transport остаётся тонким;
-- контент и баланс валидируются до релиза;
-- новые school/rarity/loadout контракты не ломают legacy hydration.
-
-## 9. Appendix — shipped foundations
-
-- модульная архитектура `domain / application / infrastructure / transport`;
-- единый каталог команд и keyboard-first transport;
-- recovery зависших боёв и Prisma idempotency rails;
-- commit-based versioning, CI и release preflight;
-- paged rune hub и compact battle UI;
-- baseline tactics layer с enemy intent;
-- early-game smoothing и rarity caps для natural rune drops.
-
-## 10. Правило обновления
-
-Этот файл обновляется при каждом крупном изменении:
-
-- продуктового приоритета;
-- структуры roadmap;
-- архитектурной границы, которая влияет на delivery order;
-- определения школ, редкости или loadout growth;
-- release gate или definition of done.
+## 9. Metrics framework
+
+### 9.1 Experience metrics
+
+- tutorial completion rate
+- time to first school payoff
+- time to first intentional loadout change
+- понятность next-step после сессии
+- build diversity по школам и rarity band
+
+### 9.2 Health metrics
+
+- PvE encounter completion rate по band'ам сложности
+- source/sink ratio по каждой валюте
+- dry streak length по targeted chase
+- доля игроков с хотя бы одной рабочей альтернативной сборкой
+- midgame progression pace
+
+### 9.3 Risk metrics
+
+- duplicate reward incidents
+- negative inventory / stale state / recovery failures
+- exploit reports by system
+- win-trade / repeated-opponent anomalies
+- guild/social collusion signals
+
+### 9.4 Review cadence
+
+- до Beta — ежемесячный roadmap review
+- во время Beta / soft launch — каждые 2 недели
+- после 1.0 — ежеквартально по контенту, балансу, retention и ethics
+
+### 9.5 Indicative target bands
+
+- first school payoff: **до 15 минут** у нового игрока
+- first intentional loadout change: **не позже 3-й значимой сессии**
+- validated distinct school fantasies before Beta: **минимум 3**, лучше 4
+- soft-launch retention targets: **D1 >= 35%**, **D7 >= 12%**, **D30 = 4–6%** как ориентир, а не догма
+- high-end school concentration: ни одна школа не должна устойчиво занимать **>45%** без намеренного временного теста или объяснимой причины
+
+## 10. Already shipped foundation
+
+### 10.1 Базовый продуктовый слой
+
+- [x] tutorial-first старт
+- [x] keyboard-first VK flow
+- [x] tutorial reward loop доводит до первой meaningful rune payoff
+- [x] post-tutorial objective layer
+
+### 10.2 Combat foundation
+
+- [x] battle snapshot устойчив к recovery и finalize
+- [x] active battle idempotency уже защищена
+- [x] первая playable rune action реально влияет на бой
+- [x] `защита` как universal utility
+- [x] enemy intent для telegraphed heavy strike
+- [x] enemy intent для anti-guard pattern
+- [x] compact event-first battle presentation
+
+### 10.3 Rune / build foundation
+
+- [x] paged rune hub без листания по одной руне
+- [x] player-facing язык уже сдвинут в сторону школ рун
+- [x] Твердь получила первый полный пакет passive + active identity
+- [x] adaptive difficulty уже заменяет ручной выбор угрозы
+
+### 10.4 Release rails
+
+- [x] `npm run check`
+- [x] `npm run content:validate`
+- [x] `npm run release:preflight`
+- [x] smoke tests на ключевые player journey
+- [x] CI и release discipline
+
+## 11. Phase 1 — Foundation & Platform
+
+- **Window:** `Q2–Q3 2026`
+- **Status:** `In progress`
+- **Objective:** зафиксировать правила игры, платформенные контракты, безопасность наград и scope Vertical Slice.
+- **Target exit:** `конец Q3 2026`
+- **Confidence:** `medium`
+- **Primary owner:** `Producer / Product + Gameplay / Platform`
+- **Support owners:** `Game Design`, `Balance`, `Content / UX`, `QA / Release`
+- **Entry criteria:** shipped foundation уже существует и базовый курс школы/редкости принят
+- **Why now:** без замороженных правил и контрактов любой следующий slice будет дорогим rework
+- **Primary risks:** overdesign, scope drift, слишком ранние обещания social/PvP, отсутствие контрактной дисциплины
+- **Go / no-go review date:** `2026-09-30`
+
+### 11.0 Execution checkpoints
+
+- [ ] **Late April 2026:** заморозить 1.0 promise, owner model и review rhythm
+- [ ] **May 2026:** заморозить school bible, rarity ladder и scaling role базовой атаки
+- [ ] **June 2026:** заморозить `SchoolDefinition`, `LoadoutSnapshot`, `RewardIntent`, `RewardLedger`, telemetry brief
+- [ ] **July 2026:** собрать duplication matrix, concurrency backlog и migration fixtures v1
+- [ ] **August 2026:** собрать content pipeline plan, validators scope и dependency review
+- [ ] **September 2026:** провести Vertical Slice scope lock, cut review и phase exit review
+
+### 11.1 Product lock
+
+- [ ] Зафиксировать обещание релиза 1.0
+  - [ ] сформулировать 1.0 как PvE-first social build-RPG
+  - [ ] утвердить список explicit out-of-scope для 1.0
+  - [ ] запретить drift в FOMO/P2W/mandatory PvP
+- [ ] Зафиксировать библиотеку стартовых школ
+  - [ ] Школа Пламени — pressure / burst / risk-reward
+  - [ ] Школа Тверди — стойкость / counter / stability
+  - [ ] Школа Бури — tempo / chaining / disruption
+  - [ ] Школа Прорицания — intent reading / setup / payoff
+- [ ] Зафиксировать overlap / uniqueness rules между школами
+  - [ ] определить, где школы могут делить инструменты
+  - [ ] определить, где школы обязаны различаться по решениям в бою
+- [ ] Зафиксировать ruleset редкости
+  - [ ] common = базовая школьная идентичность
+  - [ ] uncommon = первая вариативность
+  - [ ] rare = active + passive breadth
+  - [ ] epic = второй слой depth, а не x2 цифры
+  - [ ] legendary = keystone/capstone, а не mandatory auto-win
+- [ ] Зафиксировать ethical retention charter
+  - [ ] no hard streak resets
+  - [ ] no absence punishment
+  - [ ] no exclusive power windows
+  - [ ] return via curiosity, mastery, belonging, expression
+
+### 11.2 Domain platform
+
+- [ ] Выделить и стабилизировать `SchoolDefinition`
+- [x] Выделить и стабилизировать `LoadoutSnapshot`
+- [x] Выделить `RewardIntent` и `RewardLedger`
+- [ ] Разделить source-of-truth state и derived read models
+- [ ] Ввести schema versioning для:
+  - [ ] player state
+  - [ ] battle snapshot
+  - [x] loadout state
+  - [x] reward claim records
+- [ ] Подготовить compatibility test fixtures для будущих миграций
+
+### 11.3 Combat / progression rules
+
+- [ ] Зафиксировать scaling role базовой атаки по early / mid / late bands
+- [ ] Зафиксировать skill budget в бою
+  - [ ] сколько активных рунных кнопок допустимо в 1.0
+  - [ ] какой рост сложности живёт pre-battle, а не in-battle
+- [ ] Зафиксировать same-school starter synergy rules
+  - [ ] setup -> payoff без proc-web хаоса
+  - [ ] без infinite resource loops
+- [ ] Зафиксировать targeted chase philosophy
+  - [ ] школа должна быть targetable
+  - [ ] targeted chase не должен становиться казино
+- [ ] Зафиксировать валюты и sinks v1
+  - [ ] повседневная валюта
+  - [ ] upgrade essence / shards
+  - [ ] school sigils
+  - [ ] prestige currency без core power dependency
+
+### 11.4 UX / content / instrumentation
+
+- [ ] Переписать school-first onboarding framing
+  - [ ] объяснить attack -> school -> rarity -> next goal
+  - [ ] не использовать внутренний жаргон
+- [ ] Зафиксировать формат next-goal messaging после сессии
+- [ ] Зафиксировать return-recap UX без guilt/FOMO copy
+- [ ] Подготовить content pipeline plan для:
+  - [ ] schools
+  - [ ] enemies
+  - [ ] encounters
+  - [ ] quests
+  - [ ] season chronicle configs
+- [ ] Подготовить telemetry plan
+  - [ ] onboarding clarity
+  - [ ] school pick rates
+  - [ ] loadout change rates
+  - [ ] economy health
+  - [ ] exploit signals
+
+### 11.5 QA / abuse rails
+
+- [ ] Собрать reward duplication matrix
+- [ ] Ввести stale action rejection rules
+- [ ] Зафиксировать repeated command / retry handling
+- [ ] Зафиксировать RNG authority rules для reroll / drop / craft
+- [ ] Подготовить alt-account / guild / PvP abuse checklist
+- [ ] Добавить обязательные concurrency tests на critical use cases
+
+### 11.6 Exit gate for Phase 1
+
+- [ ] Пиллары продукта согласованы и не конфликтуют друг с другом
+- [ ] Platform contracts готовы к Vertical Slice
+- [ ] Vertical Slice scope заперт и не расползается
+- [ ] High-risk out-of-scope вынесен из ближайшего delivery order
+
+## 12. Phase 2 — Vertical Slice
+
+- **Window:** `Q4 2026`
+- **Status:** `Planned`
+- **Objective:** доказать, что игра удерживает не только первым боем, но и первым настоящим school-driven midgame slice.
+- **Target exit:** `конец Q4 2026`
+- **Confidence:** `medium`
+- **Primary owner:** `Game Design + Gameplay / Platform`
+- **Support owners:** `Balance`, `Content / UX`, `QA / Release`
+- **Entry criteria:** закрыт Phase 1 exit gate
+- **Why now:** нужно доказать fun, readability и production viability до роста системной сложности
+- **Primary risks:** школы окажутся слишком похожими, loadout complexity перегрузит UX, контент будет производиться медленнее плана
+- **Go / no-go review date:** `2026-12-20`
+
+### 12.0 Execution checkpoints
+
+- [ ] **October 2026:** довести school-v1 packages и ранние PvE bands
+- [ ] **November 2026:** довести rarity/loadout slice, boss slice и social-lite prototype
+- [ ] **December 2026:** провести playtests, tuning pass, docs update и slice gate review
+
+### 12.1 Launch schools v1
+
+- [ ] Довести Пламя до полного school-v1 пакета
+  - [ ] понятная passive identity
+  - [ ] активная техника с читаемым риском/наградой
+  - [ ] минимум один school-specific chase reward
+- [ ] Довести Твердь до релизного school-v1 пакета
+  - [ ] укрепить counter / guard fantasy
+  - [ ] убедиться, что Твердь не сводится к passive-only роли
+  - [ ] добавить encounter, где Твердь особенно читается
+- [ ] Довести Бурю до полного school-v1 пакета
+  - [ ] раскрыть tempo / chaining fantasy
+  - [ ] избежать ощущения “это просто быстрый DPS”
+  - [ ] добавить encounter, который награждает чтение темпа
+- [ ] Довести Прорицание до полного school-v1 пакета
+  - [ ] связать school payoff с enemy intent
+  - [ ] не превратить школу в purely reactive tax
+  - [ ] добавить encounter, где reading payoff понятен
+
+### 12.2 PvE slice
+
+- [ ] Собрать один polished early-to-mid journey
+  - [ ] onboarding -> первый meaningful school choice tease
+  - [ ] ранний путь до первого build breakpoint
+  - [ ] midgame цель на 3–5 сессий
+- [ ] Обновить ранние регионы под school-first loop
+  - [ ] минимум 2 ранних PvE bands с разными tactical asks
+  - [ ] минимум 4 элитных encounter archetypes
+  - [ ] минимум 2 мини-босса и 1 полноценный босс slice
+- [ ] Добавить school trials v1
+  - [ ] испытание на давление
+  - [ ] испытание на стойкость
+  - [ ] испытание на темп
+  - [ ] испытание на чтение намерений
+
+### 12.3 Rarity and loadout slice
+
+- [ ] Ввести pre-battle loadout decisions v1
+- [ ] Привязать rarity growth к breadth, а не к stat inflation
+- [ ] Добавить targeted school drops / source families
+- [ ] Ввести первые same-school starter synergies
+- [ ] Проверить, что higher rarity не убивает low-rarity relevance
+
+### 12.4 UX and return motivation
+
+- [ ] Обновить rune hub вокруг сравнения школ и ближайших целей
+- [ ] Показывать игроку, что именно дала новая редкость
+- [ ] После сессии показывать 2–3 честные next goals
+- [ ] Добавить return recap для игрока после перерыва
+- [ ] Проверить, что игрок не тонет в терминах и кнопках
+
+### 12.5 Social-lite slice
+
+- [ ] Добавить profile read model с видимой школой
+- [ ] Добавить сигнатурную сборку в профиле / preview
+- [ ] Прототип shared ritual или общей school-driven цели
+- [ ] Проверить, что social layer усиливает возврат, а не отвлекает от core loop
+
+### 12.6 Validation tasks
+
+- [ ] Провести внутренние playtests по школам
+- [ ] Провести school differentiation review
+- [ ] Провести economy sanity simulation
+- [ ] Провести UX/copy pass на first session и first return
+
+### 12.7 Exit gate for Phase 2
+
+- [ ] Игроки без подсказки могут описать разницу между стартовыми школами
+- [ ] Игроки осознанно меняют loadout под encounter
+- [ ] Slice стабилен по save/load/recovery
+- [ ] Есть сильный аргумент, почему игра интересна после первой недели
+
+## 13. Phase 3 — Closed Alpha
+
+- **Window:** `H1 2027`
+- **Status:** `Planned`
+- **Objective:** собрать feature shape релиза 1.0, закрыть основные системные дыры и доказать, что midgame / proto-endgame живут.
+- **Target exit:** `конец H1 2027`
+- **Confidence:** `medium`
+- **Primary owner:** `Producer / Product + Gameplay / Platform`
+- **Support owners:** `Game Design`, `Balance`, `Content / UX`, `QA / Release`
+- **Entry criteria:** Vertical Slice доказал school readability и build-driven return motivation
+- **Why now:** после этого этапа 1.0 scope должен стать честным и замороженным
+- **Primary risks:** midgame не удерживает, economy leaks, quest platform нестабильна, content throughput не выдерживает 1.0 ambition
+- **Go / no-go review date:** `2027-06-30`
+
+### 13.0 Execution checkpoints
+
+- [ ] **Q1 2027:** quest platform v1, новые регионы, dungeon / gauntlet prototypes, dashboards v1
+- [ ] **Q2 2027:** alpha content fill, exploit sweep, economy hardening и freeze релизной feature shape
+
+### 13.1 Progression and build game
+
+- [ ] Ввести school mastery tracks v1
+- [ ] Ввести codex / archive v1
+- [ ] Ввести первый prestige layer без mandatory power cliff
+- [ ] Настроить respec / adjustment rules без чрезмерного regret
+- [ ] Добавить долгие build goals на 1–2 недели игры
+
+### 13.2 PvE content expansion
+
+- [ ] Довести контент до 1.0 alpha shape
+  - [ ] 3–4 полноценных региона
+  - [ ] enemy families с разными tactical asks
+  - [ ] boss families и rematch hooks
+- [ ] Ввести expedition / dungeon v1
+  - [ ] lifecycle run state
+  - [ ] abandon / fail / reward protection
+  - [ ] encounter variety внутри раннего dungeon loop
+- [ ] Ввести tower / gauntlet v1
+  - [ ] escalating challenge
+  - [ ] mutators
+  - [ ] non-toxic failure loop
+
+### 13.3 Quest and goal platform
+
+- [ ] Ввести quest platform v1
+- [ ] Добавить school questlines
+- [ ] Добавить short-term / weekly goals без daily coercion
+- [ ] Добавить targeted chase objectives
+- [ ] Проверить, что цели усиливают сборку, а не превращаются в chores
+
+### 13.4 Economy and balance hardening
+
+- [ ] Собрать source/sink dashboards
+- [ ] Проверить отсутствие salvage-positive loops
+- [ ] Проверить отсутствие obvious reroll-positive loops
+- [ ] Проверить, что одна школа не доминирует как лучший фарм-маршрут
+- [ ] Настроить dry streak relief / token fallback, если нужно
+
+### 13.5 Tooling and content platform
+
+- [ ] Добавить validators для schools / encounters / quests / rewards
+- [ ] Подготовить battle / reward / progression simulation tools
+- [ ] Подготовить feature flags для risky systems
+- [ ] Подготовить admin / recovery tooling для support и hotfix cases
+
+### 13.6 QA / exploit sweep
+
+- [ ] Добавить long-form deterministic scenario tests
+- [ ] Добавить migration fixture coverage
+- [ ] Провести full exploit sweep на progression / loot / rewards
+- [ ] Провести destructive manual playtest pass
+- [ ] Зафиксировать список known alpha risks
+
+### 13.7 Exit gate for Phase 3
+
+- [ ] Нет blocker-класса багов по наградам и прогрессии в alpha scope
+- [ ] Midgame и proto-endgame дают reason to return
+- [ ] 1.0 feature shape заморожен до Beta
+- [ ] Beta scope и cut-list зафиксированы заранее
+
+## 14. Phase 4 — Open Beta / Soft Launch
+
+- **Window:** `H2 2027`
+- **Status:** `Planned`
+- **Objective:** отладить onboarding, retention, economy, circles, optional PvP и ethical live-ops перед 1.0.
+- **Target exit:** `конец H2 2027`
+- **Confidence:** `medium-low`
+- **Primary owner:** `Producer / Release + QA / Release`
+- **Support owners:** `Gameplay / Platform`, `Game Design`, `Balance`, `Content / UX`
+- **Entry criteria:** alpha scope собран и 1.0 must-have shape заморожен
+- **Why now:** Beta должна отсеять unsafe scope и доказать, что live game выдержит реальных игроков
+- **Primary risks:** onboarding по-прежнему мутный, circles создают coercion, PvP провоцирует abuse, live-ops слишком дорог в поддержке
+- **Go / no-go review date:** `2027-12-15`
+
+### 14.0 Execution checkpoints
+
+- [ ] **Q3 2027:** circles v1, onboarding/return clarity pass, async duel contract, season chronicle template draft
+- [ ] **Q4 2027:** soft launch, staged rollout, support tooling, launch cut review и final scope lock для 1.0
+
+### 14.1 Onboarding and return clarity
+
+- [ ] Финальный pass по first-session clarity
+- [ ] Финальный pass по first-week goals
+- [ ] Ввести return recap v1 для вернувшихся игроков
+- [ ] Проверить, что игра объясняет прогресс и next goals без стен текста
+
+### 14.2 Circles and social systems v1
+
+- [ ] Ввести circles v1
+  - [ ] join / leave / basic roles
+  - [ ] contribution caps
+  - [ ] no absence punishment
+  - [ ] shared ritual board
+- [ ] Ввести mentorship / novice support v1
+- [ ] Ввести social showcases для профилей и сигнатурных сборок
+- [ ] Проверить, что circles не превращаются в attendance trap
+
+### 14.3 Optional PvP v1
+
+- [ ] Ввести async duel snapshot contract
+- [ ] Ввести normalization / bracket rules
+- [ ] Ограничить reward value PvP относительно core PvE progression
+- [ ] Ввести repeated-opponent caps
+- [ ] Ввести anti-win-trade / anti-smurf heuristics
+- [ ] Подготовить cosmetic / prestige reward ladder
+
+### 14.4 Live-ops v1
+
+- [ ] Подготовить season chronicle template
+- [ ] Подготовить archive / rerun / catch-up rules
+- [ ] Подготовить ethical copy rules для событий и возврата
+- [ ] Подготовить compensation playbooks и event rollback rules
+- [ ] Проверить, что сезон даёт повод вернуться, но не наказывает за паузу
+
+### 14.5 Release hardening
+
+- [ ] Подготовить monitoring / alerts / support runbooks
+- [ ] Подготовить leaderboard / reward recompute tools
+- [ ] Подготовить backup / restore / migration dry-runs
+- [ ] Подготовить staged rollout cohorts
+- [ ] Провести soft-launch review и cut all non-essential risk
+
+### 14.6 Exit gate for Phase 4
+
+- [ ] Onboarding и return UX понятны без ручного сопровождения
+- [ ] Economy выдерживает поведение реальных игроков
+- [ ] Нет major unresolved abuse loops в 1.0 scope
+- [ ] Launch content lock date установлена и соблюдается
+
+## 15. Phase 5 — Release 1.0
+
+- **Window:** `H1 2028`
+- **Status:** `Planned`
+- **Objective:** выпустить цельную PvE-first social build-RPG, где core fantasy уже работает без обещаний “доделаем потом”.
+- **Target exit:** `до конца H1 2028`
+- **Confidence:** `medium-low`
+- **Primary owner:** `Producer / Release + QA / Release`
+- **Support owners:** `Gameplay / Platform`, `Game Design`, `Balance`, `Content / UX`
+- **Entry criteria:** Phase 4 gate закрыт и launch scope стабилен
+- **Why now:** нужно превратить накопленное evidence в безопасный релиз, а не дотащить ещё wishlist-фичи
+- **Primary risks:** content lock срывается, known issues размазывают focus, launch support load оказывается выше готовности команды
+- **Go / no-go review date:** `2028-05-15`
+
+### 15.0 Release train checkpoints
+
+- [ ] **T-8 weeks:** content lock для 1.0 committed scope
+- [ ] **T-6 weeks:** RC0, полный gate review и cut of non-essential risk
+- [ ] **T-4 weeks:** launch candidate, hotfix drill, rollback drill, support rehearsal
+- [ ] **T-2 weeks:** final go / go-with-cuts / no-go review
+- [ ] **Launch week:** watch dashboards, triage, player comms, exploit response window
+
+### 15.1 1.0 content checklist
+
+- [ ] 4 стартовые школы стабильны и различимы
+- [ ] У каждой школы есть сильный early, mid и chase payoff
+- [ ] Ранний и средний путь не ощущаются пустыми
+- [ ] В релизе есть полноценный PvE набор
+  - [ ] tutorial zone
+  - [ ] 4–5 core regions
+  - [ ] elite encounters
+  - [ ] bosses
+  - [ ] school trials
+  - [ ] expedition / dungeon v1
+  - [ ] tower / gauntlet v1
+- [ ] В релизе есть build / progression набор
+  - [ ] loadout breadth
+  - [ ] targeted chase
+  - [ ] codex
+  - [ ] mastery tracks v1
+- [ ] В релизе есть social / optional PvP набор
+  - [ ] circles v1
+  - [ ] mentorship v1
+  - [ ] optional async duels v1
+- [ ] В релизе есть ethical live-ops foundation
+  - [ ] chronicle template
+  - [ ] archive / recap / catch-up
+
+### 15.2 Launch readiness
+
+- [ ] Полный release gate review пройден
+- [ ] Баланс-пасс по школам и экономике завершён
+- [ ] Docs и release notes обновлены
+- [ ] Known issues triaged и не содержат launch blockers
+- [ ] Hotfix и rollback drill проведён
+- [ ] Support / moderation / exploit escalation path готов
+
+### 15.3 Launch success signals
+
+- [ ] Игроки обсуждают школы и сборки, а не только баги и награды
+- [ ] Возвращающиеся игроки понимают, зачем заходить снова
+- [ ] Ни одна школа не монополизирует core PvE
+- [ ] Опциональный PvP не доминирует над PvE progression
+
+### 15.4 Exit gate for Phase 5
+
+- [ ] Go / no-go решение принято осознанно, а не по усталости команды
+- [ ] 1.0 shipped
+
+## 16. Phase 6 — Post-launch Year 1
+
+- **Window:** `H2 2028–H1 2029`
+- **Status:** `Planned`
+- **Objective:** углублять mastery, контент и social systems без потери ясности, честности и поддерживаемости.
+- **Confidence:** `medium`
+
+### 16.0 Year 1 quarterly themes
+
+- [ ] **Q3 2028:** stabilization, balance, QoL, return UX hardening
+- [ ] **Q4 2028:** first expansion chronicle, content band widening, circles v2 prototypes
+- [ ] **Q1 2029:** follow-up по doctrine / limited synergy / PvP experiments
+- [ ] **Q2 2029:** year-one retrospective и strategy reset для Year 2+
+
+### 16.1 Content expansion
+
+- [ ] Провести greenlight review для школы Некромантии
+- [ ] Провести greenlight review для школы Иллюзий
+- [ ] Добавить новые enemy factions и encounter twists
+- [ ] Добавить legendary boss remixes
+- [ ] Добавить новые school-focused quests / chronicles
+
+### 16.2 Systems expansion
+
+- [ ] Ввести school doctrines v2, если стартовые школы стабильны
+- [ ] Ввести limited cross-school synergies, если readability выдержана
+- [ ] Улучшить loadout management и compare tools
+- [ ] Улучшить codex / archive / build sharing
+
+### 16.3 Social and PvP follow-up
+
+- [ ] Ввести circles v2 projects
+- [ ] Протестировать school cups
+- [ ] Протестировать draft / limited duel format
+- [ ] Рассмотреть team async skirmish только после PvP integrity review
+
+### 16.4 Live-ops and ethics follow-up
+
+- [ ] Делать quarterly balance reviews
+- [ ] Делать quarterly retention ethics review
+- [ ] Делать catch-up review для вернувшихся игроков
+- [ ] Повторять хроники и не строить контент на страхе пропуска
+
+## 17. Phase 7 — Year 2+ direction
+
+- **Window:** `H2 2029+`
+- **Status:** `Planned`
+- **Objective:** расширять мир и long-tail value только после доказанной устойчивости ядра, экономики и live-ops.
+
+### 17.1 Strategic bets to revisit
+
+- [ ] world-state metagame
+- [ ] global school research / great circles
+- [ ] legacy boss ecosystem
+- [ ] curated player-authored challenges
+- [ ] advanced prestige systems без power coercion
+
+### 17.2 Systems that require explicit re-approval
+
+- [ ] deeper PvP formats beyond async duels
+- [ ] any trade / gifting / player market system
+- [ ] large-scale territory / faction warfare
+- [ ] any high-complexity shared-world economy
+
+## 18. Explicitly cut or parked until proven safe
+
+Эти темы **не входят** в активный delivery order, пока ядро не доказано:
+
+- `Cut for 1.0:` real-time PvP
+- `Cut for 1.0:` player market / trading economy
+- `Cut for 1.0:` guild wars / territory control
+- `Cut for 1.0:` attendance-based guild power
+- `Cut for 1.0:` heavy crafting simulator
+- `Parked:` housing / base building
+- `Parked:` fully freeform multi-school combinatorics
+- `Parked:` multiple active school buttons as default combat standard
+
+## 19. Planning assumptions
+
+- Даты приблизительные и могут сдвигаться на одно planning window
+- Скоуп режется **до** Beta, а не во время launch panic
+- Ethical guardrails важнее краткосрочного роста retention
+- PvP и social systems не получают права ломать core PvE roadmap
+- Любая новая высокая сложность должна доказать player value, clarity, fairness, shippability и maintainability
+
+### 19.1 Known unknowns
+
+- реальная скорость производства контента по школам, encounter'ам и боссам;
+- объём реального UX-долга после Vertical Slice playtests;
+- сложность миграций при расширении progression/save-state;
+- стоимость поддержки circles / optional PvP / live-ops на реальных игроках;
+- достаточность telemetry и dashboards для честных product решений.
+
+### 19.2 Roadmap invalidation triggers
+
+Если случается одно из нижеуказанных событий, roadmap пересматривается, а не защищается из упрямства:
+
+- игроки после Vertical Slice всё ещё не могут объяснить разницу школ;
+- `RewardLedger` / save contracts требуют крупного перепроектирования после Phase 1;
+- content throughput не позволяет собрать committed alpha/beta scope в нужное окно;
+- circles или optional PvP создают высокий abuse/support cost;
+- onboarding clarity не достигает acceptable уровня после двух последовательных review циклов.
+
+## 20. Change log
+
+Формат записи:
+
+- `дата — что изменили — почему`
+
+Записи:
+
+- **2026-04-17:** PLAN.md переписан в формат подробного execution roadmap с фазами, чекбоксами, датами, release gates и ethical guardrails.
+- **2026-04-17:** добавлен production control layer: current quarter, 30/60/90 days, dependency map, cut rules, execution checkpoints, review rhythm.
+- **2026-04-17:** зафиксированы versioned `LoadoutSnapshot`, `RewardIntent` и `RewardLedger`; battle reward finalize-path переведён на canonical exact-once reward claim через ledger.

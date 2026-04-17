@@ -20,6 +20,8 @@ Runemasters Return — VK MMO RPG на TypeScript с модульным игро
 - стартовые школы получают реальную боевую идентичность: Пламя усиливает давление, Твердь усиливает защиту, Прорицание лучше отвечает на намерения врага;
 - школа Тверди уже получила первый полный пакет: пассивную защитную идентичность и активный `Каменный отпор`;
 - tutorial loop теперь подводит игрока к первой активной руне, экипировке и первому применению рунного действия;
+- versioned platform contracts для боевой рунной сборки и reward claims: `LoadoutSnapshot`, `RewardIntent`, `RewardLedger`;
+- exact-once reward ledger и canonical battle finalization защищают победную награду от replay/reroll по повторным входящим событиям;
 - типобезопасные утилиты сериализации и commit-based релизная политика.
 
 ## Школы и архетипы
@@ -38,6 +40,7 @@ Runemasters Return — VK MMO RPG на TypeScript с модульным игро
 - `src/vk/keyboards/index.ts` — общий builder клавиатур, который уменьшает копипасту и упрощает рост меню;
 - `src/content/validation/validate-game-content.ts` — автоматическая проверка биомов, мобов, рунного контента и игрового баланса перед быстрыми обновлениями;
 - `src/modules/shared/application/require-player.ts` — единая точка загрузки игрока и консистентных ошибок для use-case слоя;
+- `src/modules/shared/domain/contracts/*` — versioned контракты persistence-уровня для боевой сборки и reward claim flow;
 - `src/shared/utils/json.ts` — единая точка для JSON clone/parse/stringify;
 - `src/modules/runes/domain/rune-collection.ts` — paging helper'ы рунной коллекции поверх существующего `currentRuneIndex` без новой persistence-схемы;
 - `src/tooling/release` — правила версионирования, content validation, preflight-проверка и скрипты `npm run content:validate` / `npm run release:status` / `npm run release:preflight`;

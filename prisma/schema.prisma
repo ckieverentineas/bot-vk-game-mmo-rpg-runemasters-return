@@ -36,6 +36,7 @@ model Player {
   inventory        PlayerInventory?
   runes            Rune[]
   battles          BattleSession[]
+  rewardLedger     RewardLedgerRecord[]
 }
 
 model PlayerStatAllocation {
@@ -129,6 +130,22 @@ model BattleSession {
   player          Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
 
   @@index([playerId, status])
+}
+
+model RewardLedgerRecord {
+  id            String   @id @default(cuid())
+  playerId      Int
+  ledgerKey     String   @unique
+  sourceType    String
+  sourceId      String
+  status        String   @default("APPLIED")
+  entrySnapshot String
+  appliedAt     DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  player        Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@index([playerId, sourceType, sourceId])
 }
 
 model Biome {

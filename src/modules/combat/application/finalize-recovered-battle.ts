@@ -28,10 +28,10 @@ export const finalizeRecoveredBattleIfNeeded = async (
     ? RewardEngine.applyVictoryRewards(recoveredBattle, resolveVictoryRewardOptions(player, recoveredBattle))
     : { battle: recoveredBattle, droppedRune: null };
 
-  await repository.finalizeBattle(player.playerId, rewardResolution.battle, rewardResolution.droppedRune);
+  const finalized = await repository.finalizeBattle(player.playerId, rewardResolution.battle);
 
   return {
-    battle: rewardResolution.battle,
+    battle: finalized.battle,
     recovered: true,
   };
 };

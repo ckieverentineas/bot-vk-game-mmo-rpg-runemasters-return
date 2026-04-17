@@ -54,8 +54,8 @@ export class ExploreLocation {
     if (battle.turnOwner === 'ENEMY') {
       const resolved = BattleEngine.resolveEnemyTurn(battle);
       if (resolved.status === 'COMPLETED') {
-        await this.repository.finalizeBattle(currentPlayer.playerId, resolved, null);
-        return resolved;
+        const finalized = await this.repository.finalizeBattle(currentPlayer.playerId, resolved);
+        return finalized.battle;
       }
 
       return this.repository.saveBattle(resolved);

@@ -35,8 +35,8 @@ export class PerformBattleAction {
         ? RewardEngine.applyVictoryRewards(battle, resolveVictoryRewardOptions(player, battle))
         : { battle, droppedRune: null };
 
-      await this.repository.finalizeBattle(player.playerId, rewarded.battle, rewarded.droppedRune);
-      return rewarded.battle;
+      const finalized = await this.repository.finalizeBattle(player.playerId, rewarded.battle);
+      return finalized.battle;
     }
 
     return this.repository.saveBattle(battle);
