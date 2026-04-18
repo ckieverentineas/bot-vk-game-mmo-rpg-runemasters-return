@@ -417,6 +417,31 @@ const renderBattleActionState = (battle: BattleView): string => {
   ].join('\n');
 };
 
+const renderBattleNextGoal = (battle: BattleView): string[] => {
+  if (battle.status !== 'COMPLETED') {
+    return [];
+  }
+
+  if (battle.result === 'VICTORY') {
+    if (battle.rewards?.droppedRune) {
+      return [
+        '🎯 Следующая цель: откройте «🔮 Руны» и наденьте новую руну.',
+        'Так вы усилите стиль боя перед следующим боем.',
+      ];
+    }
+
+    return [
+      '🎯 Следующая цель: начните «⚔️ Новый бой» и продолжайте усиливать сборку.',
+      'Сейчас важно удержать темп и искать следующую полезную руну.',
+    ];
+  }
+
+  return [
+    '🎯 Следующая цель: усилите героя в «👤 Профиль» или начните новый бой снова.',
+    'Так вы быстрее вернётесь в ритм без лишнего давления.',
+  ];
+};
+
 export const renderBattle = (battle: BattleView): string => {
   const log = [...battle.log].slice(-3).reverse().join('\n');
   const activeAbility = battle.player.runeLoadout?.activeAbility ?? null;
@@ -440,11 +465,7 @@ export const renderBattle = (battle: BattleView): string => {
           ? `Ваш ход: выберите между «⚔️ Атака», «🛡️ Защита» и «🌀 ${activeAbility?.name}».`
           : 'Ваш ход: выберите между «⚔️ Атака» и «🛡️ Защита». '
       : 'Дождитесь завершения обмена ударами.'
-    : battle.result === 'VICTORY'
-      ? battle.rewards?.droppedRune
-        ? 'Действие: Откройте «🔮 Руны», наденьте новую руну и вернитесь в бой. '
-        : 'Действие: Нажмите «⚔️ Новый бой». '
-      : 'Действие: усилите героя в профиле или начните бой снова.';
+    : null;
 
   const rewardLines = battle.status === 'COMPLETED' && battle.rewards
     ? [
@@ -460,11 +481,15 @@ export const renderBattle = (battle: BattleView): string => {
       ]
     : [];
 
+  const postSessionLines = battle.status === 'COMPLETED'
+    ? ['', ...renderBattleNextGoal(battle)]
+    : [];
+
   return [
     `${battle.status === 'COMPLETED' ? '🏁 Завершённый бой' : '⚔️ Бой'}`,
     '',
     battleStateLine,
-    nextStepLine.trim(),
+    ...(nextStepLine ? [nextStepLine.trim()] : []),
     ...(enemyIntentLine ? [enemyIntentLine] : []),
     renderBattleRuneState(battle),
     '',
@@ -476,5 +501,6 @@ export const renderBattle = (battle: BattleView): string => {
     'Что произошло:',
     log || 'Пока без событий.',
     ...rewardLines,
+    ...postSessionLines,
   ].join('\n');
 };

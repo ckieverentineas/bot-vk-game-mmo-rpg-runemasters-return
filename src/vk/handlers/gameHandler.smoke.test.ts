@@ -310,7 +310,7 @@ describe('GameHandler smoke', () => {
     expect(services.performBattleAction.execute).toHaveBeenCalledWith(1001, 'ATTACK');
     expect(getReplyCalls(ctx)[0]?.message).toContain('Завершённый бой');
     expect(getReplyCalls(ctx)[0]?.message).toContain('Победа.');
-    expect(getReplyCalls(ctx)[0]?.message).toContain('Нажмите «⚔️ Новый бой»');
+    expect(getReplyCalls(ctx)[0]?.message).toContain('🎯 Следующая цель: начните «⚔️ Новый бой»');
   });
 
   it('использует рунное действие в бою', async () => {

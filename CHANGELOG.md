@@ -437,6 +437,29 @@
 - первый экран и учебная зона теперь лучше подводят к school-first fantasy вместо generic "безопасной зоны";
 - empty rune screen больше не обрывает раннюю мотивацию до получения первой руны.
 
+## [0.19] - 2026-04-18
+
+### Commit
+
+- `worktree` — `feat: lock post-session next goals`
+
+### Added
+
+- presenter tests для next-goal messaging после победы/поражения в [`src/vk/presenters/messages.test.ts`](src/vk/presenters/messages.test.ts);
+- smoke-check на battle completion CTA в [`src/vk/handlers/gameHandler.smoke.test.ts`](src/vk/handlers/gameHandler.smoke.test.ts).
+
+### Changed
+
+- [`renderBattle()`](src/vk/presenters/messages.ts) теперь завершает completed battle единым block'ом `🎯 Следующая цель` вместо разрозненного `Действие:`;
+- победа с rune drop теперь объясняет, зачем сразу открыть `🔮 Руны`, а обычная победа и поражение дают честный ближайший шаг без давления;
+- release docs и roadmap синхронизированы под post-session next-goal format.
+
+### Fixed
+
+- battle result screen больше не заканчивается плоским CTA без мотивации;
+- победа без дропа и поражение теперь лучше подсказывают ближайший осмысленный шаг;
+- post-session copy теперь держит единый поддерживающий тон вместо смеси `Действие:` и общих фраз.
+
 ## Шаблон следующей записи
 
 ### [0.03] - YYYY-MM-DD
