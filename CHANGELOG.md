@@ -711,6 +711,26 @@
 
 - ближайший delivery order больше не обещает расползающийся Vertical Slice “про всё сразу”; risky breadth вынесена в explicit deferred/out-of-scope register.
 
+## [0.45] - 2026-04-19
+
+### Commit
+
+- `worktree` — `docs: approve 1.0 release charter`
+
+### Added
+
+- product source-of-truth [`docs/product/1-0-release-charter.md`](docs/product/1-0-release-charter.md) с 1.0 promise, explicit out-of-scope, ethical retention charter и governance baseline;
+- link из [`README.md`](README.md) на новый charter как на отдельный документ уровня продукта.
+
+### Changed
+
+- `PLAN.md` теперь отмечает утверждёнными `1.0 promise`, `explicit out-of-scope`, `owner model / review rhythm` и ethical retention charter;
+- `docs/reviews/phase-1-exit-gate.md` больше не держит promise/out-of-scope как незакрытый dependency и теперь ссылается на новый charter.
+
+### Fixed
+
+- обещание 1.0 и его red lines больше не размазаны только по roadmap-тексту; у команды появился отдельный approval-oriented source of truth для anti-drift решений.
+
 ## Шаблон следующей записи
 
 ### [0.03] - YYYY-MM-DD

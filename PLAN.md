@@ -17,7 +17,7 @@
 
 | Objective | Measure of done | Owner role | Check date | Status |
 |---|---|---|---|---|
-| Зафиксировать обещание релиза 1.0 и явный out-of-scope | 1.0 promise и cut-list утверждены в плане | Producer / Product | 2026-05-01 | In progress |
+| Зафиксировать обещание релиза 1.0 и явный out-of-scope | 1.0 promise и cut-list утверждены в плане | Producer / Product | 2026-05-01 | Done |
 | Заморозить библиотеку стартовых школ и ladder редкости | school bible v1 и rarity ladder v1 согласованы | Game Design + Balance | 2026-05-15 | In progress |
 | Зафиксировать loadout/reward/schema contracts | есть контрактный пакет и test-plan на миграции | Gameplay / Platform | 2026-05-31 | Planned |
 | Зафиксировать onboarding / return UX и telemetry frame | UX map и telemetry plan утверждены | Content / UX | 2026-06-15 | Planned |
@@ -27,9 +27,9 @@
 
 #### By 2026-05-17
 
-- [ ] Утвердить 1.0 promise и explicit out-of-scope
+- [x] Утвердить 1.0 promise и explicit out-of-scope
 - [ ] Утвердить стартовые школы и ruleset редкости
-- [ ] Утвердить owner model и review rhythm
+- [x] Утвердить owner model и review rhythm
 
 #### By 2026-06-17
 
@@ -50,7 +50,7 @@
 | Библия стартовых школ ещё не заморожена | Нельзя честно начать Vertical Slice content production | Game Design | 2026-05 | At risk |
 | Контракты loadout/reward/schema ещё не стабилизированы | Высокий риск rework в progression и save-state | Gameplay / Platform | 2026-05 | At risk |
 | Нет финального dependency map для Q2–Q3 | Скрытые блокеры могут сорвать scope lock | Producer / Product | 2026-05 | In progress |
-| Telemetry и review cadence ещё не оформлены как ритуал | Будет трудно принимать cut/go решения на evidence | Release / Analytics | 2026-06 | Planned |
+| Telemetry frame уже описан, но evidence ritual ещё не обкатан на регулярных review | Будет трудно принимать cut/go решения только по живым сигналам, а не по документам | Release / Analytics | 2026-06 | In progress |
 | Abuse matrix для social/PvP ещё не собрана | Есть риск обещать unsafe scope слишком рано | QA / Release | 2026-06 | Planned |
 
 ## 2. Как пользоваться этим планом
@@ -224,8 +224,8 @@ Runemasters Return должен решать это через **школы ру
 - rarity-based loadout growth;
 - targeted chase по школам;
 - midgame и proto-endgame активности;
-- circles / social-lite в асинхронном формате;
-- optional async PvP v1;
+- circles / social-lite в асинхронном формате — только после отдельного evidence review;
+- optional async PvP v1 — только после отдельного evidence review;
 - ethical season-chronicle framework;
 - стабильные release rails, tests, telemetry и anti-abuse основы.
 
@@ -425,7 +425,7 @@ Runemasters Return должен решать это через **школы ру
 
 ### 11.0 Execution checkpoints
 
-- [ ] **Late April 2026:** заморозить 1.0 promise, owner model и review rhythm
+- [x] **Late April 2026:** заморозить 1.0 promise, owner model и review rhythm
 - [ ] **May 2026:** заморозить school bible, rarity ladder и scaling role базовой атаки
 - [ ] **June 2026:** заморозить `SchoolDefinition`, `LoadoutSnapshot`, `RewardIntent`, `RewardLedger`, telemetry brief
 - [ ] **July 2026:** собрать duplication matrix, concurrency backlog и migration fixtures v1
@@ -434,10 +434,10 @@ Runemasters Return должен решать это через **школы ру
 
 ### 11.1 Product lock
 
-- [ ] Зафиксировать обещание релиза 1.0
-  - [ ] сформулировать 1.0 как PvE-first social build-RPG
-  - [ ] утвердить список explicit out-of-scope для 1.0
-  - [ ] запретить drift в FOMO/P2W/mandatory PvP
+- [x] Зафиксировать обещание релиза 1.0
+  - [x] сформулировать 1.0 как PvE-first social build-RPG
+  - [x] утвердить список explicit out-of-scope для 1.0
+  - [x] запретить drift в FOMO/P2W/mandatory PvP
 - [ ] Зафиксировать библиотеку стартовых школ
   - [ ] Школа Пламени — pressure / burst / risk-reward
   - [ ] Школа Тверди — стойкость / counter / stability
@@ -452,11 +452,11 @@ Runemasters Return должен решать это через **школы ру
   - [ ] rare = active + passive breadth
   - [ ] epic = второй слой depth, а не x2 цифры
   - [ ] legendary = keystone/capstone, а не mandatory auto-win
-- [ ] Зафиксировать ethical retention charter
-  - [ ] no hard streak resets
-  - [ ] no absence punishment
-  - [ ] no exclusive power windows
-  - [ ] return via curiosity, mastery, belonging, expression
+- [x] Зафиксировать ethical retention charter
+  - [x] no hard streak resets
+  - [x] no absence punishment
+  - [x] no exclusive power windows
+  - [x] return via curiosity, mastery, belonging, expression
 
 ### 11.2 Domain platform
 
@@ -991,3 +991,4 @@ Runemasters Return должен решать это через **школы ру
 - **2026-04-19:** `__confirm_delete_player__` переведён на exact-once replay rail через account-scoped `DeletePlayerReceipt`; duplicate same-intent confirm теперь возвращает canonical delete success и не должен падать в `player_not_found` после уже успешного удаления.
 - **2026-04-19:** legacy text rune navigation (`+руна`, `-руна`, `руны >`, `руны <`, `руна слот 1..4` и alias) переведена на server-owned message intent ids; duplicate same-message navigation теперь должна возвращать canonical rune hub, а stale rune-hub buttons по-прежнему обязаны восстанавливать актуальный экран вместо silent retargeting.
 - **2026-04-19:** собран `docs/reviews/phase-1-exit-gate.md`; первый Vertical Slice намеренно зафиксирован как один polished PvE-first early-to-mid journey с Пламенем и Твердью, а social/PvP и risky breadth вынесены из near-term committed scope.
+- **2026-04-19:** утверждён `docs/product/1-0-release-charter.md`; 1.0 promise, explicit out-of-scope, ethical retention charter и governance baseline теперь вынесены в отдельный source-of-truth, а не размазаны только по roadmap-частям `PLAN.md`.

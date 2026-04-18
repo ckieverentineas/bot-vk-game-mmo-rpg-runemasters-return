@@ -52,6 +52,7 @@ Runemasters Return — VK MMO RPG на TypeScript с модульным игро
 - `docs/platform/retry-handling-rules.md`, `docs/platform/persistence-versioning-rules.md`, `docs/qa/reward-duplication-matrix.md`, `docs/testing/concurrency-critical-use-cases.md` — зафиксированные retry/concurrency rails и versioning policy для critical battle/reward flows;
 - `docs/platform/rng-authority-rules.md` — граница server-authoritative randomness для craft / reroll / reward drops;
 - `docs/platform/command-intent-rules.md` — intent-based replay policy для keyboard rune mutations с достаточным бюджетом;
+- `docs/product/1-0-release-charter.md` — утверждённое обещание релиза 1.0, explicit out-of-scope и ethical retention red lines;
 - `docs/reviews/phase-1-exit-gate.md` — единый gate-review для перехода из Foundation & Platform к Vertical Slice scope lock;
 - `docs/telemetry/telemetry-plan.md` — минимальный telemetry v1 план для onboarding clarity, school readability, return UX, economy health и exploit review;
 - `docs/content/content-pipeline-plan.md`, `docs/content/validator-scope.md`, `docs/content/templates/school-package-template.md` — source-of-truth по content packages, validator tiers и school package completeness;

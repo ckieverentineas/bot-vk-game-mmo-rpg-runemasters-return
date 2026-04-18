@@ -19,7 +19,7 @@
 | Пиллары продукта согласованы и не конфликтуют друг с другом | `partial` | конфликтов в locked slice не осталось, но school bible / rarity ladder ещё не заморожены | `PLAN.md`, `README.md`, этот review |
 | Platform contracts готовы к Vertical Slice | `partial` | battle/loadout/reward/retry baseline готов, но player-state versioning и split source-of-truth/read models ещё открыты | `ARCHITECTURE.md`, `docs/platform/*`, этот review |
 | Vertical Slice scope заперт и не расползается | `done` | committed scope сведён к одному доказуемому school-first PvE journey | этот review, `PLAN.md` |
-| High-risk out-of-scope вынесен из ближайшего delivery order | `done` | social/PvP и unsafe breadth явно вырезаны из near-term committed work | этот review, `PLAN.md` |
+| High-risk out-of-scope вынесен из ближайшего delivery order | `done` | social-lite, PvP beyond locked slice и unsafe breadth явно вырезаны из near-term committed work | этот review, `PLAN.md` |
 
 ## Pillars consistency review
 
@@ -31,7 +31,7 @@
 | `Synergy is earned depth` | slice ограничен starter synergy, без proc-web complexity | ok |
 | `PvE-first` | committed scope — только один polished PvE journey | ok |
 | `Social is asynchronous by default` | social layer не входит в committed Vertical Slice | ok |
-| `PvP is optional and late` | PvP вынесен в explicit out-of-scope | ok |
+| `PvP is optional and late` | PvP не входит в locked Vertical Slice; synchronous / mandatory forms вынесены из 1.0 scope, async candidate допускается только после отдельного evidence review | ok |
 | `Ethical retention only` | return recap / next goals остаются curiosity-driven, без streak pressure | ok |
 
 ### Current tension points still open
@@ -100,7 +100,7 @@
 Эти темы **не считаются committed work** до отдельного review после Vertical Slice evidence:
 
 - social-lite / circles / shared ritual;
-- любой PvP;
+- любой PvP внутри locked Vertical Slice, а также synchronous / mandatory PvP forms для 1.0;
 - trading / prestige / расширение валютного слоя;
 - полный quest runtime platform;
 - season chronicle runtime / live-ops tooling;
@@ -112,9 +112,6 @@
 ### Must close before full Phase 1 exit sign-off
 
 - `11.1 Product lock`:
-  - 1.0 promise;
-  - explicit out-of-scope;
-  - ethical retention charter;
   - school bible / overlap rules / rarity ladder.
 - `11.2 Domain platform`:
   - source-of-truth vs read-model split;
@@ -130,6 +127,7 @@
 
 - `PLAN.md`
 - `README.md`
+- `docs/product/1-0-release-charter.md`
 - `ARCHITECTURE.md`
 - `docs/platform/persistence-versioning-rules.md`
 - `docs/platform/retry-handling-rules.md`
