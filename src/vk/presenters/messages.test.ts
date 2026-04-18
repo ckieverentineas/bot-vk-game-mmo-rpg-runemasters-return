@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import type { BattleView, PlayerState, RuneDraft } from '../../shared/types/game';
-import { renderBattle, renderLocation, renderMainMenu, renderRuneScreen, renderWelcome } from './messages';
+import { renderBattle, renderLocation, renderMainMenu, renderReturnRecap, renderRuneScreen, renderWelcome } from './messages';
 
 const createPlayer = (overrides: Partial<PlayerState> = {}): PlayerState => ({
   userId: 1,
@@ -71,6 +71,13 @@ const createDroppedRune = (): RuneDraft => ({
   magicDefence: 0,
   dexterity: 0,
   intelligence: 0,
+});
+
+const createEquippedRune = () => ({
+  id: 'rune-1',
+  createdAt: '2026-04-12T00:00:00.000Z',
+  ...createDroppedRune(),
+  isEquipped: true,
 });
 
 const createBattle = (overrides: Partial<BattleView> = {}): BattleView => ({
@@ -175,11 +182,48 @@ describe('messages school-first onboarding framing', () => {
     const menu = renderMainMenu(player);
     const location = renderLocation(player);
 
-    expect(welcome).toContain('тренировочный бой');
-    expect(welcome).toContain('Исследовать');
+    expect(welcome).toContain('🧭 Возвращение');
+    expect(welcome).toContain('учебная зона доступна для спокойной тренировки');
+    expect(welcome).toContain('Дальше: нажмите «⚔️ Исследовать»');
+    expect(welcome).not.toContain('Ваш мастер уже существует');
     expect(menu).not.toContain('Первый бой ведёт к первой руне');
     expect(location).toContain('тренировочная зона');
     expect(location).toContain('Исследовать');
+  });
+
+  it('builds a calm return recap from current state and equipped school', () => {
+    const message = renderReturnRecap(createPlayer({
+      tutorialState: 'SKIPPED',
+      locationLevel: 1,
+      unspentStatPoints: 1,
+      highestLocationLevel: 3,
+      runes: [createEquippedRune()],
+    }));
+
+    expect(message).toContain('🧭 Возвращение');
+    expect(message).toContain('Стиль: Школа Пламени · роль штурм.');
+    expect(message).toContain('Фокус: откройте профиль');
+    expect(message).toContain('Дальше: нажмите «👤 Профиль».');
+  });
+
+  it('keeps active tutorial recap focused on the first training battle', () => {
+    const message = renderReturnRecap(createPlayer({ tutorialState: 'ACTIVE', locationLevel: 0 }));
+
+    expect(message).toContain('до первой руны и школы рун остался один шаг');
+    expect(message).toContain('Дальше: нажмите «⚔️ Учебный бой».');
+  });
+
+  it('keeps return recap and post-session guidance free from guilt/fomo wording', () => {
+    const recap = renderReturnRecap(createPlayer({ tutorialState: 'SKIPPED', locationLevel: 1 }));
+    const defeat = renderBattle(createBattle({ result: 'DEFEAT', rewards: null, log: ['💥 Поражение.'] }));
+    const victory = renderBattle(createBattle());
+
+    [recap, defeat, victory].forEach((message) => {
+      expect(message).not.toContain('ритм');
+      expect(message).not.toContain('темп');
+      expect(message).not.toContain('пока вас не было');
+      expect(message).not.toContain('не упуст');
+    });
   });
 
   it('adds a school-aware next goal after victory with a rune drop', () => {
@@ -198,7 +242,7 @@ describe('messages school-first onboarding framing', () => {
     const message = renderBattle(createBattle());
 
     expect(message).toContain('🎯 Следующая цель: начните «⚔️ Новый бой»');
-    expect(message).toContain('искать следующую полезную руну');
+    expect(message).toContain('расширять сборку');
   });
 
   it('keeps defeat follow-up supportive and without pressure wording', () => {
@@ -209,6 +253,6 @@ describe('messages school-first onboarding framing', () => {
     }));
 
     expect(message).toContain('🎯 Следующая цель: усилите героя в «👤 Профиль» или начните новый бой снова.');
-    expect(message).toContain('без лишнего давления');
+    expect(message).toContain('спокойнее подготовитесь');
   });
 });

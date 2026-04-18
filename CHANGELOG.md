@@ -460,6 +460,29 @@
 - победа без дропа и поражение теперь лучше подсказывают ближайший осмысленный шаг;
 - post-session copy теперь держит единый поддерживающий тон вместо смеси `Действие:` и общих фраз.
 
+## [0.20] - 2026-04-18
+
+### Commit
+
+- `worktree` — `feat: add calm return recap flow`
+
+### Added
+
+- новый presenter [`renderReturnRecap()`](src/vk/presenters/messages.ts) и test coverage для re-entry recap / no-guilt wording в [`src/vk/presenters/messages.test.ts`](src/vk/presenters/messages.test.ts);
+- smoke coverage для resume-start, `пропустить обучение`, и `в приключения` в [`src/vk/handlers/gameHandler.smoke.test.ts`](src/vk/handlers/gameHandler.smoke.test.ts).
+
+### Changed
+
+- existing-player `начать` теперь показывает краткий recap с текущим состоянием, стилем боя, фокусом и одним честным следующим шагом;
+- `пропустить обучение` и `в приключения` теперь возвращают в main loop через спокойный return recap вместо сырого status/menu ответа;
+- player-facing copy очищен от pressure wording вроде `удержать темп` и `вернуться в ритм`.
+
+### Fixed
+
+- return flow больше не начинается с сухого "Ваш мастер уже существует" без восстановления контекста;
+- skip/return commands теперь лучше подсказывают ближайший осмысленный шаг при re-entry;
+- presenter layer получил return recap без новых persistence/state контрактов и без guilt/FOMO тональности.
+
 ## Шаблон следующей записи
 
 ### [0.03] - YYYY-MM-DD

@@ -283,6 +283,38 @@ describe('GameHandler smoke', () => {
     expect(replies[0]?.message).toContain('школа рун');
   });
 
+  it('показывает return recap для уже существующего игрока по команде start', async () => {
+    const services = createServices();
+    vi.mocked(services.registerPlayer.execute).mockResolvedValueOnce({
+      player: createPlayer({ tutorialState: 'SKIPPED', locationLevel: 1 }),
+      created: false,
+    });
+    const handler = new GameHandler(services);
+    const ctx = createFakeContext({ command: 'начать' });
+
+    await handler.handle(ctx as never);
+
+    expect(getReplyCalls(ctx)[0]?.message).toContain('🧭 Возвращение');
+    expect(getReplyCalls(ctx)[0]?.message).toContain('Дальше: нажмите «⚔️ Исследовать»');
+  });
+
+  it('оставляет tutorial keyboard для вернувшегося игрока с активным обучением', async () => {
+    const services = createServices();
+    vi.mocked(services.registerPlayer.execute).mockResolvedValueOnce({
+      player: createPlayer({ tutorialState: 'ACTIVE', locationLevel: 0 }),
+      created: false,
+    });
+    const handler = new GameHandler(services);
+    const ctx = createFakeContext({ command: 'начать' });
+
+    await handler.handle(ctx as never);
+
+    const replies = getReplyCalls(ctx);
+    expect(replies[0]?.message).toContain('🧭 Возвращение');
+    expect(replies[0]?.message).toContain('Дальше: нажмите «⚔️ Учебный бой»');
+    expect(JSON.stringify(replies[0]?.keyboard)).toContain('Учебный бой');
+  });
+
   it('проходит сценарий обучения и входа в бой', async () => {
     const services = createServices();
     const handler = new GameHandler(services);
@@ -485,7 +517,19 @@ describe('GameHandler smoke', () => {
     await handler.handle(ctx as never);
 
     expect(services.skipTutorial.execute).toHaveBeenCalledWith(1001);
-    expect(getReplyCalls(ctx)[0]?.message).toContain('Рекомендуемый уровень угрозы');
+    expect(getReplyCalls(ctx)[0]?.message).toContain('🧭 Возвращение в приключения');
     expect(getReplyCalls(ctx)[0]?.message).toContain('Исследовать');
+  });
+
+  it('показывает return recap при возврате в приключения', async () => {
+    const services = createServices();
+    const handler = new GameHandler(services);
+    const ctx = createFakeContext({ command: 'в приключения' });
+
+    await handler.handle(ctx as never);
+
+    expect(services.returnToAdventure.execute).toHaveBeenCalledWith(1001);
+    expect(getReplyCalls(ctx)[0]?.message).toContain('🧭 Возвращение в приключения');
+    expect(getReplyCalls(ctx)[0]?.message).toContain('Дальше: нажмите');
   });
 });

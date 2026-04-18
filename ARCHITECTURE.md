@@ -138,7 +138,7 @@ src/
 - консистентность рунных архетипов и способностей;
 - базовые ограничения игрового баланса и стартовой конфигурации.
 
-Текущее правило: `archetypeCode` остаётся внутренним content/storage key, а player-facing **школа** выводится через canonical `SchoolDefinition` read-model поверх этого key. Это позволяет развести fantasy-domain и combat-role без миграции базы на раннем этапе и не держать отдельную hand-written карту school presentation. Тот же read-model теперь используется в onboarding-presenter слое, чтобы welcome / tutorial / rune hub говорили об одной и той же school identity.
+Текущее правило: `archetypeCode` остаётся внутренним content/storage key, а player-facing **школа** выводится через canonical `SchoolDefinition` read-model поверх этого key. Это позволяет развести fantasy-domain и combat-role без миграции базы на раннем этапе и не держать отдельную hand-written карту school presentation. Тот же read-model теперь используется в onboarding-presenter слое, чтобы welcome / tutorial / rune hub говорили об одной и той же school identity. Return recap v1 также остаётся presenter-only слоем поверх текущего `PlayerState` и не требует отдельного persistence-контракта.
 
 Эта валидация запускается через `npm run content:validate`, входит в `npm run check`, включена в `npm run release:preflight` и вызывается перед [`seed()`](src/database/seed.ts:5), чтобы не заливать битый контент в базу.
 

@@ -63,29 +63,115 @@ const renderStarterSchoolLine = (): string => {
 const renderSchoolFirstLoopLine = (): string => 'Путь первого входа: базовая атака → первая боевая руна → школа рун → новый стиль боя.';
 const renderSchoolFirstRarityLine = (): string => 'Сначала первая руна открывает школу рун, а новая редкость позже расширяет сборку.';
 
-const resolvePlayerObjective = (player: PlayerState): string => {
+const resolvePlayerObjectiveBody = (player: PlayerState): string => {
   if (player.tutorialState === 'ACTIVE') {
-    return '🎯 Цель: пройдите учебный бой, заберите первую боевую руну и откройте свою школу рун.';
+    return 'пройдите учебный бой, заберите первую боевую руну и откройте свою школу рун';
   }
 
   if (player.unspentStatPoints > 0) {
-    return '🎯 Цель: откройте профиль и распределите свободное очко силы.';
+    return 'откройте профиль и распределите свободные очки, чтобы усилить стиль боя';
   }
 
   if (player.runes.length === 0) {
-    return '🎯 Цель: выиграйте ещё бой или создайте первую руну в мастерской.';
+    return 'получите первую руну, чтобы открыть школу рун и новый стиль боя';
   }
 
   const equippedRune = getEquippedRune(player);
   if (!equippedRune) {
-    return '🎯 Цель: откройте «🔮 Руны» и наденьте руну перед следующим боем.';
+    return 'откройте «🔮 Руны» и наденьте руну перед следующим боем';
   }
 
   if (describeRuneContent(equippedRune).activeAbilities.length > 0 && player.victories <= 2) {
-    return '🎯 Цель: войдите в бой и примените активное действие экипированной руны.';
+    return 'войдите в бой и примените активное действие экипированной руны';
   }
 
-  return '🎯 Цель: ищите более сильную руну и поднимайте уровень угрозы дальше.';
+  return 'усиливайте руну и пробуйте более высокий уровень угрозы дальше';
+};
+
+const resolvePlayerObjective = (player: PlayerState): string => `🎯 Следующая цель: ${resolvePlayerObjectiveBody(player)}.`;
+
+const resolvePrimaryAction = (player: PlayerState): string => {
+  if (player.tutorialState === 'ACTIVE') {
+    return '⚔️ Учебный бой';
+  }
+
+  if (player.runes.length === 0) {
+    return '⚔️ Исследовать';
+  }
+
+  if (!getEquippedRune(player)) {
+    return '🔮 Руны';
+  }
+
+  if (player.unspentStatPoints > 0) {
+    return '👤 Профиль';
+  }
+
+  return '⚔️ Исследовать';
+};
+
+const resolveReturnFocusBody = (player: PlayerState): string => {
+  if (player.tutorialState === 'ACTIVE') {
+    return resolvePlayerObjectiveBody(player);
+  }
+
+  if (player.runes.length === 0) {
+    return 'сделайте первый шаг в приключениях и получите первую руну для открытия школы';
+  }
+
+  if (!getEquippedRune(player)) {
+    return 'откройте «🔮 Руны» и наденьте лучшую руну перед следующим боем';
+  }
+
+  if (player.unspentStatPoints > 0) {
+    return 'откройте профиль и распределите свободные очки, чтобы усилить текущую сборку';
+  }
+
+  return 'идите в приключения и развивайте текущую школу рун дальше';
+};
+
+const resolveReturnStateLine = (player: PlayerState): string => {
+  if (player.tutorialState === 'ACTIVE') {
+    return 'Сейчас: обучение активно · до первой руны и школы рун остался один шаг.';
+  }
+
+  if (isPlayerInTutorial(player)) {
+    return 'Сейчас: учебная зона доступна для спокойной тренировки, а основной прогресс идёт через приключения.';
+  }
+
+  return `Сейчас: уровень ${player.level} · рекомендуемая угроза ${resolveAdaptiveAdventureLocationLevel(player)} · лучший проход ${player.highestLocationLevel}.`;
+};
+
+const resolveReturnStyleLine = (player: PlayerState): string => {
+  const equippedRune = getEquippedRune(player);
+  const equippedSchool = getRuneSchoolPresentation(equippedRune?.archetypeCode);
+
+  if (!player.runes.length) {
+    return 'Стиль: первая школа рун откроется после первой боевой руны.';
+  }
+
+  if (!equippedRune) {
+    return 'Стиль: руны уже собраны, но ни одна ещё не надета.';
+  }
+
+  if (equippedSchool) {
+    return `Стиль: ${equippedSchool.schoolLine} · роль ${equippedSchool.roleName.toLowerCase()}.`;
+  }
+
+  return `Стиль: экипирована руна ${equippedRune.name}.`;
+};
+
+export const renderReturnRecap = (player: PlayerState, title = '🧭 Возвращение'): string => {
+  const primaryAction = resolvePrimaryAction(player);
+
+  return [
+    title,
+    '',
+    resolveReturnStateLine(player),
+    resolveReturnStyleLine(player),
+    `Фокус: ${resolveReturnFocusBody(player)}.`,
+    `Дальше: нажмите «${primaryAction}».`,
+  ].join('\n');
 };
 
 const formatRune = (rune: RuneView | null): string => {
@@ -123,8 +209,6 @@ const formatRune = (rune: RuneView | null): string => {
 };
 
 export const renderWelcome = (player: PlayerState, created: boolean): string => {
-  const inTutorial = isPlayerInTutorial(player);
-
   if (created) {
     return [
       '🎮 Добро пожаловать в Runemasters Return!',
@@ -140,24 +224,7 @@ export const renderWelcome = (player: PlayerState, created: boolean): string => 
     ].join('\n');
   }
 
-  return [
-    '🎮 Ваш мастер уже существует.',
-    '',
-    `Уровень: ${player.level}`,
-    player.tutorialState === 'ACTIVE'
-      ? 'Сейчас доступен учебный бой: он ведёт к первой руне и школе рун.'
-      : inTutorial
-        ? 'Сейчас открыт тренировочный бой в учебной зоне. Основной рост всё равно идёт через «⚔️ Исследовать».'
-        : `Текущая рекомендуемая сложность: ${resolveAdaptiveAdventureLocationLevel(player)}.`,
-    ...(player.tutorialState === 'ACTIVE' ? [renderStarterSchoolLine()] : []),
-    `Свободные очки: ${player.unspentStatPoints}`,
-    '',
-    `Следующий шаг: ${player.tutorialState === 'ACTIVE'
-      ? 'нажмите «⚔️ Учебный бой».'
-      : inTutorial
-        ? 'нажмите «⚔️ Исследовать» для прогресса или «⚔️ Учебный бой» для тренировки.'
-        : 'нажмите «⚔️ Исследовать».'}`,
-  ].join('\n');
+  return renderReturnRecap(player);
 };
 
 export const renderMainMenu = (player: PlayerState): string => {
@@ -240,7 +307,7 @@ export const renderLocation = (player: PlayerState): string => [
   `🎯 Рекомендуемый уровень угрозы: ${resolveAdaptiveAdventureLocationLevel(player)}`,
   `🧭 Максимально пройденная сложность: ${player.highestLocationLevel}`,
   player.defeatStreak > 0
-    ? `🛡️ После поражений подряд (${player.defeatStreak}) враги становятся слабее, чтобы вы быстрее вернулись в ритм.`
+    ? `🛡️ После поражений подряд (${player.defeatStreak}) враги становятся слабее, чтобы следующий бой читался спокойнее.`
     : `🔥 Серия побед подряд: ${player.victoryStreak}`,
   resolvePlayerObjective(player),
   '',
@@ -432,13 +499,13 @@ const renderBattleNextGoal = (battle: BattleView): string[] => {
 
     return [
       '🎯 Следующая цель: начните «⚔️ Новый бой» и продолжайте усиливать сборку.',
-      'Сейчас важно удержать темп и искать следующую полезную руну.',
+      'Сейчас полезнее искать следующую полезную руну и расширять сборку.',
     ];
   }
 
   return [
     '🎯 Следующая цель: усилите героя в «👤 Профиль» или начните новый бой снова.',
-    'Так вы быстрее вернётесь в ритм без лишнего давления.',
+    'Так вы спокойнее подготовитесь к следующему бою без лишнего давления.',
   ];
 };
 

@@ -28,6 +28,7 @@ import {
   renderLocation,
   renderMainMenu,
   renderProfile,
+  renderReturnRecap,
   renderRuneScreen,
   renderWelcome,
 } from '../presenters/messages';
@@ -53,10 +54,13 @@ export class GameHandler {
     try {
       if (command === gameCommands.start) {
         const result = await this.services.registerPlayer.execute(vkId);
+        const keyboard = result.created || result.player.tutorialState === 'ACTIVE'
+          ? createTutorialKeyboard(result.player)
+          : createMainMenuKeyboard();
         await this.reply(
           ctx,
           renderWelcome(result.player, result.created),
-          result.created ? createTutorialKeyboard(result.player) : createMainMenuKeyboard(),
+          keyboard,
         );
         return;
       }
@@ -84,12 +88,12 @@ export class GameHandler {
         }
         case gameCommands.skipTutorial: {
           const player = await this.services.skipTutorial.execute(vkId);
-          await this.replyWithLocation(ctx, player);
+          await this.reply(ctx, renderReturnRecap(player, '🧭 Возвращение в приключения'), createMainMenuKeyboard());
           return;
         }
         case gameCommands.returnToAdventure: {
           const player = await this.services.returnToAdventure.execute(vkId);
-          await this.reply(ctx, renderMainMenu(player), createMainMenuKeyboard());
+          await this.reply(ctx, renderReturnRecap(player, '🧭 Возвращение в приключения'), createMainMenuKeyboard());
           return;
         }
         case gameCommands.resetStats: {
