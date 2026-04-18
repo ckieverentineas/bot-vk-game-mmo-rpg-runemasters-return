@@ -29,6 +29,7 @@
 - keyboard-issued rune mutations дополнительно идут через `intentId`; повтор того же intent обязан вернуть canonical stored result, а не второй spend.
 - legacy text `создать` / `сломать` / `~stat` теперь получают server-owned message intent id и используют тот же canonical replay receipt.
 - keyboard-issued `equipRune` / `unequipRune` дополнительно привязываются к loadout `stateKey`, чтобы старое сообщение не могло экипировать или снять уже другую руну.
+- legacy text `надеть` / `снять` получают server-owned message intent id и повторно возвращают canonical loadout result вместо второго применения той же команды.
 
 ## Profile mutation rules
 
@@ -55,4 +56,4 @@
 
 - explicit RNG authority rules for reroll / drop / craft are now defined in `docs/platform/rng-authority-rules.md`, but broader legacy-text and non-profile command replay still remains;
 - migration fixtures for versioned persisted contracts;
-- remaining legacy text-command repeated actions beyond rune craft / reroll / destroy / profile stat allocation / reset, plus non-rune mutations beyond rune loadout buttons.
+- remaining legacy text-command repeated actions beyond guarded rune mutations / profile stat allocation / reset, plus non-rune mutations beyond rune loadout buttons.

@@ -81,6 +81,30 @@ describe('normalizeCommand', () => {
     expect(reset.intentSource).toBe('legacy_text');
   });
 
+  it('выводит server-owned intent для legacy text loadout мутаций', () => {
+    const equip = resolveCommandEnvelope({
+      text: 'надеть',
+      senderId: 1001,
+      peerId: 2000000001,
+      conversationMessageId: 82,
+      id: 506,
+      messagePayload: null,
+    } as never);
+    const unequip = resolveCommandEnvelope({
+      text: 'снять',
+      senderId: 1001,
+      peerId: 2000000001,
+      conversationMessageId: 83,
+      id: 507,
+      messagePayload: null,
+    } as never);
+
+    expect(equip.intentId).toBe('legacy-text:2000000001:1001:82:надеть');
+    expect(equip.intentSource).toBe('legacy_text');
+    expect(unequip.intentId).toBe('legacy-text:2000000001:1001:83:снять');
+    expect(unequip.intentSource).toBe('legacy_text');
+  });
+
   it('не теряет legacy text intent из-за пустого payload объекта', () => {
     const resolved = resolveCommandEnvelope({
       text: '+атк',

@@ -19,11 +19,11 @@ Covered by intent-based dedupe:
 Transport surface:
 
 - VK keyboard payloads for guarded buttons;
-- server-owned legacy text intents for `craftRune`, `rerollRuneStat`, `destroyRune`, `allocateStatPoint`, `resetAllocatedStats`.
+- server-owned legacy text intents for `craftRune`, `rerollRuneStat`, `destroyRune`, `allocateStatPoint`, `resetAllocatedStats`, `equipRune`, `unequipRune`.
 
 Not covered yet:
 
-- other free-text legacy commands outside `craftRune` / `rerollRuneStat` / `destroyRune` / profile stat allocation-reset;
+- other free-text legacy commands outside rune mutations / profile stat allocation-reset;
 - broader profile/progression mutations beyond stat allocation / reset;
 - full repo-wide exact-once command handling.
 
@@ -100,7 +100,7 @@ Fields of interest:
 ## Transport rule
 
 - keyboard payload is the current source of intent ids;
-- server-owned legacy text ids currently protect rune craft / reroll / destroy and profile stat allocation / reset;
+- server-owned legacy text ids currently protect rune craft / reroll / destroy / equip / unequip and profile stat allocation / reset;
 - each newly rendered mutation button gets a fresh `intentId`;
 - old keyboard presses after state changes should be rejected as stale and ask the player to refresh the screen;
 - other text aliases remain best-effort only until a later wider intent envelope slice.
@@ -120,5 +120,5 @@ Fields of interest:
 ## Deferred after v1
 
 - generic mutation intent envelope for all keyboard actions;
-- remaining text-command replay handling beyond rune craft / reroll / destroy / profile stat allocation / reset;
+- remaining text-command replay handling beyond guarded rune mutations and profile stat allocation / reset;
 - broader state-key strategy for non-rune mutations.

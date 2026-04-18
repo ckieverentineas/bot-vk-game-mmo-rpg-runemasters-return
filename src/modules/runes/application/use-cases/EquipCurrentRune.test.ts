@@ -82,6 +82,7 @@ describe('EquipCurrentRune', () => {
     const player = createPlayer();
     const repository = {
       findPlayerByVkId: vi.fn().mockResolvedValue(player),
+      getCommandIntentResult: vi.fn(),
       equipRune: vi.fn().mockResolvedValue(player),
     } as unknown as GameRepository;
     const useCase = new EquipCurrentRune(repository);
@@ -109,6 +110,7 @@ describe('EquipCurrentRune', () => {
     const player = createPlayer();
     const repository = {
       findPlayerByVkId: vi.fn().mockResolvedValue(player),
+      getCommandIntentResult: vi.fn(),
       equipRune: vi.fn(),
     } as unknown as GameRepository;
     const useCase = new EquipCurrentRune(repository);
@@ -124,11 +126,42 @@ describe('EquipCurrentRune', () => {
     const player = createPlayer();
     const repository = {
       findPlayerByVkId: vi.fn().mockResolvedValue(player),
+      getCommandIntentResult: vi.fn(),
       equipRune: vi.fn(),
     } as unknown as GameRepository;
     const useCase = new EquipCurrentRune(repository);
 
     await expect(useCase.execute(player.vkId, 'intent-only')).rejects.toMatchObject({
+      code: 'stale_command_intent',
+    });
+
+    expect(repository.equipRune).not.toHaveBeenCalled();
+  });
+
+  it('returns the canonical replay result before rune selection prechecks for legacy text', async () => {
+    const replayed = createPlayer({ runes: [] });
+    const repository = {
+      findPlayerByVkId: vi.fn().mockResolvedValue(createPlayer({ runes: [] })),
+      getCommandIntentResult: vi.fn().mockResolvedValue({ status: 'APPLIED', result: replayed }),
+      equipRune: vi.fn(),
+    } as unknown as GameRepository;
+    const useCase = new EquipCurrentRune(repository);
+
+    await expect(useCase.execute(1001, 'legacy-text:2000000001:1001:82:надеть', undefined, 'legacy_text')).resolves.toEqual(replayed);
+
+    expect(repository.equipRune).not.toHaveBeenCalled();
+  });
+
+  it('rejects legacy text equip commands when no server-owned intent can be derived', async () => {
+    const player = createPlayer();
+    const repository = {
+      findPlayerByVkId: vi.fn().mockResolvedValue(player),
+      getCommandIntentResult: vi.fn(),
+      equipRune: vi.fn(),
+    } as unknown as GameRepository;
+    const useCase = new EquipCurrentRune(repository);
+
+    await expect(useCase.execute(player.vkId, undefined, undefined, 'legacy_text')).rejects.toMatchObject({
       code: 'stale_command_intent',
     });
 

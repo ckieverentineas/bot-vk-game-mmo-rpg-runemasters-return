@@ -12,10 +12,22 @@ export class EquipCurrentRune {
 
   public async execute(vkId: number, intentId?: string, intentStateKey?: string, intentSource: CommandIntentSource = 'payload'): Promise<PlayerState> {
     const player = await requirePlayerByVkId(this.repository, vkId);
-    const currentStateKey = buildEquipIntentStateKey(player);
-    const intent = resolveCommandIntent(intentId, intentStateKey, intentSource);
 
-    if (intent && intent.intentStateKey !== currentStateKey) {
+    if (intentSource === 'legacy_text' && intentId) {
+      const replay = await this.repository.getCommandIntentResult(player.playerId, intentId);
+      if (replay?.status === 'APPLIED' && replay.result) {
+        return replay.result;
+      }
+
+      if (replay?.status === 'PENDING') {
+        throw new AppError('command_retry_pending', 'Команда уже обрабатывается. Дождитесь ответа и обновите экран.');
+      }
+    }
+
+    const currentStateKey = buildEquipIntentStateKey(player);
+    const intent = resolveCommandIntent(intentId, intentStateKey, intentSource, intentSource === null);
+
+    if (intentSource !== 'legacy_text' && intent && intent.intentStateKey !== currentStateKey) {
       throw new AppError('stale_command_intent', 'Эта кнопка уже устарела. Обновите экран перед повтором команды.');
     }
 

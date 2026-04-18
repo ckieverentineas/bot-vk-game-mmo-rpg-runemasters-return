@@ -467,6 +467,26 @@ describe('GameHandler smoke', () => {
     expect(services.resetAllocatedStats.execute).toHaveBeenCalledWith(1001, 'legacy-text:2000000001:1001:81:сброс', undefined, 'legacy_text');
   });
 
+  it('выводит server-owned legacy intent для текстовой экипировки руны', async () => {
+    const services = createServices();
+    const handler = new GameHandler(services);
+    const ctx = createFakeContext({ text: 'надеть', id: 506, conversationMessageId: 82, peerId: 2000000001 });
+
+    await handler.handle(ctx as never);
+
+    expect(services.equipCurrentRune.execute).toHaveBeenCalledWith(1001, 'legacy-text:2000000001:1001:82:надеть', undefined, 'legacy_text');
+  });
+
+  it('выводит server-owned legacy intent для текстового снятия руны', async () => {
+    const services = createServices();
+    const handler = new GameHandler(services);
+    const ctx = createFakeContext({ text: 'снять', id: 507, conversationMessageId: 83, peerId: 2000000001 });
+
+    await handler.handle(ctx as never);
+
+    expect(services.unequipCurrentRune.execute).toHaveBeenCalledWith(1001, 'legacy-text:2000000001:1001:83:снять', undefined, 'legacy_text');
+  });
+
   it('fail-closed восстанавливает профильный контекст, если legacy text команды не хватает message metadata', async () => {
     const services = createServices();
     const handler = new GameHandler(services);

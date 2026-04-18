@@ -17,6 +17,8 @@ export const normalizeCommand = (value: string): string => {
 const supportsLegacyTextIntent = (command: string): boolean => (
   command === gameCommands.craftRune
   || command === gameCommands.destroyRune
+  || command === gameCommands.equipRune
+  || command === gameCommands.unequipRune
   || command === gameCommands.resetStats
   || resolveStatAllocationCommand(command) !== null
   || resolveRuneStatRerollCommand(command) !== null
