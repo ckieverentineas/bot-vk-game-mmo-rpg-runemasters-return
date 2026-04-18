@@ -538,8 +538,12 @@ Runemasters Return должен решать это через **школы ру
 
 - [ ] Пиллары продукта согласованы и не конфликтуют друг с другом
 - [ ] Platform contracts готовы к Vertical Slice
-- [ ] Vertical Slice scope заперт и не расползается
-- [ ] High-risk out-of-scope вынесен из ближайшего delivery order
+- [x] Vertical Slice scope заперт и не расползается
+  - [x] source-of-truth review зафиксирован в `docs/reviews/phase-1-exit-gate.md`
+  - [x] committed Vertical Slice сужен до одного polished early-to-mid PvE journey
+- [x] High-risk out-of-scope вынесен из ближайшего delivery order
+  - [x] social-lite / PvP / trading / prestige вынесены из near-term committed scope
+  - [x] Burya / Divination и broad boss/trials breadth перенесены за пределы первого Vertical Slice proof
 
 ## 12. Phase 2 — Vertical Slice
 
@@ -557,9 +561,9 @@ Runemasters Return должен решать это через **школы ру
 
 ### 12.0 Execution checkpoints
 
-- [ ] **October 2026:** довести school-v1 packages и ранние PvE bands
-- [ ] **November 2026:** довести rarity/loadout slice, boss slice и social-lite prototype
-- [ ] **December 2026:** провести playtests, tuning pass, docs update и slice gate review
+- [ ] **October 2026:** довести Пламя + Твердь до locked school-v1 proof и собрать 2 ранних PvE bands
+- [ ] **November 2026:** довести первый rarity/loadout breakpoint, 2 elite archetypes и 1 miniboss
+- [ ] **December 2026:** провести playtests, tuning pass, docs update и review на расширение slice только после evidence
 
 ### 12.1 Launch schools v1
 
@@ -571,14 +575,9 @@ Runemasters Return должен решать это через **школы ру
   - [ ] укрепить counter / guard fantasy
   - [ ] убедиться, что Твердь не сводится к passive-only роли
   - [ ] добавить encounter, где Твердь особенно читается
-- [ ] Довести Бурю до полного school-v1 пакета
-  - [ ] раскрыть tempo / chaining fantasy
-  - [ ] избежать ощущения “это просто быстрый DPS”
-  - [ ] добавить encounter, который награждает чтение темпа
-- [ ] Довести Прорицание до полного school-v1 пакета
-  - [ ] связать school payoff с enemy intent
-  - [ ] не превратить школу в purely reactive tax
-  - [ ] добавить encounter, где reading payoff понятен
+- Deferred after first Vertical Slice proof:
+  - Буря как полный school-v1 package;
+  - Прорицание как полный school-v1 package.
 
 ### 12.2 PvE slice
 
@@ -588,19 +587,17 @@ Runemasters Return должен решать это через **школы ру
   - [ ] midgame цель на 3–5 сессий
 - [ ] Обновить ранние регионы под school-first loop
   - [ ] минимум 2 ранних PvE bands с разными tactical asks
-  - [ ] минимум 4 элитных encounter archetypes
-  - [ ] минимум 2 мини-босса и 1 полноценный босс slice
-- [ ] Добавить school trials v1
-  - [ ] испытание на давление
-  - [ ] испытание на стойкость
-  - [ ] испытание на темп
-  - [ ] испытание на чтение намерений
+  - [ ] минимум 2 элитных encounter archetypes
+  - [ ] минимум 1 мини-босс
+- Deferred after first Vertical Slice proof:
+  - school trials v1;
+  - broad boss slice beyond первого мини-босса.
 
 ### 12.3 Rarity and loadout slice
 
 - [ ] Ввести pre-battle loadout decisions v1
 - [ ] Привязать rarity growth к breadth, а не к stat inflation
-- [ ] Добавить targeted school drops / source families
+- [ ] Добавить targeted school drops / source family для locked slice
 - [ ] Ввести первые same-school starter synergies
 - [ ] Проверить, что higher rarity не убивает low-rarity relevance
 
@@ -614,10 +611,11 @@ Runemasters Return должен решать это через **школы ру
 
 ### 12.5 Social-lite slice
 
-- [ ] Добавить profile read model с видимой школой
-- [ ] Добавить сигнатурную сборку в профиле / preview
-- [ ] Прототип shared ritual или общей school-driven цели
-- [ ] Проверить, что social layer усиливает возврат, а не отвлекает от core loop
+- Deferred after first Vertical Slice proof:
+  - profile read model с видимой школой;
+  - сигнатурная сборка в профиле / preview;
+  - shared ritual или иная school-driven social goal;
+  - social-lite validation как отдельный post-slice decision.
 
 ### 12.6 Validation tasks
 
@@ -992,3 +990,4 @@ Runemasters Return должен решать это через **школы ру
 - **2026-04-18:** `локация` / `обучение` переведены на command intent replay rail; duplicate tutorial-entry input теперь возвращает canonical tutorial state только пока exploration state не успел устареть и больше не маскирует активный бой или более свежий adventure context.
 - **2026-04-19:** `__confirm_delete_player__` переведён на exact-once replay rail через account-scoped `DeletePlayerReceipt`; duplicate same-intent confirm теперь возвращает canonical delete success и не должен падать в `player_not_found` после уже успешного удаления.
 - **2026-04-19:** legacy text rune navigation (`+руна`, `-руна`, `руны >`, `руны <`, `руна слот 1..4` и alias) переведена на server-owned message intent ids; duplicate same-message navigation теперь должна возвращать canonical rune hub, а stale rune-hub buttons по-прежнему обязаны восстанавливать актуальный экран вместо silent retargeting.
+- **2026-04-19:** собран `docs/reviews/phase-1-exit-gate.md`; первый Vertical Slice намеренно зафиксирован как один polished PvE-first early-to-mid journey с Пламенем и Твердью, а social/PvP и risky breadth вынесены из near-term committed scope.

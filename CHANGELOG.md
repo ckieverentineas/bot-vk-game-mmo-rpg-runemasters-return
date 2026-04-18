@@ -691,6 +691,26 @@
 - duplicate same-message rune navigation больше не должна двигать курсор или выбор руны второй раз при повторной доставке одного и того же text command;
 - historical alias `>>руна` / `<<руна` / `++руна` / `--руна` больше не обходят replay rail и теперь нормализуются в тот же guarded legacy intent envelope.
 
+## [0.44] - 2026-04-19
+
+### Commit
+
+- `worktree` — `docs: lock vertical slice scope v1`
+
+### Added
+
+- gate-review artifact [`docs/reviews/phase-1-exit-gate.md`](docs/reviews/phase-1-exit-gate.md) с verdict по `PLAN.md 11.6`, scope lock, contract baseline и explicit cut/defer list для Vertical Slice;
+- явный source-of-truth link на Phase 1 exit gate review в [`README.md`](README.md).
+
+### Changed
+
+- `PLAN.md` теперь фиксирует, что Vertical Slice scope lock и high-risk out-of-scope review доставлены через Phase 1 exit-gate review;
+- committed Vertical Slice сужен до одного polished PvE-first early-to-mid journey с `Пламенем` и `Твердью`, без social/PvP и risky breadth в near-term order.
+
+### Fixed
+
+- ближайший delivery order больше не обещает расползающийся Vertical Slice “про всё сразу”; risky breadth вынесена в explicit deferred/out-of-scope register.
+
 ## Шаблон следующей записи
 
 ### [0.03] - YYYY-MM-DD
