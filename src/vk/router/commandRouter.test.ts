@@ -105,6 +105,32 @@ describe('normalizeCommand', () => {
     expect(unequip.intentSource).toBe('legacy_text');
   });
 
+  it('выводит server-owned intent для tutorial navigation и алиаса возврата', () => {
+    const skip = resolveCommandEnvelope({
+      text: 'пропустить обучение',
+      senderId: 1001,
+      peerId: 2000000001,
+      conversationMessageId: 84,
+      id: 508,
+      messagePayload: null,
+    } as never);
+    const returnAlias = resolveCommandEnvelope({
+      text: 'в мир',
+      senderId: 1001,
+      peerId: 2000000001,
+      conversationMessageId: 85,
+      id: 509,
+      messagePayload: null,
+    } as never);
+
+    expect(skip.command).toBe(gameCommands.skipTutorial);
+    expect(skip.intentId).toBe('legacy-text:2000000001:1001:84:пропустить обучение');
+    expect(skip.intentSource).toBe('legacy_text');
+    expect(returnAlias.command).toBe(gameCommands.returnToAdventure);
+    expect(returnAlias.intentId).toBe('legacy-text:2000000001:1001:85:в приключения');
+    expect(returnAlias.intentSource).toBe('legacy_text');
+  });
+
   it('не теряет legacy text intent из-за пустого payload объекта', () => {
     const resolved = resolveCommandEnvelope({
       text: '+атк',

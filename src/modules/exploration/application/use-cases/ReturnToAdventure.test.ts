@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { PlayerState } from '../../../../shared/types/game';
 import type { GameRepository } from '../../../shared/application/ports/GameRepository';
 import { resolveAdaptiveAdventureLocationLevel } from '../../../player/domain/player-stats';
+import { buildReturnToAdventureIntentStateKey } from '../command-intent-state';
 import { ReturnToAdventure } from './ReturnToAdventure';
 
 const createPlayer = (overrides: Partial<PlayerState> = {}): PlayerState => ({
@@ -64,6 +65,7 @@ describe('ReturnToAdventure', () => {
     const player = createPlayer({ tutorialState: 'SKIPPED', locationLevel: 0 });
     const repository = {
       findPlayerByVkId: vi.fn().mockResolvedValue(player),
+      getCommandIntentResult: vi.fn(),
       saveExplorationState: vi.fn().mockResolvedValue(player),
     } as unknown as GameRepository;
     const useCase = new ReturnToAdventure(repository);
@@ -75,6 +77,10 @@ describe('ReturnToAdventure', () => {
       expect.objectContaining({
         locationLevel: resolveAdaptiveAdventureLocationLevel(player),
         tutorialState: 'SKIPPED',
+      }),
+      expect.objectContaining({
+        commandKey: 'RETURN_TO_ADVENTURE',
+        expectedTutorialState: 'SKIPPED',
       }),
     );
   });
@@ -83,6 +89,7 @@ describe('ReturnToAdventure', () => {
     const player = createPlayer({ tutorialState: 'ACTIVE', locationLevel: 0 });
     const repository = {
       findPlayerByVkId: vi.fn().mockResolvedValue(player),
+      getCommandIntentResult: vi.fn(),
       saveExplorationState: vi.fn().mockResolvedValue(player),
     } as unknown as GameRepository;
     const useCase = new ReturnToAdventure(repository);
@@ -95,6 +102,122 @@ describe('ReturnToAdventure', () => {
         locationLevel: resolveAdaptiveAdventureLocationLevel(player),
         tutorialState: 'SKIPPED',
       }),
+      expect.objectContaining({
+        commandKey: 'RETURN_TO_ADVENTURE',
+        expectedTutorialState: 'ACTIVE',
+      }),
     );
+  });
+
+  it('passes guarded exploration options when intent metadata is present', async () => {
+    const player = createPlayer({ tutorialState: 'SKIPPED', locationLevel: 0 });
+    const repository = {
+      findPlayerByVkId: vi.fn().mockResolvedValue(player),
+      getCommandIntentResult: vi.fn(),
+      saveExplorationState: vi.fn().mockResolvedValue(player),
+    } as unknown as GameRepository;
+    const useCase = new ReturnToAdventure(repository);
+    const stateKey = buildReturnToAdventureIntentStateKey(player);
+
+    await useCase.execute(player.vkId, 'intent-return-1', stateKey, 'payload');
+
+    expect(repository.saveExplorationState).toHaveBeenCalledWith(
+      player.playerId,
+      expect.objectContaining({
+        locationLevel: resolveAdaptiveAdventureLocationLevel(player),
+      }),
+      expect.objectContaining({
+        commandKey: 'RETURN_TO_ADVENTURE',
+        intentId: 'intent-return-1',
+        intentStateKey: stateKey,
+        expectedLocationLevel: player.locationLevel,
+        expectedTutorialState: player.tutorialState,
+      }),
+    );
+  });
+
+  it('returns the canonical replay result before state checks for legacy text', async () => {
+    const replayed = createPlayer({ tutorialState: 'SKIPPED', locationLevel: 1 });
+    const repository = {
+      findPlayerByVkId: vi.fn().mockResolvedValue(createPlayer({ tutorialState: 'ACTIVE', locationLevel: 0 })),
+      getCommandIntentResult: vi.fn().mockResolvedValue({ status: 'APPLIED', result: replayed }),
+      saveExplorationState: vi.fn(),
+    } as unknown as GameRepository;
+    const useCase = new ReturnToAdventure(repository);
+
+    await expect(useCase.execute(1001, 'legacy-text:2000000001:1001:84:в приключения', undefined, 'legacy_text')).resolves.toEqual(replayed);
+
+    expect(repository.saveExplorationState).not.toHaveBeenCalled();
+  });
+
+  it('still returns canonical replay after a later battle starts', async () => {
+    const replayed = createPlayer({ tutorialState: 'SKIPPED', locationLevel: 1 });
+    const repository = {
+      findPlayerByVkId: vi.fn().mockResolvedValue(createPlayer({ tutorialState: 'SKIPPED', locationLevel: 1, activeBattleId: 'battle-1' })),
+      getCommandIntentResult: vi.fn().mockResolvedValue({ status: 'APPLIED', result: replayed }),
+      saveExplorationState: vi.fn(),
+    } as unknown as GameRepository;
+    const useCase = new ReturnToAdventure(repository);
+
+    await expect(useCase.execute(1001, 'legacy-text:2000000001:1001:84:в приключения', undefined, 'legacy_text')).resolves.toEqual(replayed);
+
+    expect(repository.saveExplorationState).not.toHaveBeenCalled();
+  });
+
+  it('still returns canonical payload replay after a later battle starts', async () => {
+    const replayed = createPlayer({ tutorialState: 'SKIPPED', locationLevel: 1 });
+    const repository = {
+      findPlayerByVkId: vi.fn().mockResolvedValue(createPlayer({ tutorialState: 'SKIPPED', locationLevel: 1, activeBattleId: 'battle-1' })),
+      getCommandIntentResult: vi.fn().mockResolvedValue({ status: 'APPLIED', result: replayed }),
+      saveExplorationState: vi.fn(),
+    } as unknown as GameRepository;
+    const useCase = new ReturnToAdventure(repository);
+
+    await expect(useCase.execute(1001, 'intent-return-1', 'state-return-1', 'payload')).resolves.toEqual(replayed);
+
+    expect(repository.saveExplorationState).not.toHaveBeenCalled();
+  });
+
+  it('rejects stale payload or missing legacy intent before persistence', async () => {
+    const player = createPlayer({ tutorialState: 'SKIPPED', locationLevel: 0 });
+    const repository = {
+      findPlayerByVkId: vi.fn().mockResolvedValue(player),
+      getCommandIntentResult: vi.fn(),
+      saveExplorationState: vi.fn(),
+    } as unknown as GameRepository;
+    const useCase = new ReturnToAdventure(repository);
+
+    await expect(useCase.execute(player.vkId, 'intent-return-1', 'stale-state', 'payload')).rejects.toMatchObject({ code: 'stale_command_intent' });
+    await expect(useCase.execute(player.vkId, undefined, undefined, 'legacy_text')).rejects.toMatchObject({ code: 'stale_command_intent' });
+
+    expect(repository.saveExplorationState).not.toHaveBeenCalled();
+  });
+
+  it('rejects navigation changes while a battle is already active', async () => {
+    const player = createPlayer({ tutorialState: 'ACTIVE', locationLevel: 0, activeBattleId: 'battle-1' });
+    const repository = {
+      findPlayerByVkId: vi.fn().mockResolvedValue(player),
+      getCommandIntentResult: vi.fn(),
+      saveExplorationState: vi.fn(),
+    } as unknown as GameRepository;
+    const useCase = new ReturnToAdventure(repository);
+
+    await expect(useCase.execute(player.vkId)).rejects.toMatchObject({ code: 'battle_in_progress' });
+
+    expect(repository.saveExplorationState).not.toHaveBeenCalled();
+  });
+
+  it('returns retry-pending for duplicate legacy text command still being processed', async () => {
+    const player = createPlayer({ tutorialState: 'SKIPPED', locationLevel: 0 });
+    const repository = {
+      findPlayerByVkId: vi.fn().mockResolvedValue(player),
+      getCommandIntentResult: vi.fn().mockResolvedValue({ status: 'PENDING' }),
+      saveExplorationState: vi.fn(),
+    } as unknown as GameRepository;
+    const useCase = new ReturnToAdventure(repository);
+
+    await expect(useCase.execute(player.vkId, 'legacy-text:2000000001:1001:84:в приключения', undefined, 'legacy_text')).rejects.toMatchObject({ code: 'command_retry_pending' });
+
+    expect(repository.saveExplorationState).not.toHaveBeenCalled();
   });
 });

@@ -15,11 +15,13 @@ Covered by intent-based dedupe:
 - `resetAllocatedStats`
 - `equipRune`
 - `unequipRune`
+- `skipTutorial`
+- `returnToAdventure`
 
 Transport surface:
 
 - VK keyboard payloads for guarded buttons;
-- server-owned legacy text intents for `craftRune`, `rerollRuneStat`, `destroyRune`, `allocateStatPoint`, `resetAllocatedStats`, `equipRune`, `unequipRune`.
+- server-owned legacy text intents for `craftRune`, `rerollRuneStat`, `destroyRune`, `allocateStatPoint`, `resetAllocatedStats`, `equipRune`, `unequipRune`, `skipTutorial`, `returnToAdventure`.
 
 Not covered yet:
 
@@ -97,10 +99,20 @@ Fields of interest:
 - first arrival clears the current equipped rune exactly once;
 - duplicate same-intent arrival returns the stored post-unequip loadout instead of clearing a newer loadout state.
 
+### Skip tutorial
+
+- first arrival moves the player to the current adaptive adventure path and marks onboarding as skipped if it was still active;
+- duplicate same-intent arrival returns the stored post-skip player state instead of reapplying the same navigation mutation.
+
+### Return to adventure
+
+- first arrival moves the player onto the current adaptive adventure path;
+- duplicate same-intent arrival returns the stored post-return player state instead of overwriting fresher navigation state.
+
 ## Transport rule
 
 - keyboard payload is the current source of intent ids;
-- server-owned legacy text ids currently protect rune craft / reroll / destroy / equip / unequip and profile stat allocation / reset;
+- server-owned legacy text ids currently protect rune craft / reroll / destroy / equip / unequip, profile stat allocation / reset, and tutorial navigation (`пропустить обучение`, `в приключения`, `в мир`);
 - each newly rendered mutation button gets a fresh `intentId`;
 - old keyboard presses after state changes should be rejected as stale and ask the player to refresh the screen;
 - other text aliases remain best-effort only until a later wider intent envelope slice.
@@ -114,11 +126,13 @@ Fields of interest:
 - same-intent stat reset -> one refund only;
 - same-intent equip -> one canonical equipped loadout only;
 - same-intent unequip -> one canonical unequipped loadout only;
+- same-intent skip tutorial -> one canonical post-skip navigation state only;
+- same-intent return to adventure -> one canonical post-return navigation state only;
 - stale reused intent after state change -> explicit `stale_command_intent` style rejection;
 - different intent ids still allow honest repeated actions.
 
 ## Deferred after v1
 
 - generic mutation intent envelope for all keyboard actions;
-- remaining text-command replay handling beyond guarded rune mutations and profile stat allocation / reset;
+- remaining text-command replay handling beyond guarded rune mutations, profile stat allocation / reset, and tutorial navigation;
 - broader state-key strategy for non-rune mutations.

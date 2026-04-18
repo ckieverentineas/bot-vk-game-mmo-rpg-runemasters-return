@@ -522,6 +522,7 @@ Runemasters Return должен решать это через **школы ру
     - [x] legacy text same-intent dedupe для rune craft / reroll / destroy через server-owned message ids
     - [x] legacy text same-intent dedupe для profile stat allocation / reset через server-owned message ids
     - [x] legacy text same-intent dedupe для rune equip / unequip через server-owned message ids
+    - [x] skip tutorial / return to adventure same-intent dedupe через keyboard payloads и legacy text ids
     - [ ] остальные legacy text-command и non-rune mutation paths
 - [x] Зафиксировать RNG authority rules для reroll / drop / craft
 - [x] Подготовить alt-account / guild / PvP abuse checklist
@@ -976,3 +977,4 @@ Runemasters Return должен решать это через **школы ру
 - **2026-04-18:** legacy text `+стат` и `сброс` получили server-owned message intent ids; duplicate text replay теперь должен возвращать canonical profile state вместо повторного spend/reset поверх новой сборки.
 - **2026-04-18:** legacy text `надеть` и `снять` получили server-owned message intent ids; duplicate text replay теперь должен возвращать canonical rune loadout result вместо повторного применения той же команды.
 - **2026-04-18:** `в приключения` теперь считается явным выходом из активного обучения; stale intro location больше не должен возвращать игрока к CTA `⚔️ Учебный бой` после добровольного выхода в adventure flow.
+- **2026-04-18:** `пропустить обучение`, `в приключения` и alias `в мир` переведены на command intent replay rail; duplicate tutorial-navigation commands теперь возвращают canonical exploration state, восстанавливают актуальный tutorial/adventure контекст при stale/pending ветках и не применяются поверх активного боя.

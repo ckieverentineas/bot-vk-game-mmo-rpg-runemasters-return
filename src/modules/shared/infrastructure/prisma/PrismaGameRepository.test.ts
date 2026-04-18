@@ -425,6 +425,88 @@ describe('PrismaGameRepository release hardening', () => {
     });
   });
 
+  it('returns canonical exploration result for a duplicate tutorial navigation intent', async () => {
+    const { repository, tx } = createPrismaMock();
+
+    tx.commandIntentRecord.findUnique.mockResolvedValue({
+      commandKey: 'RETURN_TO_ADVENTURE',
+      stateKey: 'state-return-1',
+      status: 'APPLIED',
+      resultSnapshot: JSON.stringify(createPlayerStateSnapshot()),
+    });
+
+    const player = await repository.saveExplorationState(1, {
+      locationLevel: 1,
+      highestLocationLevel: 2,
+      victoryStreak: 1,
+      defeatStreak: 0,
+      tutorialState: 'SKIPPED',
+    }, {
+      commandKey: 'RETURN_TO_ADVENTURE',
+      intentId: 'intent-return-1',
+      intentStateKey: 'state-return-1',
+      expectedLocationLevel: 0,
+      expectedHighestLocationLevel: 2,
+      expectedVictoryStreak: 1,
+      expectedDefeatStreak: 0,
+      expectedTutorialState: 'ACTIVE',
+    });
+
+    expect(player.playerId).toBe(1);
+    expect(tx.playerProgress.updateMany).not.toHaveBeenCalled();
+  });
+
+  it('rejects stale exploration writes when the expected tutorial state no longer matches', async () => {
+    const { repository, tx } = createPrismaMock();
+
+    tx.playerProgress.updateMany.mockResolvedValue({ count: 0 });
+
+    await expect(repository.saveExplorationState(1, {
+      locationLevel: 1,
+      highestLocationLevel: 2,
+      victoryStreak: 1,
+      defeatStreak: 0,
+      tutorialState: 'SKIPPED',
+    }, {
+      commandKey: 'SKIP_TUTORIAL',
+      intentId: 'intent-skip-stale',
+      intentStateKey: 'state-skip-stale',
+      expectedLocationLevel: 0,
+      expectedHighestLocationLevel: 2,
+      expectedVictoryStreak: 1,
+      expectedDefeatStreak: 0,
+      expectedTutorialState: 'ACTIVE',
+    })).rejects.toMatchObject({
+      code: 'stale_command_intent',
+    });
+  });
+
+  it('rejects exploration writes when an active battle appeared after the state snapshot', async () => {
+    const { repository, tx } = createPrismaMock();
+
+    tx.playerProgress.updateMany.mockResolvedValue({ count: 0 });
+
+    await expect(repository.saveExplorationState(1, {
+      locationLevel: 1,
+      highestLocationLevel: 2,
+      victoryStreak: 1,
+      defeatStreak: 0,
+      tutorialState: 'SKIPPED',
+    }, {
+      commandKey: 'RETURN_TO_ADVENTURE',
+      intentId: 'intent-return-battle',
+      intentStateKey: 'state-return-battle',
+      expectedActiveBattleId: null,
+      expectedLocationLevel: 0,
+      expectedHighestLocationLevel: 2,
+      expectedVictoryStreak: 1,
+      expectedDefeatStreak: 0,
+      expectedTutorialState: 'ACTIVE',
+    })).rejects.toMatchObject({
+      code: 'stale_command_intent',
+    });
+  });
+
   it('does not reroll rune stats when the last shard is gone', async () => {
     const { repository, tx } = createPrismaMock();
 

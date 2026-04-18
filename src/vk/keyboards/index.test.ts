@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import type { PlayerState } from '../../shared/types/game';
-import { createDeleteConfirmationKeyboard, createProfileKeyboard, createRuneKeyboard } from './index';
+import { createDeleteConfirmationKeyboard, createProfileKeyboard, createRuneKeyboard, createTutorialKeyboard } from './index';
 
 const createPlayer = (overrides: Partial<PlayerState> = {}): PlayerState => ({
   userId: 1,
@@ -143,5 +143,14 @@ describe('profile keyboard', () => {
     expect(confirm?.intentId).toEqual(expect.any(String));
     expect(confirm?.stateKey).toBe(player.updatedAt);
     expect(cancel?.intentId).toBeUndefined();
+  });
+
+  it('adds intent metadata to tutorial skip button when onboarding is active', () => {
+    const payloads = collectPayloads(createTutorialKeyboard(createPlayer({ tutorialState: 'ACTIVE', locationLevel: 0 })));
+
+    const skip = payloads.find((payload) => payload.command === 'пропустить обучение');
+
+    expect(skip?.intentId).toEqual(expect.any(String));
+    expect(skip?.stateKey).toEqual(expect.any(String));
   });
 });

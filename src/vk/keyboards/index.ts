@@ -4,6 +4,10 @@ import { Keyboard } from 'vk-io';
 
 import { gameBalance } from '../../config/game-balance';
 import {
+  buildReturnToAdventureIntentStateKey,
+  buildSkipTutorialIntentStateKey,
+} from '../../modules/exploration/application/command-intent-state';
+import {
   buildAllocateStatIntentStateKey,
   buildResetAllocatedStatsIntentStateKey,
 } from '../../modules/player/application/command-intent-state';
@@ -224,11 +228,13 @@ export const createRuneRerollKeyboard = (player?: PlayerState): KeyboardBuilder 
 
 export const createTutorialKeyboard = (player: PlayerState): KeyboardBuilder => {
   const inTutorial = isPlayerInTutorial(player);
+  const skipTutorialStateKey = buildSkipTutorialIntentStateKey(player);
+  const returnToAdventureStateKey = buildReturnToAdventureIntentStateKey(player);
 
   if (player.tutorialState === 'ACTIVE') {
     return buildKeyboard([
       [{ label: '⚔️ Учебный бой', command: gameCommands.explore, color: Keyboard.POSITIVE_COLOR }],
-      [{ label: '⏭️ Пропустить обучение', command: gameCommands.skipTutorial, color: Keyboard.NEGATIVE_COLOR }],
+      [{ label: '⏭️ Пропустить обучение', command: gameCommands.skipTutorial, color: Keyboard.NEGATIVE_COLOR, intentScoped: true, stateKey: skipTutorialStateKey }],
       [{ label: '◀ Меню', command: gameCommands.backToMenu, color: Keyboard.SECONDARY_COLOR }],
     ]);
   }
@@ -236,7 +242,7 @@ export const createTutorialKeyboard = (player: PlayerState): KeyboardBuilder => 
   if (inTutorial) {
     return buildKeyboard([
       [{ label: '⚔️ Тренировочный бой', command: gameCommands.explore, color: Keyboard.POSITIVE_COLOR }],
-      [{ label: '🌍 В приключения', command: gameCommands.returnToAdventure, color: Keyboard.PRIMARY_COLOR }],
+      [{ label: '🌍 В приключения', command: gameCommands.returnToAdventure, color: Keyboard.PRIMARY_COLOR, intentScoped: true, stateKey: returnToAdventureStateKey }],
       [{ label: '◀ Меню', command: gameCommands.backToMenu, color: Keyboard.SECONDARY_COLOR }],
     ]);
   }

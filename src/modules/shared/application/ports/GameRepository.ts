@@ -12,6 +12,7 @@ import type {
 
 export type AllocationCommandIntentKey = 'ALLOCATE_STAT_POINT' | 'RESET_ALLOCATED_STATS';
 export type RuneLoadoutCommandIntentKey = 'EQUIP_RUNE' | 'UNEQUIP_RUNE';
+export type ExplorationCommandIntentKey = 'SKIP_TUTORIAL' | 'RETURN_TO_ADVENTURE';
 
 export interface SaveAllocationOptions {
   readonly commandKey?: AllocationCommandIntentKey;
@@ -30,6 +31,18 @@ export interface SaveRuneLoadoutOptions {
   readonly expectedSelectedRuneId?: string | null;
   readonly expectedEquippedRuneId?: string | null;
   readonly expectedRuneIds?: readonly string[];
+}
+
+export interface SaveExplorationOptions {
+  readonly commandKey?: ExplorationCommandIntentKey;
+  readonly intentId?: string;
+  readonly intentStateKey?: string;
+  readonly expectedActiveBattleId?: string | null;
+  readonly expectedLocationLevel?: number;
+  readonly expectedHighestLocationLevel?: number;
+  readonly expectedVictoryStreak?: number;
+  readonly expectedDefeatStreak?: number;
+  readonly expectedTutorialState?: PlayerState['tutorialState'];
 }
 
 export interface FinalizeBattleResult {
@@ -52,6 +65,7 @@ export interface GameRepository {
   saveExplorationState(
     playerId: number,
     state: Pick<PlayerState, 'locationLevel' | 'highestLocationLevel' | 'victoryStreak' | 'defeatStreak' | 'tutorialState'>,
+    options?: SaveExplorationOptions,
   ): Promise<PlayerState>;
   saveRuneCursor(playerId: number, currentRuneIndex: number): Promise<PlayerState>;
   equipRune(playerId: number, runeId: string | null, options?: SaveRuneLoadoutOptions): Promise<PlayerState>;

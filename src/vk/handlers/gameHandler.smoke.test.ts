@@ -373,7 +373,7 @@ describe('GameHandler smoke', () => {
     await handler.handle(ctx as never);
 
     const replies = getReplyCalls(ctx);
-    expect(services.returnToAdventure.execute).toHaveBeenCalledWith(1001);
+    expect(services.returnToAdventure.execute).toHaveBeenCalledWith(1001, undefined, undefined, 'payload');
     expect(replies[0]?.message).toContain('🧭 Возвращение в приключения');
     expect(replies[0]?.message).toContain('Дальше: нажмите «⚔️ Исследовать»');
     expect(replies[0]?.message).not.toContain('Учебный бой');
@@ -387,7 +387,7 @@ describe('GameHandler smoke', () => {
 
     await handler.handle(ctx as never);
 
-    expect(services.returnToAdventure.execute).toHaveBeenCalledWith(1001);
+    expect(services.returnToAdventure.execute).toHaveBeenCalledWith(1001, 'legacy-text:2000000001:1001:77:в приключения', undefined, 'legacy_text');
     expect(getReplyCalls(ctx)[0]?.message).toContain('Дальше: нажмите «⚔️ Исследовать»');
   });
 
@@ -832,11 +832,11 @@ describe('GameHandler smoke', () => {
   it('проходит сценарий пропуска обучения', async () => {
     const services = createServices();
     const handler = new GameHandler(services);
-    const ctx = createFakeContext({ command: 'пропустить обучение' });
+    const ctx = createFakeContext({ command: 'пропустить обучение', intentId: 'intent-skip-1', stateKey: 'state-skip-1' });
 
     await handler.handle(ctx as never);
 
-    expect(services.skipTutorial.execute).toHaveBeenCalledWith(1001);
+    expect(services.skipTutorial.execute).toHaveBeenCalledWith(1001, 'intent-skip-1', 'state-skip-1', 'payload');
     expect(getReplyCalls(ctx)[0]?.message).toContain('🧭 Возвращение в приключения');
     expect(getReplyCalls(ctx)[0]?.message).toContain('Исследовать');
   });
@@ -844,12 +844,83 @@ describe('GameHandler smoke', () => {
   it('показывает return recap при возврате в приключения', async () => {
     const services = createServices();
     const handler = new GameHandler(services);
-    const ctx = createFakeContext({ command: 'в приключения' });
+    const ctx = createFakeContext({ command: 'в приключения', intentId: 'intent-return-1', stateKey: 'state-return-1' });
 
     await handler.handle(ctx as never);
 
-    expect(services.returnToAdventure.execute).toHaveBeenCalledWith(1001);
+    expect(services.returnToAdventure.execute).toHaveBeenCalledWith(1001, 'intent-return-1', 'state-return-1', 'payload');
     expect(getReplyCalls(ctx)[0]?.message).toContain('🧭 Возвращение в приключения');
     expect(getReplyCalls(ctx)[0]?.message).toContain('Дальше: нажмите');
+  });
+
+  it('выводит server-owned legacy intent для текстового пропуска обучения', async () => {
+    const services = createServices();
+    const handler = new GameHandler(services);
+    const ctx = createFakeContext({ text: 'пропустить обучение', id: 510, conversationMessageId: 86, peerId: 2000000001 });
+
+    await handler.handle(ctx as never);
+
+    expect(services.skipTutorial.execute).toHaveBeenCalledWith(1001, 'legacy-text:2000000001:1001:86:пропустить обучение', undefined, 'legacy_text');
+  });
+
+  it('выводит server-owned legacy intent для алиаса возврата в мир', async () => {
+    const services = createServices();
+    const handler = new GameHandler(services);
+    const ctx = createFakeContext({ text: 'в мир', id: 511, conversationMessageId: 87, peerId: 2000000001 });
+
+    await handler.handle(ctx as never);
+
+    expect(services.returnToAdventure.execute).toHaveBeenCalledWith(1001, 'legacy-text:2000000001:1001:87:в приключения', undefined, 'legacy_text');
+  });
+
+  it('восстанавливает tutorial/adventure контекст после stale пропуска обучения', async () => {
+    const services = createServices();
+    const handler = new GameHandler(services);
+    const ctx = createFakeContext({ command: 'пропустить обучение', intentId: 'intent-skip-2', stateKey: 'state-skip-2' });
+
+    vi.mocked(services.skipTutorial.execute).mockRejectedValueOnce(
+      new AppError('stale_command_intent', 'Эта кнопка уже устарела. Обновите экран перед повтором команды.'),
+    );
+
+    await handler.handle(ctx as never);
+
+    const replies = getReplyCalls(ctx);
+    expect(replies[0]?.message).toContain('Эта кнопка уже устарела');
+    expect(replies[0]?.message).toContain('📘 Обучение');
+    expect(JSON.stringify(replies[0]?.keyboard)).toContain('пропустить обучение');
+  });
+
+  it('восстанавливает текущий location контекст после pending возврата в приключения', async () => {
+    const services = createServices();
+    const handler = new GameHandler(services);
+    const ctx = createFakeContext({ command: 'в приключения', intentId: 'intent-return-2', stateKey: 'state-return-2' });
+
+    vi.mocked(services.returnToAdventure.execute).mockRejectedValueOnce(
+      new AppError('command_retry_pending', 'Команда уже обрабатывается. Дождитесь ответа и обновите экран.'),
+    );
+
+    await handler.handle(ctx as never);
+
+    const replies = getReplyCalls(ctx);
+    expect(replies[0]?.message).toContain('Команда уже обрабатывается');
+    expect(replies[0]?.message).toContain('📘 Обучение');
+    expect(JSON.stringify(replies[0]?.keyboard)).toContain('Учебный бой');
+  });
+
+  it('возвращает в активный бой, если tutorial navigation вызван во время сражения', async () => {
+    const services = createServices();
+    const handler = new GameHandler(services);
+    const ctx = createFakeContext({ command: 'в приключения', intentId: 'intent-return-3', stateKey: 'state-return-3' });
+
+    vi.mocked(services.returnToAdventure.execute).mockRejectedValueOnce(
+      new AppError('battle_in_progress', 'Сначала завершите текущий бой, а потом меняйте маршрут приключения.'),
+    );
+
+    await handler.handle(ctx as never);
+
+    const replies = getReplyCalls(ctx);
+    expect(replies[0]?.message).toContain('Сначала завершите текущий бой');
+    expect(replies[0]?.message).toContain('⚔️ Бой');
+    expect(JSON.stringify(replies[0]?.keyboard)).toContain('атака');
   });
 });

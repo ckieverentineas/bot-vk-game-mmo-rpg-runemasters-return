@@ -110,12 +110,12 @@ export class GameHandler {
           return;
         }
         case gameCommands.skipTutorial: {
-          const player = await this.services.skipTutorial.execute(vkId);
+          const player = await this.services.skipTutorial.execute(vkId, intentId ?? undefined, stateKey ?? undefined, intentSource);
           await this.reply(ctx, renderReturnRecap(player, '🧭 Возвращение в приключения'), createMainMenuKeyboard());
           return;
         }
         case gameCommands.returnToAdventure: {
-          const player = await this.services.returnToAdventure.execute(vkId);
+          const player = await this.services.returnToAdventure.execute(vkId, intentId ?? undefined, stateKey ?? undefined, intentSource);
           await this.reply(ctx, renderReturnRecap(player, '🧭 Возвращение в приключения'), createMainMenuKeyboard());
           return;
         }
@@ -253,11 +253,19 @@ export class GameHandler {
   }
 
   private async tryRecoverCommandContext(ctx: Context, vkId: number, command: string, error: AppError): Promise<boolean> {
-    if (!['stale_command_intent', 'command_retry_pending'].includes(error.code)) {
+    if (!['stale_command_intent', 'command_retry_pending', 'battle_in_progress'].includes(error.code)) {
       return false;
     }
 
     try {
+      if ([gameCommands.skipTutorial, gameCommands.returnToAdventure].includes(command as typeof gameCommands.skipTutorial | typeof gameCommands.returnToAdventure) && error.code === 'battle_in_progress') {
+        const battle = await this.services.getActiveBattle.execute(vkId);
+        if (battle) {
+          await this.reply(ctx, [error.message, '', renderBattle(battle)].join('\n'), this.resolveBattleKeyboard(battle));
+          return true;
+        }
+      }
+
       if (command === gameCommands.resetStats || resolveStatAllocationCommand(command)) {
         const player = await this.services.getPlayerProfile.execute(vkId);
         await this.reply(
@@ -274,6 +282,16 @@ export class GameHandler {
           ctx,
           [error.message, '', renderProfile(player)].join('\n'),
           createProfileKeyboard(player),
+        );
+        return true;
+      }
+
+      if ([gameCommands.skipTutorial, gameCommands.returnToAdventure].includes(command as typeof gameCommands.skipTutorial | typeof gameCommands.returnToAdventure)) {
+        const player = await this.services.getPlayerProfile.execute(vkId);
+        await this.reply(
+          ctx,
+          [error.message, '', renderLocation(player)].join('\n'),
+          createTutorialKeyboard(player),
         );
         return true;
       }

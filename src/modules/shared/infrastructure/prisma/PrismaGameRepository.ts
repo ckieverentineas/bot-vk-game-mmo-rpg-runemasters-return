@@ -33,6 +33,7 @@ import { createBattleVictoryRewardIntent } from '../../domain/contracts/reward-i
 import type {
   FinalizeBattleResult,
   GameRepository,
+  SaveExplorationOptions,
   SaveAllocationOptions,
   SaveRuneLoadoutOptions,
 } from '../../application/ports/GameRepository';
@@ -51,7 +52,7 @@ const playerInclude = {
 
 type PlayerRecord = Prisma.PlayerGetPayload<{ include: typeof playerInclude }>;
 type TransactionClient = Prisma.TransactionClient;
-type CommandIntentKey = 'CRAFT_RUNE' | 'REROLL_RUNE_STAT' | 'DESTROY_RUNE' | 'ALLOCATE_STAT_POINT' | 'RESET_ALLOCATED_STATS' | 'EQUIP_RUNE' | 'UNEQUIP_RUNE';
+type CommandIntentKey = 'CRAFT_RUNE' | 'REROLL_RUNE_STAT' | 'DESTROY_RUNE' | 'ALLOCATE_STAT_POINT' | 'RESET_ALLOCATED_STATS' | 'EQUIP_RUNE' | 'UNEQUIP_RUNE' | 'SKIP_TUTORIAL' | 'RETURN_TO_ADVENTURE';
 
 type PersistedBattleState = Pick<BattleView, 'status' | 'turnOwner' | 'player' | 'enemy' | 'log' | 'result' | 'rewards' | 'actionRevision'>;
 
@@ -673,19 +674,75 @@ export class PrismaGameRepository implements GameRepository {
   public async saveExplorationState(
     playerId: number,
     state: Pick<PlayerState, 'locationLevel' | 'highestLocationLevel' | 'victoryStreak' | 'defeatStreak' | 'tutorialState'>,
+    options?: SaveExplorationOptions,
   ): Promise<PlayerState> {
-    await this.prisma.playerProgress.update({
-      where: { playerId },
-      data: {
-        locationLevel: state.locationLevel,
-        highestLocationLevel: state.highestLocationLevel,
-        victoryStreak: state.victoryStreak,
-        defeatStreak: state.defeatStreak,
-        tutorialState: state.tutorialState,
-      },
-    });
+    return this.prisma.$transaction(async (tx) => {
+      const apply = async (): Promise<PlayerState> => {
+        const update = options?.expectedLocationLevel !== undefined
+          || options?.expectedActiveBattleId !== undefined
+          || options?.expectedHighestLocationLevel !== undefined
+          || options?.expectedVictoryStreak !== undefined
+          || options?.expectedDefeatStreak !== undefined
+          || options?.expectedTutorialState !== undefined
+          ? await tx.playerProgress.updateMany({
+              where: {
+                playerId,
+                ...(options?.expectedActiveBattleId !== undefined ? { activeBattleId: options.expectedActiveBattleId } : {}),
+                ...(options?.expectedLocationLevel !== undefined ? { locationLevel: options.expectedLocationLevel } : {}),
+                ...(options?.expectedHighestLocationLevel !== undefined ? { highestLocationLevel: options.expectedHighestLocationLevel } : {}),
+                ...(options?.expectedVictoryStreak !== undefined ? { victoryStreak: options.expectedVictoryStreak } : {}),
+                ...(options?.expectedDefeatStreak !== undefined ? { defeatStreak: options.expectedDefeatStreak } : {}),
+                ...(options?.expectedTutorialState !== undefined ? { tutorialState: options.expectedTutorialState } : {}),
+              },
+              data: {
+                locationLevel: state.locationLevel,
+                highestLocationLevel: state.highestLocationLevel,
+                victoryStreak: state.victoryStreak,
+                defeatStreak: state.defeatStreak,
+                tutorialState: state.tutorialState,
+              },
+            })
+          : { count: 1 };
 
-    return this.requirePlayer(playerId);
+        if (update.count === 0) {
+          throw new AppError('stale_command_intent', 'Эта кнопка уже устарела. Обновите экран перед повтором команды.');
+        }
+
+        if (options?.expectedLocationLevel === undefined
+          && options?.expectedActiveBattleId === undefined
+          && options?.expectedHighestLocationLevel === undefined
+          && options?.expectedVictoryStreak === undefined
+          && options?.expectedDefeatStreak === undefined
+          && options?.expectedTutorialState === undefined) {
+          await tx.playerProgress.update({
+            where: { playerId },
+            data: {
+              locationLevel: state.locationLevel,
+              highestLocationLevel: state.highestLocationLevel,
+              victoryStreak: state.victoryStreak,
+              defeatStreak: state.defeatStreak,
+              tutorialState: state.tutorialState,
+            },
+          });
+        }
+
+        return this.mapPlayer(await this.requirePlayerRecord(tx, playerId));
+      };
+
+      if (options?.commandKey && options.intentId && options.intentStateKey) {
+        return this.runWithCommandIntent(
+          tx,
+          playerId,
+          options.commandKey,
+          options.intentId,
+          options.intentStateKey,
+          options.intentStateKey,
+          apply,
+        );
+      }
+
+      return apply();
+    });
   }
 
   public async saveRuneCursor(playerId: number, currentRuneIndex: number): Promise<PlayerState> {

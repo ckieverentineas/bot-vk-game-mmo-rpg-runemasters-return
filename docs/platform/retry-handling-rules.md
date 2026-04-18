@@ -39,6 +39,15 @@
 - duplicate same-intent profile mutation обязан вернуть canonical stored profile, а не второй spend/refund;
 - stale profile button после уже применённого изменения обязан быть отклонён как `stale_command_intent`, а не применён поверх нового профиля.
 
+## Exploration navigation rules
+
+- `skipTutorial` и `returnToAdventure` используют keyboard-issued `intentId` + exploration `stateKey`;
+- plain text `пропустить обучение`, `в приключения` и alias `в мир` получают server-owned message intent id и идут через canonical replay receipt;
+- stateKey привязан к `tutorialState`, `activeBattleId`, текущему `locationLevel`, streak state и adaptive adventure destination;
+- duplicate same-intent navigation command обязан вернуть canonical post-navigation player state, а не повторно перетереть более свежий exploration state;
+- stale tutorial-navigation command после уже изменившегося состояния обязан восстанавливать актуальный tutorial/adventure контекст, а не выбрасывать игрока в общий main menu.
+- tutorial-navigation mutation не должна применяться поверх активного боя; сначала игрок завершает текущий бой, затем меняет маршрут приключения.
+
 ## Player-facing rules
 
 - duplicate battle input по умолчанию восстанавливается через latest canonical battle state;
@@ -46,6 +55,7 @@
 - если бой уже завершён, игрок видит актуальный финальный результат, а не техническую ошибку.
 - stale / retry profile и rune mutations по возможности восстанавливают актуальный профильный или рунный контекст вместо выброса в главное меню.
 - stale equip / unequip reply обязан показывать актуальную рунную сборку, чтобы игрок сразу видел, какая руна реально экипирована сейчас.
+- stale / retry tutorial-navigation reply обязан восстанавливать актуальный tutorial/adventure экран с правильным следующим CTA.
 
 ## Logging
 
@@ -56,4 +66,4 @@
 
 - explicit RNG authority rules for reroll / drop / craft are now defined in `docs/platform/rng-authority-rules.md`, but broader legacy-text and non-profile command replay still remains;
 - migration fixtures for versioned persisted contracts;
-- remaining legacy text-command repeated actions beyond guarded rune mutations / profile stat allocation / reset, plus non-rune mutations beyond rune loadout buttons.
+- remaining legacy text-command repeated actions beyond guarded rune mutations / profile stat allocation / reset / tutorial navigation, plus non-rune mutations beyond rune loadout buttons.
