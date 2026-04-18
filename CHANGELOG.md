@@ -414,6 +414,29 @@
 - content validation теперь ловит разрыв между школой и её стартовым архетипом до seed/check/release;
 - следующая волна school-first UX и content authoring получила одно место правды вместо параллельных карт описаний.
 
+## [0.18] - 2026-04-18
+
+### Commit
+
+- `worktree` — `feat: rewrite school-first onboarding framing`
+
+### Added
+
+- presenter tests для school-first onboarding framing в [`src/vk/presenters/messages.test.ts`](src/vk/presenters/messages.test.ts);
+- smoke assertions для welcome/tutorial/skip-training flow в [`src/vk/handlers/gameHandler.smoke.test.ts`](src/vk/handlers/gameHandler.smoke.test.ts), чтобы early-school copy не деградировал незаметно.
+
+### Changed
+
+- [`renderWelcome()`](src/vk/presenters/messages.ts), [`renderLocation()`](src/vk/presenters/messages.ts) и empty [`renderRuneScreen()`](src/vk/presenters/messages.ts) теперь объясняют ранний путь игрока как `базовая атака -> первая руна -> школа рун -> стиль боя`;
+- tutorial/main-menu copy теперь сильнее связывает первую руну с открытием школы рун и не продвигает внутренний жаргон;
+- release docs и roadmap синхронизированы под завершённый school-first onboarding framing slice.
+
+### Fixed
+
+- onboarding больше не выглядит как просто технический tutorial mode без объяснения, зачем игроку нужна первая руна;
+- первый экран и учебная зона теперь лучше подводят к school-first fantasy вместо generic "безопасной зоны";
+- empty rune screen больше не обрывает раннюю мотивацию до получения первой руны.
+
 ## Шаблон следующей записи
 
 ### [0.03] - YYYY-MM-DD

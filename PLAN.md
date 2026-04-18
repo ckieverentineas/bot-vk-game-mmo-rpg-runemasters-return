@@ -491,9 +491,9 @@ Runemasters Return должен решать это через **школы ру
 
 ### 11.4 UX / content / instrumentation
 
-- [ ] Переписать school-first onboarding framing
-  - [ ] объяснить attack -> school -> rarity -> next goal
-  - [ ] не использовать внутренний жаргон
+- [x] Переписать school-first onboarding framing
+  - [x] объяснить attack -> school -> rarity -> next goal
+  - [x] не использовать внутренний жаргон
 - [ ] Зафиксировать формат next-goal messaging после сессии
 - [ ] Зафиксировать return-recap UX без guilt/FOMO copy
 - [ ] Подготовить content pipeline plan для:
@@ -954,3 +954,4 @@ Runemasters Return должен решать это через **школы ру
 - **2026-04-18:** battle persistence получил `actionRevision` compare-and-swap guard; добавлены duplication matrix, retry rules и Prisma-backed concurrency tests для critical battle/rune flows.
 - **2026-04-18:** battle persistence получил versioned `BattleSnapshot` и checked-in compatibility fixtures; legacy raw battle columns оставлены как fallback до отдельного migration window.
 - **2026-04-18:** извлечён canonical `SchoolDefinition`; school identity теперь валидируется как контентный контракт и больше не живёт отдельной картой вне content seed.
+- **2026-04-18:** переписан school-first onboarding framing; welcome / tutorial / rune onboarding теперь связывают базовую атаку, первую руну, школу рун и следующий шаг без внутреннего жаргона.

@@ -280,6 +280,7 @@ describe('GameHandler smoke', () => {
     expect(services.registerPlayer.execute).toHaveBeenCalledWith(1001);
     expect(replies[0]?.message).toContain('Добро пожаловать');
     expect(replies[0]?.message).toContain('Учебный бой');
+    expect(replies[0]?.message).toContain('школа рун');
   });
 
   it('проходит сценарий обучения и входа в бой', async () => {
@@ -294,6 +295,7 @@ describe('GameHandler smoke', () => {
     expect(services.enterTutorialMode.execute).toHaveBeenCalledWith(1001);
     expect(services.exploreLocation.execute).toHaveBeenCalledWith(1001);
     expect(getReplyCalls(locationContext)[0]?.message).toContain('Обучение');
+    expect(getReplyCalls(locationContext)[0]?.message).toContain('первую руну');
     expect(getReplyCalls(exploreContext)[0]?.message).toContain('⚔️ Бой');
     expect(getReplyCalls(exploreContext)[0]?.message).toContain('Доступные действия');
   });
@@ -484,5 +486,6 @@ describe('GameHandler smoke', () => {
 
     expect(services.skipTutorial.execute).toHaveBeenCalledWith(1001);
     expect(getReplyCalls(ctx)[0]?.message).toContain('Рекомендуемый уровень угрозы');
+    expect(getReplyCalls(ctx)[0]?.message).toContain('Исследовать');
   });
 });
