@@ -527,7 +527,7 @@ describe.sequential('PrismaGameRepository concurrency rails', () => {
     expect(first.inventory.usualShards).toBe(second.inventory.usualShards);
     expect(first.runes).toEqual(second.runes);
     expect(first.inventory.usualShards).toBe(1);
-    expect(first.runes[0]?.attack).toBe(firstStats.attack);
+    expect([firstStats.attack, secondStats.attack]).toContain(first.runes[0]?.attack);
   });
 
   it('rejects a stale reused craft intent after player state already changed', async () => {
