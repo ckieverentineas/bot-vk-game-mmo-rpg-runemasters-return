@@ -16,6 +16,7 @@ Covered by intent-based dedupe:
 - `equipRune`
 - `unequipRune`
 - keyboard rune hub navigation (`previousRunePage`, `nextRunePage`, `selectRunePageSlot`)
+- `enterTutorialMode`
 - `skipTutorial`
 - `returnToAdventure`
 - `exploreLocation`
@@ -25,7 +26,7 @@ Covered by intent-based dedupe:
 Transport surface:
 
 - VK keyboard payloads for guarded buttons;
-- server-owned legacy text intents for `craftRune`, `rerollRuneStat`, `destroyRune`, `allocateStatPoint`, `resetAllocatedStats`, `equipRune`, `unequipRune`, `skipTutorial`, `returnToAdventure`, `exploreLocation` (`исследовать`), `attack`, `defend`, `runeSkill`.
+- server-owned legacy text intents for `craftRune`, `rerollRuneStat`, `destroyRune`, `allocateStatPoint`, `resetAllocatedStats`, `equipRune`, `unequipRune`, `enterTutorialMode` (`локация`, `обучение`), `skipTutorial`, `returnToAdventure`, `exploreLocation` (`исследовать`), `attack`, `defend`, `runeSkill`.
 
 Not covered yet:
 
@@ -109,6 +110,12 @@ Fields of interest:
 - duplicate same-intent arrival returns the stored post-navigation rune hub state instead of retargeting a fresher selection;
 - stale page or slot buttons restore the latest canonical rune hub instead of silently selecting another rune.
 
+### Enter tutorial mode
+
+- first arrival opens the current tutorial screen exactly once for the rendered exploration snapshot;
+- duplicate same-intent arrival returns the stored tutorial-entry player state instead of overwriting fresher exploration progress;
+- stale tutorial-entry button restores the latest tutorial/adventure context instead of snapping the player back to an older route.
+
 ### Skip tutorial
 
 - first arrival moves the player to the current adaptive adventure path and marks onboarding as skipped if it was still active;
@@ -135,6 +142,7 @@ Fields of interest:
 
 - keyboard payload is the current source of intent ids;
 - server-owned legacy text ids currently protect rune craft / reroll / destroy / equip / unequip, profile stat allocation / reset, tutorial navigation (`пропустить обучение`, `в приключения`, `в мир`), and battle text inputs (`атака`, `защита`, `навыки`, `спелл`);
+- server-owned legacy text ids also protect tutorial entry via `локация` / `обучение`;
 - server-owned legacy text ids also protect exploration entry via `исследовать`;
 - keyboard battle buttons now carry scoped `intentId` + battle `stateKey`;
 - keyboard rune hub page and slot buttons now also carry scoped `intentId` + rune-hub `stateKey`;
@@ -156,6 +164,7 @@ Fields of interest:
 - same-intent return to adventure -> one canonical post-return navigation state only;
 - same-intent battle attack / defend / rune skill -> one canonical post-action battle result only;
 - same-intent rune page / slot navigation -> one canonical post-navigation rune hub state only;
+- same-intent tutorial entry from main menu / legacy text -> one canonical tutorial context only;
 - same-intent explore from main menu / tutorial / battle-result CTA -> one canonical battle only;
 - stale reused intent after state change -> explicit `stale_command_intent` style rejection;
 - different intent ids still allow honest repeated actions.

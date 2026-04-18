@@ -5,6 +5,7 @@ import { Keyboard } from 'vk-io';
 import { gameBalance } from '../../config/game-balance';
 import { buildBattleActionIntentStateKey } from '../../modules/combat/application/command-intent-state';
 import {
+  buildEnterTutorialModeIntentStateKey,
   buildExploreLocationIntentStateKey,
   buildReturnToAdventureIntentStateKey,
   buildSkipTutorialIntentStateKey,
@@ -68,6 +69,7 @@ const buildKeyboard = (layout: KeyboardLayout): KeyboardBuilder => {
 };
 
 const createMainMenuLayout = (player?: PlayerState): KeyboardLayout => {
+  const locationStateKey = player ? buildEnterTutorialModeIntentStateKey(player) : undefined;
   const exploreStateKey = player ? buildExploreLocationIntentStateKey(player) : undefined;
 
   return [
@@ -76,7 +78,7 @@ const createMainMenuLayout = (player?: PlayerState): KeyboardLayout => {
       { label: '🎒 Инвентарь', command: gameCommands.inventory, color: Keyboard.SECONDARY_COLOR },
     ],
     [
-      { label: '📘 Обучение', command: gameCommands.location, color: Keyboard.PRIMARY_COLOR },
+      { label: '📘 Обучение', command: gameCommands.location, color: Keyboard.PRIMARY_COLOR, intentScoped: Boolean(player), stateKey: locationStateKey },
       { label: '⚔️ Исследовать', command: gameCommands.explore, color: Keyboard.POSITIVE_COLOR, intentScoped: Boolean(player), stateKey: exploreStateKey },
     ],
     [

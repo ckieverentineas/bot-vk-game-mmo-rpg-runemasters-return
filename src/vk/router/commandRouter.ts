@@ -19,6 +19,7 @@ const supportsLegacyTextIntent = (command: string): boolean => (
   || command === gameCommands.destroyRune
   || command === gameCommands.equipRune
   || command === gameCommands.unequipRune
+  || command === gameCommands.location
   || command === gameCommands.skipTutorial
   || command === gameCommands.returnToAdventure
   || command === gameCommands.explore

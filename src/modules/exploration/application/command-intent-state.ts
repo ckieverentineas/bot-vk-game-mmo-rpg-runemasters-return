@@ -20,6 +20,11 @@ export const buildSkipTutorialIntentStateKey = (player: PlayerState): string => 
   ...buildExplorationSnapshot(player),
 });
 
+export const buildEnterTutorialModeIntentStateKey = (player: PlayerState): string => serializeStateKey({
+  action: 'enter_tutorial_mode',
+  ...buildExplorationSnapshot(player),
+});
+
 export const buildReturnToAdventureIntentStateKey = (player: PlayerState): string => serializeStateKey({
   action: 'return_to_adventure',
   ...buildExplorationSnapshot(player),

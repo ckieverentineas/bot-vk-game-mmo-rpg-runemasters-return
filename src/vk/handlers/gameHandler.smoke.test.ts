@@ -335,13 +335,13 @@ describe('GameHandler smoke', () => {
   it('проходит сценарий обучения и входа в бой', async () => {
     const services = createServices();
     const handler = new GameHandler(services);
-    const locationContext = createFakeContext({ command: 'локация' });
+    const locationContext = createFakeContext({ command: 'локация', intentId: 'intent-location-1', stateKey: 'state-location-1' });
     const exploreContext = createFakeContext({ command: 'исследовать' });
 
     await handler.handle(locationContext as never);
     await handler.handle(exploreContext as never);
 
-    expect(services.enterTutorialMode.execute).toHaveBeenCalledWith(1001);
+    expect(services.enterTutorialMode.execute).toHaveBeenCalledWith(1001, 'intent-location-1', 'state-location-1', 'payload');
     expect(services.exploreLocation.execute).toHaveBeenCalledWith(1001, undefined, undefined, 'payload');
     expect(getReplyCalls(locationContext)[0]?.message).toContain('Обучение');
     expect(getReplyCalls(locationContext)[0]?.message).toContain('первую руну');
@@ -357,6 +357,16 @@ describe('GameHandler smoke', () => {
     await handler.handle(ctx as never);
 
     expect(services.exploreLocation.execute).toHaveBeenCalledWith(1001, 'legacy-text:2000000001:1001:93:исследовать', undefined, 'legacy_text');
+  });
+
+  it('выводит server-owned legacy intent для текстового входа в обучение', async () => {
+    const services = createServices();
+    const handler = new GameHandler(services);
+    const ctx = createFakeContext({ text: 'обучение', id: 518, conversationMessageId: 94, peerId: 2000000001 });
+
+    await handler.handle(ctx as never);
+
+    expect(services.enterTutorialMode.execute).toHaveBeenCalledWith(1001, 'legacy-text:2000000001:1001:94:локация', undefined, 'legacy_text');
   });
 
   it('не возвращает пропустившего игрока в учебный бой через старую команду локации', async () => {
@@ -403,6 +413,22 @@ describe('GameHandler smoke', () => {
     const replies = getReplyCalls(ctx);
     expect(replies[0]?.message).toContain('⚔️ Бой');
     expect(JSON.stringify(replies[0]?.keyboard)).toContain('атака');
+  });
+
+  it('восстанавливает актуальный tutorial/adventure контекст после stale входа в обучение', async () => {
+    const services = createServices();
+    const handler = new GameHandler(services);
+    const ctx = createFakeContext({ command: 'локация', intentId: 'intent-location-2', stateKey: 'state-location-2' });
+
+    vi.mocked(services.enterTutorialMode.execute).mockRejectedValueOnce(
+      new AppError('stale_command_intent', 'Этот экран обучения уже устарел. Я открыл актуальный маршрут героя.'),
+    );
+
+    await handler.handle(ctx as never);
+
+    const replies = getReplyCalls(ctx);
+    expect(replies[0]?.message).toContain('Этот экран обучения уже устарел');
+    expect(replies[0]?.message).toContain('📘 Обучение');
   });
 
   it('выводит adventure recap для активного игрока по команде возврата в приключения', async () => {

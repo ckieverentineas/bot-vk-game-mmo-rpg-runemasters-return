@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import type { PlayerState } from '../../../shared/types/game';
 
 import {
+  buildEnterTutorialModeIntentStateKey,
   buildExploreLocationIntentStateKey,
   buildReturnToAdventureIntentStateKey,
   buildSkipTutorialIntentStateKey,
@@ -68,6 +69,7 @@ describe('exploration command intent state keys', () => {
     const after = createPlayer({ tutorialState: 'SKIPPED' });
 
     expect(buildSkipTutorialIntentStateKey(before)).not.toBe(buildSkipTutorialIntentStateKey(after));
+    expect(buildEnterTutorialModeIntentStateKey(before)).not.toBe(buildEnterTutorialModeIntentStateKey(after));
   });
 
   it('changes when adaptive destination changes', () => {

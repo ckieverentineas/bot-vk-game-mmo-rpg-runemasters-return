@@ -47,6 +47,9 @@
 
 ## Exploration navigation rules
 
+- `location` / `локация` / `обучение` используют keyboard-issued `intentId` + exploration `stateKey` либо server-owned legacy text intent id;
+- duplicate same-intent `location` обязан вернуть canonical tutorial-entry player state, а не повторно перетереть более свежий exploration state;
+- stale tutorial-entry input после уже изменившегося exploration state обязан восстановить актуальный tutorial/adventure контекст, а не вернуть игрока на устаревший экран обучения;
 - `explore` / `исследовать` используют keyboard-issued `intentId` + exploration `stateKey` либо server-owned legacy text intent id;
 - duplicate same-intent `explore` обязан вернуть canonical persisted battle, а не создать второй encounter или перероллить врага;
 - stale explore input после уже изменившегося exploration state обязан вернуть игрока в актуальный battle/location context, а не стартовать новый бой поверх свежего состояния;
@@ -64,6 +67,7 @@
 - если бой уже завершён, игрок видит актуальный финальный результат, а не техническую ошибку.
 - stale / retry profile и rune mutations по возможности восстанавливают актуальный профильный или рунный контекст вместо выброса в главное меню.
 - stale equip / unequip reply обязан показывать актуальную рунную сборку, чтобы игрок сразу видел, какая руна реально экипирована сейчас.
+- stale / retry tutorial-entry reply обязан восстанавливать актуальный tutorial/adventure экран с понятным следующим CTA.
 - stale / retry tutorial-navigation reply обязан восстанавливать актуальный tutorial/adventure экран с правильным следующим CTA.
 - stale / retry explore reply обязан восстанавливать либо текущий бой, либо актуальный exploration screen с правильной кнопкой следующего боя.
 

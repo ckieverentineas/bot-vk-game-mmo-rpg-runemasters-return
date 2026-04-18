@@ -250,9 +250,12 @@ describe('profile keyboard', () => {
     const mainMenuPayloads = collectPayloads(createMainMenuKeyboard(player));
     const battleResultPayloads = collectPayloads(createBattleResultKeyboard(createBattle({ status: 'COMPLETED', result: 'VICTORY', rewards: { experience: 6, gold: 2, shards: { USUAL: 1 }, droppedRune: null } }), player));
 
+    const location = mainMenuPayloads.find((payload) => payload.command === 'локация');
     const mainExplore = mainMenuPayloads.find((payload) => payload.command === 'исследовать');
     const newBattle = battleResultPayloads.find((payload) => payload.command === 'исследовать');
 
+    expect(location?.intentId).toEqual(expect.any(String));
+    expect(location?.stateKey).toEqual(expect.any(String));
     expect(mainExplore?.intentId).toEqual(expect.any(String));
     expect(mainExplore?.stateKey).toEqual(expect.any(String));
     expect(newBattle?.intentId).toEqual(expect.any(String));

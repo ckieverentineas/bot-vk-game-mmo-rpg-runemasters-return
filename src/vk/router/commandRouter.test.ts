@@ -131,6 +131,32 @@ describe('normalizeCommand', () => {
     expect(returnAlias.intentSource).toBe('legacy_text');
   });
 
+  it('выводит server-owned intent для legacy text входа в экран обучения и его алиаса', () => {
+    const location = resolveCommandEnvelope({
+      text: 'локация',
+      senderId: 1001,
+      peerId: 2000000001,
+      conversationMessageId: 90,
+      id: 514,
+      messagePayload: null,
+    } as never);
+    const alias = resolveCommandEnvelope({
+      text: 'обучение',
+      senderId: 1001,
+      peerId: 2000000001,
+      conversationMessageId: 91,
+      id: 515,
+      messagePayload: null,
+    } as never);
+
+    expect(location.command).toBe(gameCommands.location);
+    expect(location.intentId).toBe('legacy-text:2000000001:1001:90:локация');
+    expect(location.intentSource).toBe('legacy_text');
+    expect(alias.command).toBe(gameCommands.location);
+    expect(alias.intentId).toBe('legacy-text:2000000001:1001:91:локация');
+    expect(alias.intentSource).toBe('legacy_text');
+  });
+
   it('выводит server-owned intent для legacy text исследования', () => {
     const explore = resolveCommandEnvelope({
       text: 'исследовать',

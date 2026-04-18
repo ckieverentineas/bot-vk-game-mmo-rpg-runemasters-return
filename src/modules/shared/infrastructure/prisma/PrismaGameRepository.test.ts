@@ -483,6 +483,38 @@ describe('PrismaGameRepository release hardening', () => {
     expect(tx.playerProgress.updateMany).not.toHaveBeenCalled();
   });
 
+  it('returns canonical tutorial-entry result for a duplicate enter tutorial intent', async () => {
+    const { repository, tx } = createPrismaMock();
+
+    tx.commandIntentRecord.findUnique.mockResolvedValue({
+      commandKey: 'ENTER_TUTORIAL_MODE',
+      stateKey: 'state-location-1',
+      status: 'APPLIED',
+      resultSnapshot: JSON.stringify(createPlayerStateSnapshot()),
+    });
+
+    const player = await repository.saveExplorationState(1, {
+      locationLevel: 0,
+      highestLocationLevel: 2,
+      victoryStreak: 1,
+      defeatStreak: 0,
+      tutorialState: 'ACTIVE',
+    }, {
+      commandKey: 'ENTER_TUTORIAL_MODE',
+      intentId: 'intent-location-1',
+      intentStateKey: 'state-location-1',
+      expectedActiveBattleId: null,
+      expectedLocationLevel: 1,
+      expectedHighestLocationLevel: 2,
+      expectedVictoryStreak: 1,
+      expectedDefeatStreak: 0,
+      expectedTutorialState: 'ACTIVE',
+    });
+
+    expect(player.playerId).toBe(1);
+    expect(tx.playerProgress.updateMany).not.toHaveBeenCalled();
+  });
+
   it('rejects replay lookups when the stored command key does not match the expected battle action rail', async () => {
     const { repository, tx } = createPrismaMock();
 

@@ -106,7 +106,7 @@ export class GameHandler {
           return;
         }
         case gameCommands.location: {
-          await this.showLocation(ctx, vkId);
+          await this.showLocation(ctx, vkId, intentId ?? undefined, stateKey ?? undefined, intentSource);
           return;
         }
         case gameCommands.skipTutorial: {
@@ -306,7 +306,7 @@ export class GameHandler {
         return true;
       }
 
-      if ([gameCommands.skipTutorial, gameCommands.returnToAdventure].includes(command as typeof gameCommands.skipTutorial | typeof gameCommands.returnToAdventure)) {
+      if ([gameCommands.location, gameCommands.skipTutorial, gameCommands.returnToAdventure].includes(command as typeof gameCommands.location | typeof gameCommands.skipTutorial | typeof gameCommands.returnToAdventure)) {
         const player = await this.services.getPlayerProfile.execute(vkId);
         await this.reply(
           ctx,
@@ -390,8 +390,14 @@ export class GameHandler {
     await this.reply(ctx, renderInventory(player), createMainMenuKeyboard(player));
   }
 
-  private async showLocation(ctx: Context, vkId: number): Promise<void> {
-    const player = await this.services.enterTutorialMode.execute(vkId);
+  private async showLocation(
+    ctx: Context,
+    vkId: number,
+    intentId?: string,
+    intentStateKey?: string,
+    intentSource: ReturnType<typeof resolveCommandEnvelope>['intentSource'] = null,
+  ): Promise<void> {
+    const player = await this.services.enterTutorialMode.execute(vkId, intentId, intentStateKey, intentSource);
     await this.replyWithLocation(ctx, player);
   }
 
