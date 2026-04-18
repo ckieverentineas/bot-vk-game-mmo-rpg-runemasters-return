@@ -483,6 +483,26 @@
 - skip/return commands теперь лучше подсказывают ближайший осмысленный шаг при re-entry;
 - presenter layer получил return recap без новых persistence/state контрактов и без guilt/FOMO тональности.
 
+## [0.21] - 2026-04-18
+
+### Commit
+
+- `worktree` — `docs: add telemetry plan v1`
+
+### Added
+
+- новый source-of-truth doc [`docs/telemetry/telemetry-plan.md`](docs/telemetry/telemetry-plan.md) с event map, review questions, owners, review cadence и deferred scope для telemetry v1.
+
+### Changed
+
+- `PLAN.md` теперь фиксирует telemetry plan как закрытый Phase 1 artifact для onboarding clarity, school pick rates, loadout engagement, economy health и exploit signals;
+- `README.md` и `RELEASE_CHECKLIST.md` теперь явно ссылаются на telemetry plan как на release/review artifact для player-facing decision flows.
+
+### Fixed
+
+- telemetry больше не остаётся размазанной задачей без одного source-of-truth doc;
+- product review по onboarding / return / economy получил минимальную decision-grade event рамку без premature analytics platform scope.
+
 ## Шаблон следующей записи
 
 ### [0.03] - YYYY-MM-DD

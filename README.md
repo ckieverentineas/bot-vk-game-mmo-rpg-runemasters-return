@@ -50,6 +50,7 @@ Runemasters Return — VK MMO RPG на TypeScript с модульным игро
 - `src/modules/shared/domain/contracts/*` — versioned контракты persistence-уровня для боевой сборки и reward claim flow;
 - `src/shared/utils/json.ts` — единая точка для JSON clone/parse/stringify;
 - `docs/platform/retry-handling-rules.md`, `docs/platform/persistence-versioning-rules.md`, `docs/qa/reward-duplication-matrix.md`, `docs/testing/concurrency-critical-use-cases.md` — зафиксированные retry/concurrency rails и versioning policy для critical battle/reward flows;
+- `docs/telemetry/telemetry-plan.md` — минимальный telemetry v1 план для onboarding clarity, school readability, return UX, economy health и exploit review;
 - `src/modules/runes/domain/rune-collection.ts` — paging helper'ы рунной коллекции поверх существующего `currentRuneIndex` без новой persistence-схемы;
 - `src/tooling/release` — правила версионирования, content validation, preflight-проверка и скрипты `npm run content:validate` / `npm run release:status` / `npm run release:preflight`;
 - `src/vk/handlers/gameHandler.smoke.test.ts` — smoke-проверки пользовательских сценариев через transport orchestration без реального VK API;

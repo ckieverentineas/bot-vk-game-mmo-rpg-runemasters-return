@@ -502,12 +502,12 @@ Runemasters Return должен решать это через **школы ру
   - [ ] encounters
   - [ ] quests
   - [ ] season chronicle configs
-- [ ] Подготовить telemetry plan
-  - [ ] onboarding clarity
-  - [ ] school pick rates
-  - [ ] loadout change rates
-  - [ ] economy health
-  - [ ] exploit signals
+- [x] Подготовить telemetry plan
+  - [x] onboarding clarity
+  - [x] school pick rates
+  - [x] loadout change rates
+  - [x] economy health
+  - [x] exploit signals
 
 ### 11.5 QA / abuse rails
 
@@ -957,3 +957,4 @@ Runemasters Return должен решать это через **школы ру
 - **2026-04-18:** переписан school-first onboarding framing; welcome / tutorial / rune onboarding теперь связывают базовую атаку, первую руну, школу рун и следующий шаг без внутреннего жаргона.
 - **2026-04-18:** battle result screens получили единый format `Следующая цель`; победа и поражение теперь заканчиваются мотивирующим next-goal block без guilt/FOMO тона.
 - **2026-04-18:** existing-player re-entry получил return recap v1 на `start`, `пропустить обучение` и `в приключения`; recap опирается на текущий `PlayerState` и избегает guilt/FOMO copy.
+- **2026-04-18:** подготовлен telemetry plan v1 для onboarding clarity, school readability, loadout engagement, economy health и exploit signals через существующий `GameLog` rail.
