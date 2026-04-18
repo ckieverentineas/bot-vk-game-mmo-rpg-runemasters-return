@@ -99,7 +99,7 @@ export class GameHandler {
           return;
         }
         case gameCommands.resetStats: {
-          const player = await this.services.resetAllocatedStats.execute(vkId);
+          const player = await this.services.resetAllocatedStats.execute(vkId, intentId ?? undefined, stateKey ?? undefined);
           await this.replyWithProfile(ctx, player);
           return;
         }
@@ -127,12 +127,12 @@ export class GameHandler {
           return;
         }
         case gameCommands.equipRune: {
-          const player = await this.services.equipCurrentRune.execute(vkId);
+          const player = await this.services.equipCurrentRune.execute(vkId, intentId ?? undefined, stateKey ?? undefined);
           await this.replyWithRuneHub(ctx, player);
           return;
         }
         case gameCommands.unequipRune: {
-          const player = await this.services.unequipCurrentRune.execute(vkId);
+          const player = await this.services.unequipCurrentRune.execute(vkId, intentId ?? undefined, stateKey ?? undefined);
           await this.replyWithRuneHub(ctx, player);
           return;
         }
@@ -163,6 +163,11 @@ export class GameHandler {
       }
     } catch (error) {
       if (isAppError(error)) {
+        const recovered = await this.tryRecoverCommandContext(ctx, vkId, command, error);
+        if (recovered) {
+          return;
+        }
+
         await this.reply(ctx, error.message, this.resolveErrorKeyboard(error.code));
         return;
       }
@@ -175,7 +180,7 @@ export class GameHandler {
   private async handleDynamicCommand(ctx: Context, vkId: number, command: string, intentId: string | null, stateKey: string | null): Promise<void> {
     const allocationStat = resolveStatAllocationCommand(command);
     if (allocationStat) {
-      const player = await this.services.allocateStatPoint.execute(vkId, allocationStat);
+      const player = await this.services.allocateStatPoint.execute(vkId, allocationStat, intentId ?? undefined, stateKey ?? undefined);
       await this.replyWithProfile(ctx, player);
       return;
     }
@@ -219,6 +224,48 @@ export class GameHandler {
     await this.replyWithProfile(ctx, player);
   }
 
+  private async tryRecoverCommandContext(ctx: Context, vkId: number, command: string, error: AppError): Promise<boolean> {
+    if (!['stale_command_intent', 'command_retry_pending'].includes(error.code)) {
+      return false;
+    }
+
+    try {
+      if (command === gameCommands.resetStats || resolveStatAllocationCommand(command)) {
+        const player = await this.services.getPlayerProfile.execute(vkId);
+        await this.reply(
+          ctx,
+          [error.message, '', renderProfile(player)].join('\n'),
+          createProfileKeyboard(player),
+        );
+        return true;
+      }
+
+      if ([gameCommands.equipRune, gameCommands.unequipRune, gameCommands.craftRune, gameCommands.destroyRune].includes(command as typeof gameCommands.equipRune | typeof gameCommands.destroyRune)) {
+        const player = await this.services.getRuneCollection.execute(vkId);
+        await this.reply(
+          ctx,
+          [error.message, '', renderRuneScreen(player)].join('\n'),
+          createRuneKeyboard(player),
+        );
+        return true;
+      }
+
+      if (command === gameCommands.rerollRuneMenu || resolveRuneStatRerollCommand(command)) {
+        const player = await this.services.getRuneCollection.execute(vkId);
+        await this.reply(
+          ctx,
+          [error.message, '', renderAltar(player)].join('\n'),
+          createRuneRerollKeyboard(player),
+        );
+        return true;
+      }
+    } catch {
+      return false;
+    }
+
+    return false;
+  }
+
   private async deletePlayer(ctx: Context, vkId: number): Promise<void> {
     await this.services.deletePlayer.execute(vkId);
     await this.reply(ctx, 'Персонаж удалён. Можно начать заново в любой момент.', createEntryKeyboard());
@@ -235,7 +282,7 @@ export class GameHandler {
   }
 
   private async replyWithProfile(ctx: Context, player: PlayerState): Promise<void> {
-    await this.reply(ctx, renderProfile(player), createProfileKeyboard());
+    await this.reply(ctx, renderProfile(player), createProfileKeyboard(player));
   }
 
   private async replyWithLocation(ctx: Context, player: PlayerState): Promise<void> {

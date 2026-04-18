@@ -3,11 +3,17 @@ import { randomUUID } from 'node:crypto';
 import { Keyboard } from 'vk-io';
 
 import { gameBalance } from '../../config/game-balance';
+import {
+  buildAllocateStatIntentStateKey,
+  buildResetAllocatedStatsIntentStateKey,
+} from '../../modules/player/application/command-intent-state';
 import { getSelectedRune, isPlayerInTutorial } from '../../modules/player/domain/player-stats';
 import {
   buildCraftIntentStateKey,
   buildDestroyIntentStateKey,
+  buildEquipIntentStateKey,
   buildRerollIntentStateKey,
+  buildUnequipIntentStateKey,
 } from '../../modules/runes/application/command-intent-state';
 import type { BattleView, PlayerState } from '../../shared/types/game';
 import type { GameCommand } from '../commands/catalog';
@@ -37,7 +43,7 @@ const buildKeyboard = (layout: KeyboardLayout): KeyboardBuilder => {
     row.forEach(({ label, command, color, intentScoped, stateKey }) => {
       keyboard.textButton({
         label,
-        payload: intentScoped
+        payload: intentScoped && stateKey
           ? { command, intentId: randomUUID(), ...(stateKey ? { stateKey } : {}) }
           : { command },
         color,
@@ -71,25 +77,32 @@ const entryLayout: KeyboardLayout = [
   [{ label: '🎮 Начать', command: gameCommands.start, color: Keyboard.POSITIVE_COLOR }],
 ];
 
-const profileLayout: KeyboardLayout = [
-  [
-    { label: '+АТК', command: gameCommands.increaseAttack, color: Keyboard.POSITIVE_COLOR },
-    { label: '+ЗДР', command: gameCommands.increaseHealth, color: Keyboard.POSITIVE_COLOR },
-  ],
-  [
-    { label: '+ФЗАЩ', command: gameCommands.increaseDefence, color: Keyboard.POSITIVE_COLOR },
-    { label: '+МЗАЩ', command: gameCommands.increaseMagicDefence, color: Keyboard.POSITIVE_COLOR },
-  ],
-  [
-    { label: '+ЛВК', command: gameCommands.increaseDexterity, color: Keyboard.POSITIVE_COLOR },
-    { label: '+ИНТ', command: gameCommands.increaseIntelligence, color: Keyboard.POSITIVE_COLOR },
-  ],
-  [
-    { label: '🔄 СБРОС', command: gameCommands.resetStats, color: Keyboard.NEGATIVE_COLOR },
-    { label: '◀ Меню', command: gameCommands.backToMenu, color: Keyboard.SECONDARY_COLOR },
-  ],
-  [{ label: '🗑️ Удалить персонажа', command: gameCommands.deletePlayer, color: Keyboard.NEGATIVE_COLOR }],
-];
+const createProfileLayout = (player?: PlayerState): KeyboardLayout => {
+  const allocateStateKey = (stat: 'attack' | 'health' | 'defence' | 'magicDefence' | 'dexterity' | 'intelligence') => (
+    player ? buildAllocateStatIntentStateKey(player, stat) : undefined
+  );
+  const resetStateKey = player ? buildResetAllocatedStatsIntentStateKey(player) : undefined;
+
+  return [
+    [
+      { label: '+АТК', command: gameCommands.increaseAttack, color: Keyboard.POSITIVE_COLOR, intentScoped: Boolean(player), stateKey: allocateStateKey('attack') },
+      { label: '+ЗДР', command: gameCommands.increaseHealth, color: Keyboard.POSITIVE_COLOR, intentScoped: Boolean(player), stateKey: allocateStateKey('health') },
+    ],
+    [
+      { label: '+ФЗАЩ', command: gameCommands.increaseDefence, color: Keyboard.POSITIVE_COLOR, intentScoped: Boolean(player), stateKey: allocateStateKey('defence') },
+      { label: '+МЗАЩ', command: gameCommands.increaseMagicDefence, color: Keyboard.POSITIVE_COLOR, intentScoped: Boolean(player), stateKey: allocateStateKey('magicDefence') },
+    ],
+    [
+      { label: '+ЛВК', command: gameCommands.increaseDexterity, color: Keyboard.POSITIVE_COLOR, intentScoped: Boolean(player), stateKey: allocateStateKey('dexterity') },
+      { label: '+ИНТ', command: gameCommands.increaseIntelligence, color: Keyboard.POSITIVE_COLOR, intentScoped: Boolean(player), stateKey: allocateStateKey('intelligence') },
+    ],
+    [
+      { label: '🔄 СБРОС', command: gameCommands.resetStats, color: Keyboard.NEGATIVE_COLOR, intentScoped: Boolean(player), stateKey: resetStateKey },
+      { label: '◀ Меню', command: gameCommands.backToMenu, color: Keyboard.SECONDARY_COLOR },
+    ],
+    [{ label: '🗑️ Удалить персонажа', command: gameCommands.deletePlayer, color: Keyboard.NEGATIVE_COLOR }],
+  ];
+};
 
 const createBattleSkillButton = (battle: BattleView): KeyboardButtonDefinition => {
   const activeAbility = battle.player.runeLoadout?.activeAbility ?? null;
@@ -127,6 +140,8 @@ const createBattleResultLayout = (battle: BattleView): KeyboardLayout => [
 const createRuneLayout = (player?: PlayerState): KeyboardLayout => {
   const selectedRune = player ? getSelectedRune(player) : null;
   const craftStateKey = player ? buildCraftIntentStateKey(player) : undefined;
+  const equipStateKey = player ? buildEquipIntentStateKey(player) : undefined;
+  const unequipStateKey = player ? buildUnequipIntentStateKey(player) : undefined;
   const destroyStateKey = player && selectedRune
     ? buildDestroyIntentStateKey(player, selectedRune.id, gameBalance.runes.profiles[selectedRune.rarity].shardField)
     : undefined;
@@ -143,8 +158,8 @@ const createRuneLayout = (player?: PlayerState): KeyboardLayout => {
       { label: '▶️ Стр', command: gameCommands.nextRunePage, color: Keyboard.SECONDARY_COLOR },
     ],
     [
-      { label: '✅ Надеть', command: gameCommands.equipRune, color: Keyboard.POSITIVE_COLOR },
-      { label: '❌ Снять', command: gameCommands.unequipRune, color: Keyboard.NEGATIVE_COLOR },
+      { label: '✅ Надеть', command: gameCommands.equipRune, color: Keyboard.POSITIVE_COLOR, intentScoped: Boolean(player), stateKey: equipStateKey },
+      { label: '❌ Снять', command: gameCommands.unequipRune, color: Keyboard.NEGATIVE_COLOR, intentScoped: Boolean(player), stateKey: unequipStateKey },
     ],
     [
       { label: '✨ Создать', command: gameCommands.craftRune, color: Keyboard.POSITIVE_COLOR, intentScoped: true, stateKey: craftStateKey },
@@ -184,7 +199,7 @@ export const createMainMenuKeyboard = (): KeyboardBuilder => buildKeyboard(mainM
 
 export const createEntryKeyboard = (): KeyboardBuilder => buildKeyboard(entryLayout);
 
-export const createProfileKeyboard = (): KeyboardBuilder => buildKeyboard(profileLayout);
+export const createProfileKeyboard = (player?: PlayerState): KeyboardBuilder => buildKeyboard(createProfileLayout(player));
 
 export const createBattleKeyboard = (battle: BattleView): KeyboardBuilder => buildKeyboard([
   [

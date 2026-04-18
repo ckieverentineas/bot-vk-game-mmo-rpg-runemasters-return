@@ -18,11 +18,24 @@ import type {
   StatBlock,
 } from '../../../../shared/types/game';
 import { buildBattleSnapshot, isBattleSnapshot, type BattleSnapshot } from '../../domain/contracts/battle-snapshot';
-import { emptyInventory, emptyStats, resolveAdaptiveAdventureLocationLevel, resolveLevelProgression, shardFieldForRarity } from '../../../player/domain/player-stats';
+import {
+  emptyInventory,
+  emptyStats,
+  getEquippedRune,
+  getSelectedRune,
+  resolveAdaptiveAdventureLocationLevel,
+  resolveLevelProgression,
+  shardFieldForRarity,
+} from '../../../player/domain/player-stats';
 import { buildLoadoutSnapshotFromBattle, isLoadoutSnapshot, projectBattleRuneLoadout, type LoadoutSnapshot } from '../../domain/contracts/loadout-snapshot';
 import { createAppliedRewardLedgerEntry } from '../../domain/contracts/reward-ledger';
 import { createBattleVictoryRewardIntent } from '../../domain/contracts/reward-intent';
-import type { FinalizeBattleResult, GameRepository } from '../../application/ports/GameRepository';
+import type {
+  FinalizeBattleResult,
+  GameRepository,
+  SaveAllocationOptions,
+  SaveRuneLoadoutOptions,
+} from '../../application/ports/GameRepository';
 
 const playerInclude = {
   user: true,
@@ -38,7 +51,7 @@ const playerInclude = {
 
 type PlayerRecord = Prisma.PlayerGetPayload<{ include: typeof playerInclude }>;
 type TransactionClient = Prisma.TransactionClient;
-type CommandIntentKey = 'CRAFT_RUNE' | 'REROLL_RUNE_STAT' | 'DESTROY_RUNE';
+type CommandIntentKey = 'CRAFT_RUNE' | 'REROLL_RUNE_STAT' | 'DESTROY_RUNE' | 'ALLOCATE_STAT_POINT' | 'RESET_ALLOCATED_STATS' | 'EQUIP_RUNE' | 'UNEQUIP_RUNE';
 
 type PersistedBattleState = Pick<BattleView, 'status' | 'turnOwner' | 'player' | 'enemy' | 'log' | 'result' | 'rewards' | 'actionRevision'>;
 
@@ -113,6 +126,13 @@ interface ParsedLoadoutSnapshot {
 interface ParsedBattleSnapshot {
   readonly snapshot: BattleSnapshot | null;
   readonly fallbackToLegacyColumns: boolean;
+}
+
+interface CurrentRuneLoadoutState {
+  readonly currentRuneIndex: number;
+  readonly selectedRuneId: string | null;
+  readonly equippedRuneId: string | null;
+  readonly runeIds: readonly string[];
 }
 
 const parsePersistedLoadoutSnapshot = (value: string | null): ParsedLoadoutSnapshot => {
@@ -251,6 +271,30 @@ const mapRuneDraftPersistence = (playerId: number, rune: RuneDraft, isEquipped =
 
 export class PrismaGameRepository implements GameRepository {
   public constructor(private readonly prisma: PrismaClient) {}
+
+  private buildCurrentRuneLoadoutState(player: PlayerState): CurrentRuneLoadoutState {
+    return {
+      currentRuneIndex: player.currentRuneIndex,
+      selectedRuneId: getSelectedRune(player)?.id ?? null,
+      equippedRuneId: getEquippedRune(player)?.id ?? null,
+      runeIds: player.runes.map((rune) => rune.id),
+    };
+  }
+
+  private assertExpectedRuneLoadoutState(player: PlayerState, options: SaveRuneLoadoutOptions): void {
+    const currentState = this.buildCurrentRuneLoadoutState(player);
+
+    if (
+      (options.expectedCurrentRuneIndex !== undefined && currentState.currentRuneIndex !== options.expectedCurrentRuneIndex)
+      || (options.expectedSelectedRuneId !== undefined && currentState.selectedRuneId !== options.expectedSelectedRuneId)
+      || (options.expectedEquippedRuneId !== undefined && currentState.equippedRuneId !== options.expectedEquippedRuneId)
+      || (options.expectedRuneIds !== undefined
+        && (currentState.runeIds.length !== options.expectedRuneIds.length
+          || currentState.runeIds.some((runeId, index) => runeId !== options.expectedRuneIds?.[index])))
+    ) {
+      throw new AppError('stale_command_intent', 'Эта кнопка уже устарела. Обновите экран перед повтором команды.');
+    }
+  }
 
   private async reserveCommandIntent(
     tx: TransactionClient,
@@ -489,27 +533,93 @@ export class PrismaGameRepository implements GameRepository {
     return this.mapPlayer(created.player);
   }
 
-  public async saveAllocation(playerId: number, allocationPoints: StatBlock, unspentStatPoints: number): Promise<PlayerState> {
-    await this.prisma.$transaction(async (tx) => {
-      await tx.playerStatAllocation.update({
-        where: { playerId },
-        data: {
-          health: allocationPoints.health,
-          attack: allocationPoints.attack,
-          defence: allocationPoints.defence,
-          magicDefence: allocationPoints.magicDefence,
-          dexterity: allocationPoints.dexterity,
-          intelligence: allocationPoints.intelligence,
-        },
-      });
+  public async saveAllocation(
+    playerId: number,
+    allocationPoints: StatBlock,
+    unspentStatPoints: number,
+    options?: SaveAllocationOptions,
+  ): Promise<PlayerState> {
+    return this.prisma.$transaction(async (tx) => {
+      const apply = async (): Promise<PlayerState> => {
+        const allocationUpdate = options?.expectedAllocationPoints
+          ? await tx.playerStatAllocation.updateMany({
+              where: {
+                playerId,
+                health: options.expectedAllocationPoints.health,
+                attack: options.expectedAllocationPoints.attack,
+                defence: options.expectedAllocationPoints.defence,
+                magicDefence: options.expectedAllocationPoints.magicDefence,
+                dexterity: options.expectedAllocationPoints.dexterity,
+                intelligence: options.expectedAllocationPoints.intelligence,
+              },
+              data: {
+                health: allocationPoints.health,
+                attack: allocationPoints.attack,
+                defence: allocationPoints.defence,
+                magicDefence: allocationPoints.magicDefence,
+                dexterity: allocationPoints.dexterity,
+                intelligence: allocationPoints.intelligence,
+              },
+            })
+          : { count: 1 };
 
-      await tx.playerProgress.update({
-        where: { playerId },
-        data: { unspentStatPoints },
-      });
+        if (allocationUpdate.count === 0) {
+          throw new AppError('stale_command_intent', 'Эта кнопка уже устарела. Обновите экран перед повтором команды.');
+        }
+
+        const progressUpdate = options?.expectedUnspentStatPoints !== undefined
+          ? await tx.playerProgress.updateMany({
+              where: {
+                playerId,
+                unspentStatPoints: options.expectedUnspentStatPoints,
+              },
+              data: { unspentStatPoints },
+            })
+          : { count: 1 };
+
+        if (progressUpdate.count === 0) {
+          throw new AppError('stale_command_intent', 'Эта кнопка уже устарела. Обновите экран перед повтором команды.');
+        }
+
+        if (!options?.expectedAllocationPoints) {
+          await tx.playerStatAllocation.update({
+            where: { playerId },
+            data: {
+              health: allocationPoints.health,
+              attack: allocationPoints.attack,
+              defence: allocationPoints.defence,
+              magicDefence: allocationPoints.magicDefence,
+              dexterity: allocationPoints.dexterity,
+              intelligence: allocationPoints.intelligence,
+            },
+          });
+        }
+
+        if (options?.expectedUnspentStatPoints === undefined) {
+          await tx.playerProgress.update({
+            where: { playerId },
+            data: { unspentStatPoints },
+          });
+        }
+
+        const updatedPlayer = await this.requirePlayerRecord(tx, playerId);
+        return this.mapPlayer(updatedPlayer);
+      };
+
+      if (options?.commandKey && options.intentId && options.intentStateKey) {
+        return this.runWithCommandIntent(
+          tx,
+          playerId,
+          options.commandKey,
+          options.intentId,
+          options.intentStateKey,
+          options.intentStateKey,
+          apply,
+        );
+      }
+
+      return apply();
     });
-
-    return this.requirePlayer(playerId);
   }
 
   public async saveExplorationState(
@@ -531,35 +641,100 @@ export class PrismaGameRepository implements GameRepository {
   }
 
   public async saveRuneCursor(playerId: number, currentRuneIndex: number): Promise<PlayerState> {
-    await this.prisma.playerProgress.update({
-      where: { playerId },
-      data: { currentRuneIndex },
+    await this.prisma.$transaction(async (tx) => {
+      await tx.playerProgress.update({
+        where: { playerId },
+        data: { currentRuneIndex },
+      });
+
+      await tx.player.update({
+        where: { id: playerId },
+        data: { updatedAt: new Date() },
+      });
     });
 
     return this.requirePlayer(playerId);
   }
 
-  public async equipRune(playerId: number, runeId: string | null): Promise<PlayerState> {
-    await this.prisma.$transaction(async (tx) => {
-      await tx.rune.updateMany({
-        where: { playerId },
-        data: { isEquipped: false },
-      });
+  public async equipRune(playerId: number, runeId: string | null, options?: SaveRuneLoadoutOptions): Promise<PlayerState> {
+    return this.prisma.$transaction(async (tx) => {
+      const apply = async (): Promise<PlayerState> => {
+        if (options?.expectedPlayerUpdatedAt) {
+          const playerGuard = await tx.player.updateMany({
+            where: {
+              id: playerId,
+              updatedAt: new Date(options.expectedPlayerUpdatedAt),
+            },
+            data: {
+              updatedAt: new Date(),
+            },
+          });
 
-      if (runeId) {
-        await tx.rune.update({
-          where: { id: runeId },
-          data: { isEquipped: true },
+          if (playerGuard.count === 0) {
+            throw new AppError('stale_command_intent', 'Эта кнопка уже устарела. Обновите экран перед повтором команды.');
+          }
+        }
+
+        if (options?.expectedSelectedRuneId !== undefined
+          || options?.expectedEquippedRuneId !== undefined
+          || options?.expectedRuneIds !== undefined) {
+          const currentPlayer = this.mapPlayer(await this.requirePlayerRecord(tx, playerId));
+          this.assertExpectedRuneLoadoutState(currentPlayer, options);
+        }
+
+        await tx.rune.updateMany({
+          where: { playerId },
+          data: { isEquipped: false },
         });
-      }
-    });
 
-    return this.requirePlayer(playerId);
+        if (runeId) {
+          const equipped = await tx.rune.updateMany({
+            where: { id: runeId, playerId },
+            data: { isEquipped: true },
+          });
+
+          if (equipped.count === 0) {
+            throw new AppError('rune_not_found', 'Выбранная руна уже недоступна. Откройте коллекцию ещё раз.');
+          }
+        }
+
+        if (!options?.expectedPlayerUpdatedAt) {
+          await tx.player.update({
+            where: { id: playerId },
+            data: { updatedAt: new Date() },
+          });
+        }
+
+        const updatedPlayer = await this.requirePlayerRecord(tx, playerId);
+        return this.mapPlayer(updatedPlayer);
+      };
+
+      if (options?.commandKey && options.intentId && options.intentStateKey) {
+        return this.runWithCommandIntent(
+          tx,
+          playerId,
+          options.commandKey,
+          options.intentId,
+          options.intentStateKey,
+          options.intentStateKey,
+          apply,
+        );
+      }
+
+      return apply();
+    });
   }
 
   public async createRune(playerId: number, rune: RuneDraft): Promise<PlayerState> {
-    await this.prisma.rune.create({
-      data: mapRuneDraftPersistence(playerId, rune),
+    await this.prisma.$transaction(async (tx) => {
+      await tx.rune.create({
+        data: mapRuneDraftPersistence(playerId, rune),
+      });
+
+      await tx.player.update({
+        where: { id: playerId },
+        data: { updatedAt: new Date() },
+      });
     });
 
     return this.requirePlayer(playerId);
@@ -600,6 +775,11 @@ export class PrismaGameRepository implements GameRepository {
           },
         });
 
+        await tx.player.update({
+          where: { id: playerId },
+          data: { updatedAt: new Date() },
+        });
+
         updatedPlayer = await this.requirePlayerRecord(tx, playerId);
         return this.mapPlayer(updatedPlayer);
       });
@@ -622,6 +802,11 @@ export class PrismaGameRepository implements GameRepository {
     if (updated.count === 0) {
       throw new AppError('rune_not_found', 'Выбранная руна уже недоступна. Откройте коллекцию ещё раз.');
     }
+
+    await this.prisma.player.update({
+      where: { id: playerId },
+      data: { updatedAt: new Date() },
+    });
 
     return this.requirePlayer(playerId);
   }
@@ -665,6 +850,11 @@ export class PrismaGameRepository implements GameRepository {
           throw new AppError('rune_not_found', 'Выбранная руна уже недоступна. Откройте алтарь ещё раз.');
         }
 
+        await tx.player.update({
+          where: { id: playerId },
+          data: { updatedAt: new Date() },
+        });
+
         const updatedPlayer = await this.requirePlayerRecord(tx, playerId);
         return this.mapPlayer(updatedPlayer);
       });
@@ -679,6 +869,11 @@ export class PrismaGameRepository implements GameRepository {
     if (deleted.count === 0) {
       throw new AppError('rune_not_found', 'Выбранная руна уже недоступна. Откройте коллекцию ещё раз.');
     }
+
+    await this.prisma.player.update({
+      where: { id: playerId },
+      data: { updatedAt: new Date() },
+    });
 
     return this.requirePlayer(playerId);
   }
@@ -708,6 +903,11 @@ export class PrismaGameRepository implements GameRepository {
             data: inventoryUpdate as Prisma.PlayerInventoryUpdateInput,
           });
         }
+
+        await tx.player.update({
+          where: { id: playerId },
+          data: { updatedAt: new Date() },
+        });
 
         const updatedPlayer = await this.requirePlayerRecord(tx, playerId);
         return this.mapPlayer(updatedPlayer);

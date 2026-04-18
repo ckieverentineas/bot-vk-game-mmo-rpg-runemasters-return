@@ -27,12 +27,22 @@
 - если второго бюджета уже нет, повторная команда должна закончиться deterministic error (`not_enough_shards` / `rune_not_found`), а не частичным second apply;
 - inventory не должен уходить в отрицательные значения даже при parallel submit.
 - keyboard-issued rune mutations дополнительно идут через `intentId`; повтор того же intent обязан вернуть canonical stored result, а не второй spend.
+- keyboard-issued `equipRune` / `unequipRune` дополнительно привязываются к loadout `stateKey`, чтобы старое сообщение не могло экипировать или снять уже другую руну.
+
+## Profile mutation rules
+
+- `allocateStatPoint` и `resetAllocatedStats` используют keyboard-issued `intentId` + profile `stateKey`;
+- stateKey привязан к `allocationPoints`, `unspentStatPoints` и целевой характеристике там, где это важно;
+- duplicate same-intent profile mutation обязан вернуть canonical stored profile, а не второй spend/refund;
+- stale profile button после уже применённого изменения обязан быть отклонён как `stale_command_intent`, а не применён поверх нового профиля.
 
 ## Player-facing rules
 
 - duplicate battle input по умолчанию восстанавливается через latest canonical battle state;
 - stale branch не тратит дополнительные ресурсы и не продвигает ход;
 - если бой уже завершён, игрок видит актуальный финальный результат, а не техническую ошибку.
+- stale / retry profile и rune mutations по возможности восстанавливают актуальный профильный или рунный контекст вместо выброса в главное меню.
+- stale equip / unequip reply обязан показывать актуальную рунную сборку, чтобы игрок сразу видел, какая руна реально экипирована сейчас.
 
 ## Logging
 
@@ -41,6 +51,6 @@
 
 ## Known next-step gaps
 
-- explicit RNG authority rules for reroll / drop / craft are now defined in `docs/platform/rng-authority-rules.md`, but broader idempotent command replay still remains;
+- explicit RNG authority rules for reroll / drop / craft are now defined in `docs/platform/rng-authority-rules.md`, but broader legacy-text and non-profile command replay still remains;
 - migration fixtures for versioned persisted contracts;
-- broader dedupe policy for non-rune and legacy text-command repeated actions.
+- legacy text-command repeated actions and remaining non-rune mutations beyond profile stat allocation / reset / rune loadout buttons.

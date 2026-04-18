@@ -517,6 +517,9 @@ Runemasters Return должен решать это через **школы ру
   - [x] battle mutation retries и stale overwrite rules
   - [x] rune mutation same-intent dedupe через keyboard payloads
   - [ ] broader non-rune / legacy-text multi-budget dedupe
+    - [x] profile stat allocation / reset same-intent dedupe через keyboard payloads
+    - [x] rune equip / unequip same-intent dedupe и stale loadout recovery через keyboard payloads
+    - [ ] legacy text-command и остальные non-rune mutation paths
 - [x] Зафиксировать RNG authority rules для reroll / drop / craft
 - [x] Подготовить alt-account / guild / PvP abuse checklist
 - [x] Добавить обязательные concurrency tests на critical use cases
@@ -963,3 +966,5 @@ Runemasters Return должен решать это через **школы ру
 - **2026-04-18:** введён RNG authority v1 для craft / reroll / victory rune drop через `GameRandom` и зафиксированы правила canonical random outcome.
 - **2026-04-18:** введён command intent replay policy v1 для keyboard rune mutations; duplicate same-intent craft / reroll / destroy теперь возвращают canonical stored result.
 - **2026-04-18:** добавлен release-gate checklist v1 для alt-account abuse, circle/social-lite collusion и optional async PvP abuse без расширения scope до guild wars, trading или real-time PvP.
+- **2026-04-18:** profile stat allocation и reset переведены на command intent dedupe для keyboard payloads; stale/retry profile и rune mutation replies теперь стараются вернуть игрока в актуальный контекст вместо выброса в меню.
+- **2026-04-18:** rune equip / unequip переведены на command intent dedupe для keyboard payloads; старые кнопки экипировки больше не должны тихо применять loadout к уже изменившемуся выбору руны.

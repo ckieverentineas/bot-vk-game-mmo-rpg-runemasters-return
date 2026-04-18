@@ -392,6 +392,328 @@ describe.sequential('PrismaGameRepository concurrency rails', () => {
     expect(runeCount).toBe(1);
   });
 
+  it('returns the canonical profile allocation result for a duplicate intent even with enough points for two spends', async () => {
+    const player = await createPlayer(2018);
+    await prisma.playerProgress.update({
+      where: { playerId: player.playerId },
+      data: {
+        unspentStatPoints: 2,
+      },
+    });
+
+    const nextAllocation = {
+      health: 0,
+      attack: 1,
+      defence: 0,
+      magicDefence: 0,
+      dexterity: 0,
+      intelligence: 0,
+    } as const;
+    const expectedAllocation = {
+      health: 0,
+      attack: 0,
+      defence: 0,
+      magicDefence: 0,
+      dexterity: 0,
+      intelligence: 0,
+    } as const;
+
+    const [first, second] = await Promise.all([
+      repository.saveAllocation(player.playerId, nextAllocation, 1, {
+        commandKey: 'ALLOCATE_STAT_POINT',
+        intentId: 'intent-allocate-1',
+        intentStateKey: 'state-allocate-1',
+        expectedAllocationPoints: expectedAllocation,
+        expectedUnspentStatPoints: 2,
+      }),
+      repository.saveAllocation(player.playerId, nextAllocation, 1, {
+        commandKey: 'ALLOCATE_STAT_POINT',
+        intentId: 'intent-allocate-1',
+        intentStateKey: 'state-allocate-1',
+        expectedAllocationPoints: expectedAllocation,
+        expectedUnspentStatPoints: 2,
+      }),
+    ]);
+
+    expect(first.allocationPoints.attack).toBe(second.allocationPoints.attack);
+    expect(first.unspentStatPoints).toBe(second.unspentStatPoints);
+    expect(first.allocationPoints.attack).toBe(1);
+    expect(first.unspentStatPoints).toBe(1);
+  });
+
+  it('returns the canonical equip result for a duplicate intent', async () => {
+    const player = await createPlayer(2021);
+    await repository.createRune(player.playerId, createRuneDraft('Руна для экипировки'));
+    const currentPlayer = await repository.findPlayerById(player.playerId);
+    const rune = currentPlayer?.runes[0];
+
+    const [first, second] = await Promise.all([
+      repository.equipRune(player.playerId, rune!.id, {
+        commandKey: 'EQUIP_RUNE',
+        intentId: 'intent-equip-1',
+        intentStateKey: 'state-equip-1',
+        expectedPlayerUpdatedAt: currentPlayer!.updatedAt,
+        expectedCurrentRuneIndex: 0,
+        expectedSelectedRuneId: rune!.id,
+        expectedEquippedRuneId: null,
+        expectedRuneIds: [rune!.id],
+      }),
+      repository.equipRune(player.playerId, rune!.id, {
+        commandKey: 'EQUIP_RUNE',
+        intentId: 'intent-equip-1',
+        intentStateKey: 'state-equip-1',
+        expectedPlayerUpdatedAt: currentPlayer!.updatedAt,
+        expectedCurrentRuneIndex: 0,
+        expectedSelectedRuneId: rune!.id,
+        expectedEquippedRuneId: null,
+        expectedRuneIds: [rune!.id],
+      }),
+    ]);
+
+    expect(first.runes).toEqual(second.runes);
+    expect(first.runes[0]?.isEquipped).toBe(true);
+  });
+
+  it('rejects a stale equip intent after rune selection changed', async () => {
+    const player = await createPlayer(2022);
+    await repository.createRune(player.playerId, createRuneDraft('Руна A'));
+    await repository.createRune(player.playerId, createRuneDraft('Руна B'));
+    const persistedPlayer = await repository.findPlayerById(player.playerId);
+    const [runeA, runeB] = persistedPlayer?.runes ?? [];
+
+    await repository.saveRuneCursor(player.playerId, 1);
+
+    await expect(repository.equipRune(player.playerId, runeA!.id, {
+      commandKey: 'EQUIP_RUNE',
+      intentId: 'intent-equip-stale',
+      intentStateKey: 'state-equip-stale',
+      expectedPlayerUpdatedAt: persistedPlayer!.updatedAt,
+      expectedCurrentRuneIndex: 0,
+      expectedSelectedRuneId: runeA!.id,
+      expectedEquippedRuneId: null,
+      expectedRuneIds: [runeA!.id, runeB!.id],
+    })).rejects.toMatchObject({
+      code: 'stale_command_intent',
+    });
+  });
+
+  it('invalidates old equip buttons after a newer craft changes rune loadout state', async () => {
+    const player = await createPlayer(2025);
+    await repository.createRune(player.playerId, createRuneDraft('Старая руна'));
+    await prisma.playerInventory.update({
+      where: { playerId: player.playerId },
+      data: {
+        usualShards: gameBalance.runes.craftCost * 2,
+      },
+    });
+    const beforeCraft = await repository.findPlayerById(player.playerId);
+    const rune = beforeCraft?.runes[0];
+
+    await repository.craftRune(player.playerId, 'USUAL', createRuneDraft('Новая руна'), 'intent-craft-loadout', 'state-craft-loadout', 'state-craft-loadout');
+
+    await expect(repository.equipRune(player.playerId, rune!.id, {
+      commandKey: 'EQUIP_RUNE',
+      intentId: 'intent-equip-after-craft',
+      intentStateKey: 'state-equip-after-craft',
+      expectedPlayerUpdatedAt: beforeCraft!.updatedAt,
+      expectedCurrentRuneIndex: 0,
+      expectedSelectedRuneId: rune!.id,
+      expectedEquippedRuneId: null,
+      expectedRuneIds: [rune!.id],
+    })).rejects.toMatchObject({
+      code: 'stale_command_intent',
+    });
+  });
+
+  it('returns the canonical unequip result for a duplicate intent', async () => {
+    const player = await createPlayer(2023);
+    await repository.createRune(player.playerId, createRuneDraft('Руна для снятия'));
+    const createdPlayer = await repository.findPlayerById(player.playerId);
+    const rune = createdPlayer?.runes[0];
+    await repository.equipRune(player.playerId, rune!.id);
+    const equippedPlayer = await repository.findPlayerById(player.playerId);
+
+    const [first, second] = await Promise.all([
+      repository.equipRune(player.playerId, null, {
+        commandKey: 'UNEQUIP_RUNE',
+        intentId: 'intent-unequip-1',
+        intentStateKey: 'state-unequip-1',
+        expectedPlayerUpdatedAt: equippedPlayer!.updatedAt,
+        expectedCurrentRuneIndex: 0,
+        expectedSelectedRuneId: rune!.id,
+        expectedEquippedRuneId: rune!.id,
+        expectedRuneIds: [rune!.id],
+      }),
+      repository.equipRune(player.playerId, null, {
+        commandKey: 'UNEQUIP_RUNE',
+        intentId: 'intent-unequip-1',
+        intentStateKey: 'state-unequip-1',
+        expectedPlayerUpdatedAt: equippedPlayer!.updatedAt,
+        expectedCurrentRuneIndex: 0,
+        expectedSelectedRuneId: rune!.id,
+        expectedEquippedRuneId: rune!.id,
+        expectedRuneIds: [rune!.id],
+      }),
+    ]);
+
+    expect(first.runes).toEqual(second.runes);
+    expect(first.runes[0]?.isEquipped).toBe(false);
+  });
+
+  it('rejects a stale unequip intent after loadout changed', async () => {
+    const player = await createPlayer(2024);
+    await repository.createRune(player.playerId, createRuneDraft('Руна A'));
+    await repository.createRune(player.playerId, createRuneDraft('Руна B'));
+    const persistedPlayer = await repository.findPlayerById(player.playerId);
+    const [runeA, runeB] = persistedPlayer?.runes ?? [];
+    await repository.equipRune(player.playerId, runeA!.id);
+    const equippedPlayer = await repository.findPlayerById(player.playerId);
+    await repository.equipRune(player.playerId, runeB!.id);
+
+    await expect(repository.equipRune(player.playerId, null, {
+      commandKey: 'UNEQUIP_RUNE',
+      intentId: 'intent-unequip-stale',
+      intentStateKey: 'state-unequip-stale',
+      expectedPlayerUpdatedAt: equippedPlayer!.updatedAt,
+      expectedCurrentRuneIndex: 0,
+      expectedSelectedRuneId: runeA!.id,
+      expectedEquippedRuneId: runeA!.id,
+      expectedRuneIds: [runeA!.id, runeB!.id],
+    })).rejects.toMatchObject({
+      code: 'stale_command_intent',
+    });
+  });
+
+  it('invalidates old unequip buttons after a newer destroy changes rune collection state', async () => {
+    const player = await createPlayer(2026);
+    await repository.createRune(player.playerId, createRuneDraft('Руна A'));
+    await repository.createRune(player.playerId, createRuneDraft('Руна B'));
+    const beforeDestroy = await repository.findPlayerById(player.playerId);
+    const [runeA, runeB] = beforeDestroy?.runes ?? [];
+    await repository.equipRune(player.playerId, runeA!.id);
+    const equippedPlayer = await repository.findPlayerById(player.playerId);
+
+    await repository.destroyRune(player.playerId, runeB!.id, { usualShards: 2 }, 'intent-destroy-loadout', 'state-destroy-loadout', 'state-destroy-loadout');
+
+    await expect(repository.equipRune(player.playerId, null, {
+      commandKey: 'UNEQUIP_RUNE',
+      intentId: 'intent-unequip-after-destroy',
+      intentStateKey: 'state-unequip-after-destroy',
+      expectedPlayerUpdatedAt: equippedPlayer!.updatedAt,
+      expectedCurrentRuneIndex: 0,
+      expectedSelectedRuneId: runeA!.id,
+      expectedEquippedRuneId: runeA!.id,
+      expectedRuneIds: [runeA!.id, runeB!.id],
+    })).rejects.toMatchObject({
+      code: 'stale_command_intent',
+    });
+  });
+
+  it('rejects a stale profile allocation intent after allocation state already changed', async () => {
+    const player = await createPlayer(2019);
+    await prisma.playerProgress.update({
+      where: { playerId: player.playerId },
+      data: {
+        unspentStatPoints: 2,
+      },
+    });
+
+    const expectedAllocation = {
+      health: 0,
+      attack: 0,
+      defence: 0,
+      magicDefence: 0,
+      dexterity: 0,
+      intelligence: 0,
+    } as const;
+
+    await repository.saveAllocation(player.playerId, {
+      ...expectedAllocation,
+      attack: 1,
+    }, 1, {
+      commandKey: 'ALLOCATE_STAT_POINT',
+      intentId: 'intent-allocate-before',
+      intentStateKey: 'state-allocate-before',
+      expectedAllocationPoints: expectedAllocation,
+      expectedUnspentStatPoints: 2,
+    });
+
+    await expect(repository.saveAllocation(player.playerId, {
+      ...expectedAllocation,
+      dexterity: 1,
+    }, 1, {
+      commandKey: 'ALLOCATE_STAT_POINT',
+      intentId: 'intent-allocate-stale',
+      intentStateKey: 'state-allocate-before',
+      expectedAllocationPoints: expectedAllocation,
+      expectedUnspentStatPoints: 2,
+    })).rejects.toMatchObject({
+      code: 'stale_command_intent',
+    });
+  });
+
+  it('returns the canonical reset result for a duplicate intent without refunding twice', async () => {
+    const player = await createPlayer(2020);
+    await prisma.playerStatAllocation.update({
+      where: { playerId: player.playerId },
+      data: {
+        attack: 1,
+        dexterity: 1,
+      },
+    });
+    await prisma.playerProgress.update({
+      where: { playerId: player.playerId },
+      data: {
+        unspentStatPoints: 0,
+      },
+    });
+
+    const expectedAllocation = {
+      health: 0,
+      attack: 1,
+      defence: 0,
+      magicDefence: 0,
+      dexterity: 1,
+      intelligence: 0,
+    } as const;
+
+    const [first, second] = await Promise.all([
+      repository.saveAllocation(player.playerId, {
+        health: 0,
+        attack: 0,
+        defence: 0,
+        magicDefence: 0,
+        dexterity: 0,
+        intelligence: 0,
+      }, 2, {
+        commandKey: 'RESET_ALLOCATED_STATS',
+        intentId: 'intent-reset-1',
+        intentStateKey: 'state-reset-1',
+        expectedAllocationPoints: expectedAllocation,
+        expectedUnspentStatPoints: 0,
+      }),
+      repository.saveAllocation(player.playerId, {
+        health: 0,
+        attack: 0,
+        defence: 0,
+        magicDefence: 0,
+        dexterity: 0,
+        intelligence: 0,
+      }, 2, {
+        commandKey: 'RESET_ALLOCATED_STATS',
+        intentId: 'intent-reset-1',
+        intentStateKey: 'state-reset-1',
+        expectedAllocationPoints: expectedAllocation,
+        expectedUnspentStatPoints: 0,
+      }),
+    ]);
+
+    expect(first.allocationPoints).toEqual(second.allocationPoints);
+    expect(first.unspentStatPoints).toBe(second.unspentStatPoints);
+    expect(first.allocationPoints.attack).toBe(0);
+    expect(first.unspentStatPoints).toBe(2);
+  });
+
   it('returns the canonical crafted rune for a duplicate intent even with enough budget for two crafts', async () => {
     const player = await createPlayer(2014);
     await prisma.playerInventory.update({

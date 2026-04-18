@@ -373,6 +373,46 @@ describe('GameHandler smoke', () => {
     expect(services.rerollCurrentRuneStat.execute).toHaveBeenCalledWith(1001, 'attack', 'intent-reroll-1', 'state-reroll-1');
   });
 
+  it('пробрасывает intentId для распределения характеристики через transport payload', async () => {
+    const services = createServices();
+    const handler = new GameHandler(services);
+    const ctx = createFakeContext({ command: '+атк', intentId: 'intent-alloc-1', stateKey: 'state-alloc-1' });
+
+    await handler.handle(ctx as never);
+
+    expect(services.allocateStatPoint.execute).toHaveBeenCalledWith(1001, 'attack', 'intent-alloc-1', 'state-alloc-1');
+  });
+
+  it('пробрасывает intentId для сброса характеристик через transport payload', async () => {
+    const services = createServices();
+    const handler = new GameHandler(services);
+    const ctx = createFakeContext({ command: 'сброс', intentId: 'intent-reset-1', stateKey: 'state-reset-1' });
+
+    await handler.handle(ctx as never);
+
+    expect(services.resetAllocatedStats.execute).toHaveBeenCalledWith(1001, 'intent-reset-1', 'state-reset-1');
+  });
+
+  it('пробрасывает intentId для экипировки руны через transport payload', async () => {
+    const services = createServices();
+    const handler = new GameHandler(services);
+    const ctx = createFakeContext({ command: 'надеть', intentId: 'intent-equip-1', stateKey: 'state-equip-1' });
+
+    await handler.handle(ctx as never);
+
+    expect(services.equipCurrentRune.execute).toHaveBeenCalledWith(1001, 'intent-equip-1', 'state-equip-1');
+  });
+
+  it('пробрасывает intentId для снятия руны через transport payload', async () => {
+    const services = createServices();
+    const handler = new GameHandler(services);
+    const ctx = createFakeContext({ command: 'снять', intentId: 'intent-unequip-1', stateKey: 'state-unequip-1' });
+
+    await handler.handle(ctx as never);
+
+    expect(services.unequipCurrentRune.execute).toHaveBeenCalledWith(1001, 'intent-unequip-1', 'state-unequip-1');
+  });
+
   it('использует рунное действие в бою', async () => {
     const services = createServices();
     const runeSkillBattle = createBattle({
@@ -536,6 +576,75 @@ describe('GameHandler smoke', () => {
     const replies = getReplyCalls(ctx);
     expect(replies[0]?.message).toContain('Сейчас ход противника');
     expect(replies[0]?.message).toContain('⚔️ Бой');
+  });
+
+  it('восстанавливает профильный контекст после stale profile intent', async () => {
+    const services = createServices();
+    const handler = new GameHandler(services);
+    const ctx = createFakeContext({ command: '+атк', intentId: 'intent-alloc-1', stateKey: 'state-alloc-1' });
+
+    vi.mocked(services.allocateStatPoint.execute).mockRejectedValueOnce(
+      new AppError('stale_command_intent', 'Эта кнопка уже устарела. Обновите экран перед повтором команды.'),
+    );
+
+    await handler.handle(ctx as never);
+
+    const replies = getReplyCalls(ctx);
+    expect(replies[0]?.message).toContain('Эта кнопка уже устарела');
+    expect(replies[0]?.message).toContain('👤 Профиль');
+    expect(JSON.stringify(replies[0]?.keyboard)).toContain('intentId');
+  });
+
+  it('восстанавливает рунный контекст после pending retry для перековки', async () => {
+    const services = createServices();
+    const handler = new GameHandler(services);
+    const ctx = createFakeContext({ command: '~атк', intentId: 'intent-reroll-1', stateKey: 'state-reroll-1' });
+
+    vi.mocked(services.rerollCurrentRuneStat.execute).mockRejectedValueOnce(
+      new AppError('command_retry_pending', 'Команда уже обрабатывается. Дождитесь ответа и обновите экран.'),
+    );
+
+    await handler.handle(ctx as never);
+
+    const replies = getReplyCalls(ctx);
+    expect(replies[0]?.message).toContain('Команда уже обрабатывается');
+    expect(replies[0]?.message).toContain('Руны и мастерская');
+    expect(replies[0]?.message).toContain('Перековка свойства');
+  });
+
+  it('восстанавливает рунный контекст после stale экипировки', async () => {
+    const services = createServices();
+    const handler = new GameHandler(services);
+    const ctx = createFakeContext({ command: 'надеть', intentId: 'intent-equip-1', stateKey: 'state-equip-1' });
+
+    vi.mocked(services.equipCurrentRune.execute).mockRejectedValueOnce(
+      new AppError('stale_command_intent', 'Эта кнопка уже устарела. Обновите экран перед повтором команды.'),
+    );
+
+    await handler.handle(ctx as never);
+
+    const replies = getReplyCalls(ctx);
+    expect(replies[0]?.message).toContain('Эта кнопка уже устарела');
+    expect(replies[0]?.message).toContain('Руны и мастерская');
+    expect(JSON.stringify(replies[0]?.keyboard)).toContain('intentId');
+    expect(JSON.stringify(replies[0]?.keyboard)).toContain('надеть');
+  });
+
+  it('восстанавливает рунный контекст после pending retry для снятия руны', async () => {
+    const services = createServices();
+    const handler = new GameHandler(services);
+    const ctx = createFakeContext({ command: 'снять', intentId: 'intent-unequip-1', stateKey: 'state-unequip-1' });
+
+    vi.mocked(services.unequipCurrentRune.execute).mockRejectedValueOnce(
+      new AppError('command_retry_pending', 'Команда уже обрабатывается. Дождитесь ответа и обновите экран.'),
+    );
+
+    await handler.handle(ctx as never);
+
+    const replies = getReplyCalls(ctx);
+    expect(replies[0]?.message).toContain('Команда уже обрабатывается');
+    expect(replies[0]?.message).toContain('Руны и мастерская');
+    expect(JSON.stringify(replies[0]?.keyboard)).toContain('снять');
   });
 
   it('проходит сценарий пропуска обучения', async () => {

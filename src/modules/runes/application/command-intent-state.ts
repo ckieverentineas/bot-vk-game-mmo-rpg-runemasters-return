@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 
 import { gameBalance } from '../../../config/game-balance';
+import { getEquippedRune, getSelectedRune } from '../../player/domain/player-stats';
 import type { PlayerState, StatKey } from '../../../shared/types/game';
 
 const rarityPriority = ['MYTHICAL', 'LEGENDARY', 'EPIC', 'RARE', 'UNUSUAL', 'USUAL'] as const;
@@ -14,6 +15,13 @@ const resolveCraftRarity = (player: PlayerState): string | null => {
 
   return rarity ?? null;
 };
+
+const buildRuneLoadoutState = (player: PlayerState) => ({
+  currentRuneIndex: player.currentRuneIndex,
+  selectedRuneId: getSelectedRune(player)?.id ?? null,
+  equippedRuneId: getEquippedRune(player)?.id ?? null,
+  runeIds: player.runes.map((rune) => rune.id),
+});
 
 export const buildCraftIntentStateKey = (player: PlayerState): string => serializeStateKey({
   rarity: resolveCraftRarity(player),
@@ -62,4 +70,14 @@ export const buildDestroyIntentStateKey = (
   currentRuneIndex: player.currentRuneIndex,
   shardBudget: player.inventory[shardField],
   runeIds: player.runes.map((rune) => rune.id),
+});
+
+export const buildEquipIntentStateKey = (player: PlayerState): string => serializeStateKey({
+  action: 'equip',
+  ...buildRuneLoadoutState(player),
+});
+
+export const buildUnequipIntentStateKey = (player: PlayerState): string => serializeStateKey({
+  action: 'unequip',
+  ...buildRuneLoadoutState(player),
 });

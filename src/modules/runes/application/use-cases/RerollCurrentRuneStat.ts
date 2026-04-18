@@ -4,6 +4,7 @@ import type { PlayerState, StatKey } from '../../../../shared/types/game';
 import { getSelectedRune } from '../../../player/domain/player-stats';
 import type { GameRandom } from '../../../shared/application/ports/GameRandom';
 
+import { resolveCommandIntent } from '../../../shared/application/command-intent';
 import { requirePlayerByVkId } from '../../../shared/application/require-player';
 import type { GameRepository } from '../../../shared/application/ports/GameRepository';
 import { buildRerollIntentStateKey } from '../command-intent-state';
@@ -17,6 +18,7 @@ export class RerollCurrentRuneStat {
 
   public async execute(vkId: number, stat: StatKey, intentId?: string, intentStateKey?: string): Promise<PlayerState> {
     const player = await requirePlayerByVkId(this.repository, vkId);
+    const intent = resolveCommandIntent(intentId, intentStateKey);
 
     const rune = getSelectedRune(player);
     if (!rune) {
@@ -29,6 +31,9 @@ export class RerollCurrentRuneStat {
     }
 
     const currentStateKey = buildRerollIntentStateKey(player, stat, rune);
+    if (intent && intent.intentStateKey !== currentStateKey) {
+      throw new AppError('stale_command_intent', 'Эта кнопка уже устарела. Обновите экран перед повтором команды.');
+    }
 
     const nextRune = RuneFactory.rerollStat(rune, stat, player.locationLevel, this.random);
     return this.repository.rerollRuneStat(player.playerId, rune.id, rune.rarity, {
@@ -38,6 +43,6 @@ export class RerollCurrentRuneStat {
       magicDefence: nextRune.magicDefence,
       dexterity: nextRune.dexterity,
       intelligence: nextRune.intelligence,
-    }, intentId, intentStateKey, intentId ? currentStateKey : undefined);
+    }, intent?.intentId, intent?.intentStateKey, intent ? currentStateKey : undefined);
   }
 }

@@ -10,6 +10,28 @@ import type {
   StatBlock,
 } from '../../../../shared/types/game';
 
+export type AllocationCommandIntentKey = 'ALLOCATE_STAT_POINT' | 'RESET_ALLOCATED_STATS';
+export type RuneLoadoutCommandIntentKey = 'EQUIP_RUNE' | 'UNEQUIP_RUNE';
+
+export interface SaveAllocationOptions {
+  readonly commandKey?: AllocationCommandIntentKey;
+  readonly intentId?: string;
+  readonly intentStateKey?: string;
+  readonly expectedAllocationPoints?: StatBlock;
+  readonly expectedUnspentStatPoints?: number;
+}
+
+export interface SaveRuneLoadoutOptions {
+  readonly commandKey?: RuneLoadoutCommandIntentKey;
+  readonly intentId?: string;
+  readonly intentStateKey?: string;
+  readonly expectedPlayerUpdatedAt?: string;
+  readonly expectedCurrentRuneIndex?: number;
+  readonly expectedSelectedRuneId?: string | null;
+  readonly expectedEquippedRuneId?: string | null;
+  readonly expectedRuneIds?: readonly string[];
+}
+
 export interface FinalizeBattleResult {
   readonly player: PlayerState;
   readonly battle: BattleView;
@@ -20,13 +42,13 @@ export interface GameRepository {
   findPlayerById(playerId: number): Promise<PlayerState | null>;
   deletePlayerByVkId(vkId: number): Promise<void>;
   createPlayer(vkId: number): Promise<PlayerState>;
-  saveAllocation(playerId: number, allocationPoints: StatBlock, unspentStatPoints: number): Promise<PlayerState>;
+  saveAllocation(playerId: number, allocationPoints: StatBlock, unspentStatPoints: number, options?: SaveAllocationOptions): Promise<PlayerState>;
   saveExplorationState(
     playerId: number,
     state: Pick<PlayerState, 'locationLevel' | 'highestLocationLevel' | 'victoryStreak' | 'defeatStreak' | 'tutorialState'>,
   ): Promise<PlayerState>;
   saveRuneCursor(playerId: number, currentRuneIndex: number): Promise<PlayerState>;
-  equipRune(playerId: number, runeId: string | null): Promise<PlayerState>;
+  equipRune(playerId: number, runeId: string | null, options?: SaveRuneLoadoutOptions): Promise<PlayerState>;
   createRune(playerId: number, rune: RuneDraft): Promise<PlayerState>;
   craftRune(playerId: number, rarity: RuneRarity, rune: RuneDraft, intentId?: string, intentStateKey?: string, currentStateKey?: string): Promise<PlayerState>;
   updateRuneStats(playerId: number, runeId: string, stats: StatBlock): Promise<PlayerState>;

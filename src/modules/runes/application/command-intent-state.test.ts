@@ -2,7 +2,11 @@ import { describe, expect, it } from 'vitest';
 
 import type { PlayerState } from '../../../shared/types/game';
 
-import { buildCraftIntentStateKey } from './command-intent-state';
+import {
+  buildCraftIntentStateKey,
+  buildEquipIntentStateKey,
+  buildUnequipIntentStateKey,
+} from './command-intent-state';
 
 const createPlayer = (overrides: Partial<PlayerState> = {}): PlayerState => ({
   userId: 1,
@@ -104,5 +108,100 @@ describe('command intent state keys', () => {
     });
 
     expect(buildCraftIntentStateKey(before)).not.toBe(buildCraftIntentStateKey(after));
+  });
+
+  it('changes equip state key when selected rune changes', () => {
+    const before = createPlayer({
+      currentRuneIndex: 0,
+      runes: [
+        {
+          id: 'rune-a',
+          runeCode: 'rune-a',
+          archetypeCode: 'ember',
+          passiveAbilityCodes: ['ember_heart'],
+          activeAbilityCodes: ['ember_pulse'],
+          name: 'Руна A',
+          rarity: 'USUAL',
+          isEquipped: false,
+          health: 1,
+          attack: 2,
+          defence: 0,
+          magicDefence: 0,
+          dexterity: 0,
+          intelligence: 0,
+          createdAt: '2026-04-12T00:00:00.000Z',
+        },
+        {
+          id: 'rune-b',
+          runeCode: 'rune-b',
+          archetypeCode: 'ember',
+          passiveAbilityCodes: ['ember_heart'],
+          activeAbilityCodes: ['ember_pulse'],
+          name: 'Руна B',
+          rarity: 'USUAL',
+          isEquipped: false,
+          health: 1,
+          attack: 2,
+          defence: 0,
+          magicDefence: 0,
+          dexterity: 0,
+          intelligence: 0,
+          createdAt: '2026-04-12T00:00:00.000Z',
+        },
+      ],
+    });
+    const after = createPlayer({
+      ...before,
+      currentRuneIndex: 1,
+    });
+
+    expect(buildEquipIntentStateKey(before)).not.toBe(buildEquipIntentStateKey(after));
+  });
+
+  it('changes unequip state key when equipped rune changes', () => {
+    const before = createPlayer({
+      runes: [
+        {
+          id: 'rune-a',
+          runeCode: 'rune-a',
+          archetypeCode: 'ember',
+          passiveAbilityCodes: ['ember_heart'],
+          activeAbilityCodes: ['ember_pulse'],
+          name: 'Руна A',
+          rarity: 'USUAL',
+          isEquipped: true,
+          health: 1,
+          attack: 2,
+          defence: 0,
+          magicDefence: 0,
+          dexterity: 0,
+          intelligence: 0,
+          createdAt: '2026-04-12T00:00:00.000Z',
+        },
+      ],
+    });
+    const after = createPlayer({
+      runes: [
+        {
+          id: 'rune-b',
+          runeCode: 'rune-b',
+          archetypeCode: 'ember',
+          passiveAbilityCodes: ['ember_heart'],
+          activeAbilityCodes: ['ember_pulse'],
+          name: 'Руна B',
+          rarity: 'USUAL',
+          isEquipped: true,
+          health: 1,
+          attack: 2,
+          defence: 0,
+          magicDefence: 0,
+          dexterity: 0,
+          intelligence: 0,
+          createdAt: '2026-04-12T00:00:00.000Z',
+        },
+      ],
+    });
+
+    expect(buildUnequipIntentStateKey(before)).not.toBe(buildUnequipIntentStateKey(after));
   });
 });
