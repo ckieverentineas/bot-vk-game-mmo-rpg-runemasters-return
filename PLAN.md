@@ -496,12 +496,12 @@ Runemasters Return должен решать это через **школы ру
   - [x] не использовать внутренний жаргон
 - [x] Зафиксировать формат next-goal messaging после сессии
 - [x] Зафиксировать return-recap UX без guilt/FOMO copy
-- [ ] Подготовить content pipeline plan для:
-  - [ ] schools
-  - [ ] enemies
-  - [ ] encounters
-  - [ ] quests
-  - [ ] season chronicle configs
+- [x] Подготовить content pipeline plan для:
+  - [x] schools
+  - [x] enemies
+  - [x] encounters
+  - [x] quests
+  - [x] season chronicle configs
 - [x] Подготовить telemetry plan
   - [x] onboarding clarity
   - [x] school pick rates
@@ -958,3 +958,4 @@ Runemasters Return должен решать это через **школы ру
 - **2026-04-18:** battle result screens получили единый format `Следующая цель`; победа и поражение теперь заканчиваются мотивирующим next-goal block без guilt/FOMO тона.
 - **2026-04-18:** existing-player re-entry получил return recap v1 на `start`, `пропустить обучение` и `в приключения`; recap опирается на текущий `PlayerState` и избегает guilt/FOMO copy.
 - **2026-04-18:** подготовлен telemetry plan v1 для onboarding clarity, school readability, loadout engagement, economy health и exploit signals через существующий `GameLog` rail.
+- **2026-04-18:** подготовлен content pipeline plan v1 с validator tiers и school package template для schools / enemies / encounters / quests / season chronicle configs.

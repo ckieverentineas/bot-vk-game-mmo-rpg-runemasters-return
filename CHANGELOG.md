@@ -503,6 +503,27 @@
 - telemetry больше не остаётся размазанной задачей без одного source-of-truth doc;
 - product review по onboarding / return / economy получил минимальную decision-grade event рамку без premature analytics platform scope.
 
+## [0.22] - 2026-04-18
+
+### Commit
+
+- `worktree` — `docs: add content pipeline plan v1`
+
+### Added
+
+- source-of-truth docs [`docs/content/content-pipeline-plan.md`](docs/content/content-pipeline-plan.md) и [`docs/content/validator-scope.md`](docs/content/validator-scope.md) для content packages, validator tiers и owner/review flow;
+- template [`docs/content/templates/school-package-template.md`](docs/content/templates/school-package-template.md) как минимальный rail для school package completeness.
+
+### Changed
+
+- `PLAN.md` теперь фиксирует content pipeline plan как закрытый artifact для schools / enemies / encounters / quests / season chronicle configs;
+- `README.md` и `RELEASE_CHECKLIST.md` теперь ссылаются на content pipeline docs как на release/review artifacts для content package shape changes.
+
+### Fixed
+
+- content throughput больше не остаётся roadmap ambition без одного source-of-truth doc;
+- validator scope больше не смешивает hard blockers, warnings и deferred checks в одну неявную кучу.
+
 ## Шаблон следующей записи
 
 ### [0.03] - YYYY-MM-DD
