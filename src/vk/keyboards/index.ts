@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { Keyboard } from 'vk-io';
 
 import { gameBalance } from '../../config/game-balance';
+import { buildBattleActionIntentStateKey } from '../../modules/combat/application/command-intent-state';
 import {
   buildReturnToAdventureIntentStateKey,
   buildSkipTutorialIntentStateKey,
@@ -110,8 +111,9 @@ const createProfileLayout = (player?: PlayerState): KeyboardLayout => {
 
 const createBattleSkillButton = (battle: BattleView): KeyboardButtonDefinition => {
   const activeAbility = battle.player.runeLoadout?.activeAbility ?? null;
+  const stateKey = buildBattleActionIntentStateKey(battle, 'RUNE_SKILL');
   if (!activeAbility) {
-    return { label: '🔮 Рунное действие', command: gameCommands.skills, color: Keyboard.SECONDARY_COLOR };
+    return { label: '🔮 Рунное действие', command: gameCommands.skills, color: Keyboard.SECONDARY_COLOR, intentScoped: true, stateKey };
   }
 
   const isReady = activeAbility.currentCooldown <= 0 && battle.player.currentMana >= activeAbility.manaCost;
@@ -125,6 +127,8 @@ const createBattleSkillButton = (battle: BattleView): KeyboardButtonDefinition =
     label: `🌀 ${activeAbility.name}${labelSuffix}`,
     command: gameCommands.skills,
     color: isReady ? Keyboard.PRIMARY_COLOR : Keyboard.SECONDARY_COLOR,
+    intentScoped: true,
+    stateKey,
   };
 };
 
@@ -212,8 +216,8 @@ export const createDeleteConfirmationKeyboard = (player: PlayerState): KeyboardB
 
 export const createBattleKeyboard = (battle: BattleView): KeyboardBuilder => buildKeyboard([
   [
-    { label: '⚔️ Атака', command: gameCommands.attack, color: Keyboard.POSITIVE_COLOR },
-    { label: '🛡️ Защита', command: gameCommands.defend, color: Keyboard.PRIMARY_COLOR },
+    { label: '⚔️ Атака', command: gameCommands.attack, color: Keyboard.POSITIVE_COLOR, intentScoped: true, stateKey: buildBattleActionIntentStateKey(battle, 'ATTACK') },
+    { label: '🛡️ Защита', command: gameCommands.defend, color: Keyboard.PRIMARY_COLOR, intentScoped: true, stateKey: buildBattleActionIntentStateKey(battle, 'DEFEND') },
   ],
   [createBattleSkillButton(battle)],
 ]);

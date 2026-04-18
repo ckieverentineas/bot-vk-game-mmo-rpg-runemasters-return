@@ -13,6 +13,7 @@ import type {
 export type AllocationCommandIntentKey = 'ALLOCATE_STAT_POINT' | 'RESET_ALLOCATED_STATS';
 export type RuneLoadoutCommandIntentKey = 'EQUIP_RUNE' | 'UNEQUIP_RUNE';
 export type ExplorationCommandIntentKey = 'SKIP_TUTORIAL' | 'RETURN_TO_ADVENTURE';
+export type BattleActionCommandIntentKey = 'BATTLE_ATTACK' | 'BATTLE_DEFEND' | 'BATTLE_RUNE_SKILL';
 
 export interface SaveAllocationOptions {
   readonly commandKey?: AllocationCommandIntentKey;
@@ -45,14 +46,21 @@ export interface SaveExplorationOptions {
   readonly expectedTutorialState?: PlayerState['tutorialState'];
 }
 
+export interface SaveBattleOptions {
+  readonly commandKey?: BattleActionCommandIntentKey;
+  readonly intentId?: string;
+  readonly intentStateKey?: string;
+  readonly currentStateKey?: string;
+}
+
 export interface FinalizeBattleResult {
   readonly player: PlayerState;
   readonly battle: BattleView;
 }
 
-export interface CommandIntentReplayResult {
+export interface CommandIntentReplayResult<TResult = PlayerState> {
   readonly status: 'APPLIED' | 'PENDING';
-  readonly result?: PlayerState;
+  readonly result?: TResult;
 }
 
 export interface GameRepository {
@@ -60,7 +68,12 @@ export interface GameRepository {
   findPlayerById(playerId: number): Promise<PlayerState | null>;
   deletePlayerByVkId(vkId: number, expectedUpdatedAt?: string): Promise<void>;
   createPlayer(vkId: number): Promise<PlayerState>;
-  getCommandIntentResult(playerId: number, intentId: string): Promise<CommandIntentReplayResult | null>;
+  getCommandIntentResult<TResult = PlayerState>(
+    playerId: number,
+    intentId: string,
+    expectedCommandKeys?: readonly string[],
+    expectedStateKey?: string,
+  ): Promise<CommandIntentReplayResult<TResult> | null>;
   saveAllocation(playerId: number, allocationPoints: StatBlock, unspentStatPoints: number, options?: SaveAllocationOptions): Promise<PlayerState>;
   saveExplorationState(
     playerId: number,
@@ -80,7 +93,7 @@ export interface GameRepository {
   listMobTemplatesForBiome(biomeCode: string): Promise<MobTemplateView[]>;
   createBattle(playerId: number, battle: CreateBattleInput): Promise<BattleView>;
   getActiveBattle(playerId: number): Promise<BattleView | null>;
-  saveBattle(battle: BattleView): Promise<BattleView>;
-  finalizeBattle(playerId: number, battle: BattleView): Promise<FinalizeBattleResult>;
+  saveBattle(battle: BattleView, options?: SaveBattleOptions): Promise<BattleView>;
+  finalizeBattle(playerId: number, battle: BattleView, options?: SaveBattleOptions): Promise<FinalizeBattleResult>;
   log(userId: number, action: string, details: unknown): Promise<void>;
 }

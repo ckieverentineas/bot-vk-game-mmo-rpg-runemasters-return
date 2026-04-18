@@ -33,6 +33,7 @@ import { createBattleVictoryRewardIntent } from '../../domain/contracts/reward-i
 import type {
   FinalizeBattleResult,
   GameRepository,
+  SaveBattleOptions,
   SaveExplorationOptions,
   SaveAllocationOptions,
   SaveRuneLoadoutOptions,
@@ -52,7 +53,7 @@ const playerInclude = {
 
 type PlayerRecord = Prisma.PlayerGetPayload<{ include: typeof playerInclude }>;
 type TransactionClient = Prisma.TransactionClient;
-type CommandIntentKey = 'CRAFT_RUNE' | 'REROLL_RUNE_STAT' | 'DESTROY_RUNE' | 'ALLOCATE_STAT_POINT' | 'RESET_ALLOCATED_STATS' | 'EQUIP_RUNE' | 'UNEQUIP_RUNE' | 'SKIP_TUTORIAL' | 'RETURN_TO_ADVENTURE';
+type CommandIntentKey = 'CRAFT_RUNE' | 'REROLL_RUNE_STAT' | 'DESTROY_RUNE' | 'ALLOCATE_STAT_POINT' | 'RESET_ALLOCATED_STATS' | 'EQUIP_RUNE' | 'UNEQUIP_RUNE' | 'SKIP_TUTORIAL' | 'RETURN_TO_ADVENTURE' | 'BATTLE_ATTACK' | 'BATTLE_DEFEND' | 'BATTLE_RUNE_SKILL';
 
 type PersistedBattleState = Pick<BattleView, 'status' | 'turnOwner' | 'player' | 'enemy' | 'log' | 'result' | 'rewards' | 'actionRevision'>;
 
@@ -200,7 +201,7 @@ const parsePersistedBattleSnapshot = (value: string | null): ParsedBattleSnapsho
   };
 };
 
-const parseCommandIntentResultSnapshot = (value: string): PlayerState => JSON.parse(value) as PlayerState;
+const parseCommandIntentResultSnapshot = <T>(value: string): T => JSON.parse(value) as T;
 
 const hydrateBattlePlayerSnapshot = (
   playerId: number,
@@ -297,13 +298,13 @@ export class PrismaGameRepository implements GameRepository {
     }
   }
 
-  private async reserveCommandIntent(
+  private async reserveCommandIntent<TResult>(
     tx: TransactionClient,
     playerId: number,
     intentId: string,
     commandKey: CommandIntentKey,
     stateKey: string,
-  ): Promise<PlayerState | null> {
+  ): Promise<TResult | null> {
     const existing = await tx.commandIntentRecord.findUnique({
       where: {
         playerId_intentId: {
@@ -318,7 +319,7 @@ export class PrismaGameRepository implements GameRepository {
     }
 
     if (existing?.status === 'APPLIED') {
-      return parseCommandIntentResultSnapshot(existing.resultSnapshot);
+      return parseCommandIntentResultSnapshot<TResult>(existing.resultSnapshot);
     }
 
     try {
@@ -350,18 +351,18 @@ export class PrismaGameRepository implements GameRepository {
       }
 
       if (retried?.status === 'APPLIED') {
-        return parseCommandIntentResultSnapshot(retried.resultSnapshot);
+        return parseCommandIntentResultSnapshot<TResult>(retried.resultSnapshot);
       }
 
       throw new AppError('command_retry_pending', 'Команда уже обрабатывается. Дождитесь ответа и обновите экран.');
     }
   }
 
-  private async finalizeCommandIntent(
+  private async finalizeCommandIntent<TResult>(
     tx: TransactionClient,
     playerId: number,
     intentId: string,
-    result: PlayerState,
+    result: TResult,
   ): Promise<void> {
     await tx.commandIntentRecord.update({
       where: {
@@ -377,20 +378,20 @@ export class PrismaGameRepository implements GameRepository {
     });
   }
 
-  private async runWithCommandIntent(
+  private async runWithCommandIntent<TResult>(
     tx: TransactionClient,
     playerId: number,
     commandKey: CommandIntentKey,
     intentId: string | undefined,
     stateKey: string | undefined,
     currentStateKey: string | undefined,
-    apply: () => Promise<PlayerState>,
-  ): Promise<PlayerState> {
+    apply: () => Promise<TResult>,
+  ): Promise<TResult> {
     if (!intentId || !stateKey) {
       return apply();
     }
 
-    const existing = await this.reserveCommandIntent(tx, playerId, intentId, commandKey, stateKey);
+    const existing = await this.reserveCommandIntent<TResult>(tx, playerId, intentId, commandKey, stateKey);
     if (existing) {
       return existing;
     }
@@ -400,7 +401,7 @@ export class PrismaGameRepository implements GameRepository {
     }
 
     const result = await apply();
-    await this.finalizeCommandIntent(tx, playerId, intentId, result);
+    await this.finalizeCommandIntent<TResult>(tx, playerId, intentId, result);
     return result;
   }
 
@@ -556,7 +557,12 @@ export class PrismaGameRepository implements GameRepository {
     return this.mapPlayer(created.player);
   }
 
-  public async getCommandIntentResult(playerId: number, intentId: string): Promise<{ status: 'APPLIED' | 'PENDING'; result?: PlayerState } | null> {
+  public async getCommandIntentResult<TResult = PlayerState>(
+    playerId: number,
+    intentId: string,
+    expectedCommandKeys?: readonly string[],
+    expectedStateKey?: string,
+  ): Promise<{ status: 'APPLIED' | 'PENDING'; result?: TResult } | null> {
     const existing = await this.prisma.commandIntentRecord.findUnique({
       where: {
         playerId_intentId: {
@@ -570,10 +576,18 @@ export class PrismaGameRepository implements GameRepository {
       return null;
     }
 
+    if (expectedCommandKeys && !expectedCommandKeys.includes(existing.commandKey)) {
+      throw new AppError('stale_command_intent', 'Эта кнопка уже устарела. Обновите экран перед повтором команды.');
+    }
+
+    if (expectedStateKey !== undefined && existing.stateKey !== expectedStateKey) {
+      throw new AppError('stale_command_intent', 'Эта кнопка уже устарела. Обновите экран перед повтором команды.');
+    }
+
     if (existing.status === 'APPLIED') {
       return {
         status: 'APPLIED',
-        result: parseCommandIntentResultSnapshot(existing.resultSnapshot),
+        result: parseCommandIntentResultSnapshot<TResult>(existing.resultSnapshot),
       };
     }
 
@@ -1185,32 +1199,51 @@ export class PrismaGameRepository implements GameRepository {
     return battle ? this.mapBattle(battle) : null;
   }
 
-  public async saveBattle(battle: BattleView): Promise<BattleView> {
-    const updated = await this.prisma.$transaction(async (tx) => {
-      const persistedBattle = mapBattlePersistence(battle);
-      const { actionRevision: expectedRevision, ...persistedState } = persistedBattle;
-      void expectedRevision;
-      const nextBattleSnapshot = stringifyJson(buildBattleSnapshot({
-        ...battle,
-        actionRevision: battle.actionRevision + 1,
-      }), '{}');
-      const saved = await tx.battleSession.updateMany({
-        where: {
-          id: battle.id,
-          playerId: battle.playerId,
-          status: 'ACTIVE',
-          actionRevision: battle.actionRevision,
-        },
-        data: {
-          ...persistedState,
-          battleSnapshot: nextBattleSnapshot,
-          actionRevision: {
-            increment: 1,
+  public async saveBattle(battle: BattleView, options?: SaveBattleOptions): Promise<BattleView> {
+    return this.prisma.$transaction(async (tx) => {
+      const apply = async (): Promise<BattleView> => {
+        const persistedBattle = mapBattlePersistence(battle);
+        const { actionRevision: expectedRevision, ...persistedState } = persistedBattle;
+        void expectedRevision;
+        const nextBattleSnapshot = stringifyJson(buildBattleSnapshot({
+          ...battle,
+          actionRevision: battle.actionRevision + 1,
+        }), '{}');
+        const saved = await tx.battleSession.updateMany({
+          where: {
+            id: battle.id,
+            playerId: battle.playerId,
+            status: 'ACTIVE',
+            actionRevision: battle.actionRevision,
           },
-        },
-      });
+          data: {
+            ...persistedState,
+            battleSnapshot: nextBattleSnapshot,
+            actionRevision: {
+              increment: 1,
+            },
+          },
+        });
 
-      if (saved.count === 0) {
+        if (saved.count === 0) {
+          const currentBattle = await tx.battleSession.findFirst({
+            where: {
+              id: battle.id,
+              playerId: battle.playerId,
+            },
+          });
+
+          if (!currentBattle) {
+            throw new AppError('battle_not_found', 'Активный бой уже недоступен. Начните новый бой.');
+          }
+
+          if (isStaleBattleMutation(battle.actionRevision, currentBattle)) {
+            await this.logStaleBattleMutation(tx, battle.playerId, battle, currentBattle.actionRevision);
+          }
+
+          return this.mapBattle(currentBattle);
+        }
+
         const currentBattle = await tx.battleSession.findFirst({
           where: {
             id: battle.id,
@@ -1222,32 +1255,49 @@ export class PrismaGameRepository implements GameRepository {
           throw new AppError('battle_not_found', 'Активный бой уже недоступен. Начните новый бой.');
         }
 
-        if (isStaleBattleMutation(battle.actionRevision, currentBattle)) {
-          await this.logStaleBattleMutation(tx, battle.playerId, battle, currentBattle.actionRevision);
-        }
+        return this.mapBattle(currentBattle);
+      };
 
-        return currentBattle;
+      if (options?.commandKey && options.intentId && options.intentStateKey) {
+        return this.runWithCommandIntent<BattleView>(
+          tx,
+          battle.playerId,
+          options.commandKey,
+          options.intentId,
+          options.intentStateKey,
+          options.currentStateKey,
+          apply,
+        );
       }
 
-      const currentBattle = await tx.battleSession.findFirst({
-        where: {
-          id: battle.id,
-          playerId: battle.playerId,
-        },
-      });
-
-      if (!currentBattle) {
-        throw new AppError('battle_not_found', 'Активный бой уже недоступен. Начните новый бой.');
-      }
-
-      return currentBattle;
+      return apply();
     });
-
-    return this.mapBattle(updated);
   }
 
-  public async finalizeBattle(playerId: number, battle: BattleView): Promise<FinalizeBattleResult> {
+  public async finalizeBattle(playerId: number, battle: BattleView, options?: SaveBattleOptions): Promise<FinalizeBattleResult> {
     return this.prisma.$transaction(async (tx) => {
+      if (options?.commandKey && options.intentId && options.intentStateKey) {
+        const existing = await this.reserveCommandIntent<BattleView>(
+          tx,
+          playerId,
+          options.intentId,
+          options.commandKey,
+          options.intentStateKey,
+        );
+
+        if (existing) {
+          const updatedPlayer = await this.requirePlayerRecord(tx, playerId);
+          return {
+            player: this.mapPlayer(updatedPlayer),
+            battle: existing,
+          };
+        }
+
+        if (options.currentStateKey !== undefined && options.currentStateKey !== options.intentStateKey) {
+          throw new AppError('stale_command_intent', 'Эта кнопка уже устарела. Обновите экран перед повтором команды.');
+        }
+      }
+
       const persistedBattle = mapBattlePersistence(battle);
       const { actionRevision: expectedRevision, ...persistedState } = persistedBattle;
       void expectedRevision;
@@ -1287,10 +1337,15 @@ export class PrismaGameRepository implements GameRepository {
           await this.logStaleBattleMutation(tx, playerId, battle, currentBattle.actionRevision);
         }
 
+        const mappedBattle = this.mapBattle(currentBattle);
+        if (options?.commandKey && options.intentId && options.intentStateKey) {
+          await this.finalizeCommandIntent<BattleView>(tx, playerId, options.intentId, mappedBattle);
+        }
+
         const updatedPlayer = await this.requirePlayerRecord(tx, playerId);
         return {
           player: this.mapPlayer(updatedPlayer),
-          battle: this.mapBattle(currentBattle),
+          battle: mappedBattle,
         };
       }
 
@@ -1460,10 +1515,16 @@ export class PrismaGameRepository implements GameRepository {
         throw new AppError('battle_not_found', 'Активный бой уже недоступен. Начните новый бой.');
       }
 
-      return {
+      const result = {
         player: this.mapPlayer(updatedPlayer),
         battle: this.mapBattle(finalizedBattle),
       };
+
+      if (options?.commandKey && options.intentId && options.intentStateKey) {
+        await this.finalizeCommandIntent<BattleView>(tx, playerId, options.intentId, result.battle);
+      }
+
+      return result;
     });
   }
 

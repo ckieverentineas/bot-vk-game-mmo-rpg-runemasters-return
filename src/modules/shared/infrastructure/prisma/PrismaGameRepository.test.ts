@@ -456,6 +456,91 @@ describe('PrismaGameRepository release hardening', () => {
     expect(tx.playerProgress.updateMany).not.toHaveBeenCalled();
   });
 
+  it('rejects replay lookups when the stored command key does not match the expected battle action rail', async () => {
+    const { repository, tx } = createPrismaMock();
+
+    tx.commandIntentRecord.findUnique.mockResolvedValue({
+      commandKey: 'ALLOCATE_STAT_POINT',
+      stateKey: 'state-profile-1',
+      status: 'APPLIED',
+      resultSnapshot: JSON.stringify(createPlayerStateSnapshot()),
+    });
+
+    await expect(repository.getCommandIntentResult(1, 'intent-cross-1', ['BATTLE_ATTACK'])).rejects.toMatchObject({
+      code: 'stale_command_intent',
+    });
+  });
+
+  it('rejects replay lookups when the stored state key does not match the expected battle rail', async () => {
+    const { repository, tx } = createPrismaMock();
+
+    tx.commandIntentRecord.findUnique.mockResolvedValue({
+      commandKey: 'BATTLE_ATTACK',
+      stateKey: 'state-battle-old',
+      status: 'APPLIED',
+      resultSnapshot: JSON.stringify(createBattleView()),
+    });
+
+    await expect(repository.getCommandIntentResult(1, 'intent-battle-stale', ['BATTLE_ATTACK'], 'state-battle-new')).rejects.toMatchObject({
+      code: 'stale_command_intent',
+    });
+  });
+
+  it('returns canonical battle result for a duplicate saved battle action intent', async () => {
+    const { repository, tx } = createPrismaMock();
+    const replayedBattle = createBattleView({
+      status: 'ACTIVE',
+      result: null,
+      rewards: null,
+      turnOwner: 'ENEMY',
+    });
+
+    tx.commandIntentRecord.findUnique.mockResolvedValue({
+      commandKey: 'BATTLE_ATTACK',
+      stateKey: 'state-battle-1',
+      status: 'APPLIED',
+      resultSnapshot: JSON.stringify(replayedBattle),
+    });
+
+    const battle = await repository.saveBattle(createBattleView({
+      status: 'ACTIVE',
+      result: null,
+      rewards: null,
+    }), {
+      commandKey: 'BATTLE_ATTACK',
+      intentId: 'intent-battle-1',
+      intentStateKey: 'state-battle-1',
+      currentStateKey: 'state-battle-1',
+    });
+
+    expect(battle.status).toBe('ACTIVE');
+    expect(battle.turnOwner).toBe('ENEMY');
+    expect(tx.battleSession.updateMany).not.toHaveBeenCalled();
+  });
+
+  it('returns canonical finalized battle result for a duplicate battle action intent', async () => {
+    const { repository, tx } = createPrismaMock();
+
+    tx.commandIntentRecord.findUnique.mockResolvedValue({
+      commandKey: 'BATTLE_ATTACK',
+      stateKey: 'state-battle-final',
+      status: 'APPLIED',
+      resultSnapshot: JSON.stringify(createBattleView()),
+    });
+    tx.player.findUnique.mockResolvedValue(createPlayerRecord());
+
+    const finalized = await repository.finalizeBattle(1, createBattleView(), {
+      commandKey: 'BATTLE_ATTACK',
+      intentId: 'intent-battle-final',
+      intentStateKey: 'state-battle-final',
+      currentStateKey: 'state-battle-final',
+    });
+
+    expect(finalized.battle.status).toBe('COMPLETED');
+    expect(finalized.player.playerId).toBe(1);
+    expect(tx.battleSession.updateMany).not.toHaveBeenCalled();
+  });
+
   it('rejects stale exploration writes when the expected tutorial state no longer matches', async () => {
     const { repository, tx } = createPrismaMock();
 

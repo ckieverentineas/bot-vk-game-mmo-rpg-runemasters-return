@@ -17,6 +17,7 @@ Covered by intent-based dedupe:
 - `unequipRune`
 - `skipTutorial`
 - `returnToAdventure`
+- keyboard battle actions (`attack`, `defend`, `runeSkill`)
 
 Transport surface:
 
@@ -109,10 +110,17 @@ Fields of interest:
 - first arrival moves the player onto the current adaptive adventure path;
 - duplicate same-intent arrival returns the stored post-return player state instead of overwriting fresher navigation state.
 
+### Battle action
+
+- first arrival resolves exactly one action from the rendered battle state;
+- duplicate same-intent arrival returns the stored post-action battle result instead of resolving another turn;
+- stale battle button restores the latest canonical battle view instead of replaying an old turn.
+
 ## Transport rule
 
 - keyboard payload is the current source of intent ids;
 - server-owned legacy text ids currently protect rune craft / reroll / destroy / equip / unequip, profile stat allocation / reset, and tutorial navigation (`пропустить обучение`, `в приключения`, `в мир`);
+- keyboard battle buttons now carry scoped `intentId` + battle `stateKey`;
 - each newly rendered mutation button gets a fresh `intentId`;
 - old keyboard presses after state changes should be rejected as stale and ask the player to refresh the screen;
 - other text aliases remain best-effort only until a later wider intent envelope slice.
@@ -128,11 +136,12 @@ Fields of interest:
 - same-intent unequip -> one canonical unequipped loadout only;
 - same-intent skip tutorial -> one canonical post-skip navigation state only;
 - same-intent return to adventure -> one canonical post-return navigation state only;
+- same-intent battle attack / defend / rune skill -> one canonical post-action battle result only;
 - stale reused intent after state change -> explicit `stale_command_intent` style rejection;
 - different intent ids still allow honest repeated actions.
 
 ## Deferred after v1
 
 - generic mutation intent envelope for all keyboard actions;
-- remaining text-command replay handling beyond guarded rune mutations, profile stat allocation / reset, and tutorial navigation;
+- remaining text-command replay handling beyond guarded rune mutations, profile stat allocation / reset, tutorial navigation, and keyboard battle actions;
 - broader state-key strategy for non-rune mutations.

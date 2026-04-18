@@ -130,16 +130,16 @@ export class GameHandler {
           return;
         }
         case gameCommands.attack: {
-          await this.useBattleAction(ctx, vkId, 'ATTACK');
+          await this.useBattleAction(ctx, vkId, 'ATTACK', intentId ?? undefined, stateKey ?? undefined, intentSource);
           return;
         }
         case gameCommands.defend: {
-          await this.useBattleAction(ctx, vkId, 'DEFEND');
+          await this.useBattleAction(ctx, vkId, 'DEFEND', intentId ?? undefined, stateKey ?? undefined, intentSource);
           return;
         }
         case gameCommands.skills:
         case gameCommands.spell: {
-          await this.useBattleAction(ctx, vkId, 'RUNE_SKILL');
+          await this.useBattleAction(ctx, vkId, 'RUNE_SKILL', intentId ?? undefined, stateKey ?? undefined, intentSource);
           return;
         }
         case gameCommands.runeCollection: {
@@ -381,9 +381,16 @@ export class GameHandler {
     await this.reply(ctx, renderBattle(battle), this.resolveBattleKeyboard(battle));
   }
 
-  private async useBattleAction(ctx: Context, vkId: number, action: BattleActionType): Promise<void> {
+  private async useBattleAction(
+    ctx: Context,
+    vkId: number,
+    action: BattleActionType,
+    intentId?: string,
+    intentStateKey?: string,
+    intentSource: ReturnType<typeof resolveCommandEnvelope>['intentSource'] = null,
+  ): Promise<void> {
     try {
-      const battle = await this.services.performBattleAction.execute(vkId, action);
+      const battle = await this.services.performBattleAction.execute(vkId, action, intentId, intentStateKey, intentSource);
       await this.replyWithBattle(ctx, battle);
     } catch (error) {
       if (isAppError(error)) {

@@ -425,11 +425,11 @@ describe('GameHandler smoke', () => {
   it('проходит сценарий завершения боя', async () => {
     const services = createServices();
     const handler = new GameHandler(services);
-    const ctx = createFakeContext({ command: 'атака' });
+    const ctx = createFakeContext({ command: 'атака', intentId: 'intent-battle-1', stateKey: 'state-battle-1' });
 
     await handler.handle(ctx as never);
 
-    expect(services.performBattleAction.execute).toHaveBeenCalledWith(1001, 'ATTACK');
+    expect(services.performBattleAction.execute).toHaveBeenCalledWith(1001, 'ATTACK', 'intent-battle-1', 'state-battle-1', 'payload');
     expect(getReplyCalls(ctx)[0]?.message).toContain('Завершённый бой');
     expect(getReplyCalls(ctx)[0]?.message).toContain('Победа.');
     expect(getReplyCalls(ctx)[0]?.message).toContain('🎯 Следующая цель: начните «⚔️ Новый бой»');
@@ -650,11 +650,11 @@ describe('GameHandler smoke', () => {
     });
     vi.mocked(services.performBattleAction.execute).mockResolvedValueOnce(runeSkillBattle);
     const handler = new GameHandler(services);
-    const ctx = createFakeContext({ command: 'навыки' });
+    const ctx = createFakeContext({ command: 'навыки', intentId: 'intent-battle-skill-1', stateKey: 'state-battle-skill-1' });
 
     await handler.handle(ctx as never);
 
-    expect(services.performBattleAction.execute).toHaveBeenCalledWith(1001, 'RUNE_SKILL');
+    expect(services.performBattleAction.execute).toHaveBeenCalledWith(1001, 'RUNE_SKILL', 'intent-battle-skill-1', 'state-battle-skill-1', 'payload');
     expect(getReplyCalls(ctx)[0]?.message).toContain('Импульс углей');
     expect(getReplyCalls(ctx)[0]?.message).toContain('🌀');
   });
@@ -671,11 +671,11 @@ describe('GameHandler smoke', () => {
     });
     vi.mocked(services.performBattleAction.execute).mockResolvedValueOnce(defendBattle);
     const handler = new GameHandler(services);
-    const ctx = createFakeContext({ command: 'защита' });
+    const ctx = createFakeContext({ command: 'защита', intentId: 'intent-battle-defend-1', stateKey: 'state-battle-defend-1' });
 
     await handler.handle(ctx as never);
 
-    expect(services.performBattleAction.execute).toHaveBeenCalledWith(1001, 'DEFEND');
+    expect(services.performBattleAction.execute).toHaveBeenCalledWith(1001, 'DEFEND', 'intent-battle-defend-1', 'state-battle-defend-1', 'payload');
     expect(getReplyCalls(ctx)[0]?.message).toContain('защитную стойку');
   });
 
@@ -696,7 +696,7 @@ describe('GameHandler smoke', () => {
       new AppError('enemy_turn', 'Сейчас ход противника.'),
     );
     const handler = new GameHandler(services);
-    const ctx = createFakeContext({ command: 'атака' });
+    const ctx = createFakeContext({ command: 'атака', intentId: 'intent-battle-2', stateKey: 'state-battle-2' });
 
     await handler.handle(ctx as never);
 
@@ -722,7 +722,7 @@ describe('GameHandler smoke', () => {
       new AppError('enemy_turn', 'Сейчас ход противника.'),
     );
     const handler = new GameHandler(services);
-    const ctx = createFakeContext({ command: 'защита' });
+    const ctx = createFakeContext({ command: 'защита', intentId: 'intent-battle-3', stateKey: 'state-battle-3' });
 
     await handler.handle(ctx as never);
 
@@ -778,16 +778,32 @@ describe('GameHandler smoke', () => {
   it('оставляет игрока в боевом контексте при повторном stale нажатии атаки', async () => {
     const services = createServices();
     const handler = new GameHandler(services);
-    const ctx = createFakeContext({ command: 'атака' });
+    const ctx = createFakeContext({ command: 'атака', intentId: 'intent-battle-4', stateKey: 'state-battle-4' });
 
     vi.mocked(services.performBattleAction.execute).mockRejectedValueOnce(
-      new AppError('enemy_turn', 'Сейчас ход противника.'),
+      new AppError('stale_command_intent', 'Эта кнопка уже устарела. Обновите экран перед повтором команды.'),
     );
 
     await handler.handle(ctx as never);
 
     const replies = getReplyCalls(ctx);
-    expect(replies[0]?.message).toContain('Сейчас ход противника');
+    expect(replies[0]?.message).toContain('Эта кнопка уже устарела');
+    expect(replies[0]?.message).toContain('⚔️ Бой');
+  });
+
+  it('возвращает текущий бой при pending retry battle intent', async () => {
+    const services = createServices();
+    const handler = new GameHandler(services);
+    const ctx = createFakeContext({ command: 'защита', intentId: 'intent-battle-5', stateKey: 'state-battle-5' });
+
+    vi.mocked(services.performBattleAction.execute).mockRejectedValueOnce(
+      new AppError('command_retry_pending', 'Команда уже обрабатывается. Дождитесь ответа и обновите экран.'),
+    );
+
+    await handler.handle(ctx as never);
+
+    const replies = getReplyCalls(ctx);
+    expect(replies[0]?.message).toContain('Команда уже обрабатывается');
     expect(replies[0]?.message).toContain('⚔️ Бой');
   });
 

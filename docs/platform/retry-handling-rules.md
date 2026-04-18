@@ -14,6 +14,9 @@
   - `actionRevision = expectedRevision`
 - успешная mutation увеличивает `actionRevision` на `1`;
 - stale branch не перезаписывает новый state и получает canonical latest battle из persistence.
+- keyboard battle buttons (`атака`, `защита`, `рунное действие`) теперь дополнительно идут через scoped `intentId` + battle `stateKey`;
+- duplicate same-intent battle input обязан вернуть canonical persisted battle result, а не провести второй turn resolution;
+- stale или retry-pending battle input обязан оставлять игрока внутри актуального battle context, а не выбрасывать в меню.
 
 ## Victory reward rules
 
@@ -66,4 +69,4 @@
 
 - explicit RNG authority rules for reroll / drop / craft are now defined in `docs/platform/rng-authority-rules.md`, but broader legacy-text and non-profile command replay still remains;
 - migration fixtures for versioned persisted contracts;
-- remaining legacy text-command repeated actions beyond guarded rune mutations / profile stat allocation / reset / tutorial navigation, plus non-rune mutations beyond rune loadout buttons.
+- remaining legacy text-command repeated actions beyond guarded rune mutations / profile stat allocation / reset / tutorial navigation / keyboard battle actions, plus non-rune mutations beyond rune loadout buttons.

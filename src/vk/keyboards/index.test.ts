@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import type { PlayerState } from '../../shared/types/game';
-import { createDeleteConfirmationKeyboard, createProfileKeyboard, createRuneKeyboard, createTutorialKeyboard } from './index';
+import type { BattleView, PlayerState } from '../../shared/types/game';
+import { createBattleKeyboard, createDeleteConfirmationKeyboard, createProfileKeyboard, createRuneKeyboard, createTutorialKeyboard } from './index';
 
 const createPlayer = (overrides: Partial<PlayerState> = {}): PlayerState => ({
   userId: 1,
@@ -70,6 +70,73 @@ const createPlayer = (overrides: Partial<PlayerState> = {}): PlayerState => ({
       createdAt: '2026-04-12T00:00:00.000Z',
     },
   ],
+  createdAt: '2026-04-12T00:00:00.000Z',
+  updatedAt: '2026-04-12T00:00:00.000Z',
+  ...overrides,
+});
+
+const createBattle = (overrides: Partial<BattleView> = {}): BattleView => ({
+  id: 'battle-1',
+  playerId: 1,
+  status: 'ACTIVE',
+  battleType: 'PVE',
+  actionRevision: 0,
+  locationLevel: 1,
+  biomeCode: 'initium',
+  enemyCode: 'slime',
+  turnOwner: 'PLAYER',
+  player: {
+    playerId: 1,
+    name: 'Рунный мастер #1001',
+    attack: 4,
+    defence: 3,
+    magicDefence: 1,
+    dexterity: 2,
+    intelligence: 1,
+    maxHealth: 8,
+    currentHealth: 8,
+    maxMana: 4,
+    currentMana: 4,
+    runeLoadout: {
+      archetypeCode: 'ember',
+      runeName: 'Руна Пламени',
+      passiveAbilities: [],
+      activeAbility: {
+        code: 'ember_pulse',
+        name: 'Пульс Пламени',
+        manaCost: 3,
+        currentCooldown: 0,
+        cooldownTurns: 2,
+        effectDescription: 'Наносит урон.',
+      },
+    },
+    guardPoints: 0,
+  },
+  enemy: {
+    code: 'slime',
+    name: 'Слизень',
+    kind: 'enemy',
+    isElite: false,
+    isBoss: false,
+    attack: 2,
+    defence: 0,
+    magicDefence: 0,
+    dexterity: 1,
+    intelligence: 0,
+    maxHealth: 5,
+    currentHealth: 5,
+    maxMana: 0,
+    currentMana: 0,
+    experienceReward: 4,
+    goldReward: 2,
+    runeDropChance: 0,
+    attackText: 'бьёт',
+    intent: null,
+    hasUsedSignatureMove: false,
+  },
+  log: ['⚔️ Бой начался.'],
+  result: null,
+  rewards: null,
   createdAt: '2026-04-12T00:00:00.000Z',
   updatedAt: '2026-04-12T00:00:00.000Z',
   ...overrides,
@@ -152,5 +219,20 @@ describe('profile keyboard', () => {
 
     expect(skip?.intentId).toEqual(expect.any(String));
     expect(skip?.stateKey).toEqual(expect.any(String));
+  });
+
+  it('adds intent metadata to battle action buttons', () => {
+    const payloads = collectPayloads(createBattleKeyboard(createBattle()));
+
+    const attack = payloads.find((payload) => payload.command === 'атака');
+    const defend = payloads.find((payload) => payload.command === 'защита');
+    const skill = payloads.find((payload) => payload.command === 'навыки');
+
+    expect(attack?.intentId).toEqual(expect.any(String));
+    expect(attack?.stateKey).toEqual(expect.any(String));
+    expect(defend?.intentId).toEqual(expect.any(String));
+    expect(defend?.stateKey).toEqual(expect.any(String));
+    expect(skill?.intentId).toEqual(expect.any(String));
+    expect(skill?.stateKey).toEqual(expect.any(String));
   });
 });

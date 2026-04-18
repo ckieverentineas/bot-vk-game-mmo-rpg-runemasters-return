@@ -515,6 +515,7 @@ Runemasters Return должен решать это через **школы ру
 - [x] Ввести stale action rejection rules
 - [ ] Зафиксировать repeated command / retry handling
   - [x] battle mutation retries и stale overwrite rules
+  - [x] keyboard battle action same-intent dedupe и canonical replay
   - [x] rune mutation same-intent dedupe через keyboard payloads
   - [ ] broader non-rune / legacy-text multi-budget dedupe
     - [x] profile stat allocation / reset same-intent dedupe через keyboard payloads
@@ -979,3 +980,4 @@ Runemasters Return должен решать это через **школы ру
 - **2026-04-18:** `в приключения` теперь считается явным выходом из активного обучения; stale intro location больше не должен возвращать игрока к CTA `⚔️ Учебный бой` после добровольного выхода в adventure flow.
 - **2026-04-18:** `локация` / `обучение` больше не должны выдёргивать игрока из активного боя в tutorial screen; при активном бою команда теперь безопасно возвращает текущий battle context вместо ложного экрана обучения.
 - **2026-04-18:** `пропустить обучение`, `в приключения` и alias `в мир` переведены на command intent replay rail; duplicate tutorial-navigation commands теперь возвращают canonical exploration state, восстанавливают актуальный tutorial/adventure контекст при stale/pending ветках и не применяются поверх активного боя.
+- **2026-04-18:** keyboard battle inputs `атака` / `защита` / `рунное действие` переведены на command intent replay rail; duplicate same-intent turn input теперь должен возвращать canonical battle result вместо повторного разрешения хода.
