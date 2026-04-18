@@ -1,16 +1,14 @@
 import { gameBalance } from '../../../config/game-balance';
 import { emptyStats } from '../../player/domain/player-stats';
 import type { RuneDraft, RuneRarity, RuneView, StatKey } from '../../../shared/types/game';
+import type { GameRandom } from '../../shared/application/ports/GameRandom';
+import { systemGameRandom } from '../../shared/infrastructure/random/SystemGameRandom';
 
 import { applyRuneArchetype, getRuneArchetype, listRuneArchetypes } from './rune-abilities';
 import { getRuneSchoolPresentation } from './rune-schools';
 
 const defaultStatPool: readonly StatKey[] = ['health', 'attack', 'defence', 'magicDefence', 'dexterity', 'intelligence'];
 const naturalRarityOrder: readonly RuneRarity[] = ['USUAL', 'UNUSUAL', 'RARE', 'EPIC', 'LEGENDARY', 'MYTHICAL'];
-
-const randomInt = (min: number, max: number): number => Math.floor(Math.random() * (max - min + 1)) + min;
-
-const randomItem = <T>(items: readonly T[]): T => items[randomInt(0, items.length - 1)];
 
 const createArchetypeStatPool = (archetypeCode: string): readonly StatKey[] => {
   const archetype = getRuneArchetype(archetypeCode);
@@ -23,10 +21,15 @@ const createArchetypeStatPool = (archetypeCode: string): readonly StatKey[] => {
 };
 
 export class RuneFactory {
-  public static create(locationLevel: number, forcedRarity?: RuneRarity, forcedArchetypeCode?: string): RuneDraft {
-    const rarity = forcedRarity ?? this.rollRarity(this.resolveNaturalRarityCap(locationLevel));
+  public static create(
+    locationLevel: number,
+    forcedRarity?: RuneRarity,
+    forcedArchetypeCode?: string,
+    random: GameRandom = systemGameRandom,
+  ): RuneDraft {
+    const rarity = forcedRarity ?? this.rollRarity(this.resolveNaturalRarityCap(locationLevel), random);
     const profile = gameBalance.runes.profiles[rarity];
-    const archetype = forcedArchetypeCode ? getRuneArchetype(forcedArchetypeCode) : randomItem(listRuneArchetypes());
+    const archetype = forcedArchetypeCode ? getRuneArchetype(forcedArchetypeCode) : random.pickOne(listRuneArchetypes());
     const school = getRuneSchoolPresentation(archetype.code);
     const statPool = createArchetypeStatPool(archetype.code);
     const rune = applyRuneArchetype({
@@ -40,14 +43,19 @@ export class RuneFactory {
     const lineCount = profile.lines + bonusLines;
 
     for (let index = 0; index < lineCount; index += 1) {
-      const statKey = randomItem(statPool);
-      rune[statKey] += this.rollStatValue(rarity, locationLevel);
+      const statKey = random.pickOne(statPool);
+      rune[statKey] += this.rollStatValue(rarity, locationLevel, random);
     }
 
     return rune;
   }
 
-  public static rerollStat(rune: RuneDraft | RuneView, statKey: StatKey, locationLevel: number): RuneDraft {
+  public static rerollStat(
+    rune: RuneDraft | RuneView,
+    statKey: StatKey,
+    locationLevel: number,
+    random: GameRandom = systemGameRandom,
+  ): RuneDraft {
     const nextRune: RuneDraft = {
       runeCode: rune.runeCode,
       archetypeCode: rune.archetypeCode,
@@ -64,16 +72,16 @@ export class RuneFactory {
       intelligence: rune.intelligence,
     };
 
-    nextRune[statKey] = this.rollStatValue(rune.rarity, locationLevel);
+    nextRune[statKey] = this.rollStatValue(rune.rarity, locationLevel, random);
     return nextRune;
   }
 
-  private static rollRarity(maxRarity: RuneRarity): RuneRarity {
+  private static rollRarity(maxRarity: RuneRarity, random: GameRandom): RuneRarity {
     const maxIndex = naturalRarityOrder.indexOf(maxRarity);
     const allowedRarities = naturalRarityOrder.slice(0, maxIndex + 1);
     const entries = allowedRarities.map((rarity) => [rarity, gameBalance.runes.profiles[rarity]] as const);
     const totalWeight = entries.reduce((sum, [, profile]) => sum + profile.weight, 0);
-    let roll = randomInt(1, totalWeight);
+    let roll = random.nextInt(1, totalWeight);
 
     for (const [rarity, profile] of entries) {
       roll -= profile.weight;
@@ -85,10 +93,10 @@ export class RuneFactory {
     return 'USUAL';
   }
 
-  private static rollStatValue(rarity: RuneRarity, locationLevel: number): number {
+  private static rollStatValue(rarity: RuneRarity, locationLevel: number, random: GameRandom): number {
     const profile = gameBalance.runes.profiles[rarity];
     const levelBonus = Math.floor(locationLevel / 10);
-    return randomInt(1, profile.maxStatRoll + levelBonus);
+    return random.nextInt(1, profile.maxStatRoll + levelBonus);
   }
 
   private static resolveNaturalRarityCap(locationLevel: number): RuneRarity {

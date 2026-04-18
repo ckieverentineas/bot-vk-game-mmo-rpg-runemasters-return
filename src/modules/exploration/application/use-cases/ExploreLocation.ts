@@ -5,11 +5,15 @@ import { BattleEngine } from '../../../combat/domain/battle-engine';
 import { buildBattlePlayerSnapshot } from '../../../combat/domain/build-battle-player-snapshot';
 import { derivePlayerStats, getEquippedRune, resolveEncounterLocationLevel } from '../../../player/domain/player-stats';
 import { requirePlayerById, requirePlayerByVkId } from '../../../shared/application/require-player';
+import type { GameRandom } from '../../../shared/application/ports/GameRandom';
 import type { GameRepository } from '../../../shared/application/ports/GameRepository';
 import { buildEnemySnapshot, describeEncounter, pickEncounterTemplate, resolveInitialTurnOwner } from '../../../world/domain/enemy-scaling';
 
 export class ExploreLocation {
-  public constructor(private readonly repository: GameRepository) {}
+  public constructor(
+    private readonly repository: GameRepository,
+    private readonly random: GameRandom,
+  ) {}
 
   public async execute(vkId: number): Promise<BattleView> {
     const player = await requirePlayerByVkId(this.repository, vkId);
@@ -18,7 +22,7 @@ export class ExploreLocation {
     const activeBattle = await this.repository.getActiveBattle(player.playerId);
 
     if (activeBattle) {
-      const recoveredBattle = await finalizeRecoveredBattleIfNeeded(this.repository, player, activeBattle);
+      const recoveredBattle = await finalizeRecoveredBattleIfNeeded(this.repository, player, activeBattle, this.random);
 
       if (!recoveredBattle.recovered) {
         return activeBattle;

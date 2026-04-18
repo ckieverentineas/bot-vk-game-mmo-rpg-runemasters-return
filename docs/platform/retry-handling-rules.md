@@ -40,6 +40,6 @@
 
 ## Known next-step gaps
 
-- explicit RNG authority rules for reroll / drop / craft;
+- explicit RNG authority rules for reroll / drop / craft are now defined in `docs/platform/rng-authority-rules.md`, but broader idempotent command replay still remains;
 - migration fixtures for versioned persisted contracts;
 - broader dedupe policy for multi-budget repeated commands outside the critical one-budget rails.

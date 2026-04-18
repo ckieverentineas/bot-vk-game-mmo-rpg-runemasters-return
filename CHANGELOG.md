@@ -524,6 +524,27 @@
 - content throughput больше не остаётся roadmap ambition без одного source-of-truth doc;
 - validator scope больше не смешивает hard blockers, warnings и deferred checks в одну неявную кучу.
 
+## [0.23] - 2026-04-18
+
+### Commit
+
+- `worktree` — `feat: lock reward rng authority`
+
+### Added
+
+- RNG port [`GameRandom`](src/modules/shared/application/ports/GameRandom.ts) и infrastructure implementation [`SystemGameRandom`](src/modules/shared/infrastructure/random/SystemGameRandom.ts);
+- policy doc [`docs/platform/rng-authority-rules.md`](docs/platform/rng-authority-rules.md) для craft / reroll / victory drop authority.
+
+### Changed
+
+- [`RuneFactory`](src/modules/runes/domain/rune-factory.ts), [`RewardEngine`](src/modules/combat/domain/reward-engine.ts), [`CraftRune`](src/modules/runes/application/use-cases/CraftRune.ts), [`RerollCurrentRuneStat`](src/modules/runes/application/use-cases/RerollCurrentRuneStat.ts) и victory reward resolution теперь получают RNG через explicit port вместо hidden inline randomness;
+- retry/reward docs и QA matrix синхронизированы под canonical random outcome rules.
+
+### Fixed
+
+- reward-bearing random flows больше не зависят от прямого `Math.random()` в craft / reroll / victory drop path;
+- тесты на rune generation, reroll и reward drop теперь могут доказывать deterministic authority через stubbed RNG.
+
 ## Шаблон следующей записи
 
 ### [0.03] - YYYY-MM-DD

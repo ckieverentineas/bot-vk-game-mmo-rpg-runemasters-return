@@ -152,6 +152,8 @@ src/
 
 `src/modules/combat/domain` держит reusable helper'ы для клонирования battle state, расчёта физического урона и trim battle log. Это упрощает будущие активные навыки, статусы и эффекты поля боя.
 
+Для reward-bearing randomness отдельный boundary теперь задаётся через `GameRandom`: craft / reroll / victory rune drop больше не должны зависеть от transport-owned или hidden inline randomness в use-case flow.
+
 Дополнительно [`recoverInvalidActiveBattle()`](src/modules/combat/domain/recover-active-battle.ts:1) страхует проект от зависших активных боёв, когда в snapshot уже нулевое HP, а статус ещё не был закрыт.
 
 Текущий shipped slice намеренно оставляет battle actions минимальными, а улучшения делает в двух местах:

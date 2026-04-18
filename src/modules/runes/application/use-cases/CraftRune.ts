@@ -1,6 +1,7 @@
 import { gameBalance } from '../../../../config/game-balance';
 import { AppError } from '../../../../shared/domain/AppError';
 import type { PlayerState, RuneRarity } from '../../../../shared/types/game';
+import type { GameRandom } from '../../../shared/application/ports/GameRandom';
 
 import { requirePlayerByVkId } from '../../../shared/application/require-player';
 import type { GameRepository } from '../../../shared/application/ports/GameRepository';
@@ -9,7 +10,10 @@ import { RuneFactory } from '../../domain/rune-factory';
 const rarityPriority: RuneRarity[] = ['MYTHICAL', 'LEGENDARY', 'EPIC', 'RARE', 'UNUSUAL', 'USUAL'];
 
 export class CraftRune {
-  public constructor(private readonly repository: GameRepository) {}
+  public constructor(
+    private readonly repository: GameRepository,
+    private readonly random: GameRandom,
+  ) {}
 
   public async execute(vkId: number): Promise<PlayerState> {
     const player = await requirePlayerByVkId(this.repository, vkId);
@@ -26,7 +30,7 @@ export class CraftRune {
     let updated = await this.repository.craftRune(
       player.playerId,
       rarity,
-      RuneFactory.create(player.locationLevel, rarity),
+      RuneFactory.create(player.locationLevel, rarity, undefined, this.random),
     );
     updated = await this.repository.saveRuneCursor(updated.playerId, Math.max(0, updated.runes.length - 1));
     return updated;

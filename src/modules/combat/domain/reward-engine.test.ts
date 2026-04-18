@@ -1,7 +1,32 @@
 import { describe, expect, it } from 'vitest';
 
+import type { GameRandom } from '../../shared/application/ports/GameRandom';
 import type { BattleView, RuneDraft } from '../../../shared/types/game';
 import { RewardEngine } from './reward-engine';
+
+const createDeterministicRandom = (values: number[]): GameRandom => {
+  let index = 0;
+
+  const nextValue = (): number => {
+    const value = values[index] ?? values[values.length - 1] ?? 0;
+    index += 1;
+    return value;
+  };
+
+  return {
+    nextInt(min, max) {
+      const raw = nextValue();
+      const range = max - min + 1;
+      return min + ((raw % range) + range) % range;
+    },
+    rollPercentage(chancePercent) {
+      return nextValue() <= chancePercent;
+    },
+    pickOne(items) {
+      return items[this.nextInt(0, items.length - 1)]!;
+    },
+  };
+};
 
 const createBattle = (): BattleView => ({
   id: 'battle-1',
@@ -82,5 +107,21 @@ describe('RewardEngine', () => {
     expect(rewarded.droppedRune).toEqual(tutorialRune);
     expect(rewarded.battle.rewards?.droppedRune).toEqual(tutorialRune);
     expect(rewarded.battle.log.some((entry) => entry.includes('Необычная руна Пламени'))).toBe(true);
+  });
+
+  it('делает battle rune drop детерминированным при явном RNG port', () => {
+    const rewarded = RewardEngine.applyVictoryRewards(
+      createBattle({
+        enemy: {
+          ...createBattle().enemy,
+          runeDropChance: 100,
+        },
+      }),
+      {},
+      createDeterministicRandom([0, 0, 1, 2, 3, 4]),
+    );
+
+    expect(rewarded.droppedRune).not.toBeNull();
+    expect(rewarded.battle.rewards?.droppedRune).toEqual(rewarded.droppedRune);
   });
 });

@@ -22,6 +22,7 @@
 7. Проверить, что changelog и release summary отражают пользовательские изменения.
 8. Если менялись reward-bearing или battle-mutation rails, сверить:
    - `docs/platform/retry-handling-rules.md`
+   - `docs/platform/rng-authority-rules.md`
    - `docs/platform/persistence-versioning-rules.md`
    - `docs/qa/reward-duplication-matrix.md`
    - `docs/testing/concurrency-critical-use-cases.md`

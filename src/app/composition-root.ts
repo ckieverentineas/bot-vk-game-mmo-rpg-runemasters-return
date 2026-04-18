@@ -18,6 +18,7 @@ import { RerollCurrentRuneStat } from '../modules/runes/application/use-cases/Re
 import { SelectRunePageSlot } from '../modules/runes/application/use-cases/SelectRunePageSlot';
 import { UnequipCurrentRune } from '../modules/runes/application/use-cases/UnequipCurrentRune';
 import { PrismaGameRepository } from '../modules/shared/infrastructure/prisma/PrismaGameRepository';
+import { SystemGameRandom } from '../modules/shared/infrastructure/random/SystemGameRandom';
 import { prisma } from '../database/client';
 
 export interface AppServices {
@@ -44,6 +45,7 @@ export interface AppServices {
 
 export const createAppServices = (): AppServices => {
   const repository = new PrismaGameRepository(prisma);
+  const random = new SystemGameRandom();
 
   return {
     registerPlayer: new RegisterPlayer(repository),
@@ -54,16 +56,16 @@ export const createAppServices = (): AppServices => {
     enterTutorialMode: new EnterTutorialMode(repository),
     returnToAdventure: new ReturnToAdventure(repository),
     skipTutorial: new SkipTutorial(repository),
-    exploreLocation: new ExploreLocation(repository),
-    getActiveBattle: new GetActiveBattle(repository),
-    performBattleAction: new PerformBattleAction(repository),
+    exploreLocation: new ExploreLocation(repository, random),
+    getActiveBattle: new GetActiveBattle(repository, random),
+    performBattleAction: new PerformBattleAction(repository, random),
     getRuneCollection: new GetRuneCollection(repository),
     moveRuneCursor: new MoveRuneCursor(repository),
     selectRunePageSlot: new SelectRunePageSlot(repository),
     equipCurrentRune: new EquipCurrentRune(repository),
     unequipCurrentRune: new UnequipCurrentRune(repository),
-    craftRune: new CraftRune(repository),
-    rerollCurrentRuneStat: new RerollCurrentRuneStat(repository),
+    craftRune: new CraftRune(repository, random),
+    rerollCurrentRuneStat: new RerollCurrentRuneStat(repository, random),
     destroyCurrentRune: new DestroyCurrentRune(repository),
   };
 };

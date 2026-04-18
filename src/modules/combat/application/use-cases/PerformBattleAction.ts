@@ -1,6 +1,7 @@
 import { AppError } from '../../../../shared/domain/AppError';
 import type { BattleActionType, BattleView } from '../../../../shared/types/game';
 import { requirePlayerByVkId } from '../../../shared/application/require-player';
+import type { GameRandom } from '../../../shared/application/ports/GameRandom';
 import type { GameRepository } from '../../../shared/application/ports/GameRepository';
 import { BattleEngine } from '../../domain/battle-engine';
 
@@ -9,7 +10,10 @@ import { RewardEngine } from '../../domain/reward-engine';
 import { resolveVictoryRewardOptions } from '../resolve-victory-reward-options';
 
 export class PerformBattleAction {
-  public constructor(private readonly repository: GameRepository) {}
+  public constructor(
+    private readonly repository: GameRepository,
+    private readonly random: GameRandom,
+  ) {}
 
   public async execute(vkId: number, action: BattleActionType = 'ATTACK'): Promise<BattleView> {
     const player = await requirePlayerByVkId(this.repository, vkId);
@@ -19,7 +23,7 @@ export class PerformBattleAction {
       throw new AppError('battle_not_found', 'Сейчас у вас нет активного боя.');
     }
 
-    const recoveredBattle = await finalizeRecoveredBattleIfNeeded(this.repository, player, activeBattle);
+    const recoveredBattle = await finalizeRecoveredBattleIfNeeded(this.repository, player, activeBattle, this.random);
     if (recoveredBattle.recovered) {
       return recoveredBattle.battle;
     }
@@ -32,7 +36,7 @@ export class PerformBattleAction {
 
     if (battle.status === 'COMPLETED') {
       const rewarded = battle.result === 'VICTORY'
-        ? RewardEngine.applyVictoryRewards(battle, resolveVictoryRewardOptions(player, battle))
+        ? RewardEngine.applyVictoryRewards(battle, resolveVictoryRewardOptions(player, battle, this.random), this.random)
         : { battle, droppedRune: null };
 
       const finalized = await this.repository.finalizeBattle(player.playerId, rewarded.battle);

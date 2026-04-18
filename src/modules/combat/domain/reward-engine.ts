@@ -1,4 +1,6 @@
 import type { BattleView, RuneDraft, RuneRarity } from '../../../shared/types/game';
+import type { GameRandom } from '../../shared/application/ports/GameRandom';
+import { systemGameRandom } from '../../shared/infrastructure/random/SystemGameRandom';
 import { RuneFactory } from '../../runes/domain/rune-factory';
 import { appendBattleLog, cloneBattle } from './battle-utils';
 
@@ -27,6 +29,7 @@ export class RewardEngine {
   public static applyVictoryRewards(
     battle: BattleView,
     options: VictoryRewardOptions = {},
+    random: GameRandom = systemGameRandom,
   ): { battle: BattleView; droppedRune: RuneDraft | null } {
     const nextBattle = cloneBattle(battle);
     if (nextBattle.rewards === null) {
@@ -46,8 +49,8 @@ export class RewardEngine {
     }
 
     const droppedRune = options.forcedRune ?? (
-      Math.random() * 100 <= nextBattle.enemy.runeDropChance
-        ? RuneFactory.create(nextBattle.locationLevel)
+      random.rollPercentage(nextBattle.enemy.runeDropChance)
+        ? RuneFactory.create(nextBattle.locationLevel, undefined, undefined, random)
         : null
     );
 

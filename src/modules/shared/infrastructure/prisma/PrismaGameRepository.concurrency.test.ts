@@ -295,6 +295,33 @@ describe.sequential('PrismaGameRepository concurrency rails', () => {
     expect(runeCount).toBe(1);
   });
 
+  it('returns the same canonical drop when parallel finalize branches resolve different random outcomes', async () => {
+    const player = await createPlayer(20031);
+    const activeBattle = await repository.createBattle(player.playerId, createBattleInput(player.playerId));
+    const firstOutcome = toCompletedVictoryBattle(activeBattle, createRuneDraft('Наградная руна Пламени A'));
+    const secondOutcome = toCompletedVictoryBattle(activeBattle, createRuneDraft('Наградная руна Пламени B'));
+
+    const [first, second] = await Promise.all([
+      repository.finalizeBattle(player.playerId, firstOutcome),
+      repository.finalizeBattle(player.playerId, secondOutcome),
+    ]);
+
+    expect(first.battle.status).toBe('COMPLETED');
+    expect(second.battle.status).toBe('COMPLETED');
+    expect(first.battle.rewards).toEqual(second.battle.rewards);
+
+    const persistedBattle = await repository.getActiveBattle(player.playerId);
+    expect(persistedBattle).toBeNull();
+
+    const persistedRunes = await prisma.rune.findMany({
+      where: { playerId: player.playerId },
+    });
+
+    expect(persistedRunes).toHaveLength(1);
+    expect([firstOutcome.rewards.droppedRune!.name, secondOutcome.rewards.droppedRune!.name]).toContain(persistedRunes[0]?.name);
+    expect(first.battle.rewards?.droppedRune?.name).toBe(persistedRunes[0]?.name);
+  });
+
   it('does not let finalizeBattle overwrite a newer active battle mutation from the same revision', async () => {
     const player = await createPlayer(2007);
     const activeBattle = await repository.createBattle(player.playerId, createBattleInput(player.playerId));

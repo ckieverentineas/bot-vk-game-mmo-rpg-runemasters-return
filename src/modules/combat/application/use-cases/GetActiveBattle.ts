@@ -1,12 +1,16 @@
 import { AppError } from '../../../../shared/domain/AppError';
 import type { BattleView } from '../../../../shared/types/game';
 import { requirePlayerByVkId } from '../../../shared/application/require-player';
+import type { GameRandom } from '../../../shared/application/ports/GameRandom';
 import type { GameRepository } from '../../../shared/application/ports/GameRepository';
 
 import { finalizeRecoveredBattleIfNeeded } from '../finalize-recovered-battle';
 
 export class GetActiveBattle {
-  public constructor(private readonly repository: GameRepository) {}
+  public constructor(
+    private readonly repository: GameRepository,
+    private readonly random: GameRandom,
+  ) {}
 
   public async execute(vkId: number): Promise<BattleView> {
     const player = await requirePlayerByVkId(this.repository, vkId);
@@ -16,7 +20,7 @@ export class GetActiveBattle {
       throw new AppError('battle_not_found', 'Сейчас нет активного боя. Сначала используйте «исследовать».');
     }
 
-    const recoveredBattle = await finalizeRecoveredBattleIfNeeded(this.repository, player, activeBattle);
+    const recoveredBattle = await finalizeRecoveredBattleIfNeeded(this.repository, player, activeBattle, this.random);
     if (recoveredBattle.recovered) {
       throw new AppError('battle_not_found', 'Активный бой уже завершён. Начните новый через «исследовать».');
     }
