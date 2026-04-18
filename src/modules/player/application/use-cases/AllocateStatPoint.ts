@@ -11,13 +11,13 @@ export class AllocateStatPoint {
 
   public async execute(vkId: number, stat: StatKey, intentId?: string, intentStateKey?: string): Promise<PlayerState> {
     const player = await requirePlayerByVkId(this.repository, vkId);
-    const intent = resolveCommandIntent(intentId, intentStateKey);
 
     if (player.unspentStatPoints <= 0) {
       throw new AppError('no_stat_points', 'У вас нет свободных очков характеристик.');
     }
 
     const currentStateKey = buildAllocateStatIntentStateKey(player, stat);
+    const intent = resolveCommandIntent(intentId, intentStateKey);
     if (intent && intent.intentStateKey !== currentStateKey) {
       throw new AppError('stale_command_intent', 'Эта кнопка уже устарела. Обновите экран перед повтором команды.');
     }

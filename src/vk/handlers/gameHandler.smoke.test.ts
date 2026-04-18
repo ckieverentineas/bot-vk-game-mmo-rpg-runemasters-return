@@ -13,6 +13,9 @@ interface ReplyCall {
 
 interface FakeContextInput {
   readonly senderId?: number;
+  readonly peerId?: number;
+  readonly id?: number;
+  readonly conversationMessageId?: number;
   readonly text?: string;
   readonly command?: string;
   readonly intentId?: string;
@@ -23,6 +26,9 @@ type ReplyMock = ReturnType<typeof vi.fn>;
 
 interface FakeContext {
   readonly senderId: number;
+  readonly peerId: number;
+  readonly id: number;
+  readonly conversationMessageId: number;
   readonly text: string;
   readonly messagePayload: { command?: string; intentId?: string; stateKey?: string } | null;
   readonly reply: ReplyMock;
@@ -33,6 +39,9 @@ const createFakeContext = (input: FakeContextInput): FakeContext => {
 
     return {
       senderId: input.senderId ?? 1001,
+      peerId: input.peerId ?? 2000000001,
+      id: input.id ?? 501,
+      conversationMessageId: input.conversationMessageId ?? 77,
       text: input.text ?? '',
       messagePayload: input.command
         ? {
@@ -360,7 +369,7 @@ describe('GameHandler smoke', () => {
 
     await handler.handle(ctx as never);
 
-    expect(services.craftRune.execute).toHaveBeenCalledWith(1001, 'intent-craft-1', 'state-craft-1');
+    expect(services.craftRune.execute).toHaveBeenCalledWith(1001, 'intent-craft-1', 'state-craft-1', 'payload');
   });
 
   it('пробрасывает intentId для перековки руны через transport payload', async () => {
@@ -370,7 +379,37 @@ describe('GameHandler smoke', () => {
 
     await handler.handle(ctx as never);
 
-    expect(services.rerollCurrentRuneStat.execute).toHaveBeenCalledWith(1001, 'attack', 'intent-reroll-1', 'state-reroll-1');
+    expect(services.rerollCurrentRuneStat.execute).toHaveBeenCalledWith(1001, 'attack', 'intent-reroll-1', 'state-reroll-1', 'payload');
+  });
+
+  it('выводит server-owned legacy intent для текстового создания руны', async () => {
+    const services = createServices();
+    const handler = new GameHandler(services);
+    const ctx = createFakeContext({ text: 'создать', id: 501, conversationMessageId: 77, peerId: 2000000001 });
+
+    await handler.handle(ctx as never);
+
+    expect(services.craftRune.execute).toHaveBeenCalledWith(1001, 'legacy-text:2000000001:1001:77:создать', undefined, 'legacy_text');
+  });
+
+  it('выводит server-owned legacy intent для текстовой перековки руны', async () => {
+    const services = createServices();
+    const handler = new GameHandler(services);
+    const ctx = createFakeContext({ text: '~атк', id: 502, conversationMessageId: 78, peerId: 2000000001 });
+
+    await handler.handle(ctx as never);
+
+    expect(services.rerollCurrentRuneStat.execute).toHaveBeenCalledWith(1001, 'attack', 'legacy-text:2000000001:1001:78:~атк', undefined, 'legacy_text');
+  });
+
+  it('выводит server-owned legacy intent для текстового распыления руны', async () => {
+    const services = createServices();
+    const handler = new GameHandler(services);
+    const ctx = createFakeContext({ text: 'сломать', id: 503, conversationMessageId: 79, peerId: 2000000001 });
+
+    await handler.handle(ctx as never);
+
+    expect(services.destroyCurrentRune.execute).toHaveBeenCalledWith(1001, 'legacy-text:2000000001:1001:79:сломать', undefined, 'legacy_text');
   });
 
   it('пробрасывает intentId для распределения характеристики через transport payload', async () => {
@@ -400,7 +439,7 @@ describe('GameHandler smoke', () => {
 
     await handler.handle(ctx as never);
 
-    expect(services.equipCurrentRune.execute).toHaveBeenCalledWith(1001, 'intent-equip-1', 'state-equip-1');
+    expect(services.equipCurrentRune.execute).toHaveBeenCalledWith(1001, 'intent-equip-1', 'state-equip-1', 'payload');
   });
 
   it('пробрасывает intentId для снятия руны через transport payload', async () => {
@@ -410,7 +449,7 @@ describe('GameHandler smoke', () => {
 
     await handler.handle(ctx as never);
 
-    expect(services.unequipCurrentRune.execute).toHaveBeenCalledWith(1001, 'intent-unequip-1', 'state-unequip-1');
+    expect(services.unequipCurrentRune.execute).toHaveBeenCalledWith(1001, 'intent-unequip-1', 'state-unequip-1', 'payload');
   });
 
   it('использует рунное действие в бою', async () => {

@@ -27,6 +27,7 @@
 - если второго бюджета уже нет, повторная команда должна закончиться deterministic error (`not_enough_shards` / `rune_not_found`), а не частичным second apply;
 - inventory не должен уходить в отрицательные значения даже при parallel submit.
 - keyboard-issued rune mutations дополнительно идут через `intentId`; повтор того же intent обязан вернуть canonical stored result, а не второй spend.
+- legacy text `создать` / `сломать` / `~stat` теперь получают server-owned message intent id и используют тот же canonical replay receipt.
 - keyboard-issued `equipRune` / `unequipRune` дополнительно привязываются к loadout `stateKey`, чтобы старое сообщение не могло экипировать или снять уже другую руну.
 
 ## Profile mutation rules
@@ -53,4 +54,4 @@
 
 - explicit RNG authority rules for reroll / drop / craft are now defined in `docs/platform/rng-authority-rules.md`, but broader legacy-text and non-profile command replay still remains;
 - migration fixtures for versioned persisted contracts;
-- legacy text-command repeated actions and remaining non-rune mutations beyond profile stat allocation / reset / rune loadout buttons.
+- remaining legacy text-command repeated actions beyond rune craft / reroll / destroy, plus non-rune mutations beyond profile stat allocation / reset / rune loadout buttons.

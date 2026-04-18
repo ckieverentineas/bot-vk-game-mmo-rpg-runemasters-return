@@ -2,7 +2,7 @@
 
 ## Goal
 
-Retry or duplicate delivery of the same keyboard mutation must not turn one intended player action into two legitimate spends when the player has enough budget to pay twice.
+Retry or duplicate delivery of the same guarded mutation must not turn one intended player action into two legitimate spends when the player has enough budget to pay twice.
 
 ## Scope v1
 
@@ -18,17 +18,19 @@ Covered by intent-based dedupe:
 
 Transport surface:
 
-- VK keyboard payloads only
+- VK keyboard payloads for guarded buttons;
+- server-owned legacy text intents for `craftRune`, `rerollRuneStat`, `destroyRune`.
 
 Not covered yet:
 
-- free-text legacy commands without payload intent ids;
+- other free-text legacy commands outside `craftRune` / `rerollRuneStat` / `destroyRune`;
 - broader profile/progression mutations beyond stat allocation / reset;
 - full repo-wide exact-once command handling.
 
 ## Core rule
 
 Keyboard-issued mutation commands get an app-generated `intentId`.
+Legacy text rune mutations get a server-owned `intentId` from stable message metadata.
 Use-case layer additionally derives a `stateKey` from the current relevant player/rune state before mutation.
 
 For the same:
@@ -98,9 +100,10 @@ Fields of interest:
 ## Transport rule
 
 - keyboard payload is the current source of intent ids;
+- server-owned legacy text ids currently protect `craftRune`, `rerollRuneStat`, `destroyRune` only;
 - each newly rendered mutation button gets a fresh `intentId`;
 - old keyboard presses after state changes should be rejected as stale and ask the player to refresh the screen;
-- text aliases remain best-effort only until a later wider intent envelope slice.
+- other text aliases remain best-effort only until a later wider intent envelope slice.
 
 ## Tests required
 
@@ -117,5 +120,5 @@ Fields of interest:
 ## Deferred after v1
 
 - generic mutation intent envelope for all keyboard actions;
-- text-command replay handling;
+- remaining text-command replay handling beyond rune craft / reroll / destroy;
 - broader state-key strategy for non-rune mutations.

@@ -3,7 +3,7 @@ import { AppError } from '../../../../shared/domain/AppError';
 import type { PlayerState, RuneRarity } from '../../../../shared/types/game';
 import type { GameRandom } from '../../../shared/application/ports/GameRandom';
 
-import { resolveCommandIntent } from '../../../shared/application/command-intent';
+import { resolveCommandIntent, type CommandIntentSource } from '../../../shared/application/command-intent';
 import { requirePlayerByVkId } from '../../../shared/application/require-player';
 import type { GameRepository } from '../../../shared/application/ports/GameRepository';
 import { buildCraftIntentStateKey } from '../command-intent-state';
@@ -17,9 +17,19 @@ export class CraftRune {
     private readonly random: GameRandom,
   ) {}
 
-  public async execute(vkId: number, intentId?: string, intentStateKey?: string): Promise<PlayerState> {
+  public async execute(vkId: number, intentId?: string, intentStateKey?: string, intentSource: CommandIntentSource = 'payload'): Promise<PlayerState> {
     const player = await requirePlayerByVkId(this.repository, vkId);
-    const intent = resolveCommandIntent(intentId, intentStateKey);
+
+    if (intentSource === 'legacy_text' && intentId) {
+      const replay = await this.repository.getCommandIntentResult(player.playerId, intentId);
+      if (replay?.status === 'APPLIED' && replay.result) {
+        return replay.result;
+      }
+
+      if (replay?.status === 'PENDING') {
+        throw new AppError('command_retry_pending', 'Команда уже обрабатывается. Дождитесь ответа и обновите экран.');
+      }
+    }
 
     const rarity = rarityPriority.find((candidate) => {
       const shardField = gameBalance.runes.profiles[candidate].shardField;
@@ -31,7 +41,8 @@ export class CraftRune {
     }
 
     const currentStateKey = buildCraftIntentStateKey(player);
-    if (intent && intent.intentStateKey !== currentStateKey) {
+    const intent = resolveCommandIntent(intentId, intentStateKey, intentSource, false);
+    if (intentSource !== 'legacy_text' && intent && intent.intentStateKey !== currentStateKey) {
       throw new AppError('stale_command_intent', 'Эта кнопка уже устарела. Обновите экран перед повтором команды.');
     }
 
@@ -41,7 +52,7 @@ export class CraftRune {
       RuneFactory.create(player.locationLevel, rarity, undefined, this.random),
       intent?.intentId,
       intent?.intentStateKey,
-      intent ? currentStateKey : undefined,
+      intentSource === 'legacy_text' ? undefined : intent ? currentStateKey : undefined,
     );
   }
 }

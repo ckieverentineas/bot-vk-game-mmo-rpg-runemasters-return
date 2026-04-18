@@ -12,9 +12,9 @@ export class ResetAllocatedStats {
 
   public async execute(vkId: number, intentId?: string, intentStateKey?: string): Promise<PlayerState> {
     const player = await requirePlayerByVkId(this.repository, vkId);
-    const intent = resolveCommandIntent(intentId, intentStateKey);
 
     const currentStateKey = buildResetAllocatedStatsIntentStateKey(player);
+    const intent = resolveCommandIntent(intentId, intentStateKey);
     if (intent && intent.intentStateKey !== currentStateKey) {
       throw new AppError('stale_command_intent', 'Эта кнопка уже устарела. Обновите экран перед повтором команды.');
     }

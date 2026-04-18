@@ -51,7 +51,7 @@ export class GameHandler {
       return;
     }
 
-    const { command, intentId, stateKey } = commandEnvelope;
+    const { command, intentId, stateKey, intentSource } = commandEnvelope;
 
     try {
       if (command === gameCommands.start) {
@@ -127,12 +127,12 @@ export class GameHandler {
           return;
         }
         case gameCommands.equipRune: {
-          const player = await this.services.equipCurrentRune.execute(vkId, intentId ?? undefined, stateKey ?? undefined);
+          const player = await this.services.equipCurrentRune.execute(vkId, intentId ?? undefined, stateKey ?? undefined, intentSource);
           await this.replyWithRuneHub(ctx, player);
           return;
         }
         case gameCommands.unequipRune: {
-          const player = await this.services.unequipCurrentRune.execute(vkId, intentId ?? undefined, stateKey ?? undefined);
+          const player = await this.services.unequipCurrentRune.execute(vkId, intentId ?? undefined, stateKey ?? undefined, intentSource);
           await this.replyWithRuneHub(ctx, player);
           return;
         }
@@ -142,7 +142,7 @@ export class GameHandler {
           return;
         }
         case gameCommands.craftRune: {
-          const player = await this.services.craftRune.execute(vkId, intentId ?? undefined, stateKey ?? undefined);
+          const player = await this.services.craftRune.execute(vkId, intentId ?? undefined, stateKey ?? undefined, intentSource);
           await this.replyWithRuneHub(ctx, player);
           return;
         }
@@ -152,12 +152,12 @@ export class GameHandler {
           return;
         }
         case gameCommands.destroyRune: {
-          const player = await this.services.destroyCurrentRune.execute(vkId, intentId ?? undefined, stateKey ?? undefined);
+          const player = await this.services.destroyCurrentRune.execute(vkId, intentId ?? undefined, stateKey ?? undefined, intentSource);
           await this.replyWithRuneHub(ctx, player);
           return;
         }
         default: {
-          await this.handleDynamicCommand(ctx, vkId, command, intentId, stateKey);
+          await this.handleDynamicCommand(ctx, vkId, command, intentId, stateKey, intentSource);
           return;
         }
       }
@@ -177,7 +177,14 @@ export class GameHandler {
     }
   }
 
-  private async handleDynamicCommand(ctx: Context, vkId: number, command: string, intentId: string | null, stateKey: string | null): Promise<void> {
+  private async handleDynamicCommand(
+    ctx: Context,
+    vkId: number,
+    command: string,
+    intentId: string | null,
+    stateKey: string | null,
+    intentSource: ReturnType<typeof resolveCommandEnvelope>['intentSource'],
+  ): Promise<void> {
     const allocationStat = resolveStatAllocationCommand(command);
     if (allocationStat) {
       const player = await this.services.allocateStatPoint.execute(vkId, allocationStat, intentId ?? undefined, stateKey ?? undefined);
@@ -201,7 +208,7 @@ export class GameHandler {
 
     const rerollStat = resolveRuneStatRerollCommand(command);
     if (rerollStat) {
-      const player = await this.services.rerollCurrentRuneStat.execute(vkId, rerollStat, intentId ?? undefined, stateKey ?? undefined);
+      const player = await this.services.rerollCurrentRuneStat.execute(vkId, rerollStat, intentId ?? undefined, stateKey ?? undefined, intentSource);
       await this.reply(ctx, renderAltar(player), createRuneRerollKeyboard(player));
       return;
     }

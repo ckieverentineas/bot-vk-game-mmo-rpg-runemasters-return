@@ -2,7 +2,7 @@ import { AppError } from '../../../../shared/domain/AppError';
 import type { PlayerState } from '../../../../shared/types/game';
 import { getEquippedRune, getSelectedRune } from '../../../player/domain/player-stats';
 
-import { resolveCommandIntent } from '../../../shared/application/command-intent';
+import { resolveCommandIntent, type CommandIntentSource } from '../../../shared/application/command-intent';
 import { requirePlayerByVkId } from '../../../shared/application/require-player';
 import type { GameRepository } from '../../../shared/application/ports/GameRepository';
 import { buildEquipIntentStateKey } from '../command-intent-state';
@@ -10,10 +10,10 @@ import { buildEquipIntentStateKey } from '../command-intent-state';
 export class EquipCurrentRune {
   public constructor(private readonly repository: GameRepository) {}
 
-  public async execute(vkId: number, intentId?: string, intentStateKey?: string): Promise<PlayerState> {
+  public async execute(vkId: number, intentId?: string, intentStateKey?: string, intentSource: CommandIntentSource = 'payload'): Promise<PlayerState> {
     const player = await requirePlayerByVkId(this.repository, vkId);
-    const intent = resolveCommandIntent(intentId, intentStateKey);
     const currentStateKey = buildEquipIntentStateKey(player);
+    const intent = resolveCommandIntent(intentId, intentStateKey, intentSource);
 
     if (intent && intent.intentStateKey !== currentStateKey) {
       throw new AppError('stale_command_intent', 'Эта кнопка уже устарела. Обновите экран перед повтором команды.');

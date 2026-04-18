@@ -519,7 +519,8 @@ Runemasters Return должен решать это через **школы ру
   - [ ] broader non-rune / legacy-text multi-budget dedupe
     - [x] profile stat allocation / reset same-intent dedupe через keyboard payloads
     - [x] rune equip / unequip same-intent dedupe и stale loadout recovery через keyboard payloads
-    - [ ] legacy text-command и остальные non-rune mutation paths
+    - [x] legacy text same-intent dedupe для rune craft / reroll / destroy через server-owned message ids
+    - [ ] остальные legacy text-command и non-rune mutation paths
 - [x] Зафиксировать RNG authority rules для reroll / drop / craft
 - [x] Подготовить alt-account / guild / PvP abuse checklist
 - [x] Добавить обязательные concurrency tests на critical use cases
@@ -968,3 +969,4 @@ Runemasters Return должен решать это через **школы ру
 - **2026-04-18:** добавлен release-gate checklist v1 для alt-account abuse, circle/social-lite collusion и optional async PvP abuse без расширения scope до guild wars, trading или real-time PvP.
 - **2026-04-18:** profile stat allocation и reset переведены на command intent dedupe для keyboard payloads; stale/retry profile и rune mutation replies теперь стараются вернуть игрока в актуальный контекст вместо выброса в меню.
 - **2026-04-18:** rune equip / unequip переведены на command intent dedupe для keyboard payloads; старые кнопки экипировки больше не должны тихо применять loadout к уже изменившемуся выбору руны.
+- **2026-04-18:** legacy text `создать` / `сломать` / `~stat` получили server-owned message intent ids; duplicate text replay теперь должен возвращать canonical rune mutation result вместо повторного spend/refund.

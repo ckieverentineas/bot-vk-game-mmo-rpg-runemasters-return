@@ -394,7 +394,7 @@ export class PrismaGameRepository implements GameRepository {
       return existing;
     }
 
-    if (!currentStateKey || currentStateKey !== stateKey) {
+    if (currentStateKey !== undefined && currentStateKey !== stateKey) {
       throw new AppError('stale_command_intent', 'Эта кнопка уже устарела. Обновите экран перед повтором команды.');
     }
 
@@ -531,6 +531,32 @@ export class PrismaGameRepository implements GameRepository {
     }
 
     return this.mapPlayer(created.player);
+  }
+
+  public async getCommandIntentResult(playerId: number, intentId: string): Promise<{ status: 'APPLIED' | 'PENDING'; result?: PlayerState } | null> {
+    const existing = await this.prisma.commandIntentRecord.findUnique({
+      where: {
+        playerId_intentId: {
+          playerId,
+          intentId,
+        },
+      },
+    });
+
+    if (!existing) {
+      return null;
+    }
+
+    if (existing.status === 'APPLIED') {
+      return {
+        status: 'APPLIED',
+        result: parseCommandIntentResultSnapshot(existing.resultSnapshot),
+      };
+    }
+
+    return {
+      status: 'PENDING',
+    };
   }
 
   public async saveAllocation(
