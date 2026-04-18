@@ -1,7 +1,6 @@
 import type { Context } from 'vk-io';
 
 import type { AppServices } from '../../app/composition-root';
-import { resolveCommandIntent } from '../../modules/shared/application/command-intent';
 import { AppError, isAppError } from '../../shared/domain/AppError';
 import type { BattleActionType, BattleView, PlayerState } from '../../shared/types/game';
 import { Logger } from '../../utils/logger';
@@ -277,13 +276,22 @@ export class GameHandler {
       }
 
       if (command === gameCommands.confirmDeletePlayer) {
-        const player = await this.services.getPlayerProfile.execute(vkId);
-        await this.reply(
-          ctx,
-          [error.message, '', renderProfile(player)].join('\n'),
-          createProfileKeyboard(player),
-        );
-        return true;
+        try {
+          const player = await this.services.getPlayerProfile.execute(vkId);
+          await this.reply(
+            ctx,
+            [error.message, '', renderProfile(player)].join('\n'),
+            createProfileKeyboard(player),
+          );
+          return true;
+        } catch {
+          if (error.code === 'command_retry_pending') {
+            await this.reply(ctx, 'Персонаж удалён. Можно начать заново в любой момент.', createEntryKeyboard());
+            return true;
+          }
+
+          return false;
+        }
       }
 
       if (command === gameCommands.explore) {
@@ -374,14 +382,7 @@ export class GameHandler {
     intentStateKey?: string,
     intentSource: ReturnType<typeof resolveCommandEnvelope>['intentSource'] = null,
   ): Promise<void> {
-    const player = await this.services.getPlayerProfile.execute(vkId);
-    const intent = resolveCommandIntent(intentId, intentStateKey, intentSource, false);
-
-    if (!intent || intent.intentStateKey !== player.updatedAt) {
-      throw new AppError('stale_command_intent', 'Это подтверждение уже устарело. Я вернул вас в профиль: начните удаление заново, если всё ещё хотите удалить персонажа.');
-    }
-
-    await this.services.deletePlayer.execute(vkId, player.updatedAt);
+    await this.services.deletePlayer.execute(vkId, intentId, intentStateKey, intentSource);
     await this.reply(ctx, 'Персонаж удалён. Можно начать заново в любой момент.', createEntryKeyboard());
   }
 

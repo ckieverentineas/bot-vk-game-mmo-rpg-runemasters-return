@@ -16,6 +16,7 @@ Covered by intent-based dedupe:
 - `equipRune`
 - `unequipRune`
 - keyboard rune hub navigation (`previousRunePage`, `nextRunePage`, `selectRunePageSlot`)
+- `confirmDeletePlayer`
 - `enterTutorialMode`
 - `skipTutorial`
 - `returnToAdventure`
@@ -56,7 +57,8 @@ If the same `intentId` arrives after the relevant state already changed, the com
 
 ## Persistence rule
 
-Use `CommandIntentRecord` as the authoritative replay receipt for scoped commands.
+Use `CommandIntentRecord` as the authoritative replay receipt for scoped commands that keep the player aggregate alive.
+Use `DeletePlayerReceipt` as the authoritative replay receipt for delete confirmation, because successful apply removes the player row.
 
 Fields of interest:
 
@@ -110,6 +112,12 @@ Fields of interest:
 - duplicate same-intent arrival returns the stored post-navigation rune hub state instead of retargeting a fresher selection;
 - stale page or slot buttons restore the latest canonical rune hub instead of silently selecting another rune.
 
+### Delete player confirmation
+
+- first arrival deletes the currently confirmed player exactly once for the rendered profile snapshot;
+- duplicate same-intent arrival returns the same canonical delete success instead of falling through `player_not_found` after the player row is gone;
+- stale delete confirmation must never delete a newer player state or a re-registered character on the same VK account.
+
 ### Enter tutorial mode
 
 - first arrival opens the current tutorial screen exactly once for the rendered exploration snapshot;
@@ -141,6 +149,7 @@ Fields of interest:
 ## Transport rule
 
 - keyboard payload is the current source of intent ids;
+- delete confirmation uses keyboard-issued `intentId` + profile `updatedAt` stateKey and is replayed through an account-scoped delete receipt;
 - server-owned legacy text ids currently protect rune craft / reroll / destroy / equip / unequip, profile stat allocation / reset, tutorial navigation (`пропустить обучение`, `в приключения`, `в мир`), and battle text inputs (`атака`, `защита`, `навыки`, `спелл`);
 - server-owned legacy text ids also protect tutorial entry via `локация` / `обучение`;
 - server-owned legacy text ids also protect exploration entry via `исследовать`;
@@ -164,6 +173,7 @@ Fields of interest:
 - same-intent return to adventure -> one canonical post-return navigation state only;
 - same-intent battle attack / defend / rune skill -> one canonical post-action battle result only;
 - same-intent rune page / slot navigation -> one canonical post-navigation rune hub state only;
+- same-intent delete confirmation -> one canonical delete success only;
 - same-intent tutorial entry from main menu / legacy text -> one canonical tutorial context only;
 - same-intent explore from main menu / tutorial / battle-result CTA -> one canonical battle only;
 - stale reused intent after state change -> explicit `stale_command_intent` style rejection;

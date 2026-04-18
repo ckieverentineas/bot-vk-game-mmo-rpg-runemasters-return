@@ -533,8 +533,45 @@ describe('GameHandler smoke', () => {
 
     await handler.handle(ctx as never);
 
-    expect(services.deletePlayer.execute).toHaveBeenCalledWith(1001, player.updatedAt);
+    expect(services.deletePlayer.execute).toHaveBeenCalledWith(1001, 'intent-delete-1', player.updatedAt, 'payload');
     expect(getReplyCalls(ctx)[0]?.message).toContain('Персонаж удалён');
+  });
+
+  it('повторяет одинаковый success-ack для дубликата подтверждения удаления', async () => {
+    const services = createServices();
+    const handler = new GameHandler(services);
+    const player = createPlayer();
+    const first = createFakeContext({ command: '__confirm_delete_player__', intentId: 'intent-delete-3', stateKey: player.updatedAt });
+    const second = createFakeContext({ command: '__confirm_delete_player__', intentId: 'intent-delete-3', stateKey: player.updatedAt });
+
+    await handler.handle(first as never);
+    await handler.handle(second as never);
+
+    expect(services.deletePlayer.execute).toHaveBeenNthCalledWith(1, 1001, 'intent-delete-3', player.updatedAt, 'payload');
+    expect(services.deletePlayer.execute).toHaveBeenNthCalledWith(2, 1001, 'intent-delete-3', player.updatedAt, 'payload');
+    expect(getReplyCalls(first)[0]?.message).toContain('Персонаж удалён');
+    expect(getReplyCalls(second)[0]?.message).toContain('Персонаж удалён');
+  });
+
+  it('восстанавливает канонический delete success после retry-pending дубля, если первый delete уже закоммитился', async () => {
+    const services = createServices();
+    const handler = new GameHandler(services);
+    const player = createPlayer();
+    const first = createFakeContext({ command: '__confirm_delete_player__', intentId: 'intent-delete-4', stateKey: player.updatedAt });
+    const second = createFakeContext({ command: '__confirm_delete_player__', intentId: 'intent-delete-4', stateKey: player.updatedAt });
+
+    vi.mocked(services.deletePlayer.execute)
+      .mockResolvedValueOnce(undefined)
+      .mockRejectedValueOnce(new AppError('command_retry_pending', 'Команда уже обрабатывается. Дождитесь ответа и обновите экран.'));
+    vi.mocked(services.getPlayerProfile.execute).mockRejectedValueOnce(
+      new AppError('player_not_found', 'Персонаж не найден. Нажмите «🎮 Начать», чтобы создать нового мастера.'),
+    );
+
+    await handler.handle(first as never);
+    await handler.handle(second as never);
+
+    expect(getReplyCalls(second)[0]?.message).toContain('Персонаж удалён');
+    expect(JSON.stringify(getReplyCalls(second)[0]?.keyboard)).toContain('начать');
   });
 
   it('возвращает игрока в профиль при устаревшем подтверждении удаления', async () => {
@@ -542,9 +579,13 @@ describe('GameHandler smoke', () => {
     const handler = new GameHandler(services);
     const ctx = createFakeContext({ command: '__confirm_delete_player__', intentId: 'intent-delete-2', stateKey: 'stale-delete-state' });
 
+    vi.mocked(services.deletePlayer.execute).mockRejectedValueOnce(
+      new AppError('stale_command_intent', 'Это подтверждение уже устарело. Я вернул вас в профиль: начните удаление заново, если всё ещё хотите удалить персонажа.'),
+    );
+
     await handler.handle(ctx as never);
 
-    expect(services.deletePlayer.execute).not.toHaveBeenCalled();
+    expect(services.deletePlayer.execute).toHaveBeenCalledWith(1001, 'intent-delete-2', 'stale-delete-state', 'payload');
     const replies = getReplyCalls(ctx);
     expect(replies[0]?.message).toContain('Это подтверждение уже устарело');
     expect(replies[0]?.message).toContain('👤 Профиль');

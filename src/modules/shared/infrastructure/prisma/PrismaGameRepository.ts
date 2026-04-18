@@ -205,6 +205,52 @@ const parsePersistedBattleSnapshot = (value: string | null): ParsedBattleSnapsho
 
 const parseCommandIntentResultSnapshot = <T>(value: string): T => JSON.parse(value) as T;
 
+interface DeletePlayerReceiptSnapshot {
+  readonly vkId: number;
+  readonly deletedPlayerId: number;
+  readonly deletedPlayerUpdatedAt: string;
+  readonly deletedPlayerLevel: number;
+  readonly deletedRuneCount: number;
+  readonly deletedAt: string;
+}
+
+const deletePlayerReceiptRetentionMs = 7 * 24 * 60 * 60 * 1000;
+
+const buildDeletePlayerReceiptSnapshot = (
+  vkId: number,
+  player: { id: number; updatedAt: Date; level: number; runes: readonly { id: string }[] },
+): DeletePlayerReceiptSnapshot => ({
+  vkId,
+  deletedPlayerId: player.id,
+  deletedPlayerUpdatedAt: player.updatedAt.toISOString(),
+  deletedPlayerLevel: player.level,
+  deletedRuneCount: player.runes.length,
+  deletedAt: new Date().toISOString(),
+});
+
+const isDeletePlayerReceiptSnapshot = (value: unknown): value is DeletePlayerReceiptSnapshot => {
+  if (typeof value !== 'object' || value === null) {
+    return false;
+  }
+
+  const snapshot = value as Record<string, unknown>;
+  return typeof snapshot.vkId === 'number'
+    && typeof snapshot.deletedPlayerId === 'number'
+    && typeof snapshot.deletedPlayerUpdatedAt === 'string'
+    && typeof snapshot.deletedPlayerLevel === 'number'
+    && typeof snapshot.deletedRuneCount === 'number'
+    && typeof snapshot.deletedAt === 'string';
+};
+
+const parseDeletePlayerReceiptSnapshot = (value: string): DeletePlayerReceiptSnapshot => {
+  const parsed = JSON.parse(value) as unknown;
+  if (!isDeletePlayerReceiptSnapshot(parsed)) {
+    throw new AppError('delete_receipt_invalid', 'Не удалось подтвердить состояние удаления персонажа. Начните заново через «🎮 Начать».');
+  }
+
+  return parsed;
+};
+
 const hydrateBattlePlayerSnapshot = (
   playerId: number,
   snapshot: BattleView['player'],
@@ -449,6 +495,49 @@ export class PrismaGameRepository implements GameRepository {
     };
   }
 
+  private async getDeletePlayerReceiptStatus(
+    tx: TransactionClient,
+    vkId: number,
+    intentId: string,
+    stateKey: string,
+  ): Promise<'APPLIED' | 'PENDING' | null> {
+    const existing = await tx.deletePlayerReceipt.findUnique({
+      where: {
+        scopeVkId_intentId: {
+          scopeVkId: vkId,
+          intentId,
+        },
+      },
+    });
+
+    if (!existing) {
+      return null;
+    }
+
+    if (existing.stateKey !== stateKey) {
+      throw new AppError('stale_command_intent', 'Это подтверждение уже устарело. Откройте профиль и начните заново, если всё ещё хотите удалить персонажа.');
+    }
+
+    if (existing.expiresAt.getTime() <= Date.now()) {
+      await tx.deletePlayerReceipt.delete({
+        where: {
+          scopeVkId_intentId: {
+            scopeVkId: vkId,
+            intentId,
+          },
+        },
+      });
+      throw new AppError('stale_command_intent', 'Это подтверждение уже устарело. Откройте профиль и начните заново, если всё ещё хотите удалить персонажа.');
+    }
+
+    if (existing.status === 'APPLIED') {
+      parseDeletePlayerReceiptSnapshot(existing.resultSnapshot);
+      return 'APPLIED';
+    }
+
+    return 'PENDING';
+  }
+
   public async findPlayerByVkId(vkId: number): Promise<PlayerState | null> {
     const player = await this.prisma.player.findFirst({
       where: {
@@ -496,6 +585,111 @@ export class PrismaGameRepository implements GameRepository {
       await tx.user.delete({
         where: { vkId },
       });
+    });
+  }
+
+  public async confirmDeletePlayer(vkId: number, intentId: string, stateKey: string): Promise<void> {
+    await this.prisma.$transaction(async (tx) => {
+      const existing = await this.getDeletePlayerReceiptStatus(tx, vkId, intentId, stateKey);
+      if (existing === 'APPLIED') {
+        return;
+      }
+
+      if (existing === 'PENDING') {
+        throw new AppError('command_retry_pending', 'Команда уже обрабатывается. Дождитесь ответа и обновите экран.');
+      }
+
+      const player = await tx.player.findFirst({
+        where: {
+          user: {
+            vkId,
+          },
+        },
+        select: {
+          id: true,
+          level: true,
+          updatedAt: true,
+          runes: {
+            select: {
+              id: true,
+            },
+          },
+        },
+      });
+
+      if (!player) {
+        throw new AppError('player_not_found', 'Персонаж не найден. Нажмите «🎮 Начать», чтобы создать нового мастера.');
+      }
+
+      if (player.updatedAt.toISOString() !== stateKey) {
+        throw new AppError('stale_command_intent', 'Это подтверждение уже устарело. Откройте профиль и начните заново, если всё ещё хотите удалить персонажа.');
+      }
+
+      try {
+        await tx.deletePlayerReceipt.create({
+          data: {
+            scopeVkId: vkId,
+            intentId,
+            stateKey,
+            expiresAt: new Date(Date.now() + deletePlayerReceiptRetentionMs),
+          },
+        });
+      } catch (error) {
+        if (!(error instanceof Prisma.PrismaClientKnownRequestError) || error.code !== 'P2002') {
+          throw error;
+        }
+
+        const retried = await this.getDeletePlayerReceiptStatus(tx, vkId, intentId, stateKey);
+        if (retried === 'APPLIED') {
+          return;
+        }
+
+        throw new AppError('command_retry_pending', 'Команда уже обрабатывается. Дождитесь ответа и обновите экран.');
+      }
+
+      try {
+        const deletedPlayer = await tx.player.deleteMany({
+          where: {
+            id: player.id,
+            updatedAt: new Date(stateKey),
+            user: {
+              vkId,
+            },
+          },
+        });
+
+        if (deletedPlayer.count === 0) {
+          throw new AppError('stale_command_intent', 'Это подтверждение уже устарело. Откройте профиль и начните заново, если всё ещё хотите удалить персонажа.');
+        }
+
+        await tx.user.delete({
+          where: { vkId },
+        });
+
+        await tx.deletePlayerReceipt.update({
+          where: {
+            scopeVkId_intentId: {
+              scopeVkId: vkId,
+              intentId,
+            },
+          },
+          data: {
+            status: 'APPLIED',
+            resultSnapshot: stringifyJson(buildDeletePlayerReceiptSnapshot(vkId, player), '{}'),
+            appliedAt: new Date(),
+          },
+        });
+      } catch (error) {
+        await tx.deletePlayerReceipt.deleteMany({
+          where: {
+            scopeVkId: vkId,
+            intentId,
+            stateKey,
+            status: 'PENDING',
+          },
+        });
+        throw error;
+      }
     });
   }
 

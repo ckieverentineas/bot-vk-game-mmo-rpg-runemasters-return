@@ -138,6 +138,7 @@ describe.sequential('PrismaGameRepository concurrency rails', () => {
   });
 
   beforeEach(async () => {
+    await prisma.deletePlayerReceipt.deleteMany();
     await prisma.gameLog.deleteMany();
     await prisma.rewardLedgerRecord.deleteMany();
     await prisma.battleSession.deleteMany();
@@ -166,6 +167,44 @@ describe.sequential('PrismaGameRepository concurrency rails', () => {
 
     expect(users).toBe(1);
     expect(players).toBe(1);
+  });
+
+  it('treats parallel delete confirmations for one intent as one destructive action', async () => {
+    const player = await createPlayer(2032);
+    const intentId = 'intent-delete-2032';
+    const stateKey = player.updatedAt;
+
+    const results = await Promise.allSettled([
+      repository.confirmDeletePlayer(2032, intentId, stateKey),
+      repository.confirmDeletePlayer(2032, intentId, stateKey),
+    ]);
+
+    const rejected = results.filter((result): result is PromiseRejectedResult => result.status === 'rejected');
+    if (rejected.length > 0) {
+      expect(rejected).toHaveLength(1);
+      expect(rejected[0].reason).toMatchObject({ code: 'command_retry_pending' });
+    }
+
+    await expect(repository.confirmDeletePlayer(2032, intentId, stateKey)).resolves.toBeUndefined();
+
+    expect(await prisma.user.count({ where: { vkId: 2032 } })).toBe(0);
+    expect(await prisma.player.count({ where: { user: { vkId: 2032 } } })).toBe(0);
+    expect(await prisma.deletePlayerReceipt.count({ where: { scopeVkId: 2032, intentId, status: 'APPLIED' } })).toBe(1);
+  });
+
+  it('rejects an old delete confirmation after the player was recreated', async () => {
+    const original = await createPlayer(2033);
+    const staleStateKey = original.updatedAt;
+
+    await repository.confirmDeletePlayer(2033, 'intent-delete-2033-success', staleStateKey);
+    const recreated = await createPlayer(2033);
+
+    await expect(repository.confirmDeletePlayer(2033, 'intent-delete-2033-stale', staleStateKey)).rejects.toMatchObject({
+      code: 'stale_command_intent',
+    });
+
+    expect(recreated.playerId).not.toBe(original.playerId);
+    expect(await prisma.user.count({ where: { vkId: 2033 } })).toBe(1);
   });
 
   it('reuses one active battle under parallel createBattle calls', async () => {

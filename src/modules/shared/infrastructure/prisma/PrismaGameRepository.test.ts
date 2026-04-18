@@ -264,9 +264,11 @@ const createPrismaMock = () => {
       findUnique: vi.fn(),
       update: vi.fn(),
       updateMany: vi.fn(),
+      deleteMany: vi.fn(),
     },
     user: {
       create: vi.fn(),
+      delete: vi.fn(),
     },
     playerStatAllocation: {
       update: vi.fn(),
@@ -293,6 +295,13 @@ const createPrismaMock = () => {
       create: vi.fn(),
       findUnique: vi.fn(),
       update: vi.fn(),
+    },
+    deletePlayerReceipt: {
+      create: vi.fn(),
+      findUnique: vi.fn(),
+      update: vi.fn(),
+      delete: vi.fn(),
+      deleteMany: vi.fn(),
     },
     battleSession: {
       findFirst: vi.fn(),
@@ -356,6 +365,105 @@ describe('PrismaGameRepository release hardening', () => {
     expect(result.created).toBe(false);
     expect(result.recoveredFromRace).toBe(true);
     expect(result.player.playerId).toBe(1);
+  });
+
+  it('replays a confirmed delete intent without requiring the deleted player row', async () => {
+    const { repository, tx } = createPrismaMock();
+
+    tx.deletePlayerReceipt.findUnique.mockResolvedValue({
+      stateKey: '2026-04-12T00:00:00.000Z',
+      status: 'APPLIED',
+      resultSnapshot: JSON.stringify({
+        vkId: 1001,
+        deletedPlayerId: 1,
+        deletedPlayerUpdatedAt: '2026-04-12T00:00:00.000Z',
+        deletedPlayerLevel: 3,
+        deletedRuneCount: 0,
+        deletedAt: '2026-04-18T00:00:00.000Z',
+      }),
+      expiresAt: new Date('2026-04-25T00:00:00.000Z'),
+    });
+
+    await expect(repository.confirmDeletePlayer(1001, 'intent-delete-1', '2026-04-12T00:00:00.000Z')).resolves.toBeUndefined();
+
+    expect(tx.player.findFirst).not.toHaveBeenCalled();
+    expect(tx.player.deleteMany).not.toHaveBeenCalled();
+    expect(tx.user.delete).not.toHaveBeenCalled();
+  });
+
+  it('deletes the player once and finalizes the delete receipt', async () => {
+    const { repository, tx } = createPrismaMock();
+
+    tx.deletePlayerReceipt.findUnique.mockResolvedValue(null);
+    tx.player.findFirst.mockResolvedValue({
+      id: 1,
+      level: 3,
+      updatedAt: new Date('2026-04-12T00:00:00.000Z'),
+      runes: [{ id: 'rune-1' }, { id: 'rune-2' }],
+    });
+    tx.deletePlayerReceipt.create.mockResolvedValue({ id: 'receipt-1' });
+    tx.player.deleteMany.mockResolvedValue({ count: 1 });
+    tx.user.delete.mockResolvedValue({ id: 10, vkId: 1001 });
+    tx.deletePlayerReceipt.update.mockResolvedValue({ id: 'receipt-1' });
+
+    await expect(repository.confirmDeletePlayer(1001, 'intent-delete-2', '2026-04-12T00:00:00.000Z')).resolves.toBeUndefined();
+
+    expect(tx.deletePlayerReceipt.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
+        scopeVkId: 1001,
+        intentId: 'intent-delete-2',
+        stateKey: '2026-04-12T00:00:00.000Z',
+      }),
+    }));
+    expect(tx.player.deleteMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({
+        id: 1,
+        updatedAt: new Date('2026-04-12T00:00:00.000Z'),
+      }),
+    }));
+    expect(tx.user.delete).toHaveBeenCalledWith({ where: { vkId: 1001 } });
+    expect(tx.deletePlayerReceipt.update).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
+        status: 'APPLIED',
+        appliedAt: expect.any(Date),
+      }),
+    }));
+  });
+
+  it('rejects stale delete confirmations before reserving a delete receipt', async () => {
+    const { repository, tx } = createPrismaMock();
+
+    tx.deletePlayerReceipt.findUnique.mockResolvedValue(null);
+    tx.player.findFirst.mockResolvedValue({
+      id: 1,
+      level: 3,
+      updatedAt: new Date('2026-04-13T00:00:00.000Z'),
+      runes: [],
+    });
+
+    await expect(repository.confirmDeletePlayer(1001, 'intent-delete-3', '2026-04-12T00:00:00.000Z')).rejects.toMatchObject({
+      code: 'stale_command_intent',
+    });
+
+    expect(tx.deletePlayerReceipt.create).not.toHaveBeenCalled();
+    expect(tx.player.deleteMany).not.toHaveBeenCalled();
+  });
+
+  it('returns retry-pending for duplicate delete confirmation while the receipt is still pending', async () => {
+    const { repository, tx } = createPrismaMock();
+
+    tx.deletePlayerReceipt.findUnique.mockResolvedValue({
+      stateKey: '2026-04-12T00:00:00.000Z',
+      status: 'PENDING',
+      resultSnapshot: '{}',
+      expiresAt: new Date('2026-04-25T00:00:00.000Z'),
+    });
+
+    await expect(repository.confirmDeletePlayer(1001, 'intent-delete-4', '2026-04-12T00:00:00.000Z')).rejects.toMatchObject({
+      code: 'command_retry_pending',
+    });
+
+    expect(tx.player.findFirst).not.toHaveBeenCalled();
   });
 
   it('returns canonical crafted result for a duplicate command intent without spending again', async () => {

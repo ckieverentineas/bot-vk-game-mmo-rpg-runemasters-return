@@ -45,6 +45,13 @@
 - duplicate same-intent profile mutation обязан вернуть canonical stored profile, а не второй spend/refund;
 - stale profile button после уже применённого изменения обязан быть отклонён как `stale_command_intent`, а не применён поверх нового профиля.
 
+## Destructive confirmation rules
+
+- `__confirm_delete_player__` использует keyboard-issued `intentId` + profile `updatedAt` stateKey;
+- delete confirm replay хранится в account-scoped `DeletePlayerReceipt`, чтобы canonical success переживал удаление player row;
+- duplicate same-intent delete confirm обязан вернуть тот же success-ack, а не `player_not_found` или вторую попытку удаления;
+- stale delete confirm не должен удалять более свежего персонажа или нового героя, созданного после удаления на том же `vkId`.
+
 ## Exploration navigation rules
 
 - `location` / `локация` / `обучение` используют keyboard-issued `intentId` + exploration `stateKey` либо server-owned legacy text intent id;
@@ -70,6 +77,7 @@
 - stale / retry tutorial-entry reply обязан восстанавливать актуальный tutorial/adventure экран с понятным следующим CTA.
 - stale / retry tutorial-navigation reply обязан восстанавливать актуальный tutorial/adventure экран с правильным следующим CTA.
 - stale / retry explore reply обязан восстанавливать либо текущий бой, либо актуальный exploration screen с правильной кнопкой следующего боя.
+- duplicate delete confirm reply обязан повторять каноническое сообщение об успешном удалении и оставлять игрока на entry CTA.
 
 ## Logging
 
@@ -80,4 +88,4 @@
 
 - explicit RNG authority rules for reroll / drop / craft are now defined in `docs/platform/rng-authority-rules.md`, but broader legacy-text and non-profile command replay still remains;
 - migration fixtures for versioned persisted contracts;
-- remaining legacy text-command repeated actions beyond guarded rune mutations / profile stat allocation / reset / tutorial navigation / exploration entry / battle actions, plus non-rune mutations beyond guarded rune loadout buttons.
+- remaining legacy text-command repeated actions beyond guarded rune mutations / profile stat allocation / reset / tutorial navigation / exploration entry / battle actions, plus non-rune mutations beyond guarded rune loadout buttons; delete confirmation exact-once is now covered.

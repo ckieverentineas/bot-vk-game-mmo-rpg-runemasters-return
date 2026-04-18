@@ -632,6 +632,43 @@
 - duplicate `локация` / `обучение` больше не должны возвращать игрока в устаревший tutorial screen после перехода в adventure flow;
 - старый tutorial-entry replay больше не должен маскировать активный бой или более свежий exploration context.
 
+## [0.41] - 2026-04-18
+
+### Commit
+
+- `85f3b06` — `docs: sync plan and changelog`
+
+### Changed
+
+- `PLAN.md` синхронизирован с shipped retry-handling slices для `explore` и `enter tutorial mode`;
+- `CHANGELOG.md` получил записи `0.39` и `0.40`, чтобы release history снова соответствовала фактическим коммитам и roadmap progress.
+
+### Fixed
+
+- журнал версии и roadmap log больше не отстают от уже закоммиченных retry-handling изменений.
+
+## [0.42] - 2026-04-19
+
+### Commit
+
+- `worktree` — `fix: exact-once delete confirmation replay`
+
+### Added
+
+- account-scoped replay receipt [`DeletePlayerReceipt`](prisma/schema.prisma) и миграция [`prisma/migrations/20260418230500_add_delete_player_receipts/migration.sql`](prisma/migrations/20260418230500_add_delete_player_receipts/migration.sql) для destructive delete-confirm flow;
+- repository/unit/concurrency coverage для delete-confirm retries в [`src/modules/shared/infrastructure/prisma/PrismaGameRepository.test.ts`](src/modules/shared/infrastructure/prisma/PrismaGameRepository.test.ts), [`src/modules/shared/infrastructure/prisma/PrismaGameRepository.concurrency.test.ts`](src/modules/shared/infrastructure/prisma/PrismaGameRepository.concurrency.test.ts), [`src/modules/player/application/use-cases/DeletePlayer.test.ts`](src/modules/player/application/use-cases/DeletePlayer.test.ts) и [`src/vk/handlers/gameHandler.smoke.test.ts`](src/vk/handlers/gameHandler.smoke.test.ts).
+
+### Changed
+
+- [`DeletePlayer`](src/modules/player/application/use-cases/DeletePlayer.ts) и delete-confirm handler path теперь работают через scoped `intentId + stateKey`, а не только через ad-hoc stale check по `updatedAt`;
+- [`PrismaGameRepository`](src/modules/shared/infrastructure/prisma/PrismaGameRepository.ts) теперь подтверждает удаление через canonical receipt, который переживает удаление player row и безопасно отвечает на duplicate same-intent retry;
+- retry docs и `PLAN.md` синхронизированы под new delete-confirm exact-once rail.
+
+### Fixed
+
+- duplicate `🗑️ Да, удалить` больше не должен сваливаться в `player_not_found` после уже успешного удаления персонажа;
+- stale delete confirm больше не должен рисковать удалением нового персонажа, созданного на том же `vkId` после предыдущего удаления.
+
 ## Шаблон следующей записи
 
 ### [0.03] - YYYY-MM-DD

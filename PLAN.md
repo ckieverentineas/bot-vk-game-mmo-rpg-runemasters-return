@@ -527,6 +527,7 @@ Runemasters Return должен решать это через **школы ру
     - [x] skip tutorial / return to adventure same-intent dedupe через keyboard payloads и legacy text ids
     - [x] explore location same-intent dedupe через keyboard payloads и legacy text ids
     - [x] enter tutorial mode same-intent dedupe через keyboard payloads и legacy text ids
+    - [x] delete confirm same-intent dedupe через keyboard payloads и account-scoped delete receipt
     - [ ] остальные legacy text-command и non-rune mutation paths
 - [x] Зафиксировать RNG authority rules для reroll / drop / craft
 - [x] Подготовить alt-account / guild / PvP abuse checklist
@@ -988,3 +989,4 @@ Runemasters Return должен решать это через **школы ру
 - **2026-04-18:** duplicate first-start race на `начать` теперь должен сводиться к одному canonical игроку; проигравшая ветка creation race возвращает существующего мастера без технической ошибки и без второго `player_registered` log.
 - **2026-04-18:** `исследовать` и battle-result CTA переведены на command intent replay rail; duplicate same-intent encounter entry теперь возвращает canonical battle, а stuck enemy-turn recovery больше не должен оставлять игрока в подвешенном активном бою.
 - **2026-04-18:** `локация` / `обучение` переведены на command intent replay rail; duplicate tutorial-entry input теперь возвращает canonical tutorial state только пока exploration state не успел устареть и больше не маскирует активный бой или более свежий adventure context.
+- **2026-04-19:** `__confirm_delete_player__` переведён на exact-once replay rail через account-scoped `DeletePlayerReceipt`; duplicate same-intent confirm теперь возвращает canonical delete success и не должен падать в `player_not_found` после уже успешного удаления.

@@ -89,6 +89,7 @@ export interface GameRepository {
   findPlayerByVkId(vkId: number): Promise<PlayerState | null>;
   findPlayerById(playerId: number): Promise<PlayerState | null>;
   deletePlayerByVkId(vkId: number, expectedUpdatedAt?: string): Promise<void>;
+  confirmDeletePlayer(vkId: number, intentId: string, stateKey: string): Promise<void>;
   createPlayer(vkId: number): Promise<CreatePlayerResult>;
   getCommandIntentResult<TResult = PlayerState>(
     playerId: number,

@@ -167,6 +167,22 @@ model CommandIntentRecord {
   @@index([playerId, commandKey])
 }
 
+model DeletePlayerReceipt {
+  id             String   @id @default(cuid())
+  scopeVkId      Int
+  intentId       String
+  stateKey       String
+  status         String   @default("PENDING")
+  resultSnapshot String   @default("{}")
+  expiresAt      DateTime
+  appliedAt      DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([scopeVkId, intentId])
+  @@index([scopeVkId, status])
+}
+
 model Biome {
   id           Int           @id @default(autoincrement())
   code         String        @unique
