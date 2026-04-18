@@ -516,6 +516,7 @@ Runemasters Return должен решать это через **школы ру
 - [ ] Зафиксировать repeated command / retry handling
   - [x] battle mutation retries и stale overwrite rules
   - [x] keyboard battle action same-intent dedupe и canonical replay
+  - [x] legacy text battle action same-intent dedupe через server-owned message ids
   - [x] rune mutation same-intent dedupe через keyboard payloads
   - [ ] broader non-rune / legacy-text multi-budget dedupe
     - [x] profile stat allocation / reset same-intent dedupe через keyboard payloads
@@ -981,4 +982,5 @@ Runemasters Return должен решать это через **школы ру
 - **2026-04-18:** `локация` / `обучение` больше не должны выдёргивать игрока из активного боя в tutorial screen; при активном бою команда теперь безопасно возвращает текущий battle context вместо ложного экрана обучения.
 - **2026-04-18:** `пропустить обучение`, `в приключения` и alias `в мир` переведены на command intent replay rail; duplicate tutorial-navigation commands теперь возвращают canonical exploration state, восстанавливают актуальный tutorial/adventure контекст при stale/pending ветках и не применяются поверх активного боя.
 - **2026-04-18:** keyboard battle inputs `атака` / `защита` / `рунное действие` переведены на command intent replay rail; duplicate same-intent turn input теперь должен возвращать canonical battle result вместо повторного разрешения хода.
+- **2026-04-18:** legacy text battle inputs `атака` / `защита` / `навыки` / `спелл` переведены на command intent replay rail; duplicate same-message turn input теперь должен возвращать canonical battle result вместо повторного разрешения хода.
 - **2026-04-18:** duplicate first-start race на `начать` теперь должен сводиться к одному canonical игроку; проигравшая ветка creation race возвращает существующего мастера без технической ошибки и без второго `player_registered` log.

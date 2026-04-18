@@ -22,6 +22,10 @@ const supportsLegacyTextIntent = (command: string): boolean => (
   || command === gameCommands.skipTutorial
   || command === gameCommands.returnToAdventure
   || command === gameCommands.resetStats
+  || command === gameCommands.attack
+  || command === gameCommands.defend
+  || command === gameCommands.skills
+  || command === gameCommands.spell
   || resolveStatAllocationCommand(command) !== null
   || resolveRuneStatRerollCommand(command) !== null
 );

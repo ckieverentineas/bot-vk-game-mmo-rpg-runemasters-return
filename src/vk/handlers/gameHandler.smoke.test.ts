@@ -435,6 +435,46 @@ describe('GameHandler smoke', () => {
     expect(getReplyCalls(ctx)[0]?.message).toContain('🎯 Следующая цель: начните «⚔️ Новый бой»');
   });
 
+  it('выводит server-owned legacy intent для текстовой атаки в бою', async () => {
+    const services = createServices();
+    const handler = new GameHandler(services);
+    const ctx = createFakeContext({ text: 'атака', id: 513, conversationMessageId: 89, peerId: 2000000001 });
+
+    await handler.handle(ctx as never);
+
+    expect(services.performBattleAction.execute).toHaveBeenCalledWith(1001, 'ATTACK', 'legacy-text:2000000001:1001:89:атака', undefined, 'legacy_text');
+  });
+
+  it('выводит server-owned legacy intent для текстового блока в бою', async () => {
+    const services = createServices();
+    const handler = new GameHandler(services);
+    const ctx = createFakeContext({ text: 'блок', id: 514, conversationMessageId: 90, peerId: 2000000001 });
+
+    await handler.handle(ctx as never);
+
+    expect(services.performBattleAction.execute).toHaveBeenCalledWith(1001, 'DEFEND', 'legacy-text:2000000001:1001:90:защита', undefined, 'legacy_text');
+  });
+
+  it('выводит server-owned legacy intent для текстового рунного действия', async () => {
+    const services = createServices();
+    const handler = new GameHandler(services);
+    const ctx = createFakeContext({ text: 'спелл', id: 515, conversationMessageId: 91, peerId: 2000000001 });
+
+    await handler.handle(ctx as never);
+
+    expect(services.performBattleAction.execute).toHaveBeenCalledWith(1001, 'RUNE_SKILL', 'legacy-text:2000000001:1001:91:спелл', undefined, 'legacy_text');
+  });
+
+  it('выводит server-owned legacy intent для текстовых навыков в бою', async () => {
+    const services = createServices();
+    const handler = new GameHandler(services);
+    const ctx = createFakeContext({ text: 'навыки', id: 516, conversationMessageId: 92, peerId: 2000000001 });
+
+    await handler.handle(ctx as never);
+
+    expect(services.performBattleAction.execute).toHaveBeenCalledWith(1001, 'RUNE_SKILL', 'legacy-text:2000000001:1001:92:навыки', undefined, 'legacy_text');
+  });
+
   it('не удаляет персонажа без явного подтверждения', async () => {
     const services = createServices();
     const handler = new GameHandler(services);

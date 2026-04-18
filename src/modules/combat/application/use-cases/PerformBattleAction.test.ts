@@ -113,6 +113,36 @@ describe('PerformBattleAction', () => {
     expect(repository.getActiveBattle).not.toHaveBeenCalled();
   });
 
+  it('returns canonical replay for a legacy text battle command before reading active battle state', async () => {
+    const replayedBattle = createBattle({ status: 'COMPLETED', result: 'VICTORY', rewards: { experience: 4, gold: 2, shards: { USUAL: 1 }, droppedRune: null } });
+    const repository = {
+      findPlayerByVkId: vi.fn().mockResolvedValue(createPlayer()),
+      getCommandIntentResult: vi.fn().mockResolvedValue({ status: 'APPLIED', result: replayedBattle }),
+      getActiveBattle: vi.fn(),
+    } as unknown as GameRepository;
+    const useCase = new PerformBattleAction(repository, createRandom());
+
+    await expect(useCase.execute(1001, 'ATTACK', 'legacy-text:2000000001:1001:86:атака', undefined, 'legacy_text')).resolves.toEqual(replayedBattle);
+
+    expect(repository.getActiveBattle).not.toHaveBeenCalled();
+  });
+
+  it('rejects legacy text battle commands when server-owned intent metadata is unavailable', async () => {
+    const activeBattle = createBattle();
+    const repository = {
+      findPlayerByVkId: vi.fn().mockResolvedValue(createPlayer()),
+      getCommandIntentResult: vi.fn(),
+      getActiveBattle: vi.fn().mockResolvedValue(activeBattle),
+    } as unknown as GameRepository;
+    const useCase = new PerformBattleAction(repository, createRandom());
+
+    await expect(useCase.execute(1001, 'ATTACK', undefined, undefined, 'legacy_text')).rejects.toMatchObject({
+      code: 'stale_command_intent',
+    });
+
+    expect(repository.getActiveBattle).toHaveBeenCalledWith(1);
+  });
+
   it('rejects a replay receipt when the payload state key no longer matches the stored battle rail', async () => {
     const repository = {
       findPlayerByVkId: vi.fn().mockResolvedValue(createPlayer()),

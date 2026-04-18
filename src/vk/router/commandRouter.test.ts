@@ -131,6 +131,50 @@ describe('normalizeCommand', () => {
     expect(returnAlias.intentSource).toBe('legacy_text');
   });
 
+  it('выводит server-owned intent для legacy text боевых команд', () => {
+    const attack = resolveCommandEnvelope({
+      text: 'атака',
+      senderId: 1001,
+      peerId: 2000000001,
+      conversationMessageId: 86,
+      id: 510,
+      messagePayload: null,
+    } as never);
+    const defendAlias = resolveCommandEnvelope({
+      text: 'блок',
+      senderId: 1001,
+      peerId: 2000000001,
+      conversationMessageId: 87,
+      id: 511,
+      messagePayload: null,
+    } as never);
+    const spell = resolveCommandEnvelope({
+      text: 'спелл',
+      senderId: 1001,
+      peerId: 2000000001,
+      conversationMessageId: 88,
+      id: 512,
+      messagePayload: null,
+    } as never);
+    const skills = resolveCommandEnvelope({
+      text: 'навыки',
+      senderId: 1001,
+      peerId: 2000000001,
+      conversationMessageId: 89,
+      id: 513,
+      messagePayload: null,
+    } as never);
+
+    expect(attack.intentId).toBe('legacy-text:2000000001:1001:86:атака');
+    expect(attack.intentSource).toBe('legacy_text');
+    expect(defendAlias.command).toBe(gameCommands.defend);
+    expect(defendAlias.intentId).toBe('legacy-text:2000000001:1001:87:защита');
+    expect(skills.command).toBe(gameCommands.skills);
+    expect(skills.intentId).toBe('legacy-text:2000000001:1001:89:навыки');
+    expect(spell.command).toBe(gameCommands.spell);
+    expect(spell.intentId).toBe('legacy-text:2000000001:1001:88:спелл');
+  });
+
   it('не теряет legacy text intent из-за пустого payload объекта', () => {
     const resolved = resolveCommandEnvelope({
       text: '+атк',

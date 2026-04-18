@@ -38,14 +38,31 @@ export class PerformBattleAction {
   ): Promise<BattleView> {
     const player = await requirePlayerByVkId(this.repository, vkId);
     const commandKey = this.resolveCommandKey(action);
-    const intent = resolveCommandIntent(intentId, intentStateKey, intentSource, intentSource === null);
+    const scopedIntent = intentSource === 'legacy_text'
+      ? null
+      : resolveCommandIntent(intentId, intentStateKey, intentSource, intentSource === null);
 
-    if (intent?.intentId) {
+    if (scopedIntent?.intentId) {
       const replay = await this.repository.getCommandIntentResult<BattleView>(
         player.playerId,
-        intent.intentId,
+        scopedIntent.intentId,
         [commandKey],
-        intent.intentStateKey,
+        scopedIntent.intentStateKey,
+      );
+      if (replay?.status === 'APPLIED' && replay.result) {
+        return replay.result;
+      }
+
+      if (replay?.status === 'PENDING') {
+        throw new AppError('command_retry_pending', 'Команда уже обрабатывается. Дождитесь ответа и обновите экран.');
+      }
+    }
+
+    if (intentSource === 'legacy_text' && intentId) {
+      const replay = await this.repository.getCommandIntentResult<BattleView>(
+        player.playerId,
+        intentId,
+        [commandKey],
       );
       if (replay?.status === 'APPLIED' && replay.result) {
         return replay.result;
@@ -62,6 +79,10 @@ export class PerformBattleAction {
     }
 
     const currentStateKey = buildBattleActionIntentStateKey(activeBattle, action);
+    const intent = intentSource === 'legacy_text'
+      ? { intentId: resolveCommandIntent(intentId, undefined, intentSource, false)?.intentId as string, intentStateKey: currentStateKey }
+      : scopedIntent;
+
     if (intent && intent.intentStateKey !== currentStateKey) {
       throw new AppError('stale_command_intent', 'Эта кнопка уже устарела. Обновите экран перед повтором команды.');
     }
