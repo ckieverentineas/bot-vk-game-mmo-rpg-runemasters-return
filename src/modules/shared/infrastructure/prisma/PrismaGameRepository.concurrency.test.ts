@@ -149,7 +149,24 @@ describe.sequential('PrismaGameRepository concurrency rails', () => {
     await prisma.user.deleteMany();
   });
 
-  const createPlayer = async (vkId: number): Promise<PlayerState> => repository.createPlayer(vkId);
+  const createPlayer = async (vkId: number): Promise<PlayerState> => (await repository.createPlayer(vkId)).player;
+
+  it('returns one canonical player under parallel first-start creation', async () => {
+    const [first, second] = await Promise.all([
+      repository.createPlayer(2999),
+      repository.createPlayer(2999),
+    ]);
+
+    expect(first.player.playerId).toBe(second.player.playerId);
+    expect([first.created, second.created].filter(Boolean)).toHaveLength(1);
+    expect([first.recoveredFromRace, second.recoveredFromRace].filter(Boolean)).toHaveLength(1);
+
+    const users = await prisma.user.count({ where: { vkId: 2999 } });
+    const players = await prisma.player.count({ where: { user: { vkId: 2999 } } });
+
+    expect(users).toBe(1);
+    expect(players).toBe(1);
+  });
 
   it('reuses one active battle under parallel createBattle calls', async () => {
     const player = await createPlayer(2001);

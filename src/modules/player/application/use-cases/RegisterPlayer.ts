@@ -5,20 +5,14 @@ export class RegisterPlayer {
   public constructor(private readonly repository: GameRepository) {}
 
   public async execute(vkId: number): Promise<{ player: PlayerState; created: boolean }> {
-    const existing = await this.repository.findPlayerByVkId(vkId);
-    if (existing) {
-      return {
-        player: existing,
-        created: false,
-      };
+    const result = await this.repository.createPlayer(vkId);
+    if (result.created) {
+      await this.repository.log(result.player.userId, 'player_registered', { vkId });
     }
 
-    const player = await this.repository.createPlayer(vkId);
-    await this.repository.log(player.userId, 'player_registered', { vkId });
-
     return {
-      player,
-      created: true,
+      player: result.player,
+      created: result.created || result.recoveredFromRace,
     };
   }
 }

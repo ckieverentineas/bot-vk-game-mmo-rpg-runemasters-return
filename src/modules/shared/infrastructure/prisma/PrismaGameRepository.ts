@@ -497,64 +497,90 @@ export class PrismaGameRepository implements GameRepository {
     });
   }
 
-  public async createPlayer(vkId: number): Promise<PlayerState> {
+  public async createPlayer(vkId: number): Promise<{ player: PlayerState; created: boolean; recoveredFromRace: boolean }> {
     const existing = await this.findPlayerByVkId(vkId);
     if (existing) {
-      return existing;
+      return {
+        player: existing,
+        created: false,
+        recoveredFromRace: false,
+      };
     }
 
-    const created = await this.prisma.user.create({
-      data: {
-        vkId,
-        player: {
-          create: {
-            level: env.game.startingLevel,
-            experience: 0,
-            gold: 0,
-            baseHealth: 8,
-            baseAttack: 4,
-            baseDefence: 3,
-            baseMagicDefence: 1,
-            baseDexterity: 3,
-            baseIntelligence: 1,
-            allocation: {
-              create: {},
-            },
-            progress: {
-              create: {
-                unspentStatPoints: env.game.startingStatPoints,
-                locationLevel: gameBalance.world.introLocationLevel,
-                currentRuneIndex: 0,
-                activeBattleId: null,
-                tutorialState: 'ACTIVE',
-                victories: 0,
-                victoryStreak: 0,
-                defeats: 0,
-                defeatStreak: 0,
-                mobsKilled: 0,
-                highestLocationLevel: gameBalance.world.introLocationLevel,
+    let created;
+    try {
+      created = await this.prisma.user.create({
+        data: {
+          vkId,
+          player: {
+            create: {
+              level: env.game.startingLevel,
+              experience: 0,
+              gold: 0,
+              baseHealth: 8,
+              baseAttack: 4,
+              baseDefence: 3,
+              baseMagicDefence: 1,
+              baseDexterity: 3,
+              baseIntelligence: 1,
+              allocation: {
+                create: {},
               },
-            },
-            inventory: {
-              create: {
-                ...gameBalance.starterInventory,
+              progress: {
+                create: {
+                  unspentStatPoints: env.game.startingStatPoints,
+                  locationLevel: gameBalance.world.introLocationLevel,
+                  currentRuneIndex: 0,
+                  activeBattleId: null,
+                  tutorialState: 'ACTIVE',
+                  victories: 0,
+                  victoryStreak: 0,
+                  defeats: 0,
+                  defeatStreak: 0,
+                  mobsKilled: 0,
+                  highestLocationLevel: gameBalance.world.introLocationLevel,
+                },
+              },
+              inventory: {
+                create: {
+                  ...gameBalance.starterInventory,
+                },
               },
             },
           },
         },
-      },
-      include: {
-        player: {
-          include: playerInclude,
+        include: {
+          player: {
+            include: playerInclude,
+          },
         },
-      },
-    });
+      });
+    } catch (error) {
+      if (!(error instanceof Prisma.PrismaClientKnownRequestError) || error.code !== 'P2002') {
+        throw error;
+      }
+
+      const racedPlayer = await this.findPlayerByVkId(vkId);
+      if (!racedPlayer) {
+        throw new AppError('player_create_failed', 'Не удалось создать игрока.');
+      }
+
+      return {
+        player: racedPlayer,
+        created: false,
+        recoveredFromRace: true,
+      };
+    }
 
     if (!created.player) {
       throw new AppError('player_create_failed', 'Не удалось создать игрока.');
     }
 
-    return this.mapPlayer(created.player);
+    return {
+      player: this.mapPlayer(created.player),
+      created: true,
+      recoveredFromRace: false,
+    };
   }
 
   public async getCommandIntentResult<TResult = PlayerState>(

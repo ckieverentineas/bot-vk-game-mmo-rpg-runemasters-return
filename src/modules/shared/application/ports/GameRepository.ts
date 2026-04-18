@@ -63,11 +63,17 @@ export interface CommandIntentReplayResult<TResult = PlayerState> {
   readonly result?: TResult;
 }
 
+export interface CreatePlayerResult {
+  readonly player: PlayerState;
+  readonly created: boolean;
+  readonly recoveredFromRace: boolean;
+}
+
 export interface GameRepository {
   findPlayerByVkId(vkId: number): Promise<PlayerState | null>;
   findPlayerById(playerId: number): Promise<PlayerState | null>;
   deletePlayerByVkId(vkId: number, expectedUpdatedAt?: string): Promise<void>;
-  createPlayer(vkId: number): Promise<PlayerState>;
+  createPlayer(vkId: number): Promise<CreatePlayerResult>;
   getCommandIntentResult<TResult = PlayerState>(
     playerId: number,
     intentId: string,

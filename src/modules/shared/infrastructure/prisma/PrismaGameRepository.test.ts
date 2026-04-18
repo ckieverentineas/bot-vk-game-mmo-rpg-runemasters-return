@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 
+import { Prisma } from '@prisma/client';
 import { describe, expect, it, vi } from 'vitest';
 
 import type { BattleView, PlayerState, RuneDraft, StatBlock } from '../../../../shared/types/game';
@@ -259,8 +260,12 @@ const createPlayerStateSnapshot = (): PlayerState => ({
 const createPrismaMock = () => {
   const tx = {
     player: {
+      findFirst: vi.fn(),
       findUnique: vi.fn(),
       update: vi.fn(),
+    },
+    user: {
+      create: vi.fn(),
     },
     playerStatAllocation: {
       update: vi.fn(),
@@ -329,6 +334,27 @@ describe('PrismaGameRepository release hardening', () => {
         usualShards: { gte: 10 },
       }),
     }));
+  });
+
+  it('recovers a canonical player after a vkId uniqueness race during creation', async () => {
+    const { repository, tx } = createPrismaMock();
+
+    tx.player.findFirst
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(createPlayerRecord());
+    tx.user.create.mockRejectedValueOnce(new Prisma.PrismaClientKnownRequestError('Unique conflict', {
+      code: 'P2002',
+      clientVersion: 'test',
+      meta: {
+        target: ['vkId'],
+      },
+    }));
+
+    const result = await repository.createPlayer(1001);
+
+    expect(result.created).toBe(false);
+    expect(result.recoveredFromRace).toBe(true);
+    expect(result.player.playerId).toBe(1);
   });
 
   it('returns canonical crafted result for a duplicate command intent without spending again', async () => {
