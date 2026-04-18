@@ -587,6 +587,51 @@
 - social-lite and optional async PvP scope no longer rely on an implicit abuse review with no single release-gate document;
 - release review now has a narrow, current-state checklist without prematurely expanding scope into full anti-fraud, trading, guild wars, or real-time PvP.
 
+## [0.39] - 2026-04-18
+
+### Commit
+
+- `9984996` — `fix: harden explore and rune navigation replay guards`
+
+### Added
+
+- тесты exact-once/recovery для [`ExploreLocation`](src/modules/exploration/application/use-cases/ExploreLocation.test.ts), [`GetActiveBattle`](src/modules/combat/application/use-cases/GetActiveBattle.test.ts), rune page/slot use-cases и transport smoke-paths;
+- exploration command-state key для `explore` и replay/rule updates в [`docs/platform/command-intent-rules.md`](docs/platform/command-intent-rules.md) и [`docs/platform/retry-handling-rules.md`](docs/platform/retry-handling-rules.md).
+
+### Changed
+
+- [`ExploreLocation`](src/modules/exploration/application/use-cases/ExploreLocation.ts) теперь проводит `исследовать` через command-intent replay rail для keyboard payloads и legacy text ids;
+- main menu, tutorial и battle-result keyboards теперь выдают scoped `intentId + stateKey` для `⚔️ Исследовать`, а router/handler протягивают их до use-case'ов;
+- [`PrismaGameRepository`](src/modules/shared/infrastructure/prisma/PrismaGameRepository.ts) теперь умеет canonical replay для `EXPLORE_LOCATION` и rune page/slot navigation, а battle recovery добивает зависший enemy-turn до сохранённого канонического состояния.
+
+### Fixed
+
+- duplicate `исследовать` больше не должен создавать второй encounter или переролливать врага при повторной доставке одного и того же intent;
+- stale rune page/slot input больше не должен тихо ретаргетить уже другой экран рун;
+- stuck enemy-turn recovery больше не должен оставлять игрока в подвешенном активном бою без канонического persisted result.
+
+## [0.40] - 2026-04-18
+
+### Commit
+
+- `ace901c` — `fix: dedupe tutorial entry retries`
+
+### Added
+
+- intent-state rail для tutorial-entry path [`buildEnterTutorialModeIntentStateKey()`](src/modules/exploration/application/command-intent-state.ts);
+- replay/stale regression coverage для [`EnterTutorialMode`](src/modules/exploration/application/use-cases/EnterTutorialMode.test.ts), router intent normalization, main-menu keyboard payloads и handler recovery.
+
+### Changed
+
+- [`EnterTutorialMode`](src/modules/exploration/application/use-cases/EnterTutorialMode.ts) теперь поддерживает same-intent replay для payload и legacy text `локация` / `обучение`, но режет stale replays после exploration drift;
+- main-menu button `📘 Обучение` теперь получает scoped `intentId + stateKey`, а router/handler протягивают tutorial-entry intent metadata так же, как и остальные guarded exploration actions;
+- repository retry docs и PLAN progress синхронизированы под новый tutorial-entry rail.
+
+### Fixed
+
+- duplicate `локация` / `обучение` больше не должны возвращать игрока в устаревший tutorial screen после перехода в adventure flow;
+- старый tutorial-entry replay больше не должен маскировать активный бой или более свежий exploration context.
+
 ## Шаблон следующей записи
 
 ### [0.03] - YYYY-MM-DD
