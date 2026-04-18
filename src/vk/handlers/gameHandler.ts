@@ -99,7 +99,7 @@ export class GameHandler {
           return;
         }
         case gameCommands.resetStats: {
-          const player = await this.services.resetAllocatedStats.execute(vkId, intentId ?? undefined, stateKey ?? undefined);
+          const player = await this.services.resetAllocatedStats.execute(vkId, intentId ?? undefined, stateKey ?? undefined, intentSource);
           await this.replyWithProfile(ctx, player);
           return;
         }
@@ -187,7 +187,7 @@ export class GameHandler {
   ): Promise<void> {
     const allocationStat = resolveStatAllocationCommand(command);
     if (allocationStat) {
-      const player = await this.services.allocateStatPoint.execute(vkId, allocationStat, intentId ?? undefined, stateKey ?? undefined);
+      const player = await this.services.allocateStatPoint.execute(vkId, allocationStat, intentId ?? undefined, stateKey ?? undefined, intentSource);
       await this.replyWithProfile(ctx, player);
       return;
     }

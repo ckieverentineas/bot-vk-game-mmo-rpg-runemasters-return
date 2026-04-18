@@ -434,7 +434,7 @@ describe('GameHandler smoke', () => {
 
     await handler.handle(ctx as never);
 
-    expect(services.allocateStatPoint.execute).toHaveBeenCalledWith(1001, 'attack', 'intent-alloc-1', 'state-alloc-1');
+    expect(services.allocateStatPoint.execute).toHaveBeenCalledWith(1001, 'attack', 'intent-alloc-1', 'state-alloc-1', 'payload');
   });
 
   it('пробрасывает intentId для сброса характеристик через transport payload', async () => {
@@ -444,7 +444,49 @@ describe('GameHandler smoke', () => {
 
     await handler.handle(ctx as never);
 
-    expect(services.resetAllocatedStats.execute).toHaveBeenCalledWith(1001, 'intent-reset-1', 'state-reset-1');
+    expect(services.resetAllocatedStats.execute).toHaveBeenCalledWith(1001, 'intent-reset-1', 'state-reset-1', 'payload');
+  });
+
+  it('выводит server-owned legacy intent для текстового распределения характеристики', async () => {
+    const services = createServices();
+    const handler = new GameHandler(services);
+    const ctx = createFakeContext({ text: '+атк', id: 504, conversationMessageId: 80, peerId: 2000000001 });
+
+    await handler.handle(ctx as never);
+
+    expect(services.allocateStatPoint.execute).toHaveBeenCalledWith(1001, 'attack', 'legacy-text:2000000001:1001:80:+атк', undefined, 'legacy_text');
+  });
+
+  it('выводит server-owned legacy intent для текстового сброса характеристик', async () => {
+    const services = createServices();
+    const handler = new GameHandler(services);
+    const ctx = createFakeContext({ text: 'сброс', id: 505, conversationMessageId: 81, peerId: 2000000001 });
+
+    await handler.handle(ctx as never);
+
+    expect(services.resetAllocatedStats.execute).toHaveBeenCalledWith(1001, 'legacy-text:2000000001:1001:81:сброс', undefined, 'legacy_text');
+  });
+
+  it('fail-closed восстанавливает профильный контекст, если legacy text команды не хватает message metadata', async () => {
+    const services = createServices();
+    const handler = new GameHandler(services);
+    const ctx = {
+      senderId: 1001,
+      text: '+атк',
+      messagePayload: null,
+      reply: vi.fn().mockResolvedValue(undefined),
+    };
+
+    vi.mocked(services.allocateStatPoint.execute).mockRejectedValueOnce(
+      new AppError('stale_command_intent', 'Эта кнопка уже устарела. Обновите экран перед повтором команды.'),
+    );
+
+    await handler.handle(ctx as never);
+
+    expect(services.allocateStatPoint.execute).toHaveBeenCalledWith(1001, 'attack', undefined, undefined, 'legacy_text');
+    const replies = ctx.reply.mock.calls;
+    expect(replies[0]?.[0]).toContain('Эта кнопка уже устарела');
+    expect(replies[0]?.[0]).toContain('👤 Профиль');
   });
 
   it('пробрасывает intentId для экипировки руны через transport payload', async () => {

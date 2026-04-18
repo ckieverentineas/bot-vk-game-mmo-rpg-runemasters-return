@@ -64,6 +64,7 @@ describe('AllocateStatPoint', () => {
     const player = createPlayer();
     const repository = {
       findPlayerByVkId: vi.fn().mockResolvedValue(player),
+      getCommandIntentResult: vi.fn(),
       saveAllocation: vi.fn().mockResolvedValue(player),
     } as unknown as GameRepository;
     const useCase = new AllocateStatPoint(repository);
@@ -89,6 +90,7 @@ describe('AllocateStatPoint', () => {
     const player = createPlayer();
     const repository = {
       findPlayerByVkId: vi.fn().mockResolvedValue(player),
+      getCommandIntentResult: vi.fn(),
       saveAllocation: vi.fn(),
     } as unknown as GameRepository;
     const useCase = new AllocateStatPoint(repository);
@@ -104,11 +106,74 @@ describe('AllocateStatPoint', () => {
     const player = createPlayer();
     const repository = {
       findPlayerByVkId: vi.fn().mockResolvedValue(player),
+      getCommandIntentResult: vi.fn(),
       saveAllocation: vi.fn(),
     } as unknown as GameRepository;
     const useCase = new AllocateStatPoint(repository);
 
     await expect(useCase.execute(player.vkId, 'attack', 'intent-only')).rejects.toMatchObject({
+      code: 'stale_command_intent',
+    });
+
+    expect(repository.saveAllocation).not.toHaveBeenCalled();
+  });
+
+  it('returns the canonical replay result before no-points prechecks for legacy text', async () => {
+    const replayed = createPlayer({ unspentStatPoints: 0 });
+    const repository = {
+      findPlayerByVkId: vi.fn().mockResolvedValue(createPlayer({ unspentStatPoints: 0 })),
+      getCommandIntentResult: vi.fn().mockResolvedValue({ status: 'APPLIED', result: replayed }),
+      saveAllocation: vi.fn(),
+    } as unknown as GameRepository;
+    const useCase = new AllocateStatPoint(repository);
+
+    await expect(useCase.execute(1001, 'attack', 'legacy-text:2000000001:1001:80:+атк', undefined, 'legacy_text')).resolves.toEqual(replayed);
+
+    expect(repository.saveAllocation).not.toHaveBeenCalled();
+  });
+
+  it('rejects unscoped payload allocation commands', async () => {
+    const player = createPlayer();
+    const repository = {
+      findPlayerByVkId: vi.fn().mockResolvedValue(player),
+      getCommandIntentResult: vi.fn(),
+      saveAllocation: vi.fn(),
+    } as unknown as GameRepository;
+    const useCase = new AllocateStatPoint(repository);
+
+    await expect(useCase.execute(player.vkId, 'attack', undefined, undefined, 'payload')).rejects.toMatchObject({
+      code: 'stale_command_intent',
+    });
+
+    expect(repository.saveAllocation).not.toHaveBeenCalled();
+  });
+
+  it('rejects legacy text allocation commands when no server-owned intent can be derived', async () => {
+    const player = createPlayer();
+    const repository = {
+      findPlayerByVkId: vi.fn().mockResolvedValue(player),
+      getCommandIntentResult: vi.fn(),
+      saveAllocation: vi.fn(),
+    } as unknown as GameRepository;
+    const useCase = new AllocateStatPoint(repository);
+
+    await expect(useCase.execute(player.vkId, 'attack', undefined, undefined, 'legacy_text')).rejects.toMatchObject({
+      code: 'stale_command_intent',
+    });
+
+    expect(repository.saveAllocation).not.toHaveBeenCalled();
+  });
+
+  it('still fails closed for malformed legacy allocation when no points remain', async () => {
+    const player = createPlayer({ unspentStatPoints: 0 });
+    const repository = {
+      findPlayerByVkId: vi.fn().mockResolvedValue(player),
+      getCommandIntentResult: vi.fn(),
+      saveAllocation: vi.fn(),
+    } as unknown as GameRepository;
+    const useCase = new AllocateStatPoint(repository);
+
+    await expect(useCase.execute(player.vkId, 'attack', undefined, undefined, 'legacy_text')).rejects.toMatchObject({
       code: 'stale_command_intent',
     });
 

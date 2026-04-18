@@ -1,6 +1,6 @@
 import type { Context } from 'vk-io';
 import type { CommandIntentSource } from '../../modules/shared/application/command-intent';
-import { commandAliases, gameCommands, resolveRuneStatRerollCommand } from '../commands/catalog';
+import { commandAliases, gameCommands, resolveRuneStatRerollCommand, resolveStatAllocationCommand } from '../commands/catalog';
 
 export interface ResolvedCommandEnvelope {
   readonly command: string;
@@ -17,6 +17,8 @@ export const normalizeCommand = (value: string): string => {
 const supportsLegacyTextIntent = (command: string): boolean => (
   command === gameCommands.craftRune
   || command === gameCommands.destroyRune
+  || command === gameCommands.resetStats
+  || resolveStatAllocationCommand(command) !== null
   || resolveRuneStatRerollCommand(command) !== null
 );
 
@@ -40,23 +42,28 @@ export const resolveCommandEnvelope = (ctx: Context): ResolvedCommandEnvelope =>
   const payload = typeof ctx.messagePayload === 'object' && ctx.messagePayload !== null
     ? ctx.messagePayload as { command?: unknown; intentId?: unknown; stateKey?: unknown }
     : null;
+  const hasPayloadCommand = typeof payload?.command === 'string';
+  const hasPayloadIntentId = typeof payload?.intentId === 'string';
+  const hasPayloadStateKey = typeof payload?.stateKey === 'string';
+  const payloadOwnsCommand = hasPayloadCommand || hasPayloadIntentId || hasPayloadStateKey;
 
-  const raw = typeof payload?.command === 'string'
-    ? payload.command
+  const raw = hasPayloadCommand
+    ? payload.command as string
     : ctx.text ?? '';
 
   const command = normalizeCommand(raw);
-  const payloadIntentId = typeof payload?.intentId === 'string' ? payload.intentId : null;
-  const payloadStateKey = typeof payload?.stateKey === 'string' ? payload.stateKey : null;
-  const legacyTextIntentId = payload === null && supportsLegacyTextIntent(command)
+  const payloadIntentId = hasPayloadIntentId ? payload.intentId as string : null;
+  const payloadStateKey = hasPayloadStateKey ? payload.stateKey as string : null;
+  const legacyTextIntentId = !payloadOwnsCommand && supportsLegacyTextIntent(command)
     ? buildLegacyTextIntentId(ctx, command)
     : null;
+  const legacyTextIntentRequired = !payloadOwnsCommand && supportsLegacyTextIntent(command);
 
   return {
     command,
     intentId: payloadIntentId ?? legacyTextIntentId,
     stateKey: payloadStateKey,
-    intentSource: payload !== null ? 'payload' : legacyTextIntentId ? 'legacy_text' : null,
+    intentSource: payloadOwnsCommand ? 'payload' : legacyTextIntentRequired ? 'legacy_text' : null,
   };
 };
 

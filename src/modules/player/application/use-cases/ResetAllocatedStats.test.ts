@@ -64,6 +64,7 @@ describe('ResetAllocatedStats', () => {
     const player = createPlayer();
     const repository = {
       findPlayerByVkId: vi.fn().mockResolvedValue(player),
+      getCommandIntentResult: vi.fn(),
       saveAllocation: vi.fn().mockResolvedValue(player),
     } as unknown as GameRepository;
     const useCase = new ResetAllocatedStats(repository);
@@ -89,6 +90,7 @@ describe('ResetAllocatedStats', () => {
     const player = createPlayer();
     const repository = {
       findPlayerByVkId: vi.fn().mockResolvedValue(player),
+      getCommandIntentResult: vi.fn(),
       saveAllocation: vi.fn(),
     } as unknown as GameRepository;
     const useCase = new ResetAllocatedStats(repository);
@@ -104,11 +106,52 @@ describe('ResetAllocatedStats', () => {
     const player = createPlayer();
     const repository = {
       findPlayerByVkId: vi.fn().mockResolvedValue(player),
+      getCommandIntentResult: vi.fn(),
       saveAllocation: vi.fn(),
     } as unknown as GameRepository;
     const useCase = new ResetAllocatedStats(repository);
 
     await expect(useCase.execute(player.vkId, undefined, 'state-only')).rejects.toMatchObject({
+      code: 'stale_command_intent',
+    });
+
+    expect(repository.saveAllocation).not.toHaveBeenCalled();
+  });
+
+  it('returns the canonical replay result before allocation drift matters for legacy text', async () => {
+    const replayed = createPlayer({
+      allocationPoints: {
+        health: 0,
+        attack: 0,
+        defence: 0,
+        magicDefence: 0,
+        dexterity: 0,
+        intelligence: 0,
+      },
+      unspentStatPoints: 2,
+    });
+    const repository = {
+      findPlayerByVkId: vi.fn().mockResolvedValue(replayed),
+      getCommandIntentResult: vi.fn().mockResolvedValue({ status: 'APPLIED', result: replayed }),
+      saveAllocation: vi.fn(),
+    } as unknown as GameRepository;
+    const useCase = new ResetAllocatedStats(repository);
+
+    await expect(useCase.execute(1001, 'legacy-text:2000000001:1001:81:сброс', undefined, 'legacy_text')).resolves.toEqual(replayed);
+
+    expect(repository.saveAllocation).not.toHaveBeenCalled();
+  });
+
+  it('rejects unscoped payload reset commands', async () => {
+    const player = createPlayer();
+    const repository = {
+      findPlayerByVkId: vi.fn().mockResolvedValue(player),
+      getCommandIntentResult: vi.fn(),
+      saveAllocation: vi.fn(),
+    } as unknown as GameRepository;
+    const useCase = new ResetAllocatedStats(repository);
+
+    await expect(useCase.execute(player.vkId, undefined, undefined, 'payload')).rejects.toMatchObject({
       code: 'stale_command_intent',
     });
 

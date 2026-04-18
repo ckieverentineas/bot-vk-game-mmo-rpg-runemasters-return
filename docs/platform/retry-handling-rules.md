@@ -33,6 +33,7 @@
 ## Profile mutation rules
 
 - `allocateStatPoint` и `resetAllocatedStats` используют keyboard-issued `intentId` + profile `stateKey`;
+- plain text `+атк` / `+здр` / `+фзащ` / `+мзащ` / `+лвк` / `+инт` / `сброс` получают server-owned message intent id и тоже идут через canonical replay receipt;
 - stateKey привязан к `allocationPoints`, `unspentStatPoints` и целевой характеристике там, где это важно;
 - duplicate same-intent profile mutation обязан вернуть canonical stored profile, а не второй spend/refund;
 - stale profile button после уже применённого изменения обязан быть отклонён как `stale_command_intent`, а не применён поверх нового профиля.
@@ -54,4 +55,4 @@
 
 - explicit RNG authority rules for reroll / drop / craft are now defined in `docs/platform/rng-authority-rules.md`, but broader legacy-text and non-profile command replay still remains;
 - migration fixtures for versioned persisted contracts;
-- remaining legacy text-command repeated actions beyond rune craft / reroll / destroy, plus non-rune mutations beyond profile stat allocation / reset / rune loadout buttons.
+- remaining legacy text-command repeated actions beyond rune craft / reroll / destroy / profile stat allocation / reset, plus non-rune mutations beyond rune loadout buttons.
