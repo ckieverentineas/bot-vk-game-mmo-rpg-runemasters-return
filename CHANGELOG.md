@@ -391,6 +391,29 @@
 - unsupported future battle snapshot version теперь не ломает загрузку боя, если legacy snapshot columns ещё доступны для safe fallback;
 - migration safety вокруг battle persistence больше не остаётся неявной и без checked-in fixtures.
 
+## [0.17] - 2026-04-18
+
+### Commit
+
+- `worktree` — `feat: extract canonical school definitions`
+
+### Added
+
+- новый content seed [`src/content/runes/schools.ts`](src/content/runes/schools.ts) и contract `SchoolDefinition` в [`src/shared/types/game.ts`](src/shared/types/game.ts) как canonical source of truth для player-facing school identity;
+- контентная валидация school ↔ archetype wiring и тесты на school definition / content validation drift в [`src/content/validation/validate-game-content.test.ts`](src/content/validation/validate-game-content.test.ts) и [`src/modules/runes/domain/rune-schools.test.ts`](src/modules/runes/domain/rune-schools.test.ts).
+
+### Changed
+
+- [`rune-schools.ts`](src/modules/runes/domain/rune-schools.ts) больше не держит hand-written presentation map: school presentation теперь выводится из `SchoolDefinition` и связанного стартового архетипа;
+- [`runeArchetypeSeed`](src/content/runes/archetypes.ts) теперь явно связывает архетип со школой через `schoolCode`, чтобы future content growth не держался на неявном совпадении кодов;
+- docs и roadmap синхронизированы под canonical school contract вместо разрозненных identity maps.
+
+### Fixed
+
+- player-facing school identity больше не рискует расходиться между content seed и transport presentation map;
+- content validation теперь ловит разрыв между школой и её стартовым архетипом до seed/check/release;
+- следующая волна school-first UX и content authoring получила одно место правды вместо параллельных карт описаний.
+
 ## Шаблон следующей записи
 
 ### [0.03] - YYYY-MM-DD

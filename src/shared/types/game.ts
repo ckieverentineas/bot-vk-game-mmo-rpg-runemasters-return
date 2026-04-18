@@ -197,8 +197,20 @@ export interface AbilityDefinition {
   tags: string[];
 }
 
+export interface SchoolDefinition {
+  code: string;
+  name: string;
+  nameGenitive: string;
+  starterArchetypeCode: string;
+  styleLine: string;
+  playPatternLine: string;
+  battleLine: string;
+  passiveLine: string;
+}
+
 export interface RuneArchetypeDefinition {
   code: string;
+  schoolCode: string;
   name: string;
   description: string;
   passiveAbilityCodes: string[];

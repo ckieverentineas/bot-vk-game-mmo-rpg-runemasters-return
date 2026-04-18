@@ -1,3 +1,4 @@
 export { abilitySeed } from './abilities';
 export { runeArchetypeSeed } from './archetypes';
-export type { AbilitySeedDefinition, RuneArchetypeSeedDefinition } from './types';
+export { schoolSeed } from './schools';
+export type { AbilitySeedDefinition, RuneArchetypeSeedDefinition, SchoolSeedDefinition } from './types';

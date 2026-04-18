@@ -3,6 +3,7 @@ import type { RuneArchetypeSeedDefinition } from './types';
 export const runeArchetypeSeed = [
   {
     code: 'ember',
+    schoolCode: 'ember',
     name: 'Штурм',
     description: 'Атакующий архетип школы Пламени с упором в давление и прямой урон.',
     passiveAbilityCodes: ['ember_heart'],
@@ -11,6 +12,7 @@ export const runeArchetypeSeed = [
   },
   {
     code: 'stone',
+    schoolCode: 'stone',
     name: 'Страж',
     description: 'Защитный архетип школы Тверди, усиливающий стойкость и контроль поля боя.',
     passiveAbilityCodes: ['stone_guard'],
@@ -19,6 +21,7 @@ export const runeArchetypeSeed = [
   },
   {
     code: 'gale',
+    schoolCode: 'gale',
     name: 'Налётчик',
     description: 'Темповый архетип школы Бури с уклоном в ловкость и ход боя.',
     passiveAbilityCodes: [],
@@ -27,6 +30,7 @@ export const runeArchetypeSeed = [
   },
   {
     code: 'echo',
+    schoolCode: 'echo',
     name: 'Провидец',
     description: 'Мистический архетип школы Прорицания, который читает угрозы и обращает их в пользу игрока.',
     passiveAbilityCodes: ['echo_mind'],

@@ -17,6 +17,7 @@ Runemasters Return — VK MMO RPG на TypeScript с модульным игро
 - первый tactics layer: у игрока есть универсальная `защита`, а часть врагов телеграфирует тяжёлый удар заранее;
 - следующий tactics layer: часть врагов телеграфирует guard-break, который делает слепую `защиту` плохим ответом;
 - player-facing слой уже говорит про **школы рун**, а не про внутренние `архетипы`;
+- canonical `SchoolDefinition` теперь держит player-facing identity школ в одном content-контракте вместо отдельной hand-written presentation map;
 - стартовые школы получают реальную боевую идентичность: Пламя усиливает давление, Твердь усиливает защиту, Прорицание лучше отвечает на намерения врага;
 - школа Тверди уже получила первый полный пакет: пассивную защитную идентичность и активный `Каменный отпор`;
 - tutorial loop теперь подводит игрока к первой активной руне, экипировке и первому применению рунного действия;
@@ -41,6 +42,7 @@ Runemasters Return — VK MMO RPG на TypeScript с модульным игро
 - `src/vk/commands/catalog.ts` — единый источник правды для команд, алиасов и динамических действий;
 - `src/vk/keyboards/index.ts` — общий builder клавиатур, который уменьшает копипасту и упрощает рост меню;
 - `src/content/validation/validate-game-content.ts` — автоматическая проверка биомов, мобов, рунного контента и игрового баланса перед быстрыми обновлениями;
+- `src/content/runes/schools.ts` — canonical school identity seed, из которого выводится player-facing school presentation;
 - `src/modules/shared/application/require-player.ts` — единая точка загрузки игрока и консистентных ошибок для use-case слоя;
 - `src/modules/shared/domain/contracts/*` — versioned контракты persistence-уровня для боевой сборки и reward claim flow;
 - `src/shared/utils/json.ts` — единая точка для JSON clone/parse/stringify;

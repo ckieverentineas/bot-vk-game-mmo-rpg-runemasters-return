@@ -1,7 +1,7 @@
 import { env } from '../../config/env';
 import { gameBalance } from '../../config/game-balance';
 import type { MaterialField, RuneRarity } from '../../shared/types/game';
-import { abilitySeed, runeArchetypeSeed, type AbilitySeedDefinition, type RuneArchetypeSeedDefinition } from '../runes';
+import { abilitySeed, runeArchetypeSeed, schoolSeed, type AbilitySeedDefinition, type RuneArchetypeSeedDefinition, type SchoolSeedDefinition } from '../runes';
 import { biomeSeed, mobSeed, type BiomeSeedDefinition, type MobTemplateSeedDefinition } from '../world';
 
 export interface GameContentValidationIssue {
@@ -17,6 +17,7 @@ export interface GameContentValidationReport {
 export interface GameContentValidationInput {
   readonly biomes: readonly BiomeSeedDefinition[];
   readonly mobs: readonly MobTemplateSeedDefinition[];
+  readonly schools: readonly SchoolSeedDefinition[];
   readonly abilities: readonly AbilitySeedDefinition[];
   readonly runeArchetypes: readonly RuneArchetypeSeedDefinition[];
   readonly worldBalance: typeof gameBalance.world;
@@ -363,9 +364,18 @@ const validateArchetypeAbilityReferences = (
 
 const validateRuneContent = (
   issues: GameContentValidationIssue[],
+  schools: readonly SchoolSeedDefinition[],
   abilities: readonly AbilitySeedDefinition[],
   runeArchetypes: readonly RuneArchetypeSeedDefinition[],
 ): void => {
+  collectDuplicateValues(schools.map(({ code }) => code)).forEach((duplicateCode) => {
+    pushIssue(issues, 'runes:schools', `Найден дублирующийся school code: ${duplicateCode}.`);
+  });
+
+  collectDuplicateValues(schools.map(({ starterArchetypeCode }) => starterArchetypeCode)).forEach((duplicateStarterCode) => {
+    pushIssue(issues, 'runes:schools', `Стартовый архетип ${duplicateStarterCode} привязан сразу к нескольким школам.`);
+  });
+
   collectDuplicateValues(abilities.map(({ code }) => code)).forEach((duplicateCode) => {
     pushIssue(issues, 'runes:abilities', `Найден дублирующийся ability code: ${duplicateCode}.`);
   });
@@ -375,7 +385,39 @@ const validateRuneContent = (
   });
 
   const archetypeCodes = new Set(runeArchetypes.map(({ code }) => code));
+  const schoolCodes = new Set(schools.map(({ code }) => code));
   const abilityByCode = new Map(abilities.map((ability) => [ability.code, ability]));
+
+  schools.forEach((school) => {
+    const scope = `school:${school.code}`;
+
+    if (
+      !isNonEmptyString(school.code)
+      || !isNonEmptyString(school.name)
+      || !isNonEmptyString(school.nameGenitive)
+      || !isNonEmptyString(school.starterArchetypeCode)
+      || !isNonEmptyString(school.styleLine)
+      || !isNonEmptyString(school.playPatternLine)
+      || !isNonEmptyString(school.battleLine)
+      || !isNonEmptyString(school.passiveLine)
+    ) {
+      pushIssue(issues, scope, 'Код, имя, грамматическая форма и ключевые school-поля должны быть заполнены.');
+    }
+
+    if (!archetypeCodes.has(school.starterArchetypeCode)) {
+      pushIssue(issues, scope, `Школа ссылается на неизвестный стартовый архетип: ${school.starterArchetypeCode}.`);
+      return;
+    }
+
+    const starterArchetype = runeArchetypes.find(({ code }) => code === school.starterArchetypeCode) ?? null;
+    if (starterArchetype && starterArchetype.schoolCode !== school.code) {
+      pushIssue(
+        issues,
+        scope,
+        `Стартовый архетип ${school.starterArchetypeCode} привязан к школе ${starterArchetype.schoolCode}, а не ${school.code}.`,
+      );
+    }
+  });
 
   abilities.forEach((ability) => {
     const scope = `ability:${ability.code}`;
@@ -412,8 +454,17 @@ const validateRuneContent = (
   runeArchetypes.forEach((runeArchetype) => {
     const scope = `archetype:${runeArchetype.code}`;
 
-    if (!isNonEmptyString(runeArchetype.code) || !isNonEmptyString(runeArchetype.name) || !isNonEmptyString(runeArchetype.description)) {
+    if (
+      !isNonEmptyString(runeArchetype.code)
+      || !isNonEmptyString(runeArchetype.schoolCode)
+      || !isNonEmptyString(runeArchetype.name)
+      || !isNonEmptyString(runeArchetype.description)
+    ) {
       pushIssue(issues, scope, 'Код, имя и описание архетипа должны быть заполнены.');
+    }
+
+    if (!schoolCodes.has(runeArchetype.schoolCode)) {
+      pushIssue(issues, `${scope}.schoolCode`, `Архетип ссылается на неизвестную школу: ${runeArchetype.schoolCode}.`);
     }
 
     if (runeArchetype.preferredStats.length === 0) {
@@ -455,6 +506,7 @@ const validateRuneContent = (
 export const createGameContentValidationInput = (): GameContentValidationInput => ({
   biomes: biomeSeed,
   mobs: mobSeed,
+  schools: schoolSeed,
   abilities: abilitySeed,
   runeArchetypes: runeArchetypeSeed,
   worldBalance: gameBalance.world,
@@ -472,7 +524,7 @@ export const validateGameContent = (
   validateMobSeed(issues, input.biomes, input.mobs);
   validateRuneBalance(issues, input.runeBalance);
   validateEnvironmentGameConfig(issues, input.envGameConfig);
-  validateRuneContent(issues, input.abilities, input.runeArchetypes);
+  validateRuneContent(issues, input.schools, input.abilities, input.runeArchetypes);
 
   return {
     isValid: issues.length === 0,

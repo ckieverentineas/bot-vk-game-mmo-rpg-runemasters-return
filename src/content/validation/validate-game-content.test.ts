@@ -10,6 +10,7 @@ const cloneValidationInput = (): GameContentValidationInput => {
     ...input,
     biomes: input.biomes.map((biome) => ({ ...biome })),
     mobs: input.mobs.map((mob) => ({ ...mob })),
+    schools: input.schools.map((school) => ({ ...school })),
     abilities: input.abilities.map((ability) => ({
       ...ability,
       tags: [...ability.tags],
@@ -121,6 +122,69 @@ describe('validateGameContent', () => {
         scope === 'archetype:ember.passiveAbilityCodes'
         && message.includes('stone_guard')
         && message.includes('stone')
+      )),
+    ).toBe(true);
+  });
+
+  it('ловит разрыв между школой и стартовым архетипом', () => {
+    const input = cloneValidationInput();
+
+    const report = validateGameContent({
+      ...input,
+      schools: input.schools.map((school) => (
+        school.code === 'ember'
+          ? {
+              ...school,
+              starterArchetypeCode: 'stone',
+            }
+          : school
+      )),
+    });
+
+    expect(report.isValid).toBe(false);
+    expect(
+      report.issues.some(({ scope, message }) => (
+        scope === 'school:ember'
+        && message.includes('stone')
+        && message.includes('ember')
+      )),
+    ).toBe(true);
+  });
+
+  it('ловит неизвестные ссылки школы и архетипа друг на друга', () => {
+    const input = cloneValidationInput();
+
+    const report = validateGameContent({
+      ...input,
+      schools: input.schools.map((school) => (
+        school.code === 'gale'
+          ? {
+              ...school,
+              starterArchetypeCode: 'missing_starter_archetype',
+            }
+          : school
+      )),
+      runeArchetypes: input.runeArchetypes.map((runeArchetype) => (
+        runeArchetype.code === 'echo'
+          ? {
+              ...runeArchetype,
+              schoolCode: 'missing_school',
+            }
+          : runeArchetype
+      )),
+    });
+
+    expect(report.isValid).toBe(false);
+    expect(
+      report.issues.some(({ scope, message }) => (
+        scope === 'school:gale'
+        && message.includes('missing_starter_archetype')
+      )),
+    ).toBe(true);
+    expect(
+      report.issues.some(({ scope, message }) => (
+        scope === 'archetype:echo.schoolCode'
+        && message.includes('missing_school')
       )),
     ).toBe(true);
   });

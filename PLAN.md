@@ -460,7 +460,7 @@ Runemasters Return должен решать это через **школы ру
 
 ### 11.2 Domain platform
 
-- [ ] Выделить и стабилизировать `SchoolDefinition`
+- [x] Выделить и стабилизировать `SchoolDefinition`
 - [x] Выделить и стабилизировать `LoadoutSnapshot`
 - [x] Выделить `RewardIntent` и `RewardLedger`
 - [ ] Разделить source-of-truth state и derived read models
@@ -953,3 +953,4 @@ Runemasters Return должен решать это через **школы ру
 - **2026-04-17:** зафиксированы versioned `LoadoutSnapshot`, `RewardIntent` и `RewardLedger`; battle reward finalize-path переведён на canonical exact-once reward claim через ledger.
 - **2026-04-18:** battle persistence получил `actionRevision` compare-and-swap guard; добавлены duplication matrix, retry rules и Prisma-backed concurrency tests для critical battle/rune flows.
 - **2026-04-18:** battle persistence получил versioned `BattleSnapshot` и checked-in compatibility fixtures; legacy raw battle columns оставлены как fallback до отдельного migration window.
+- **2026-04-18:** извлечён canonical `SchoolDefinition`; school identity теперь валидируется как контентный контракт и больше не живёт отдельной картой вне content seed.
