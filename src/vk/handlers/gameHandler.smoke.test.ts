@@ -377,6 +377,45 @@ describe('GameHandler smoke', () => {
     expect(getReplyCalls(ctx)[0]?.message).toContain('🎯 Следующая цель: начните «⚔️ Новый бой»');
   });
 
+  it('не удаляет персонажа без явного подтверждения', async () => {
+    const services = createServices();
+    const handler = new GameHandler(services);
+    const ctx = createFakeContext({ command: 'удалить персонажа' });
+
+    await handler.handle(ctx as never);
+
+    expect(services.deletePlayer.execute).not.toHaveBeenCalled();
+    const replies = getReplyCalls(ctx);
+    expect(replies[0]?.message).toContain('⚠️ Удаление персонажа');
+    expect(replies[0]?.message).toContain('необратимо');
+    expect(JSON.stringify(replies[0]?.keyboard)).toContain('__confirm_delete_player__');
+  });
+
+  it('удаляет персонажа только после подтверждения из актуального экрана', async () => {
+    const services = createServices();
+    const handler = new GameHandler(services);
+    const player = createPlayer();
+    const ctx = createFakeContext({ command: '__confirm_delete_player__', intentId: 'intent-delete-1', stateKey: player.updatedAt });
+
+    await handler.handle(ctx as never);
+
+    expect(services.deletePlayer.execute).toHaveBeenCalledWith(1001, player.updatedAt);
+    expect(getReplyCalls(ctx)[0]?.message).toContain('Персонаж удалён');
+  });
+
+  it('возвращает игрока в профиль при устаревшем подтверждении удаления', async () => {
+    const services = createServices();
+    const handler = new GameHandler(services);
+    const ctx = createFakeContext({ command: '__confirm_delete_player__', intentId: 'intent-delete-2', stateKey: 'stale-delete-state' });
+
+    await handler.handle(ctx as never);
+
+    expect(services.deletePlayer.execute).not.toHaveBeenCalled();
+    const replies = getReplyCalls(ctx);
+    expect(replies[0]?.message).toContain('Это подтверждение уже устарело');
+    expect(replies[0]?.message).toContain('👤 Профиль');
+  });
+
   it('пробрасывает intentId для крафта руны через transport payload', async () => {
     const services = createServices();
     const handler = new GameHandler(services);

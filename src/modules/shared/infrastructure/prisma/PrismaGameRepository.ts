@@ -467,9 +467,31 @@ export class PrismaGameRepository implements GameRepository {
     return player ? this.mapPlayer(player) : null;
   }
 
-  public async deletePlayerByVkId(vkId: number): Promise<void> {
-    await this.prisma.user.delete({
-      where: { vkId },
+  public async deletePlayerByVkId(vkId: number, expectedUpdatedAt?: string): Promise<void> {
+    await this.prisma.$transaction(async (tx) => {
+      if (expectedUpdatedAt) {
+        const deletedPlayer = await tx.player.deleteMany({
+          where: {
+            updatedAt: new Date(expectedUpdatedAt),
+            user: {
+              vkId,
+            },
+          },
+        });
+
+        if (deletedPlayer.count === 0) {
+          throw new AppError('stale_command_intent', 'Это подтверждение уже устарело. Откройте профиль и начните заново, если всё ещё хотите удалить персонажа.');
+        }
+
+        await tx.user.delete({
+          where: { vkId },
+        });
+        return;
+      }
+
+      await tx.user.delete({
+        where: { vkId },
+      });
     });
   }
 

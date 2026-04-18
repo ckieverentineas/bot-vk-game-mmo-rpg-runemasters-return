@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import type { PlayerState } from '../../shared/types/game';
-import { createProfileKeyboard, createRuneKeyboard } from './index';
+import { createDeleteConfirmationKeyboard, createProfileKeyboard, createRuneKeyboard } from './index';
 
 const createPlayer = (overrides: Partial<PlayerState> = {}): PlayerState => ({
   userId: 1,
@@ -81,7 +81,9 @@ interface SerializedButtonPayload {
   readonly stateKey?: string;
 }
 
-const collectPayloads = (keyboard: ReturnType<typeof createProfileKeyboard> | ReturnType<typeof createRuneKeyboard>): SerializedButtonPayload[] => {
+const collectPayloads = (
+  keyboard: ReturnType<typeof createProfileKeyboard> | ReturnType<typeof createRuneKeyboard> | ReturnType<typeof createDeleteConfirmationKeyboard>,
+): SerializedButtonPayload[] => {
   const serialized = JSON.parse(JSON.stringify(keyboard)) as {
     rows: Array<Array<{ action: { payload: string } }>>;
     currentRow?: Array<{ action: { payload: string } }>;
@@ -129,5 +131,17 @@ describe('profile keyboard', () => {
     expect(craft?.stateKey).toBeUndefined();
     expect(destroy?.intentId).toBeUndefined();
     expect(destroy?.stateKey).toBeUndefined();
+  });
+
+  it('adds intent metadata to delete confirmation button when player context is available', () => {
+    const player = createPlayer();
+    const payloads = collectPayloads(createDeleteConfirmationKeyboard(player));
+
+    const confirm = payloads.find((payload) => payload.command === '__confirm_delete_player__');
+    const cancel = payloads.find((payload) => payload.command === 'профиль');
+
+    expect(confirm?.intentId).toEqual(expect.any(String));
+    expect(confirm?.stateKey).toBe(player.updatedAt);
+    expect(cancel?.intentId).toBeUndefined();
   });
 });

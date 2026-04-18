@@ -45,7 +45,7 @@ export interface CommandIntentReplayResult {
 export interface GameRepository {
   findPlayerByVkId(vkId: number): Promise<PlayerState | null>;
   findPlayerById(playerId: number): Promise<PlayerState | null>;
-  deletePlayerByVkId(vkId: number): Promise<void>;
+  deletePlayerByVkId(vkId: number, expectedUpdatedAt?: string): Promise<void>;
   createPlayer(vkId: number): Promise<PlayerState>;
   getCommandIntentResult(playerId: number, intentId: string): Promise<CommandIntentReplayResult | null>;
   saveAllocation(playerId: number, allocationPoints: StatBlock, unspentStatPoints: number, options?: SaveAllocationOptions): Promise<PlayerState>;

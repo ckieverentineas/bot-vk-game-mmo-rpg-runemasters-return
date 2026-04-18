@@ -201,6 +201,11 @@ export const createEntryKeyboard = (): KeyboardBuilder => buildKeyboard(entryLay
 
 export const createProfileKeyboard = (player?: PlayerState): KeyboardBuilder => buildKeyboard(createProfileLayout(player));
 
+export const createDeleteConfirmationKeyboard = (player: PlayerState): KeyboardBuilder => buildKeyboard([
+  [{ label: '🗑️ Да, удалить', command: gameCommands.confirmDeletePlayer, color: Keyboard.NEGATIVE_COLOR, intentScoped: true, stateKey: player.updatedAt }],
+  [{ label: '◀ Оставить персонажа', command: gameCommands.profile, color: Keyboard.SECONDARY_COLOR }],
+]);
+
 export const createBattleKeyboard = (battle: BattleView): KeyboardBuilder => buildKeyboard([
   [
     { label: '⚔️ Атака', command: gameCommands.attack, color: Keyboard.POSITIVE_COLOR },

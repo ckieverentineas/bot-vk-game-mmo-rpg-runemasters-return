@@ -5,6 +5,7 @@ export const gameCommands = {
   start: 'начать',
   backToMenu: 'назад',
   deletePlayer: 'удалить персонажа',
+  confirmDeletePlayer: '__confirm_delete_player__',
   profile: 'профиль',
   inventory: 'инвентарь',
   location: 'локация',

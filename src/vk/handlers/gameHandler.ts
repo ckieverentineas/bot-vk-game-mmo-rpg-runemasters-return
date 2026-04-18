@@ -1,6 +1,7 @@
 import type { Context } from 'vk-io';
 
 import type { AppServices } from '../../app/composition-root';
+import { resolveCommandIntent } from '../../modules/shared/application/command-intent';
 import { AppError, isAppError } from '../../shared/domain/AppError';
 import type { BattleActionType, BattleView, PlayerState } from '../../shared/types/game';
 import { Logger } from '../../utils/logger';
@@ -14,6 +15,7 @@ import {
 import {
   createBattleKeyboard,
   createBattleResultKeyboard,
+  createDeleteConfirmationKeyboard,
   createEntryKeyboard,
   createMainMenuKeyboard,
   createProfileKeyboard,
@@ -35,6 +37,21 @@ import {
 import { resolveCommandEnvelope } from '../router/commandRouter';
 
 type ReplyKeyboard = ReturnType<typeof createMainMenuKeyboard>;
+
+const formatRuneCountLabel = (count: number): string => {
+  const remainder10 = count % 10;
+  const remainder100 = count % 100;
+
+  if (remainder10 === 1 && remainder100 !== 11) {
+    return 'руна';
+  }
+
+  if (remainder10 >= 2 && remainder10 <= 4 && (remainder100 < 12 || remainder100 > 14)) {
+    return 'руны';
+  }
+
+  return 'рун';
+};
 
 export class GameHandler {
   public constructor(private readonly services: AppServices) {}
@@ -77,7 +94,11 @@ export class GameHandler {
           return;
         }
         case gameCommands.deletePlayer: {
-          await this.deletePlayer(ctx, vkId);
+          await this.confirmDeletePlayer(ctx, vkId);
+          return;
+        }
+        case gameCommands.confirmDeletePlayer: {
+          await this.deletePlayer(ctx, vkId, intentId ?? undefined, stateKey ?? undefined, intentSource);
           return;
         }
         case gameCommands.inventory: {
@@ -247,6 +268,16 @@ export class GameHandler {
         return true;
       }
 
+      if (command === gameCommands.confirmDeletePlayer) {
+        const player = await this.services.getPlayerProfile.execute(vkId);
+        await this.reply(
+          ctx,
+          [error.message, '', renderProfile(player)].join('\n'),
+          createProfileKeyboard(player),
+        );
+        return true;
+      }
+
       if ([gameCommands.equipRune, gameCommands.unequipRune, gameCommands.craftRune, gameCommands.destroyRune].includes(command as typeof gameCommands.equipRune | typeof gameCommands.destroyRune)) {
         const player = await this.services.getRuneCollection.execute(vkId);
         await this.reply(
@@ -273,8 +304,36 @@ export class GameHandler {
     return false;
   }
 
-  private async deletePlayer(ctx: Context, vkId: number): Promise<void> {
-    await this.services.deletePlayer.execute(vkId);
+  private async confirmDeletePlayer(ctx: Context, vkId: number): Promise<void> {
+    const player = await this.services.getPlayerProfile.execute(vkId);
+    await this.reply(
+      ctx,
+      [
+        '⚠️ Удаление персонажа',
+        '',
+        `Будет удалён герой уровня ${player.level}${player.runes.length > 0 ? ` и ${player.runes.length} ${formatRuneCountLabel(player.runes.length)}` : ''}.`,
+        'Это действие необратимо: прогресс и сборка будут удалены.',
+        'Нажмите «🗑️ Да, удалить» только если действительно хотите начать заново.',
+      ].join('\n'),
+      createDeleteConfirmationKeyboard(player),
+    );
+  }
+
+  private async deletePlayer(
+    ctx: Context,
+    vkId: number,
+    intentId?: string,
+    intentStateKey?: string,
+    intentSource: ReturnType<typeof resolveCommandEnvelope>['intentSource'] = null,
+  ): Promise<void> {
+    const player = await this.services.getPlayerProfile.execute(vkId);
+    const intent = resolveCommandIntent(intentId, intentStateKey, intentSource, false);
+
+    if (!intent || intent.intentStateKey !== player.updatedAt) {
+      throw new AppError('stale_command_intent', 'Это подтверждение уже устарело. Я вернул вас в профиль: начните удаление заново, если всё ещё хотите удалить персонажа.');
+    }
+
+    await this.services.deletePlayer.execute(vkId, player.updatedAt);
     await this.reply(ctx, 'Персонаж удалён. Можно начать заново в любой момент.', createEntryKeyboard());
   }
 
