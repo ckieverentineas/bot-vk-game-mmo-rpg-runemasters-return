@@ -1,3 +1,4 @@
+import { AppError } from '../../../../shared/domain/AppError';
 import { gameBalance } from '../../../../config/game-balance';
 import type { PlayerState } from '../../../../shared/types/game';
 
@@ -9,6 +10,10 @@ export class EnterTutorialMode {
 
   public async execute(vkId: number): Promise<PlayerState> {
     const player = await requirePlayerByVkId(this.repository, vkId);
+
+    if (player.activeBattleId) {
+      throw new AppError('battle_in_progress', 'Сначала завершите текущий бой, а потом возвращайтесь к экрану обучения.');
+    }
 
     if (player.tutorialState !== 'ACTIVE') {
       return player;

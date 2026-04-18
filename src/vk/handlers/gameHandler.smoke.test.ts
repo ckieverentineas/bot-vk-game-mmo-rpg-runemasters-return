@@ -364,6 +364,37 @@ describe('GameHandler smoke', () => {
     expect(JSON.stringify(replies[0]?.keyboard)).not.toContain('Учебный бой');
   });
 
+  it('возвращает в активный бой, если открыть локацию во время сражения', async () => {
+    const services = createServices();
+    vi.mocked(services.enterTutorialMode.execute).mockRejectedValueOnce(
+      new AppError('battle_in_progress', 'Сначала завершите текущий бой, а потом возвращайтесь к экрану обучения.'),
+    );
+    const handler = new GameHandler(services);
+    const ctx = createFakeContext({ command: 'локация' });
+
+    await handler.handle(ctx as never);
+
+    const replies = getReplyCalls(ctx);
+    expect(replies[0]?.message).toContain('Сначала завершите текущий бой');
+    expect(replies[0]?.message).toContain('⚔️ Бой');
+    expect(JSON.stringify(replies[0]?.keyboard)).toContain('атака');
+  });
+
+  it('нормализует алиас обучения к тому же battle-safe recovery', async () => {
+    const services = createServices();
+    vi.mocked(services.enterTutorialMode.execute).mockRejectedValueOnce(
+      new AppError('battle_in_progress', 'Сначала завершите текущий бой, а потом возвращайтесь к экрану обучения.'),
+    );
+    const handler = new GameHandler(services);
+    const ctx = createFakeContext({ text: 'обучение' });
+
+    await handler.handle(ctx as never);
+
+    const replies = getReplyCalls(ctx);
+    expect(replies[0]?.message).toContain('⚔️ Бой');
+    expect(JSON.stringify(replies[0]?.keyboard)).toContain('атака');
+  });
+
   it('выводит adventure recap для активного игрока по команде возврата в приключения', async () => {
     const services = createServices();
     vi.mocked(services.returnToAdventure.execute).mockResolvedValueOnce(createPlayer({ tutorialState: 'SKIPPED', locationLevel: 1 }));

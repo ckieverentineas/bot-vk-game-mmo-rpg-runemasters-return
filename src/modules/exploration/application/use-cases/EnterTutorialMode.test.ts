@@ -91,4 +91,19 @@ describe('EnterTutorialMode', () => {
 
     expect(repository.saveExplorationState).not.toHaveBeenCalled();
   });
+
+  it('rejects tutorial screen entry while a battle is already active', async () => {
+    const player = createPlayer({ tutorialState: 'ACTIVE', activeBattleId: 'battle-1' });
+    const repository = {
+      findPlayerByVkId: vi.fn().mockResolvedValue(player),
+      saveExplorationState: vi.fn(),
+    } as unknown as GameRepository;
+    const useCase = new EnterTutorialMode(repository);
+
+    await expect(useCase.execute(player.vkId)).rejects.toMatchObject({
+      code: 'battle_in_progress',
+    });
+
+    expect(repository.saveExplorationState).not.toHaveBeenCalled();
+  });
 });

@@ -258,7 +258,7 @@ export class GameHandler {
     }
 
     try {
-      if ([gameCommands.skipTutorial, gameCommands.returnToAdventure].includes(command as typeof gameCommands.skipTutorial | typeof gameCommands.returnToAdventure) && error.code === 'battle_in_progress') {
+      if ([gameCommands.location, gameCommands.skipTutorial, gameCommands.returnToAdventure].includes(command as typeof gameCommands.location | typeof gameCommands.skipTutorial | typeof gameCommands.returnToAdventure) && error.code === 'battle_in_progress') {
         const battle = await this.services.getActiveBattle.execute(vkId);
         if (battle) {
           await this.reply(ctx, [error.message, '', renderBattle(battle)].join('\n'), this.resolveBattleKeyboard(battle));
