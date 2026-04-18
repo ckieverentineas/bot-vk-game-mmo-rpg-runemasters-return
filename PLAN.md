@@ -518,7 +518,7 @@ Runemasters Return должен решать это через **школы ру
   - [x] rune mutation same-intent dedupe через keyboard payloads
   - [ ] broader non-rune / legacy-text multi-budget dedupe
 - [x] Зафиксировать RNG authority rules для reroll / drop / craft
-- [ ] Подготовить alt-account / guild / PvP abuse checklist
+- [x] Подготовить alt-account / guild / PvP abuse checklist
 - [x] Добавить обязательные concurrency tests на critical use cases
 
 ### 11.6 Exit gate for Phase 1
@@ -962,3 +962,4 @@ Runemasters Return должен решать это через **школы ру
 - **2026-04-18:** подготовлен content pipeline plan v1 с validator tiers и school package template для schools / enemies / encounters / quests / season chronicle configs.
 - **2026-04-18:** введён RNG authority v1 для craft / reroll / victory rune drop через `GameRandom` и зафиксированы правила canonical random outcome.
 - **2026-04-18:** введён command intent replay policy v1 для keyboard rune mutations; duplicate same-intent craft / reroll / destroy теперь возвращают canonical stored result.
+- **2026-04-18:** добавлен release-gate checklist v1 для alt-account abuse, circle/social-lite collusion и optional async PvP abuse без расширения scope до guild wars, trading или real-time PvP.

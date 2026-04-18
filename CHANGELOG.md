@@ -567,6 +567,26 @@
 - duplicate VK delivery of the same rune-mutation intent no longer turns enough shards into extra legitimate crafts/rerolls;
 - duplicate destroy replay no longer risks a second refund when the first result is already persisted.
 
+## [0.25] - 2026-04-18
+
+### Commit
+
+- `worktree` — `docs: add social abuse release gate checklist`
+
+### Added
+
+- QA source-of-truth doc [`docs/qa/alt-account-guild-pvp-abuse-checklist.md`](docs/qa/alt-account-guild-pvp-abuse-checklist.md) for alt-account abuse, circle/social-lite collusion, and optional async PvP release-gate review.
+
+### Changed
+
+- `PLAN.md` now marks the alt-account / guild / PvP abuse checklist slice as done and logs the shipped docs milestone;
+- `RELEASE_CHECKLIST.md` now conditionally requires the new checklist when social/PvP reward loops or circle contribution flows change.
+
+### Fixed
+
+- social-lite and optional async PvP scope no longer rely on an implicit abuse review with no single release-gate document;
+- release review now has a narrow, current-state checklist without prematurely expanding scope into full anti-fraud, trading, guild wars, or real-time PvP.
+
 ## Шаблон следующей записи
 
 ### [0.03] - YYYY-MM-DD
