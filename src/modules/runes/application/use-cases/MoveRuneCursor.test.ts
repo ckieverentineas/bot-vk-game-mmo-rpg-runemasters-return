@@ -62,6 +62,44 @@ describe('MoveRuneCursor', () => {
     );
   });
 
+  it('passes server-owned legacy text intent for rune cursor navigation', async () => {
+    const player = createPlayer();
+    const repository = {
+      findPlayerByVkId: vi.fn().mockResolvedValue(player),
+      getCommandIntentResult: vi.fn().mockResolvedValue(null),
+      saveRuneCursor: vi.fn().mockResolvedValue(player),
+    } as unknown as GameRepository;
+    const useCase = new MoveRuneCursor(repository);
+
+    await useCase.execute(player.vkId, 1, 'legacy-text:2000000001:1001:96:+руна', undefined, 'legacy_text');
+
+    expect(repository.saveRuneCursor).toHaveBeenCalledWith(
+      player.playerId,
+      1,
+      expect.objectContaining({
+        commandKey: 'MOVE_RUNE_CURSOR',
+        intentId: 'legacy-text:2000000001:1001:96:+руна',
+        intentStateKey: 'legacy-text:2000000001:1001:96:+руна',
+        expectedPlayerUpdatedAt: player.updatedAt,
+      }),
+    );
+  });
+
+  it('returns the canonical legacy text replay before moving the cursor again', async () => {
+    const player = createPlayer({ currentRuneIndex: 1 });
+    const replayed = createPlayer({ currentRuneIndex: 1 });
+    const repository = {
+      findPlayerByVkId: vi.fn().mockResolvedValue(player),
+      getCommandIntentResult: vi.fn().mockResolvedValue({ status: 'APPLIED', result: replayed }),
+      saveRuneCursor: vi.fn(),
+    } as unknown as GameRepository;
+    const useCase = new MoveRuneCursor(repository);
+
+    await expect(useCase.execute(player.vkId, 1, 'legacy-text:2000000001:1001:97:+руна', undefined, 'legacy_text')).resolves.toEqual(replayed);
+
+    expect(repository.saveRuneCursor).not.toHaveBeenCalled();
+  });
+
   it('rejects stale page navigation before persistence', async () => {
     const player = createPlayer();
     const repository = {
@@ -71,6 +109,22 @@ describe('MoveRuneCursor', () => {
     const useCase = new MoveRuneCursor(repository);
 
     await expect(useCase.execute(player.vkId, 1, 'intent-rune-nav-1', 'stale-state', 'payload')).rejects.toMatchObject({
+      code: 'stale_command_intent',
+    });
+
+    expect(repository.saveRuneCursor).not.toHaveBeenCalled();
+  });
+
+  it('fail-closes legacy text rune navigation without message metadata', async () => {
+    const player = createPlayer();
+    const repository = {
+      findPlayerByVkId: vi.fn().mockResolvedValue(player),
+      getCommandIntentResult: vi.fn(),
+      saveRuneCursor: vi.fn(),
+    } as unknown as GameRepository;
+    const useCase = new MoveRuneCursor(repository);
+
+    await expect(useCase.execute(player.vkId, 1, undefined, undefined, 'legacy_text')).rejects.toMatchObject({
       code: 'stale_command_intent',
     });
 

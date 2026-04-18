@@ -105,6 +105,43 @@ describe('normalizeCommand', () => {
     expect(unequip.intentSource).toBe('legacy_text');
   });
 
+  it('выводит server-owned intent для legacy text навигации по рунам и её алиасов', () => {
+    const nextPage = resolveCommandEnvelope({
+      text: 'руны >',
+      senderId: 1001,
+      peerId: 2000000001,
+      conversationMessageId: 84,
+      id: 508,
+      messagePayload: null,
+    } as never);
+    const nextAlias = resolveCommandEnvelope({
+      text: '>>руна',
+      senderId: 1001,
+      peerId: 2000000001,
+      conversationMessageId: 85,
+      id: 509,
+      messagePayload: null,
+    } as never);
+    const slot = resolveCommandEnvelope({
+      text: 'руна слот 1',
+      senderId: 1001,
+      peerId: 2000000001,
+      conversationMessageId: 86,
+      id: 510,
+      messagePayload: null,
+    } as never);
+
+    expect(nextPage.command).toBe(gameCommands.nextRunePage);
+    expect(nextPage.intentId).toBe('legacy-text:2000000001:1001:84:руны >');
+    expect(nextPage.intentSource).toBe('legacy_text');
+    expect(nextAlias.command).toBe(gameCommands.nextRunePage);
+    expect(nextAlias.intentId).toBe('legacy-text:2000000001:1001:85:руны >');
+    expect(nextAlias.intentSource).toBe('legacy_text');
+    expect(slot.command).toBe(gameCommands.selectRuneSlot1);
+    expect(slot.intentId).toBe('legacy-text:2000000001:1001:86:руна слот 1');
+    expect(slot.intentSource).toBe('legacy_text');
+  });
+
   it('выводит server-owned intent для tutorial navigation и алиаса возврата', () => {
     const skip = resolveCommandEnvelope({
       text: 'пропустить обучение',

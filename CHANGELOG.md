@@ -669,6 +669,28 @@
 - duplicate `🗑️ Да, удалить` больше не должен сваливаться в `player_not_found` после уже успешного удаления персонажа;
 - stale delete confirm больше не должен рисковать удалением нового персонажа, созданного на том же `vkId` после предыдущего удаления.
 
+## [0.43] - 2026-04-19
+
+### Commit
+
+- `worktree` — `fix: guard legacy text rune navigation retries`
+
+### Added
+
+- regression coverage для legacy text rune navigation в [`src/modules/runes/application/use-cases/MoveRuneCursor.test.ts`](src/modules/runes/application/use-cases/MoveRuneCursor.test.ts), [`src/modules/runes/application/use-cases/SelectRunePageSlot.test.ts`](src/modules/runes/application/use-cases/SelectRunePageSlot.test.ts), [`src/vk/router/commandRouter.test.ts`](src/vk/router/commandRouter.test.ts) и [`src/vk/handlers/gameHandler.smoke.test.ts`](src/vk/handlers/gameHandler.smoke.test.ts);
+- `PLAN.md` теперь явно закрывает remaining supported mutation-path audit для `11.5 repeated command / retry handling`.
+
+### Changed
+
+- [`commandRouter`](src/vk/router/commandRouter.ts) теперь выдаёт server-owned legacy text intent ids для `+руна`, `-руна`, `руны >`, `руны <`, `руна слот 1..4` и их alias;
+- [`MoveRuneCursor`](src/modules/runes/application/use-cases/MoveRuneCursor.ts) и [`SelectRunePageSlot`](src/modules/runes/application/use-cases/SelectRunePageSlot.ts) теперь используют тот же same-intent replay rail для legacy text rune navigation, что и keyboard navigation;
+- docs retry/intent rules синхронизированы под закрытие последнего supported legacy mutation gap в Phase 1 scope.
+
+### Fixed
+
+- duplicate same-message rune navigation больше не должна двигать курсор или выбор руны второй раз при повторной доставке одного и того же text command;
+- historical alias `>>руна` / `<<руна` / `++руна` / `--руна` больше не обходят replay rail и теперь нормализуются в тот же guarded legacy intent envelope.
+
 ## Шаблон следующей записи
 
 ### [0.03] - YYYY-MM-DD

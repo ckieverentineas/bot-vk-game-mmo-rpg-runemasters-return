@@ -1,6 +1,13 @@
 import type { Context } from 'vk-io';
 import type { CommandIntentSource } from '../../modules/shared/application/command-intent';
-import { commandAliases, gameCommands, resolveRuneStatRerollCommand, resolveStatAllocationCommand } from '../commands/catalog';
+import {
+  commandAliases,
+  gameCommands,
+  resolveRuneCursorDeltaCommand,
+  resolveRunePageSlotCommand,
+  resolveRuneStatRerollCommand,
+  resolveStatAllocationCommand,
+} from '../commands/catalog';
 
 export interface ResolvedCommandEnvelope {
   readonly command: string;
@@ -19,6 +26,8 @@ const supportsLegacyTextIntent = (command: string): boolean => (
   || command === gameCommands.destroyRune
   || command === gameCommands.equipRune
   || command === gameCommands.unequipRune
+  || resolveRuneCursorDeltaCommand(command) !== null
+  || resolveRunePageSlotCommand(command) !== null
   || command === gameCommands.location
   || command === gameCommands.skipTutorial
   || command === gameCommands.returnToAdventure

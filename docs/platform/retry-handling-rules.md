@@ -35,6 +35,7 @@
 - keyboard-issued `equipRune` / `unequipRune` дополнительно привязываются к loadout `stateKey`, чтобы старое сообщение не могло экипировать или снять уже другую руну.
 - legacy text `надеть` / `снять` получают server-owned message intent id и повторно возвращают canonical loadout result вместо второго применения той же команды.
 - keyboard-issued `руны >` / `руны <` / `руна слот 1..4` дополнительно привязываются к rune-hub `stateKey`, чтобы старый экран не мог тихо выбрать уже другую руну или другую страницу.
+- legacy text `+руна` / `-руна` / `руны >` / `руны <` / `руна слот 1..4` и alias теперь тоже получают server-owned message intent id и используют тот же canonical replay receipt.
 - stale или retry-pending rune page/slot input обязан восстанавливать актуальный rune hub вместо silent retargeting.
 
 ## Profile mutation rules

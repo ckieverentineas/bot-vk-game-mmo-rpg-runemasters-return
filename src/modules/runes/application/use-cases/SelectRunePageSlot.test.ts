@@ -62,6 +62,44 @@ describe('SelectRunePageSlot', () => {
     );
   });
 
+  it('passes server-owned legacy text intent for rune slot selection', async () => {
+    const player = createPlayer();
+    const repository = {
+      findPlayerByVkId: vi.fn().mockResolvedValue(player),
+      getCommandIntentResult: vi.fn().mockResolvedValue(null),
+      saveRuneCursor: vi.fn().mockResolvedValue(player),
+    } as unknown as GameRepository;
+    const useCase = new SelectRunePageSlot(repository);
+
+    await useCase.execute(player.vkId, 1, 'legacy-text:2000000001:1001:98:руна слот 2', undefined, 'legacy_text');
+
+    expect(repository.saveRuneCursor).toHaveBeenCalledWith(
+      player.playerId,
+      1,
+      expect.objectContaining({
+        commandKey: 'SELECT_RUNE_PAGE_SLOT',
+        intentId: 'legacy-text:2000000001:1001:98:руна слот 2',
+        intentStateKey: 'legacy-text:2000000001:1001:98:руна слот 2',
+        expectedPlayerUpdatedAt: player.updatedAt,
+      }),
+    );
+  });
+
+  it('returns the canonical legacy text replay before selecting the slot again', async () => {
+    const player = createPlayer({ currentRuneIndex: 1 });
+    const replayed = createPlayer({ currentRuneIndex: 1 });
+    const repository = {
+      findPlayerByVkId: vi.fn().mockResolvedValue(player),
+      getCommandIntentResult: vi.fn().mockResolvedValue({ status: 'APPLIED', result: replayed }),
+      saveRuneCursor: vi.fn(),
+    } as unknown as GameRepository;
+    const useCase = new SelectRunePageSlot(repository);
+
+    await expect(useCase.execute(player.vkId, 1, 'legacy-text:2000000001:1001:99:руна слот 2', undefined, 'legacy_text')).resolves.toEqual(replayed);
+
+    expect(repository.saveRuneCursor).not.toHaveBeenCalled();
+  });
+
   it('rejects stale slot selection before persistence', async () => {
     const player = createPlayer();
     const repository = {
@@ -71,6 +109,22 @@ describe('SelectRunePageSlot', () => {
     const useCase = new SelectRunePageSlot(repository);
 
     await expect(useCase.execute(player.vkId, 0, 'intent-rune-slot-1', 'stale-state', 'payload')).rejects.toMatchObject({
+      code: 'stale_command_intent',
+    });
+
+    expect(repository.saveRuneCursor).not.toHaveBeenCalled();
+  });
+
+  it('fail-closes legacy text slot selection without message metadata', async () => {
+    const player = createPlayer();
+    const repository = {
+      findPlayerByVkId: vi.fn().mockResolvedValue(player),
+      getCommandIntentResult: vi.fn(),
+      saveRuneCursor: vi.fn(),
+    } as unknown as GameRepository;
+    const useCase = new SelectRunePageSlot(repository);
+
+    await expect(useCase.execute(player.vkId, 1, undefined, undefined, 'legacy_text')).rejects.toMatchObject({
       code: 'stale_command_intent',
     });
 

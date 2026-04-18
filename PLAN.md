@@ -513,12 +513,12 @@ Runemasters Return должен решать это через **школы ру
 
 - [x] Собрать reward duplication matrix
 - [x] Ввести stale action rejection rules
-- [ ] Зафиксировать repeated command / retry handling
+- [x] Зафиксировать repeated command / retry handling
   - [x] battle mutation retries и stale overwrite rules
   - [x] keyboard battle action same-intent dedupe и canonical replay
   - [x] legacy text battle action same-intent dedupe через server-owned message ids
   - [x] rune mutation same-intent dedupe через keyboard payloads
-  - [ ] broader non-rune / legacy-text multi-budget dedupe
+  - [x] broader non-rune / legacy-text multi-budget dedupe
     - [x] profile stat allocation / reset same-intent dedupe через keyboard payloads
     - [x] rune equip / unequip same-intent dedupe и stale loadout recovery через keyboard payloads
     - [x] legacy text same-intent dedupe для rune craft / reroll / destroy через server-owned message ids
@@ -528,7 +528,8 @@ Runemasters Return должен решать это через **школы ру
     - [x] explore location same-intent dedupe через keyboard payloads и legacy text ids
     - [x] enter tutorial mode same-intent dedupe через keyboard payloads и legacy text ids
     - [x] delete confirm same-intent dedupe через keyboard payloads и account-scoped delete receipt
-    - [ ] остальные legacy text-command и non-rune mutation paths
+    - [x] legacy text rune navigation same-intent dedupe для rune cursor / page / slot commands через server-owned message ids
+    - [x] remaining supported non-guarded text commands audited: они read-only и не требуют replay rail в scope v1
 - [x] Зафиксировать RNG authority rules для reroll / drop / craft
 - [x] Подготовить alt-account / guild / PvP abuse checklist
 - [x] Добавить обязательные concurrency tests на critical use cases
@@ -990,3 +991,4 @@ Runemasters Return должен решать это через **школы ру
 - **2026-04-18:** `исследовать` и battle-result CTA переведены на command intent replay rail; duplicate same-intent encounter entry теперь возвращает canonical battle, а stuck enemy-turn recovery больше не должен оставлять игрока в подвешенном активном бою.
 - **2026-04-18:** `локация` / `обучение` переведены на command intent replay rail; duplicate tutorial-entry input теперь возвращает canonical tutorial state только пока exploration state не успел устареть и больше не маскирует активный бой или более свежий adventure context.
 - **2026-04-19:** `__confirm_delete_player__` переведён на exact-once replay rail через account-scoped `DeletePlayerReceipt`; duplicate same-intent confirm теперь возвращает canonical delete success и не должен падать в `player_not_found` после уже успешного удаления.
+- **2026-04-19:** legacy text rune navigation (`+руна`, `-руна`, `руны >`, `руны <`, `руна слот 1..4` и alias) переведена на server-owned message intent ids; duplicate same-message navigation теперь должна возвращать canonical rune hub, а stale rune-hub buttons по-прежнему обязаны восстанавливать актуальный экран вместо silent retargeting.
