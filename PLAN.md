@@ -975,3 +975,4 @@ Runemasters Return должен решать это через **школы ру
 - **2026-04-18:** tutorial guardrail tightened: non-`ACTIVE` players больше не должны возвращаться в intro flow через `локация`, а stale intro location state теперь трактуется как обычный adventure path для encounter и rune-scaling, а не как повторное обучение.
 - **2026-04-18:** legacy text `+стат` и `сброс` получили server-owned message intent ids; duplicate text replay теперь должен возвращать canonical profile state вместо повторного spend/reset поверх новой сборки.
 - **2026-04-18:** legacy text `надеть` и `снять` получили server-owned message intent ids; duplicate text replay теперь должен возвращать canonical rune loadout result вместо повторного применения той же команды.
+- **2026-04-18:** `в приключения` теперь считается явным выходом из активного обучения; stale intro location больше не должен возвращать игрока к CTA `⚔️ Учебный бой` после добровольного выхода в adventure flow.

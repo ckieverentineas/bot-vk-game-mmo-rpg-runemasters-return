@@ -1309,11 +1309,15 @@ export class PrismaGameRepository implements GameRepository {
       const nextAdventureLocationLevel = resolveAdaptiveAdventureLocationLevel(projectedPlayer);
 
       if (battle.locationLevel === gameBalance.world.introLocationLevel) {
-        if (currentPlayer.tutorialState === 'ACTIVE' && battle.result === 'VICTORY') {
-          nextTutorialState = 'COMPLETED';
-          nextLocationLevel = nextAdventureLocationLevel;
+        if (currentPlayer.tutorialState === 'ACTIVE') {
+          if (battle.result === 'VICTORY') {
+            nextTutorialState = 'COMPLETED';
+            nextLocationLevel = nextAdventureLocationLevel;
+          } else {
+            nextLocationLevel = gameBalance.world.introLocationLevel;
+          }
         } else {
-          nextLocationLevel = gameBalance.world.introLocationLevel;
+          nextLocationLevel = nextAdventureLocationLevel;
         }
       } else {
         nextLocationLevel = nextAdventureLocationLevel;

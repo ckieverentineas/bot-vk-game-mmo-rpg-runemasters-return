@@ -13,7 +13,7 @@ export class ReturnToAdventure {
     return this.repository.saveExplorationState(player.playerId, {
       locationLevel: resolveAdaptiveAdventureLocationLevel(player),
       highestLocationLevel: player.highestLocationLevel,
-      tutorialState: player.tutorialState,
+      tutorialState: player.tutorialState === 'ACTIVE' ? 'SKIPPED' : player.tutorialState,
       victoryStreak: player.victoryStreak,
       defeatStreak: player.defeatStreak,
     });

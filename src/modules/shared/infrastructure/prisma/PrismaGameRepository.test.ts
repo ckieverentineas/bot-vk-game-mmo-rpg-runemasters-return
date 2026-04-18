@@ -554,6 +554,41 @@ describe('PrismaGameRepository release hardening', () => {
     });
   });
 
+  it('does not snap skipped players back to intro after finishing a stale intro battle', async () => {
+    const { repository, tx } = createPrismaMock();
+    const currentPlayer = createPlayerRecord();
+    currentPlayer.level = 5;
+    currentPlayer.progress.tutorialState = 'SKIPPED';
+    currentPlayer.progress.locationLevel = 0;
+    currentPlayer.progress.activeBattleId = 'battle-1';
+    const persistedBattle = createBattleRow({
+      status: 'COMPLETED',
+      result: 'DEFEAT',
+      locationLevel: 0,
+      rewardsSnapshot: null,
+    });
+
+    tx.battleSession.updateMany.mockResolvedValue({ count: 1 });
+    tx.player.findUnique.mockResolvedValue(currentPlayer);
+    tx.player.update.mockResolvedValue({});
+    tx.playerProgress.update.mockResolvedValue({});
+    tx.battleSession.findFirst.mockResolvedValue(persistedBattle);
+
+    await repository.finalizeBattle(1, createBattleView({
+      locationLevel: 0,
+      result: 'DEFEAT',
+      rewards: null,
+      log: ['Поражение.'],
+    }));
+
+    expect(tx.playerProgress.update).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
+        locationLevel: 1,
+        tutorialState: 'SKIPPED',
+      }),
+    }));
+  });
+
   it('hydrates legacy battle snapshots without rune combat fields', async () => {
     const { repository, tx } = createPrismaMock();
 

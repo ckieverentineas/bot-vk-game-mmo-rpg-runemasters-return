@@ -192,6 +192,19 @@ describe('messages school-first onboarding framing', () => {
     expect(location).toContain('Исследовать');
   });
 
+  it('keeps completed players on the adventure path even with stale intro location state', () => {
+    const player = createPlayer({ tutorialState: 'COMPLETED', locationLevel: 0 });
+
+    const recap = renderReturnRecap(player);
+    const location = renderLocation(player);
+
+    expect(recap).toContain('🧭 Возвращение');
+    expect(recap).toContain('Дальше: нажмите «⚔️ Исследовать»');
+    expect(recap).not.toContain('Учебный бой');
+    expect(location).toContain('Обучение уже завершено');
+    expect(location).toContain('Сейчас открыт режим приключений');
+  });
+
   it('builds a calm return recap from current state and equipped school', () => {
     const message = renderReturnRecap(createPlayer({
       tutorialState: 'SKIPPED',
