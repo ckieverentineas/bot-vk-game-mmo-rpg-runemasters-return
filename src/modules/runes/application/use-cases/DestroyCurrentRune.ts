@@ -5,11 +5,12 @@ import { getSelectedRune } from '../../../player/domain/player-stats';
 
 import { requirePlayerByVkId } from '../../../shared/application/require-player';
 import type { GameRepository } from '../../../shared/application/ports/GameRepository';
+import { buildDestroyIntentStateKey } from '../command-intent-state';
 
 export class DestroyCurrentRune {
   public constructor(private readonly repository: GameRepository) {}
 
-  public async execute(vkId: number): Promise<PlayerState> {
+  public async execute(vkId: number, intentId?: string, intentStateKey?: string): Promise<PlayerState> {
     const player = await requirePlayerByVkId(this.repository, vkId);
 
     const rune = getSelectedRune(player);
@@ -19,7 +20,15 @@ export class DestroyCurrentRune {
 
     const shardField = gameBalance.runes.profiles[rune.rarity].shardField;
     const shardReward = Math.max(1, gameBalance.runes.profiles[rune.rarity].lines * 2);
+    const currentStateKey = buildDestroyIntentStateKey(player, rune.id, shardField);
 
-    return this.repository.destroyRune(player.playerId, rune.id, { [shardField]: shardReward });
+    return this.repository.destroyRune(
+      player.playerId,
+      rune.id,
+      { [shardField]: shardReward },
+      intentId,
+      intentStateKey,
+      intentId ? currentStateKey : undefined,
+    );
   }
 }

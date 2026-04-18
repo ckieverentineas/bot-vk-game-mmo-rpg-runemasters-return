@@ -6,6 +6,7 @@ import type { GameRandom } from '../../../shared/application/ports/GameRandom';
 
 import { requirePlayerByVkId } from '../../../shared/application/require-player';
 import type { GameRepository } from '../../../shared/application/ports/GameRepository';
+import { buildRerollIntentStateKey } from '../command-intent-state';
 import { RuneFactory } from '../../domain/rune-factory';
 
 export class RerollCurrentRuneStat {
@@ -14,7 +15,7 @@ export class RerollCurrentRuneStat {
     private readonly random: GameRandom,
   ) {}
 
-  public async execute(vkId: number, stat: StatKey): Promise<PlayerState> {
+  public async execute(vkId: number, stat: StatKey, intentId?: string, intentStateKey?: string): Promise<PlayerState> {
     const player = await requirePlayerByVkId(this.repository, vkId);
 
     const rune = getSelectedRune(player);
@@ -27,6 +28,8 @@ export class RerollCurrentRuneStat {
       throw new AppError('not_enough_shards', 'Для изменения стата нужен хотя бы один осколок той же редкости.');
     }
 
+    const currentStateKey = buildRerollIntentStateKey(player, stat, rune);
+
     const nextRune = RuneFactory.rerollStat(rune, stat, player.locationLevel, this.random);
     return this.repository.rerollRuneStat(player.playerId, rune.id, rune.rarity, {
       health: nextRune.health,
@@ -35,6 +38,6 @@ export class RerollCurrentRuneStat {
       magicDefence: nextRune.magicDefence,
       dexterity: nextRune.dexterity,
       intelligence: nextRune.intelligence,
-    });
+    }, intentId, intentStateKey, intentId ? currentStateKey : undefined);
   }
 }

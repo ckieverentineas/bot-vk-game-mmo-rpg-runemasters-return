@@ -5,6 +5,7 @@ import type { GameRandom } from '../../../shared/application/ports/GameRandom';
 
 import { requirePlayerByVkId } from '../../../shared/application/require-player';
 import type { GameRepository } from '../../../shared/application/ports/GameRepository';
+import { buildCraftIntentStateKey } from '../command-intent-state';
 import { RuneFactory } from '../../domain/rune-factory';
 
 const rarityPriority: RuneRarity[] = ['MYTHICAL', 'LEGENDARY', 'EPIC', 'RARE', 'UNUSUAL', 'USUAL'];
@@ -15,7 +16,7 @@ export class CraftRune {
     private readonly random: GameRandom,
   ) {}
 
-  public async execute(vkId: number): Promise<PlayerState> {
+  public async execute(vkId: number, intentId?: string, intentStateKey?: string): Promise<PlayerState> {
     const player = await requirePlayerByVkId(this.repository, vkId);
 
     const rarity = rarityPriority.find((candidate) => {
@@ -27,12 +28,15 @@ export class CraftRune {
       throw new AppError('not_enough_shards', 'Недостаточно осколков для создания руны. Нужно минимум 10 осколков одной редкости.');
     }
 
-    let updated = await this.repository.craftRune(
+    const currentStateKey = buildCraftIntentStateKey(player);
+
+    return this.repository.craftRune(
       player.playerId,
       rarity,
       RuneFactory.create(player.locationLevel, rarity, undefined, this.random),
+      intentId,
+      intentStateKey,
+      intentId ? currentStateKey : undefined,
     );
-    updated = await this.repository.saveRuneCursor(updated.playerId, Math.max(0, updated.runes.length - 1));
-    return updated;
   }
 }

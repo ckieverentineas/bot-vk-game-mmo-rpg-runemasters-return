@@ -15,6 +15,8 @@ interface FakeContextInput {
   readonly senderId?: number;
   readonly text?: string;
   readonly command?: string;
+  readonly intentId?: string;
+  readonly stateKey?: string;
 }
 
 type ReplyMock = ReturnType<typeof vi.fn>;
@@ -22,19 +24,25 @@ type ReplyMock = ReturnType<typeof vi.fn>;
 interface FakeContext {
   readonly senderId: number;
   readonly text: string;
-  readonly messagePayload: { command?: string } | null;
+  readonly messagePayload: { command?: string; intentId?: string; stateKey?: string } | null;
   readonly reply: ReplyMock;
 }
 
 const createFakeContext = (input: FakeContextInput): FakeContext => {
   const reply = vi.fn().mockResolvedValue(undefined);
 
-  return {
-    senderId: input.senderId ?? 1001,
-    text: input.text ?? '',
-    messagePayload: input.command ? { command: input.command } : null,
-    reply,
-  };
+    return {
+      senderId: input.senderId ?? 1001,
+      text: input.text ?? '',
+      messagePayload: input.command
+        ? {
+            command: input.command,
+            ...(input.intentId ? { intentId: input.intentId } : {}),
+            ...(input.stateKey ? { stateKey: input.stateKey } : {}),
+          }
+        : null,
+      reply,
+    };
 };
 
 const getReplyCalls = (ctx: FakeContext): ReplyCall[] => (
@@ -345,6 +353,26 @@ describe('GameHandler smoke', () => {
     expect(getReplyCalls(ctx)[0]?.message).toContain('🎯 Следующая цель: начните «⚔️ Новый бой»');
   });
 
+  it('пробрасывает intentId для крафта руны через transport payload', async () => {
+    const services = createServices();
+    const handler = new GameHandler(services);
+    const ctx = createFakeContext({ command: 'создать', intentId: 'intent-craft-1', stateKey: 'state-craft-1' });
+
+    await handler.handle(ctx as never);
+
+    expect(services.craftRune.execute).toHaveBeenCalledWith(1001, 'intent-craft-1', 'state-craft-1');
+  });
+
+  it('пробрасывает intentId для перековки руны через transport payload', async () => {
+    const services = createServices();
+    const handler = new GameHandler(services);
+    const ctx = createFakeContext({ command: '~атк', intentId: 'intent-reroll-1', stateKey: 'state-reroll-1' });
+
+    await handler.handle(ctx as never);
+
+    expect(services.rerollCurrentRuneStat.execute).toHaveBeenCalledWith(1001, 'attack', 'intent-reroll-1', 'state-reroll-1');
+  });
+
   it('использует рунное действие в бою', async () => {
     const services = createServices();
     const runeSkillBattle = createBattle({
@@ -490,7 +518,8 @@ describe('GameHandler smoke', () => {
 
     const replies = getReplyCalls(ctx);
     expect(replies[0]?.message).toContain('На этой позиции нет руны');
-    expect(JSON.stringify(replies[0]?.keyboard)).toBe(JSON.stringify(createRuneKeyboard()));
+    expect(JSON.stringify(replies[0]?.keyboard)).toContain('✨ Создать');
+    expect(JSON.stringify(replies[0]?.keyboard)).toContain('🗑️ Распылить');
   });
 
   it('оставляет игрока в боевом контексте при повторном stale нажатии атаки', async () => {

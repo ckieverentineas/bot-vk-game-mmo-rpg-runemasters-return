@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 
 import { describe, expect, it, vi } from 'vitest';
 
-import type { BattleView, RuneDraft, StatBlock } from '../../../../shared/types/game';
+import type { BattleView, PlayerState, RuneDraft, StatBlock } from '../../../../shared/types/game';
 import { PrismaGameRepository } from './PrismaGameRepository';
 
 const readFixture = <T>(fileName: string): T => JSON.parse(
@@ -203,6 +203,59 @@ const createStats = (): StatBlock => ({
   intelligence: 0,
 });
 
+const createPlayerStateSnapshot = (): PlayerState => ({
+  userId: 10,
+  vkId: 1001,
+  playerId: 1,
+  level: 3,
+  experience: 12,
+  gold: 7,
+  baseStats: {
+    health: 8,
+    attack: 4,
+    defence: 3,
+    magicDefence: 1,
+    dexterity: 2,
+    intelligence: 1,
+  },
+  allocationPoints: {
+    health: 0,
+    attack: 0,
+    defence: 0,
+    magicDefence: 0,
+    dexterity: 0,
+    intelligence: 0,
+  },
+  unspentStatPoints: 1,
+  locationLevel: 1,
+  currentRuneIndex: 0,
+  activeBattleId: null,
+  victories: 2,
+  victoryStreak: 1,
+  defeats: 0,
+  defeatStreak: 0,
+  mobsKilled: 2,
+  highestLocationLevel: 2,
+  tutorialState: 'SKIPPED',
+  inventory: {
+    usualShards: 15,
+    unusualShards: 4,
+    rareShards: 1,
+    epicShards: 0,
+    legendaryShards: 0,
+    mythicalShards: 0,
+    leather: 0,
+    bone: 0,
+    herb: 0,
+    essence: 0,
+    metal: 0,
+    crystal: 0,
+  },
+  runes: [],
+  createdAt: '2026-04-12T00:00:00.000Z',
+  updatedAt: '2026-04-12T00:00:00.000Z',
+});
+
 const createPrismaMock = () => {
   const tx = {
     player: {
@@ -225,6 +278,11 @@ const createPrismaMock = () => {
     rewardLedgerRecord: {
       create: vi.fn(),
       findUnique: vi.fn(),
+    },
+    commandIntentRecord: {
+      create: vi.fn(),
+      findUnique: vi.fn(),
+      update: vi.fn(),
     },
     battleSession: {
       findFirst: vi.fn(),
@@ -267,6 +325,23 @@ describe('PrismaGameRepository release hardening', () => {
         usualShards: { gte: 10 },
       }),
     }));
+  });
+
+  it('returns canonical crafted result for a duplicate command intent without spending again', async () => {
+    const { repository, tx } = createPrismaMock();
+
+    tx.commandIntentRecord.findUnique.mockResolvedValue({
+      commandKey: 'CRAFT_RUNE',
+      stateKey: 'state-1',
+      status: 'APPLIED',
+      resultSnapshot: JSON.stringify(createPlayerStateSnapshot()),
+    });
+
+    const player = await repository.craftRune(1, 'USUAL', createRuneDraft(), 'intent-1', 'state-1', 'state-1');
+
+    expect(player.playerId).toBe(1);
+    expect(tx.playerInventory.updateMany).not.toHaveBeenCalled();
+    expect(tx.rune.create).not.toHaveBeenCalled();
   });
 
   it('does not reroll rune stats when the last shard is gone', async () => {

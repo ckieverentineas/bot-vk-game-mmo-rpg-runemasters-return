@@ -392,6 +392,26 @@ describe.sequential('PrismaGameRepository concurrency rails', () => {
     expect(runeCount).toBe(1);
   });
 
+  it('returns the canonical crafted rune for a duplicate intent even with enough budget for two crafts', async () => {
+    const player = await createPlayer(2014);
+    await prisma.playerInventory.update({
+      where: { playerId: player.playerId },
+      data: {
+        usualShards: gameBalance.runes.craftCost * 2,
+      },
+    });
+
+    const [first, second] = await Promise.all([
+      repository.craftRune(player.playerId, 'USUAL', createRuneDraft('Крафтовая руна A'), 'intent-craft-1', 'state-craft-1', 'state-craft-1'),
+      repository.craftRune(player.playerId, 'USUAL', createRuneDraft('Крафтовая руна B'), 'intent-craft-1', 'state-craft-1', 'state-craft-1'),
+    ]);
+
+    expect(first.inventory.usualShards).toBe(second.inventory.usualShards);
+    expect(first.runes).toEqual(second.runes);
+    expect(first.inventory.usualShards).toBe(gameBalance.runes.craftCost);
+    expect(first.runes).toHaveLength(1);
+  });
+
   it('refunds and deletes only once under parallel destroy attempts', async () => {
     const player = await createPlayer(2005);
     await repository.createRune(player.playerId, createRuneDraft('Руна для распыления'));
@@ -415,6 +435,22 @@ describe.sequential('PrismaGameRepository concurrency rails', () => {
 
     expect(persistedPlayer?.inventory.usualShards).toBe(player.inventory.usualShards + 2);
     expect(runeCount).toBe(0);
+  });
+
+  it('returns the canonical destroy result for a duplicate intent instead of refunding twice', async () => {
+    const player = await createPlayer(2015);
+    await repository.createRune(player.playerId, createRuneDraft('Руна для идемпотентного распыления'));
+    const rune = (await repository.findPlayerById(player.playerId))?.runes[0];
+
+    const [first, second] = await Promise.all([
+      repository.destroyRune(player.playerId, rune!.id, { usualShards: 2 }, 'intent-destroy-1', 'state-destroy-1', 'state-destroy-1'),
+      repository.destroyRune(player.playerId, rune!.id, { usualShards: 2 }, 'intent-destroy-1', 'state-destroy-1', 'state-destroy-1'),
+    ]);
+
+    expect(first.inventory.usualShards).toBe(second.inventory.usualShards);
+    expect(first.runes).toEqual(second.runes);
+    expect(first.runes).toHaveLength(0);
+    expect(first.inventory.usualShards).toBe(player.inventory.usualShards + 2);
   });
 
   it('spends the last shard only once under parallel reroll attempts', async () => {
@@ -456,5 +492,59 @@ describe.sequential('PrismaGameRepository concurrency rails', () => {
 
     expect(persistedPlayer?.inventory.usualShards).toBe(0);
     expect(persistedRune?.attack).toBe(rerolledStats.attack);
+  });
+
+  it('returns the canonical reroll result for a duplicate intent even with enough shards for two rerolls', async () => {
+    const player = await createPlayer(2016);
+    await repository.createRune(player.playerId, createRuneDraft('Руна для идемпотентного реролла'));
+    const rune = (await repository.findPlayerById(player.playerId))?.runes[0];
+
+    await prisma.playerInventory.update({
+      where: { playerId: player.playerId },
+      data: {
+        usualShards: 2,
+      },
+    });
+
+    const firstStats: StatBlock = {
+      health: rune!.health,
+      attack: rune!.attack + 1,
+      defence: rune!.defence,
+      magicDefence: rune!.magicDefence,
+      dexterity: rune!.dexterity,
+      intelligence: rune!.intelligence,
+    };
+    const secondStats: StatBlock = {
+      ...firstStats,
+      attack: rune!.attack + 4,
+    };
+
+    const [first, second] = await Promise.all([
+      repository.rerollRuneStat(player.playerId, rune!.id, 'USUAL', firstStats, 'intent-reroll-1', 'state-reroll-1', 'state-reroll-1'),
+      repository.rerollRuneStat(player.playerId, rune!.id, 'USUAL', secondStats, 'intent-reroll-1', 'state-reroll-1', 'state-reroll-1'),
+    ]);
+
+    expect(first.inventory.usualShards).toBe(second.inventory.usualShards);
+    expect(first.runes).toEqual(second.runes);
+    expect(first.inventory.usualShards).toBe(1);
+    expect(first.runes[0]?.attack).toBe(firstStats.attack);
+  });
+
+  it('rejects a stale reused craft intent after player state already changed', async () => {
+    const player = await createPlayer(2017);
+    await prisma.playerInventory.update({
+      where: { playerId: player.playerId },
+      data: {
+        usualShards: gameBalance.runes.craftCost * 2,
+      },
+    });
+
+    await repository.craftRune(player.playerId, 'USUAL', createRuneDraft('Первая руна'), 'intent-craft-stale', 'state-before', 'state-before');
+
+    await expect(
+      repository.craftRune(player.playerId, 'USUAL', createRuneDraft('Вторая руна'), 'intent-craft-stale', 'state-after', 'state-after'),
+    ).rejects.toMatchObject({
+      code: 'stale_command_intent',
+    });
   });
 });

@@ -26,6 +26,7 @@
 - craft / reroll / destroy идут через guarded repository mutations;
 - если второго бюджета уже нет, повторная команда должна закончиться deterministic error (`not_enough_shards` / `rune_not_found`), а не частичным second apply;
 - inventory не должен уходить в отрицательные значения даже при parallel submit.
+- keyboard-issued rune mutations дополнительно идут через `intentId`; повтор того же intent обязан вернуть canonical stored result, а не второй spend.
 
 ## Player-facing rules
 
@@ -42,4 +43,4 @@
 
 - explicit RNG authority rules for reroll / drop / craft are now defined in `docs/platform/rng-authority-rules.md`, but broader idempotent command replay still remains;
 - migration fixtures for versioned persisted contracts;
-- broader dedupe policy for multi-budget repeated commands outside the critical one-budget rails.
+- broader dedupe policy for non-rune and legacy text-command repeated actions.

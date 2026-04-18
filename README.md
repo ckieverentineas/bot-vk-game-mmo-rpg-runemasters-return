@@ -51,6 +51,7 @@ Runemasters Return — VK MMO RPG на TypeScript с модульным игро
 - `src/shared/utils/json.ts` — единая точка для JSON clone/parse/stringify;
 - `docs/platform/retry-handling-rules.md`, `docs/platform/persistence-versioning-rules.md`, `docs/qa/reward-duplication-matrix.md`, `docs/testing/concurrency-critical-use-cases.md` — зафиксированные retry/concurrency rails и versioning policy для critical battle/reward flows;
 - `docs/platform/rng-authority-rules.md` — граница server-authoritative randomness для craft / reroll / reward drops;
+- `docs/platform/command-intent-rules.md` — intent-based replay policy для keyboard rune mutations с достаточным бюджетом;
 - `docs/telemetry/telemetry-plan.md` — минимальный telemetry v1 план для onboarding clarity, school readability, return UX, economy health и exploit review;
 - `docs/content/content-pipeline-plan.md`, `docs/content/validator-scope.md`, `docs/content/templates/school-package-template.md` — source-of-truth по content packages, validator tiers и school package completeness;
 - `src/modules/runes/domain/rune-collection.ts` — paging helper'ы рунной коллекции поверх существующего `currentRuneIndex` без новой persistence-схемы;

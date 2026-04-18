@@ -515,7 +515,8 @@ Runemasters Return должен решать это через **школы ру
 - [x] Ввести stale action rejection rules
 - [ ] Зафиксировать repeated command / retry handling
   - [x] battle mutation retries и stale overwrite rules
-  - [ ] broader multi-budget command dedupe вне текущих critical one-budget rails
+  - [x] rune mutation same-intent dedupe через keyboard payloads
+  - [ ] broader non-rune / legacy-text multi-budget dedupe
 - [x] Зафиксировать RNG authority rules для reroll / drop / craft
 - [ ] Подготовить alt-account / guild / PvP abuse checklist
 - [x] Добавить обязательные concurrency tests на critical use cases
@@ -960,3 +961,4 @@ Runemasters Return должен решать это через **школы ру
 - **2026-04-18:** подготовлен telemetry plan v1 для onboarding clarity, school readability, loadout engagement, economy health и exploit signals через существующий `GameLog` rail.
 - **2026-04-18:** подготовлен content pipeline plan v1 с validator tiers и school package template для schools / enemies / encounters / quests / season chronicle configs.
 - **2026-04-18:** введён RNG authority v1 для craft / reroll / victory rune drop через `GameRandom` и зафиксированы правила canonical random outcome.
+- **2026-04-18:** введён command intent replay policy v1 для keyboard rune mutations; duplicate same-intent craft / reroll / destroy теперь возвращают canonical stored result.

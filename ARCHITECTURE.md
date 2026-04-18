@@ -154,6 +154,8 @@ src/
 
 Для reward-bearing randomness отдельный boundary теперь задаётся через `GameRandom`: craft / reroll / victory rune drop больше не должны зависеть от transport-owned или hidden inline randomness в use-case flow.
 
+Для keyboard rune mutations (`craft` / `reroll` / `destroy`) transport теперь может передавать `intentId`, а authoritative replay receipt живёт в persistence-слое через `CommandIntentRecord`. Это не превращает transport в источник истины, а лишь даёт серверу stable dedupe envelope для одного намерения игрока.
+
 Дополнительно [`recoverInvalidActiveBattle()`](src/modules/combat/domain/recover-active-battle.ts:1) страхует проект от зависших активных боёв, когда в snapshot уже нулевое HP, а статус ещё не был закрыт.
 
 Текущий shipped slice намеренно оставляет battle actions минимальными, а улучшения делает в двух местах:

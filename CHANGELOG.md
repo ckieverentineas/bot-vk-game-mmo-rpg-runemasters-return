@@ -545,6 +545,28 @@
 - reward-bearing random flows больше не зависят от прямого `Math.random()` в craft / reroll / victory drop path;
 - тесты на rune generation, reroll и reward drop теперь могут доказывать deterministic authority через stubbed RNG.
 
+## [0.24] - 2026-04-18
+
+### Commit
+
+- `worktree` — `feat: dedupe replayed rune mutations`
+
+### Added
+
+- command replay policy [`docs/platform/command-intent-rules.md`](docs/platform/command-intent-rules.md) и persistence receipt model `CommandIntentRecord` для keyboard rune mutations;
+- handler/router test coverage для `intentId` transport payload propagation и duplicate replay protection.
+
+### Changed
+
+- keyboard buttons for rune craft / reroll / destroy now emit `intentId` payloads;
+- repository persists canonical command receipts and returns stored post-mutation snapshots for duplicate same-intent craft / reroll / destroy instead of applying twice;
+- retry/release/QA docs synchronized under keyboard intent replay semantics.
+
+### Fixed
+
+- duplicate VK delivery of the same rune-mutation intent no longer turns enough shards into extra legitimate crafts/rerolls;
+- duplicate destroy replay no longer risks a second refund when the first result is already persisted.
+
 ## Шаблон следующей записи
 
 ### [0.03] - YYYY-MM-DD

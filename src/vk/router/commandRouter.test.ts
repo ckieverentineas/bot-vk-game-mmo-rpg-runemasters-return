@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { gameCommands } from '../commands/catalog';
-import { normalizeCommand } from './commandRouter';
+import { normalizeCommand, resolveCommandEnvelope } from './commandRouter';
 
 describe('normalizeCommand', () => {
   it('приводит команду к нижнему регистру и обрезает пробелы', () => {
@@ -23,5 +23,20 @@ describe('normalizeCommand', () => {
 
   it('не ломает неизвестные текстовые команды', () => {
     expect(normalizeCommand('неизвестная-команда')).toBe('неизвестная-команда');
+  });
+
+  it('читает command intent из payload, если он есть', () => {
+    const resolved = resolveCommandEnvelope({
+      messagePayload: {
+        command: gameCommands.craftRune,
+        intentId: 'intent-123',
+        stateKey: 'state-123',
+      },
+      text: '',
+    } as never);
+
+    expect(resolved.command).toBe(gameCommands.craftRune);
+    expect(resolved.intentId).toBe('intent-123');
+    expect(resolved.stateKey).toBe('state-123');
   });
 });

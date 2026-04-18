@@ -1,6 +1,14 @@
+import { randomUUID } from 'node:crypto';
+
 import { Keyboard } from 'vk-io';
 
-import { isPlayerInTutorial } from '../../modules/player/domain/player-stats';
+import { gameBalance } from '../../config/game-balance';
+import { getSelectedRune, isPlayerInTutorial } from '../../modules/player/domain/player-stats';
+import {
+  buildCraftIntentStateKey,
+  buildDestroyIntentStateKey,
+  buildRerollIntentStateKey,
+} from '../../modules/runes/application/command-intent-state';
 import type { BattleView, PlayerState } from '../../shared/types/game';
 import type { GameCommand } from '../commands/catalog';
 import { gameCommands } from '../commands/catalog';
@@ -16,6 +24,8 @@ interface KeyboardButtonDefinition {
   readonly label: string;
   readonly command: GameCommand;
   readonly color: KeyboardColor;
+  readonly intentScoped?: boolean;
+  readonly stateKey?: string;
 }
 
 type KeyboardLayout = readonly (readonly KeyboardButtonDefinition[])[];
@@ -24,10 +34,12 @@ const buildKeyboard = (layout: KeyboardLayout): KeyboardBuilder => {
   const keyboard = Keyboard.builder();
 
   layout.forEach((row, rowIndex) => {
-    row.forEach(({ label, command, color }) => {
+    row.forEach(({ label, command, color, intentScoped, stateKey }) => {
       keyboard.textButton({
         label,
-        payload: { command },
+        payload: intentScoped
+          ? { command, intentId: randomUUID(), ...(stateKey ? { stateKey } : {}) }
+          : { command },
         color,
       });
     });
@@ -112,48 +124,61 @@ const createBattleResultLayout = (battle: BattleView): KeyboardLayout => [
   ],
 ];
 
-const runeLayout: KeyboardLayout = [
-  [
-    { label: '1', command: gameCommands.selectRuneSlot1, color: Keyboard.PRIMARY_COLOR },
-    { label: '2', command: gameCommands.selectRuneSlot2, color: Keyboard.PRIMARY_COLOR },
-    { label: '3', command: gameCommands.selectRuneSlot3, color: Keyboard.PRIMARY_COLOR },
-    { label: '4', command: gameCommands.selectRuneSlot4, color: Keyboard.PRIMARY_COLOR },
-  ],
-  [
-    { label: '◀️ Стр', command: gameCommands.previousRunePage, color: Keyboard.SECONDARY_COLOR },
-    { label: '▶️ Стр', command: gameCommands.nextRunePage, color: Keyboard.SECONDARY_COLOR },
-  ],
-  [
-    { label: '✅ Надеть', command: gameCommands.equipRune, color: Keyboard.POSITIVE_COLOR },
-    { label: '❌ Снять', command: gameCommands.unequipRune, color: Keyboard.NEGATIVE_COLOR },
-  ],
-  [
-    { label: '✨ Создать', command: gameCommands.craftRune, color: Keyboard.POSITIVE_COLOR },
-    { label: '🔧 Перековать', command: gameCommands.rerollRuneMenu, color: Keyboard.PRIMARY_COLOR },
-  ],
-  [
-    { label: '🗑️ Распылить', command: gameCommands.destroyRune, color: Keyboard.NEGATIVE_COLOR },
-    { label: '◀ Главное меню', command: gameCommands.backToMenu, color: Keyboard.SECONDARY_COLOR },
-  ],
-];
+const createRuneLayout = (player?: PlayerState): KeyboardLayout => {
+  const selectedRune = player ? getSelectedRune(player) : null;
+  const craftStateKey = player ? buildCraftIntentStateKey(player) : undefined;
+  const destroyStateKey = player && selectedRune
+    ? buildDestroyIntentStateKey(player, selectedRune.id, gameBalance.runes.profiles[selectedRune.rarity].shardField)
+    : undefined;
 
-const altarLayout: KeyboardLayout = runeLayout;
+  return [
+    [
+      { label: '1', command: gameCommands.selectRuneSlot1, color: Keyboard.PRIMARY_COLOR },
+      { label: '2', command: gameCommands.selectRuneSlot2, color: Keyboard.PRIMARY_COLOR },
+      { label: '3', command: gameCommands.selectRuneSlot3, color: Keyboard.PRIMARY_COLOR },
+      { label: '4', command: gameCommands.selectRuneSlot4, color: Keyboard.PRIMARY_COLOR },
+    ],
+    [
+      { label: '◀️ Стр', command: gameCommands.previousRunePage, color: Keyboard.SECONDARY_COLOR },
+      { label: '▶️ Стр', command: gameCommands.nextRunePage, color: Keyboard.SECONDARY_COLOR },
+    ],
+    [
+      { label: '✅ Надеть', command: gameCommands.equipRune, color: Keyboard.POSITIVE_COLOR },
+      { label: '❌ Снять', command: gameCommands.unequipRune, color: Keyboard.NEGATIVE_COLOR },
+    ],
+    [
+      { label: '✨ Создать', command: gameCommands.craftRune, color: Keyboard.POSITIVE_COLOR, intentScoped: true, stateKey: craftStateKey },
+      { label: '🔧 Перековать', command: gameCommands.rerollRuneMenu, color: Keyboard.PRIMARY_COLOR },
+    ],
+    [
+      { label: '🗑️ Распылить', command: gameCommands.destroyRune, color: Keyboard.NEGATIVE_COLOR, intentScoped: true, stateKey: destroyStateKey },
+      { label: '◀ Главное меню', command: gameCommands.backToMenu, color: Keyboard.SECONDARY_COLOR },
+    ],
+  ];
+};
 
-const runeRerollLayout: KeyboardLayout = [
-  [
-    { label: '↻ АТК', command: gameCommands.rerollAttack, color: Keyboard.PRIMARY_COLOR },
-    { label: '↻ ЗДР', command: gameCommands.rerollHealth, color: Keyboard.PRIMARY_COLOR },
-  ],
-  [
-    { label: '↻ ЛВК', command: gameCommands.rerollDexterity, color: Keyboard.PRIMARY_COLOR },
-    { label: '↻ ИНТ', command: gameCommands.rerollIntelligence, color: Keyboard.PRIMARY_COLOR },
-  ],
-  [
-    { label: '↻ ФЗАЩ', command: gameCommands.rerollDefence, color: Keyboard.PRIMARY_COLOR },
-    { label: '↻ МЗАЩ', command: gameCommands.rerollMagicDefence, color: Keyboard.PRIMARY_COLOR },
-  ],
-  [{ label: '◀ Меню', command: gameCommands.backToMenu, color: Keyboard.SECONDARY_COLOR }],
-];
+const createRuneRerollLayout = (player?: PlayerState): KeyboardLayout => {
+  const selectedRune = player ? getSelectedRune(player) : null;
+  const rerollStateKey = (stat: 'attack' | 'health' | 'defence' | 'magicDefence' | 'dexterity' | 'intelligence') => (
+    player && selectedRune ? buildRerollIntentStateKey(player, stat, selectedRune) : undefined
+  );
+
+  return [
+    [
+      { label: '↻ АТК', command: gameCommands.rerollAttack, color: Keyboard.PRIMARY_COLOR, intentScoped: true, stateKey: rerollStateKey('attack') },
+      { label: '↻ ЗДР', command: gameCommands.rerollHealth, color: Keyboard.PRIMARY_COLOR, intentScoped: true, stateKey: rerollStateKey('health') },
+    ],
+    [
+      { label: '↻ ЛВК', command: gameCommands.rerollDexterity, color: Keyboard.PRIMARY_COLOR, intentScoped: true, stateKey: rerollStateKey('dexterity') },
+      { label: '↻ ИНТ', command: gameCommands.rerollIntelligence, color: Keyboard.PRIMARY_COLOR, intentScoped: true, stateKey: rerollStateKey('intelligence') },
+    ],
+    [
+      { label: '↻ ФЗАЩ', command: gameCommands.rerollDefence, color: Keyboard.PRIMARY_COLOR, intentScoped: true, stateKey: rerollStateKey('defence') },
+      { label: '↻ МЗАЩ', command: gameCommands.rerollMagicDefence, color: Keyboard.PRIMARY_COLOR, intentScoped: true, stateKey: rerollStateKey('magicDefence') },
+    ],
+    [{ label: '◀ Меню', command: gameCommands.backToMenu, color: Keyboard.SECONDARY_COLOR }],
+  ];
+};
 
 export const createMainMenuKeyboard = (): KeyboardBuilder => buildKeyboard(mainMenuLayout);
 
@@ -171,11 +196,11 @@ export const createBattleKeyboard = (battle: BattleView): KeyboardBuilder => bui
 
 export const createBattleResultKeyboard = (battle: BattleView): KeyboardBuilder => buildKeyboard(createBattleResultLayout(battle));
 
-export const createRuneKeyboard = (): KeyboardBuilder => buildKeyboard(runeLayout);
+export const createRuneKeyboard = (player?: PlayerState): KeyboardBuilder => buildKeyboard(createRuneLayout(player));
 
-export const createAltarKeyboard = (): KeyboardBuilder => buildKeyboard(altarLayout);
+export const createAltarKeyboard = (player?: PlayerState): KeyboardBuilder => buildKeyboard(createRuneLayout(player));
 
-export const createRuneRerollKeyboard = (): KeyboardBuilder => buildKeyboard(runeRerollLayout);
+export const createRuneRerollKeyboard = (player?: PlayerState): KeyboardBuilder => buildKeyboard(createRuneRerollLayout(player));
 
 export const createTutorialKeyboard = (player: PlayerState): KeyboardBuilder => {
   const inTutorial = isPlayerInTutorial(player);

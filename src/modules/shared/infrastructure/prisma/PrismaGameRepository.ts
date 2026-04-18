@@ -38,6 +38,7 @@ const playerInclude = {
 
 type PlayerRecord = Prisma.PlayerGetPayload<{ include: typeof playerInclude }>;
 type TransactionClient = Prisma.TransactionClient;
+type CommandIntentKey = 'CRAFT_RUNE' | 'REROLL_RUNE_STAT' | 'DESTROY_RUNE';
 
 type PersistedBattleState = Pick<BattleView, 'status' | 'turnOwner' | 'player' | 'enemy' | 'log' | 'result' | 'rewards' | 'actionRevision'>;
 
@@ -178,6 +179,8 @@ const parsePersistedBattleSnapshot = (value: string | null): ParsedBattleSnapsho
   };
 };
 
+const parseCommandIntentResultSnapshot = (value: string): PlayerState => JSON.parse(value) as PlayerState;
+
 const hydrateBattlePlayerSnapshot = (
   playerId: number,
   snapshot: BattleView['player'],
@@ -248,6 +251,113 @@ const mapRuneDraftPersistence = (playerId: number, rune: RuneDraft, isEquipped =
 
 export class PrismaGameRepository implements GameRepository {
   public constructor(private readonly prisma: PrismaClient) {}
+
+  private async reserveCommandIntent(
+    tx: TransactionClient,
+    playerId: number,
+    intentId: string,
+    commandKey: CommandIntentKey,
+    stateKey: string,
+  ): Promise<PlayerState | null> {
+    const existing = await tx.commandIntentRecord.findUnique({
+      where: {
+        playerId_intentId: {
+          playerId,
+          intentId,
+        },
+      },
+    });
+
+    if (existing && (existing.commandKey !== commandKey || existing.stateKey !== stateKey)) {
+      throw new AppError('stale_command_intent', 'Эта кнопка уже устарела. Обновите экран перед повтором команды.');
+    }
+
+    if (existing?.status === 'APPLIED') {
+      return parseCommandIntentResultSnapshot(existing.resultSnapshot);
+    }
+
+    try {
+      await tx.commandIntentRecord.create({
+        data: {
+          playerId,
+          intentId,
+          commandKey,
+          stateKey,
+        },
+      });
+      return null;
+    } catch (error) {
+      if (!(error instanceof Prisma.PrismaClientKnownRequestError) || error.code !== 'P2002') {
+        throw error;
+      }
+
+      const retried = await tx.commandIntentRecord.findUnique({
+        where: {
+          playerId_intentId: {
+            playerId,
+            intentId,
+          },
+        },
+      });
+
+      if (retried && (retried.commandKey !== commandKey || retried.stateKey !== stateKey)) {
+        throw new AppError('stale_command_intent', 'Эта кнопка уже устарела. Обновите экран перед повтором команды.');
+      }
+
+      if (retried?.status === 'APPLIED') {
+        return parseCommandIntentResultSnapshot(retried.resultSnapshot);
+      }
+
+      throw new AppError('command_retry_pending', 'Команда уже обрабатывается. Дождитесь ответа и обновите экран.');
+    }
+  }
+
+  private async finalizeCommandIntent(
+    tx: TransactionClient,
+    playerId: number,
+    intentId: string,
+    result: PlayerState,
+  ): Promise<void> {
+    await tx.commandIntentRecord.update({
+      where: {
+        playerId_intentId: {
+          playerId,
+          intentId,
+        },
+      },
+      data: {
+        status: 'APPLIED',
+        resultSnapshot: stringifyJson(result, '{}'),
+      },
+    });
+  }
+
+  private async runWithCommandIntent(
+    tx: TransactionClient,
+    playerId: number,
+    commandKey: CommandIntentKey,
+    intentId: string | undefined,
+    stateKey: string | undefined,
+    currentStateKey: string | undefined,
+    apply: () => Promise<PlayerState>,
+  ): Promise<PlayerState> {
+    if (!intentId || !stateKey) {
+      return apply();
+    }
+
+    const existing = await this.reserveCommandIntent(tx, playerId, intentId, commandKey, stateKey);
+    if (existing) {
+      return existing;
+    }
+
+    if (!currentStateKey || currentStateKey !== stateKey) {
+      throw new AppError('stale_command_intent', 'Эта кнопка уже устарела. Обновите экран перед повтором команды.');
+    }
+
+    const result = await apply();
+    await this.finalizeCommandIntent(tx, playerId, intentId, result);
+    return result;
+  }
 
   private async logStaleBattleMutation(
     client: TransactionClient | PrismaClient,
@@ -455,26 +565,44 @@ export class PrismaGameRepository implements GameRepository {
     return this.requirePlayer(playerId);
   }
 
-  public async craftRune(playerId: number, rarity: RuneRarity, rune: RuneDraft): Promise<PlayerState> {
+  public async craftRune(
+    playerId: number,
+    rarity: RuneRarity,
+    rune: RuneDraft,
+    intentId?: string,
+    intentStateKey?: string,
+    currentStateKey?: string,
+  ): Promise<PlayerState> {
     return this.prisma.$transaction(async (tx) => {
-      const shardField = gameBalance.runes.profiles[rarity].shardField;
-      const spent = await tx.playerInventory.updateMany({
-        where: buildInventoryAvailabilityWhere(playerId, { [shardField]: -gameBalance.runes.craftCost }),
-        data: {
-          [shardField]: { increment: -gameBalance.runes.craftCost },
-        } as Prisma.PlayerInventoryUpdateManyMutationInput,
+      return this.runWithCommandIntent(tx, playerId, 'CRAFT_RUNE', intentId, intentStateKey, currentStateKey, async () => {
+        const shardField = gameBalance.runes.profiles[rarity].shardField;
+        const spent = await tx.playerInventory.updateMany({
+          where: buildInventoryAvailabilityWhere(playerId, { [shardField]: -gameBalance.runes.craftCost }),
+          data: {
+            [shardField]: { increment: -gameBalance.runes.craftCost },
+          } as Prisma.PlayerInventoryUpdateManyMutationInput,
+        });
+
+        if (spent.count === 0) {
+          throw new AppError('not_enough_shards', 'Осколков уже не хватает для создания руны. Обновите экран и попробуйте снова.');
+        }
+
+        await tx.rune.create({
+          data: mapRuneDraftPersistence(playerId, rune),
+        });
+
+        let updatedPlayer = await this.requirePlayerRecord(tx, playerId);
+
+        await tx.playerProgress.update({
+          where: { playerId },
+          data: {
+            currentRuneIndex: Math.max(0, updatedPlayer.runes.length - 1),
+          },
+        });
+
+        updatedPlayer = await this.requirePlayerRecord(tx, playerId);
+        return this.mapPlayer(updatedPlayer);
       });
-
-      if (spent.count === 0) {
-        throw new AppError('not_enough_shards', 'Осколков уже не хватает для создания руны. Обновите экран и попробуйте снова.');
-      }
-
-      await tx.rune.create({
-        data: mapRuneDraftPersistence(playerId, rune),
-      });
-
-      const updatedPlayer = await this.requirePlayerRecord(tx, playerId);
-      return this.mapPlayer(updatedPlayer);
     });
   }
 
@@ -498,38 +626,48 @@ export class PrismaGameRepository implements GameRepository {
     return this.requirePlayer(playerId);
   }
 
-  public async rerollRuneStat(playerId: number, runeId: string, rarity: RuneRarity, stats: StatBlock): Promise<PlayerState> {
+  public async rerollRuneStat(
+    playerId: number,
+    runeId: string,
+    rarity: RuneRarity,
+    stats: StatBlock,
+    intentId?: string,
+    intentStateKey?: string,
+    currentStateKey?: string,
+  ): Promise<PlayerState> {
     return this.prisma.$transaction(async (tx) => {
-      const shardField = gameBalance.runes.profiles[rarity].shardField;
-      const spent = await tx.playerInventory.updateMany({
-        where: buildInventoryAvailabilityWhere(playerId, { [shardField]: -1 }),
-        data: {
-          [shardField]: { increment: -1 },
-        } as Prisma.PlayerInventoryUpdateManyMutationInput,
+      return this.runWithCommandIntent(tx, playerId, 'REROLL_RUNE_STAT', intentId, intentStateKey, currentStateKey, async () => {
+        const shardField = gameBalance.runes.profiles[rarity].shardField;
+        const spent = await tx.playerInventory.updateMany({
+          where: buildInventoryAvailabilityWhere(playerId, { [shardField]: -1 }),
+          data: {
+            [shardField]: { increment: -1 },
+          } as Prisma.PlayerInventoryUpdateManyMutationInput,
+        });
+
+        if (spent.count === 0) {
+          throw new AppError('not_enough_shards', 'Осколок уже потрачен. Обновите экран и попробуйте снова.');
+        }
+
+        const updatedRune = await tx.rune.updateMany({
+          where: { id: runeId, playerId },
+          data: {
+            health: stats.health,
+            attack: stats.attack,
+            defence: stats.defence,
+            magicDefence: stats.magicDefence,
+            dexterity: stats.dexterity,
+            intelligence: stats.intelligence,
+          },
+        });
+
+        if (updatedRune.count === 0) {
+          throw new AppError('rune_not_found', 'Выбранная руна уже недоступна. Откройте алтарь ещё раз.');
+        }
+
+        const updatedPlayer = await this.requirePlayerRecord(tx, playerId);
+        return this.mapPlayer(updatedPlayer);
       });
-
-      if (spent.count === 0) {
-        throw new AppError('not_enough_shards', 'Осколок уже потрачен. Обновите экран и попробуйте снова.');
-      }
-
-      const updatedRune = await tx.rune.updateMany({
-        where: { id: runeId, playerId },
-        data: {
-          health: stats.health,
-          attack: stats.attack,
-          defence: stats.defence,
-          magicDefence: stats.magicDefence,
-          dexterity: stats.dexterity,
-          intelligence: stats.intelligence,
-        },
-      });
-
-      if (updatedRune.count === 0) {
-        throw new AppError('rune_not_found', 'Выбранная руна уже недоступна. Откройте алтарь ещё раз.');
-      }
-
-      const updatedPlayer = await this.requirePlayerRecord(tx, playerId);
-      return this.mapPlayer(updatedPlayer);
     });
   }
 
@@ -545,26 +683,35 @@ export class PrismaGameRepository implements GameRepository {
     return this.requirePlayer(playerId);
   }
 
-  public async destroyRune(playerId: number, runeId: string, refund: InventoryDelta): Promise<PlayerState> {
+  public async destroyRune(
+    playerId: number,
+    runeId: string,
+    refund: InventoryDelta,
+    intentId?: string,
+    intentStateKey?: string,
+    currentStateKey?: string,
+  ): Promise<PlayerState> {
     return this.prisma.$transaction(async (tx) => {
-      const deleted = await tx.rune.deleteMany({
-        where: { id: runeId, playerId },
-      });
-
-      if (deleted.count === 0) {
-        throw new AppError('rune_not_found', 'Эта руна уже недоступна. Откройте алтарь ещё раз.');
-      }
-
-      const inventoryUpdate = buildInventoryDeltaInput(refund);
-      if (Object.keys(inventoryUpdate).length > 0) {
-        await tx.playerInventory.update({
-          where: { playerId },
-          data: inventoryUpdate as Prisma.PlayerInventoryUpdateInput,
+      return this.runWithCommandIntent(tx, playerId, 'DESTROY_RUNE', intentId, intentStateKey, currentStateKey, async () => {
+        const deleted = await tx.rune.deleteMany({
+          where: { id: runeId, playerId },
         });
-      }
 
-      const updatedPlayer = await this.requirePlayerRecord(tx, playerId);
-      return this.mapPlayer(updatedPlayer);
+        if (deleted.count === 0) {
+          throw new AppError('rune_not_found', 'Эта руна уже недоступна. Откройте алтарь ещё раз.');
+        }
+
+        const inventoryUpdate = buildInventoryDeltaInput(refund);
+        if (Object.keys(inventoryUpdate).length > 0) {
+          await tx.playerInventory.update({
+            where: { playerId },
+            data: inventoryUpdate as Prisma.PlayerInventoryUpdateInput,
+          });
+        }
+
+        const updatedPlayer = await this.requirePlayerRecord(tx, playerId);
+        return this.mapPlayer(updatedPlayer);
+      });
     });
   }
 
