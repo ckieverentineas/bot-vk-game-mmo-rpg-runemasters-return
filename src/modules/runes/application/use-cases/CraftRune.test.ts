@@ -3,6 +3,8 @@ import { describe, expect, it, vi } from 'vitest';
 import type { PlayerState } from '../../../../../shared/types/game';
 import type { GameRandom } from '../../../../shared/application/ports/GameRandom';
 import type { GameRepository } from '../../../../shared/application/ports/GameRepository';
+import { resolveCurrentProgressionLocationLevel } from '../../../player/domain/player-stats';
+import { RuneFactory } from '../../domain/rune-factory';
 import { CraftRune } from './CraftRune';
 
 const createPlayer = (overrides: Partial<PlayerState> = {}): PlayerState => ({
@@ -47,6 +49,12 @@ const createPlayer = (overrides: Partial<PlayerState> = {}): PlayerState => ({
 
 const createRandom = (): GameRandom => ({
   nextInt: vi.fn().mockReturnValue(1),
+  rollPercentage: vi.fn().mockReturnValue(false),
+  pickOne: vi.fn((items: readonly string[]) => items[0]),
+});
+
+const createScalingRandom = (): GameRandom => ({
+  nextInt: vi.fn((min: number, max: number) => max),
   rollPercentage: vi.fn().mockReturnValue(false),
   pickOne: vi.fn((items: readonly string[]) => items[0]),
 });
@@ -101,5 +109,28 @@ describe('CraftRune', () => {
     await expect(useCase.execute(1001, 'legacy-text:2000000001:1001:77:создать', undefined, 'legacy_text')).resolves.toEqual(replayed);
 
     expect(repository.craftRune).not.toHaveBeenCalled();
+  });
+
+  it('uses normalized progression level for skipped players stranded at intro state', async () => {
+    const player = createPlayer({ tutorialState: 'SKIPPED', locationLevel: 0, level: 25 });
+    const repository = {
+      findPlayerByVkId: vi.fn().mockResolvedValue(player),
+      getCommandIntentResult: vi.fn().mockResolvedValue(null),
+      craftRune: vi.fn().mockResolvedValue(player),
+    } as unknown as GameRepository;
+    const useCaseRandom = createScalingRandom();
+    const expectedRandom = createScalingRandom();
+    const useCase = new CraftRune(repository, useCaseRandom);
+
+    await useCase.execute(player.vkId, 'legacy-text:2000000001:1001:77:создать', undefined, 'legacy_text');
+
+    expect(repository.craftRune).toHaveBeenCalledWith(
+      player.playerId,
+      'USUAL',
+      RuneFactory.create(resolveCurrentProgressionLocationLevel(player), 'USUAL', undefined, expectedRandom),
+      'legacy-text:2000000001:1001:77:создать',
+      'legacy-text:2000000001:1001:77:создать',
+      undefined,
+    );
   });
 });

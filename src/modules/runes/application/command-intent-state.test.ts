@@ -110,6 +110,13 @@ describe('command intent state keys', () => {
     expect(buildCraftIntentStateKey(before)).not.toBe(buildCraftIntentStateKey(after));
   });
 
+  it('normalizes stale intro location for skipped players in craft state keys', () => {
+    const strandedAtIntro = createPlayer({ tutorialState: 'SKIPPED', locationLevel: 0, level: 10 });
+    const onAdventurePath = createPlayer({ tutorialState: 'SKIPPED', locationLevel: 1, level: 10 });
+
+    expect(buildCraftIntentStateKey(strandedAtIntro)).toBe(buildCraftIntentStateKey(onAdventurePath));
+  });
+
   it('changes equip state key when selected rune changes', () => {
     const before = createPlayer({
       currentRuneIndex: 0,

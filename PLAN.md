@@ -970,3 +970,4 @@ Runemasters Return должен решать это через **школы ру
 - **2026-04-18:** profile stat allocation и reset переведены на command intent dedupe для keyboard payloads; stale/retry profile и rune mutation replies теперь стараются вернуть игрока в актуальный контекст вместо выброса в меню.
 - **2026-04-18:** rune equip / unequip переведены на command intent dedupe для keyboard payloads; старые кнопки экипировки больше не должны тихо применять loadout к уже изменившемуся выбору руны.
 - **2026-04-18:** legacy text `создать` / `сломать` / `~stat` получили server-owned message intent ids; duplicate text replay теперь должен возвращать canonical rune mutation result вместо повторного spend/refund.
+- **2026-04-18:** tutorial guardrail tightened: non-`ACTIVE` players больше не должны возвращаться в intro flow через `локация`, а stale intro location state теперь трактуется как обычный adventure path для encounter и rune-scaling, а не как повторное обучение.

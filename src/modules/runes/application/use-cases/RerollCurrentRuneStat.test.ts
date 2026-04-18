@@ -3,6 +3,8 @@ import { describe, expect, it, vi } from 'vitest';
 import type { PlayerState } from '../../../../../shared/types/game';
 import type { GameRandom } from '../../../../shared/application/ports/GameRandom';
 import type { GameRepository } from '../../../../shared/application/ports/GameRepository';
+import { resolveCurrentProgressionLocationLevel } from '../../../player/domain/player-stats';
+import { RuneFactory } from '../../domain/rune-factory';
 import { RerollCurrentRuneStat } from './RerollCurrentRuneStat';
 
 const createPlayer = (overrides: Partial<PlayerState> = {}): PlayerState => ({
@@ -50,6 +52,12 @@ const createPlayer = (overrides: Partial<PlayerState> = {}): PlayerState => ({
 
 const createRandom = (): GameRandom => ({
   nextInt: vi.fn().mockReturnValue(3),
+  rollPercentage: vi.fn().mockReturnValue(false),
+  pickOne: vi.fn((items: readonly string[]) => items[0]),
+});
+
+const createScalingRandom = (): GameRandom => ({
+  nextInt: vi.fn((min: number, max: number) => max),
   rollPercentage: vi.fn().mockReturnValue(false),
   pickOne: vi.fn((items: readonly string[]) => items[0]),
 });
@@ -105,5 +113,37 @@ describe('RerollCurrentRuneStat', () => {
     await expect(useCase.execute(1001, 'attack', 'legacy-text:2000000001:1001:78:~атк', undefined, 'legacy_text')).resolves.toEqual(replayed);
 
     expect(repository.rerollRuneStat).not.toHaveBeenCalled();
+  });
+
+  it('uses normalized progression level for skipped players stranded at intro state', async () => {
+    const player = createPlayer({ tutorialState: 'SKIPPED', locationLevel: 0, level: 25 });
+    const repository = {
+      findPlayerByVkId: vi.fn().mockResolvedValue(player),
+      getCommandIntentResult: vi.fn().mockResolvedValue(null),
+      rerollRuneStat: vi.fn().mockResolvedValue(player),
+    } as unknown as GameRepository;
+    const useCaseRandom = createScalingRandom();
+    const expectedRandom = createScalingRandom();
+    const useCase = new RerollCurrentRuneStat(repository, useCaseRandom);
+    const expectedRune = RuneFactory.rerollStat(player.runes[0]!, 'attack', resolveCurrentProgressionLocationLevel(player), expectedRandom);
+
+    await useCase.execute(player.vkId, 'attack', 'legacy-text:2000000001:1001:78:~атк', undefined, 'legacy_text');
+
+    expect(repository.rerollRuneStat).toHaveBeenCalledWith(
+      player.playerId,
+      'rune-1',
+      'USUAL',
+      {
+        health: expectedRune.health,
+        attack: expectedRune.attack,
+        defence: expectedRune.defence,
+        magicDefence: expectedRune.magicDefence,
+        dexterity: expectedRune.dexterity,
+        intelligence: expectedRune.intelligence,
+      },
+      'legacy-text:2000000001:1001:78:~атк',
+      'legacy-text:2000000001:1001:78:~атк',
+      undefined,
+    );
   });
 });

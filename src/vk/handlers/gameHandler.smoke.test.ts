@@ -349,6 +349,21 @@ describe('GameHandler smoke', () => {
     expect(getReplyCalls(exploreContext)[0]?.message).toContain('Доступные действия');
   });
 
+  it('не возвращает пропустившего игрока в учебный бой через старую команду локации', async () => {
+    const services = createServices();
+    vi.mocked(services.enterTutorialMode.execute).mockResolvedValueOnce(createPlayer({ tutorialState: 'SKIPPED', locationLevel: 0 }));
+    const handler = new GameHandler(services);
+    const ctx = createFakeContext({ command: 'локация' });
+
+    await handler.handle(ctx as never);
+
+    const replies = getReplyCalls(ctx);
+    expect(replies[0]?.message).toContain('Обучение уже пропущено');
+    expect(replies[0]?.message).toContain('Сейчас открыт режим приключений');
+    expect(JSON.stringify(replies[0]?.keyboard)).toContain('Исследовать');
+    expect(JSON.stringify(replies[0]?.keyboard)).not.toContain('Учебный бой');
+  });
+
   it('проходит сценарий завершения боя', async () => {
     const services = createServices();
     const handler = new GameHandler(services);

@@ -10,6 +10,10 @@ export class EnterTutorialMode {
   public async execute(vkId: number): Promise<PlayerState> {
     const player = await requirePlayerByVkId(this.repository, vkId);
 
+    if (player.tutorialState !== 'ACTIVE') {
+      return player;
+    }
+
     return this.repository.saveExplorationState(player.playerId, {
       locationLevel: gameBalance.world.introLocationLevel,
       highestLocationLevel: player.highestLocationLevel,

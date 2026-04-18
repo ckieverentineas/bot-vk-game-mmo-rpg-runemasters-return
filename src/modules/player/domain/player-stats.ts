@@ -69,8 +69,15 @@ const calculateCombatPower = (stats: StatBlock): number => (
   + stats.intelligence * 0.5
 );
 
-export const isPlayerInTutorial = (player: Pick<PlayerState, 'locationLevel'>): boolean => (
-  player.locationLevel === gameBalance.world.introLocationLevel
+export const isPlayerInTutorial = (player: Pick<PlayerState, 'locationLevel' | 'tutorialState'>): boolean => (
+  player.tutorialState === 'ACTIVE'
+  && player.locationLevel === gameBalance.world.introLocationLevel
+);
+
+export const resolveCurrentProgressionLocationLevel = (player: PlayerState): number => (
+  isPlayerInTutorial(player)
+    ? gameBalance.world.introLocationLevel
+    : resolveAdaptiveAdventureLocationLevel(player)
 );
 
 export const resolveAdaptiveAdventureLocationLevel = (player: PlayerState): number => {
@@ -96,11 +103,7 @@ export const resolveAdaptiveAdventureLocationLevel = (player: PlayerState): numb
   );
 };
 
-export const resolveEncounterLocationLevel = (player: PlayerState): number => (
-  isPlayerInTutorial(player)
-    ? gameBalance.world.introLocationLevel
-    : resolveAdaptiveAdventureLocationLevel(player)
-);
+export const resolveEncounterLocationLevel = (player: PlayerState): number => resolveCurrentProgressionLocationLevel(player);
 
 export const normalizeRuneIndex = (index: number, runeCount: number): number => {
   if (runeCount <= 0) {

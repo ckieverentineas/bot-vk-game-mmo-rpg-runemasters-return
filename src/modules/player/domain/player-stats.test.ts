@@ -1,7 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
 import type { PlayerState } from '../../../shared/types/game';
-import { normalizeRuneIndex, resolveAdaptiveAdventureLocationLevel } from './player-stats';
+import {
+  isPlayerInTutorial,
+  normalizeRuneIndex,
+  resolveAdaptiveAdventureLocationLevel,
+  resolveEncounterLocationLevel,
+} from './player-stats';
 
 const createPlayerState = (overrides: Partial<PlayerState> = {}): PlayerState => ({
   userId: 1,
@@ -142,5 +147,18 @@ describe('normalizeRuneIndex', () => {
   it('зацикливает индекс по кругу в обе стороны', () => {
     expect(normalizeRuneIndex(-1, 5)).toBe(4);
     expect(normalizeRuneIndex(5, 5)).toBe(0);
+  });
+});
+
+describe('tutorial state gating', () => {
+  it('treats intro location as tutorial only while onboarding is active', () => {
+    expect(isPlayerInTutorial(createPlayerState({ tutorialState: 'ACTIVE', locationLevel: 0 }))).toBe(true);
+    expect(isPlayerInTutorial(createPlayerState({ tutorialState: 'SKIPPED', locationLevel: 0 }))).toBe(false);
+  });
+
+  it('uses adaptive adventure level for skipped players stranded at intro location', () => {
+    const player = createPlayerState({ tutorialState: 'SKIPPED', locationLevel: 0, level: 5 });
+
+    expect(resolveEncounterLocationLevel(player)).toBe(resolveAdaptiveAdventureLocationLevel(player));
   });
 });

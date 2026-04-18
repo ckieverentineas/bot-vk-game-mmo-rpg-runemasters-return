@@ -175,7 +175,7 @@ describe('messages school-first onboarding framing', () => {
     });
   });
 
-  it('distinguishes optional training from active onboarding after tutorial skip', () => {
+  it('keeps skipped players on the adventure path even with stale intro location state', () => {
     const player = createPlayer({ tutorialState: 'SKIPPED', locationLevel: 0 });
 
     const welcome = renderWelcome(player, false);
@@ -183,11 +183,12 @@ describe('messages school-first onboarding framing', () => {
     const location = renderLocation(player);
 
     expect(welcome).toContain('🧭 Возвращение');
-    expect(welcome).toContain('учебная зона доступна для спокойной тренировки');
     expect(welcome).toContain('Дальше: нажмите «⚔️ Исследовать»');
     expect(welcome).not.toContain('Ваш мастер уже существует');
+    expect(welcome).not.toContain('учебная зона доступна для спокойной тренировки');
     expect(menu).not.toContain('Первый бой ведёт к первой руне');
-    expect(location).toContain('тренировочная зона');
+    expect(location).toContain('Обучение уже пропущено');
+    expect(location).toContain('Сейчас открыт режим приключений');
     expect(location).toContain('Исследовать');
   });
 

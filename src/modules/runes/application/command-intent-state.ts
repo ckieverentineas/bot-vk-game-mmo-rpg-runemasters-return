@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 
 import { gameBalance } from '../../../config/game-balance';
-import { getEquippedRune, getSelectedRune } from '../../player/domain/player-stats';
+import { getEquippedRune, getSelectedRune, resolveCurrentProgressionLocationLevel } from '../../player/domain/player-stats';
 import type { PlayerState, StatKey } from '../../../shared/types/game';
 
 const rarityPriority = ['MYTHICAL', 'LEGENDARY', 'EPIC', 'RARE', 'UNUSUAL', 'USUAL'] as const;
@@ -25,7 +25,7 @@ const buildRuneLoadoutState = (player: PlayerState) => ({
 
 export const buildCraftIntentStateKey = (player: PlayerState): string => serializeStateKey({
   rarity: resolveCraftRarity(player),
-  locationLevel: player.locationLevel,
+  locationLevel: resolveCurrentProgressionLocationLevel(player),
   currentRuneIndex: player.currentRuneIndex,
   shardBudgets: {
     usual: player.inventory.usualShards,

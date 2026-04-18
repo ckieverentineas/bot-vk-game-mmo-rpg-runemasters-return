@@ -2,6 +2,7 @@ import { gameBalance } from '../../../../config/game-balance';
 import { AppError } from '../../../../shared/domain/AppError';
 import type { PlayerState, RuneRarity } from '../../../../shared/types/game';
 import type { GameRandom } from '../../../shared/application/ports/GameRandom';
+import { resolveCurrentProgressionLocationLevel } from '../../../player/domain/player-stats';
 
 import { resolveCommandIntent, type CommandIntentSource } from '../../../shared/application/command-intent';
 import { requirePlayerByVkId } from '../../../shared/application/require-player';
@@ -41,6 +42,7 @@ export class CraftRune {
     }
 
     const currentStateKey = buildCraftIntentStateKey(player);
+    const progressionLocationLevel = resolveCurrentProgressionLocationLevel(player);
     const intent = resolveCommandIntent(intentId, intentStateKey, intentSource, false);
     if (intentSource !== 'legacy_text' && intent && intent.intentStateKey !== currentStateKey) {
       throw new AppError('stale_command_intent', 'Эта кнопка уже устарела. Обновите экран перед повтором команды.');
@@ -49,7 +51,7 @@ export class CraftRune {
     return this.repository.craftRune(
       player.playerId,
       rarity,
-      RuneFactory.create(player.locationLevel, rarity, undefined, this.random),
+      RuneFactory.create(progressionLocationLevel, rarity, undefined, this.random),
       intent?.intentId,
       intent?.intentStateKey,
       intentSource === 'legacy_text' ? undefined : intent ? currentStateKey : undefined,
