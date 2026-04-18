@@ -23,6 +23,18 @@ const buildRuneLoadoutState = (player: PlayerState) => ({
   runeIds: player.runes.map((rune) => rune.id),
 });
 
+export const buildMoveRuneCursorIntentStateKey = (player: PlayerState, direction: number): string => serializeStateKey({
+  action: 'move_rune_cursor',
+  direction,
+  ...buildRuneLoadoutState(player),
+});
+
+export const buildSelectRunePageSlotIntentStateKey = (player: PlayerState, slot: 0 | 1 | 2 | 3): string => serializeStateKey({
+  action: 'select_rune_page_slot',
+  slot,
+  ...buildRuneLoadoutState(player),
+});
+
 export const buildCraftIntentStateKey = (player: PlayerState): string => serializeStateKey({
   rarity: resolveCraftRarity(player),
   locationLevel: resolveCurrentProgressionLocationLevel(player),

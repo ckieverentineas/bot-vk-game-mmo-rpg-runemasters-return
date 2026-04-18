@@ -5,6 +5,7 @@ import { Keyboard } from 'vk-io';
 import { gameBalance } from '../../config/game-balance';
 import { buildBattleActionIntentStateKey } from '../../modules/combat/application/command-intent-state';
 import {
+  buildExploreLocationIntentStateKey,
   buildReturnToAdventureIntentStateKey,
   buildSkipTutorialIntentStateKey,
 } from '../../modules/exploration/application/command-intent-state';
@@ -17,9 +18,12 @@ import {
   buildCraftIntentStateKey,
   buildDestroyIntentStateKey,
   buildEquipIntentStateKey,
+  buildMoveRuneCursorIntentStateKey,
   buildRerollIntentStateKey,
+  buildSelectRunePageSlotIntentStateKey,
   buildUnequipIntentStateKey,
 } from '../../modules/runes/application/command-intent-state';
+import { runeCollectionPageSize } from '../../modules/runes/domain/rune-collection';
 import type { BattleView, PlayerState } from '../../shared/types/game';
 import type { GameCommand } from '../commands/catalog';
 import { gameCommands } from '../commands/catalog';
@@ -63,20 +67,24 @@ const buildKeyboard = (layout: KeyboardLayout): KeyboardBuilder => {
   return keyboard.oneTime(false).inline(false);
 };
 
-const mainMenuLayout: KeyboardLayout = [
-  [
-    { label: '👤 Профиль', command: gameCommands.profile, color: Keyboard.PRIMARY_COLOR },
-    { label: '🎒 Инвентарь', command: gameCommands.inventory, color: Keyboard.SECONDARY_COLOR },
-  ],
-  [
-    { label: '📘 Обучение', command: gameCommands.location, color: Keyboard.PRIMARY_COLOR },
-    { label: '⚔️ Исследовать', command: gameCommands.explore, color: Keyboard.POSITIVE_COLOR },
-  ],
-  [
-    { label: '🔮 Руны', command: gameCommands.runeCollection, color: Keyboard.POSITIVE_COLOR },
-    { label: '🛠 Мастерская', command: gameCommands.altar, color: Keyboard.SECONDARY_COLOR },
-  ],
-];
+const createMainMenuLayout = (player?: PlayerState): KeyboardLayout => {
+  const exploreStateKey = player ? buildExploreLocationIntentStateKey(player) : undefined;
+
+  return [
+    [
+      { label: '👤 Профиль', command: gameCommands.profile, color: Keyboard.PRIMARY_COLOR },
+      { label: '🎒 Инвентарь', command: gameCommands.inventory, color: Keyboard.SECONDARY_COLOR },
+    ],
+    [
+      { label: '📘 Обучение', command: gameCommands.location, color: Keyboard.PRIMARY_COLOR },
+      { label: '⚔️ Исследовать', command: gameCommands.explore, color: Keyboard.POSITIVE_COLOR, intentScoped: Boolean(player), stateKey: exploreStateKey },
+    ],
+    [
+      { label: '🔮 Руны', command: gameCommands.runeCollection, color: Keyboard.POSITIVE_COLOR },
+      { label: '🛠 Мастерская', command: gameCommands.altar, color: Keyboard.SECONDARY_COLOR },
+    ],
+  ];
+};
 
 const entryLayout: KeyboardLayout = [
   [{ label: '🎮 Начать', command: gameCommands.start, color: Keyboard.POSITIVE_COLOR }],
@@ -132,39 +140,45 @@ const createBattleSkillButton = (battle: BattleView): KeyboardButtonDefinition =
   };
 };
 
-const createBattleResultLayout = (battle: BattleView): KeyboardLayout => [
+const createBattleResultLayout = (battle: BattleView, player?: PlayerState): KeyboardLayout => {
+  const exploreStateKey = player ? buildExploreLocationIntentStateKey(player) : undefined;
+
+  return [
   battle.rewards?.droppedRune
     ? [
         { label: '🔮 Руны', command: gameCommands.runeCollection, color: Keyboard.PRIMARY_COLOR },
-        { label: '⚔️ Новый бой', command: gameCommands.explore, color: Keyboard.POSITIVE_COLOR },
+        { label: '⚔️ Новый бой', command: gameCommands.explore, color: Keyboard.POSITIVE_COLOR, intentScoped: Boolean(player), stateKey: exploreStateKey },
       ]
-    : [{ label: '⚔️ Новый бой', command: gameCommands.explore, color: Keyboard.POSITIVE_COLOR }],
+    : [{ label: '⚔️ Новый бой', command: gameCommands.explore, color: Keyboard.POSITIVE_COLOR, intentScoped: Boolean(player), stateKey: exploreStateKey }],
   [
     { label: '👤 Профиль', command: gameCommands.profile, color: Keyboard.PRIMARY_COLOR },
     { label: '◀ Главное меню', command: gameCommands.backToMenu, color: Keyboard.SECONDARY_COLOR },
   ],
-];
+  ];
+};
 
 const createRuneLayout = (player?: PlayerState): KeyboardLayout => {
   const selectedRune = player ? getSelectedRune(player) : null;
   const craftStateKey = player ? buildCraftIntentStateKey(player) : undefined;
   const equipStateKey = player ? buildEquipIntentStateKey(player) : undefined;
   const unequipStateKey = player ? buildUnequipIntentStateKey(player) : undefined;
+  const previousPageStateKey = player ? buildMoveRuneCursorIntentStateKey(player, -runeCollectionPageSize) : undefined;
+  const nextPageStateKey = player ? buildMoveRuneCursorIntentStateKey(player, runeCollectionPageSize) : undefined;
   const destroyStateKey = player && selectedRune
     ? buildDestroyIntentStateKey(player, selectedRune.id, gameBalance.runes.profiles[selectedRune.rarity].shardField)
     : undefined;
 
-  return [
-    [
-      { label: '1', command: gameCommands.selectRuneSlot1, color: Keyboard.PRIMARY_COLOR },
-      { label: '2', command: gameCommands.selectRuneSlot2, color: Keyboard.PRIMARY_COLOR },
-      { label: '3', command: gameCommands.selectRuneSlot3, color: Keyboard.PRIMARY_COLOR },
-      { label: '4', command: gameCommands.selectRuneSlot4, color: Keyboard.PRIMARY_COLOR },
-    ],
-    [
-      { label: '◀️ Стр', command: gameCommands.previousRunePage, color: Keyboard.SECONDARY_COLOR },
-      { label: '▶️ Стр', command: gameCommands.nextRunePage, color: Keyboard.SECONDARY_COLOR },
-    ],
+    return [
+      [
+      { label: '1', command: gameCommands.selectRuneSlot1, color: Keyboard.PRIMARY_COLOR, intentScoped: Boolean(player), stateKey: player ? buildSelectRunePageSlotIntentStateKey(player, 0) : undefined },
+      { label: '2', command: gameCommands.selectRuneSlot2, color: Keyboard.PRIMARY_COLOR, intentScoped: Boolean(player), stateKey: player ? buildSelectRunePageSlotIntentStateKey(player, 1) : undefined },
+      { label: '3', command: gameCommands.selectRuneSlot3, color: Keyboard.PRIMARY_COLOR, intentScoped: Boolean(player), stateKey: player ? buildSelectRunePageSlotIntentStateKey(player, 2) : undefined },
+      { label: '4', command: gameCommands.selectRuneSlot4, color: Keyboard.PRIMARY_COLOR, intentScoped: Boolean(player), stateKey: player ? buildSelectRunePageSlotIntentStateKey(player, 3) : undefined },
+      ],
+      [
+      { label: '◀️ Стр', command: gameCommands.previousRunePage, color: Keyboard.SECONDARY_COLOR, intentScoped: Boolean(player), stateKey: previousPageStateKey },
+      { label: '▶️ Стр', command: gameCommands.nextRunePage, color: Keyboard.SECONDARY_COLOR, intentScoped: Boolean(player), stateKey: nextPageStateKey },
+      ],
     [
       { label: '✅ Надеть', command: gameCommands.equipRune, color: Keyboard.POSITIVE_COLOR, intentScoped: Boolean(player), stateKey: equipStateKey },
       { label: '❌ Снять', command: gameCommands.unequipRune, color: Keyboard.NEGATIVE_COLOR, intentScoped: Boolean(player), stateKey: unequipStateKey },
@@ -203,7 +217,7 @@ const createRuneRerollLayout = (player?: PlayerState): KeyboardLayout => {
   ];
 };
 
-export const createMainMenuKeyboard = (): KeyboardBuilder => buildKeyboard(mainMenuLayout);
+export const createMainMenuKeyboard = (player?: PlayerState): KeyboardBuilder => buildKeyboard(createMainMenuLayout(player));
 
 export const createEntryKeyboard = (): KeyboardBuilder => buildKeyboard(entryLayout);
 
@@ -222,7 +236,7 @@ export const createBattleKeyboard = (battle: BattleView): KeyboardBuilder => bui
   [createBattleSkillButton(battle)],
 ]);
 
-export const createBattleResultKeyboard = (battle: BattleView): KeyboardBuilder => buildKeyboard(createBattleResultLayout(battle));
+export const createBattleResultKeyboard = (battle: BattleView, player?: PlayerState): KeyboardBuilder => buildKeyboard(createBattleResultLayout(battle, player));
 
 export const createRuneKeyboard = (player?: PlayerState): KeyboardBuilder => buildKeyboard(createRuneLayout(player));
 
@@ -232,12 +246,13 @@ export const createRuneRerollKeyboard = (player?: PlayerState): KeyboardBuilder 
 
 export const createTutorialKeyboard = (player: PlayerState): KeyboardBuilder => {
   const inTutorial = isPlayerInTutorial(player);
+  const exploreStateKey = buildExploreLocationIntentStateKey(player);
   const skipTutorialStateKey = buildSkipTutorialIntentStateKey(player);
   const returnToAdventureStateKey = buildReturnToAdventureIntentStateKey(player);
 
   if (player.tutorialState === 'ACTIVE') {
     return buildKeyboard([
-      [{ label: '⚔️ Учебный бой', command: gameCommands.explore, color: Keyboard.POSITIVE_COLOR }],
+      [{ label: '⚔️ Учебный бой', command: gameCommands.explore, color: Keyboard.POSITIVE_COLOR, intentScoped: true, stateKey: exploreStateKey }],
       [{ label: '⏭️ Пропустить обучение', command: gameCommands.skipTutorial, color: Keyboard.NEGATIVE_COLOR, intentScoped: true, stateKey: skipTutorialStateKey }],
       [{ label: '◀ Меню', command: gameCommands.backToMenu, color: Keyboard.SECONDARY_COLOR }],
     ]);
@@ -245,14 +260,14 @@ export const createTutorialKeyboard = (player: PlayerState): KeyboardBuilder => 
 
   if (inTutorial) {
     return buildKeyboard([
-      [{ label: '⚔️ Тренировочный бой', command: gameCommands.explore, color: Keyboard.POSITIVE_COLOR }],
+      [{ label: '⚔️ Тренировочный бой', command: gameCommands.explore, color: Keyboard.POSITIVE_COLOR, intentScoped: true, stateKey: exploreStateKey }],
       [{ label: '🌍 В приключения', command: gameCommands.returnToAdventure, color: Keyboard.PRIMARY_COLOR, intentScoped: true, stateKey: returnToAdventureStateKey }],
       [{ label: '◀ Меню', command: gameCommands.backToMenu, color: Keyboard.SECONDARY_COLOR }],
     ]);
   }
 
   return buildKeyboard([
-    [{ label: '⚔️ Исследовать', command: gameCommands.explore, color: Keyboard.POSITIVE_COLOR }],
+    [{ label: '⚔️ Исследовать', command: gameCommands.explore, color: Keyboard.POSITIVE_COLOR, intentScoped: true, stateKey: exploreStateKey }],
     [{ label: '◀ Меню', command: gameCommands.backToMenu, color: Keyboard.SECONDARY_COLOR }],
   ]);
 };

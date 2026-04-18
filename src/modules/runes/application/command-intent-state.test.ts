@@ -5,6 +5,8 @@ import type { PlayerState } from '../../../shared/types/game';
 import {
   buildCraftIntentStateKey,
   buildEquipIntentStateKey,
+  buildMoveRuneCursorIntentStateKey,
+  buildSelectRunePageSlotIntentStateKey,
   buildUnequipIntentStateKey,
 } from './command-intent-state';
 
@@ -210,5 +212,40 @@ describe('command intent state keys', () => {
     });
 
     expect(buildUnequipIntentStateKey(before)).not.toBe(buildUnequipIntentStateKey(after));
+  });
+
+  it('changes rune cursor state key when current selection changes', () => {
+    const before = createPlayer({ currentRuneIndex: 0 });
+    const after = createPlayer({ currentRuneIndex: 1 });
+
+    expect(buildMoveRuneCursorIntentStateKey(before, 1)).not.toBe(buildMoveRuneCursorIntentStateKey(after, 1));
+  });
+
+  it('changes rune slot state key when collection shape changes', () => {
+    const before = createPlayer({
+      runes: [
+        ...createPlayer().runes,
+        {
+          id: 'rune-extra',
+          runeCode: 'rune-extra',
+          archetypeCode: 'ember',
+          passiveAbilityCodes: ['ember_heart'],
+          activeAbilityCodes: ['ember_pulse'],
+          name: 'Руна C',
+          rarity: 'USUAL',
+          isEquipped: false,
+          health: 1,
+          attack: 2,
+          defence: 0,
+          magicDefence: 0,
+          dexterity: 0,
+          intelligence: 0,
+          createdAt: '2026-04-12T00:00:00.000Z',
+        },
+      ],
+    });
+    const after = createPlayer();
+
+    expect(buildSelectRunePageSlotIntentStateKey(before, 0)).not.toBe(buildSelectRunePageSlotIntentStateKey(after, 0));
   });
 });

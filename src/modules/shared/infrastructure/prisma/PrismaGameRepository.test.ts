@@ -263,6 +263,7 @@ const createPrismaMock = () => {
       findFirst: vi.fn(),
       findUnique: vi.fn(),
       update: vi.fn(),
+      updateMany: vi.fn(),
     },
     user: {
       create: vi.fn(),
@@ -544,6 +545,42 @@ describe('PrismaGameRepository release hardening', () => {
     expect(tx.battleSession.updateMany).not.toHaveBeenCalled();
   });
 
+  it('returns canonical rune cursor result for a duplicate navigation intent', async () => {
+    const { repository, tx } = createPrismaMock();
+
+    tx.commandIntentRecord.findUnique.mockResolvedValue({
+      commandKey: 'MOVE_RUNE_CURSOR',
+      stateKey: 'state-rune-page-1',
+      status: 'APPLIED',
+      resultSnapshot: JSON.stringify(createPlayerStateSnapshot()),
+    });
+
+    const player = await repository.saveRuneCursor(1, 1, {
+      commandKey: 'MOVE_RUNE_CURSOR',
+      intentId: 'intent-rune-page-1',
+      intentStateKey: 'state-rune-page-1',
+      expectedPlayerUpdatedAt: '2026-04-12T00:00:00.000Z',
+    });
+
+    expect(player.playerId).toBe(1);
+    expect(tx.playerProgress.update).not.toHaveBeenCalled();
+  });
+
+  it('rejects stale rune cursor writes when player freshness token changed', async () => {
+    const { repository, tx } = createPrismaMock();
+
+    tx.player.updateMany.mockResolvedValue({ count: 0 });
+
+    await expect(repository.saveRuneCursor(1, 1, {
+      commandKey: 'SELECT_RUNE_PAGE_SLOT',
+      intentId: 'intent-rune-slot-stale',
+      intentStateKey: 'state-rune-slot-stale',
+      expectedPlayerUpdatedAt: '2026-04-12T00:00:00.000Z',
+    })).rejects.toMatchObject({
+      code: 'stale_command_intent',
+    });
+  });
+
   it('returns canonical finalized battle result for a duplicate battle action intent', async () => {
     const { repository, tx } = createPrismaMock();
 
@@ -657,6 +694,50 @@ describe('PrismaGameRepository release hardening', () => {
       where: { playerId: 1 },
       data: { activeBattleId: existingBattle.id },
     });
+  });
+
+  it('returns canonical exploration battle for a duplicate explore command intent', async () => {
+    const { repository, tx } = createPrismaMock();
+    const replayedBattle = createBattleView({
+      status: 'ACTIVE',
+      result: null,
+      rewards: null,
+    });
+
+    tx.commandIntentRecord.findUnique.mockResolvedValue({
+      commandKey: 'EXPLORE_LOCATION',
+      stateKey: 'state-explore-1',
+      status: 'APPLIED',
+      resultSnapshot: JSON.stringify(replayedBattle),
+    });
+
+    const battle = await repository.createBattle(1, createBattleView({ status: 'ACTIVE', result: null, rewards: null }), {
+      commandKey: 'EXPLORE_LOCATION',
+      intentId: 'intent-explore-1',
+      intentStateKey: 'state-explore-1',
+      currentStateKey: 'state-explore-1',
+    });
+
+    expect(battle.id).toBe(replayedBattle.id);
+    expect(tx.battleSession.create).not.toHaveBeenCalled();
+    expect(tx.playerProgress.update).not.toHaveBeenCalled();
+  });
+
+  it('rejects stale explore command writes when the expected exploration state no longer matches', async () => {
+    const { repository, tx } = createPrismaMock();
+
+    tx.commandIntentRecord.findUnique.mockResolvedValue(null);
+
+    await expect(repository.createBattle(1, createBattleView({ status: 'ACTIVE', result: null, rewards: null }), {
+      commandKey: 'EXPLORE_LOCATION',
+      intentId: 'intent-explore-stale',
+      intentStateKey: 'state-explore-old',
+      currentStateKey: 'state-explore-new',
+    })).rejects.toMatchObject({
+      code: 'stale_command_intent',
+    });
+
+    expect(tx.battleSession.create).not.toHaveBeenCalled();
   });
 
   it('writes the versioned battle snapshot contract when saving battle state', async () => {

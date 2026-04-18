@@ -24,3 +24,8 @@ export const buildReturnToAdventureIntentStateKey = (player: PlayerState): strin
   action: 'return_to_adventure',
   ...buildExplorationSnapshot(player),
 });
+
+export const buildExploreLocationIntentStateKey = (player: PlayerState): string => serializeStateKey({
+  action: 'explore_location',
+  ...buildExplorationSnapshot(player),
+});

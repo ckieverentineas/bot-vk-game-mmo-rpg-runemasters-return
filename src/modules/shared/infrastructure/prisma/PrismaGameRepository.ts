@@ -31,11 +31,13 @@ import { buildLoadoutSnapshotFromBattle, isLoadoutSnapshot, projectBattleRuneLoa
 import { createAppliedRewardLedgerEntry } from '../../domain/contracts/reward-ledger';
 import { createBattleVictoryRewardIntent } from '../../domain/contracts/reward-intent';
 import type {
+  CreateBattleOptions,
   FinalizeBattleResult,
   GameRepository,
   SaveBattleOptions,
   SaveExplorationOptions,
   SaveAllocationOptions,
+  SaveRuneCursorOptions,
   SaveRuneLoadoutOptions,
 } from '../../application/ports/GameRepository';
 
@@ -53,7 +55,7 @@ const playerInclude = {
 
 type PlayerRecord = Prisma.PlayerGetPayload<{ include: typeof playerInclude }>;
 type TransactionClient = Prisma.TransactionClient;
-type CommandIntentKey = 'CRAFT_RUNE' | 'REROLL_RUNE_STAT' | 'DESTROY_RUNE' | 'ALLOCATE_STAT_POINT' | 'RESET_ALLOCATED_STATS' | 'EQUIP_RUNE' | 'UNEQUIP_RUNE' | 'SKIP_TUTORIAL' | 'RETURN_TO_ADVENTURE' | 'BATTLE_ATTACK' | 'BATTLE_DEFEND' | 'BATTLE_RUNE_SKILL';
+type CommandIntentKey = 'CRAFT_RUNE' | 'REROLL_RUNE_STAT' | 'DESTROY_RUNE' | 'ALLOCATE_STAT_POINT' | 'RESET_ALLOCATED_STATS' | 'EQUIP_RUNE' | 'UNEQUIP_RUNE' | 'MOVE_RUNE_CURSOR' | 'SELECT_RUNE_PAGE_SLOT' | 'ENTER_TUTORIAL_MODE' | 'SKIP_TUTORIAL' | 'RETURN_TO_ADVENTURE' | 'EXPLORE_LOCATION' | 'BATTLE_ATTACK' | 'BATTLE_DEFEND' | 'BATTLE_RUNE_SKILL';
 
 type PersistedBattleState = Pick<BattleView, 'status' | 'turnOwner' | 'player' | 'enemy' | 'log' | 'result' | 'rewards' | 'actionRevision'>;
 
@@ -785,20 +787,54 @@ export class PrismaGameRepository implements GameRepository {
     });
   }
 
-  public async saveRuneCursor(playerId: number, currentRuneIndex: number): Promise<PlayerState> {
-    await this.prisma.$transaction(async (tx) => {
-      await tx.playerProgress.update({
-        where: { playerId },
-        data: { currentRuneIndex },
-      });
+  public async saveRuneCursor(playerId: number, currentRuneIndex: number, options?: SaveRuneCursorOptions): Promise<PlayerState> {
+    return this.prisma.$transaction(async (tx) => {
+      const apply = async (): Promise<PlayerState> => {
+        if (options?.expectedPlayerUpdatedAt) {
+          const playerGuard = await tx.player.updateMany({
+            where: {
+              id: playerId,
+              updatedAt: new Date(options.expectedPlayerUpdatedAt),
+            },
+            data: {
+              updatedAt: new Date(),
+            },
+          });
 
-      await tx.player.update({
-        where: { id: playerId },
-        data: { updatedAt: new Date() },
-      });
+          if (playerGuard.count === 0) {
+            throw new AppError('stale_command_intent', 'Этот экран рун уже устарел. Я открыл актуальные руны.');
+          }
+        }
+
+        await tx.playerProgress.update({
+          where: { playerId },
+          data: { currentRuneIndex },
+        });
+
+        if (!options?.expectedPlayerUpdatedAt) {
+          await tx.player.update({
+            where: { id: playerId },
+            data: { updatedAt: new Date() },
+          });
+        }
+
+        return this.mapPlayer(await this.requirePlayerRecord(tx, playerId));
+      };
+
+      if (options?.commandKey && options.intentId && options.intentStateKey) {
+        return this.runWithCommandIntent(
+          tx,
+          playerId,
+          options.commandKey,
+          options.intentId,
+          options.intentStateKey,
+          options.intentStateKey,
+          apply,
+        );
+      }
+
+      return apply();
     });
-
-    return this.requirePlayer(playerId);
   }
 
   public async equipRune(playerId: number, runeId: string | null, options?: SaveRuneLoadoutOptions): Promise<PlayerState> {
@@ -1142,49 +1178,10 @@ export class PrismaGameRepository implements GameRepository {
     }));
   }
 
-  public async createBattle(playerId: number, battle: CreateBattleInput): Promise<BattleView> {
+  public async createBattle(playerId: number, battle: CreateBattleInput, options?: CreateBattleOptions): Promise<BattleView> {
     const created = await this.prisma.$transaction(async (tx) => {
-      const existingBattle = await tx.battleSession.findFirst({
-        where: {
-          playerId,
-          status: 'ACTIVE',
-        },
-        orderBy: { createdAt: 'asc' },
-      });
-
-      if (existingBattle) {
-        await tx.playerProgress.update({
-          where: { playerId },
-          data: { activeBattleId: existingBattle.id },
-        });
-
-        return existingBattle;
-      }
-
-      const persistedBattle = mapBattlePersistence(battle);
-
-      const battleRow = await tx.battleSession.create({
-        data: {
-          playerId,
-          battleType: battle.battleType,
-          locationLevel: battle.locationLevel,
-          biomeCode: battle.biomeCode,
-          enemyCode: battle.enemyCode,
-          enemyName: battle.enemy.name,
-          ...persistedBattle,
-        },
-      });
-
-      const claimedProgress = await tx.playerProgress.updateMany({
-        where: {
-          playerId,
-          activeBattleId: null,
-        },
-        data: { activeBattleId: battleRow.id },
-      });
-
-      if (claimedProgress.count === 0) {
-        const fallbackBattle = await tx.battleSession.findFirst({
+      const apply = async (): Promise<BattleView> => {
+        const existingBattle = await tx.battleSession.findFirst({
           where: {
             playerId,
             status: 'ACTIVE',
@@ -1192,25 +1189,80 @@ export class PrismaGameRepository implements GameRepository {
           orderBy: { createdAt: 'asc' },
         });
 
-        if (fallbackBattle && fallbackBattle.id !== battleRow.id) {
+        if (existingBattle) {
           await tx.playerProgress.update({
             where: { playerId },
-            data: { activeBattleId: fallbackBattle.id },
+            data: { activeBattleId: existingBattle.id },
           });
-          await tx.battleSession.delete({ where: { id: battleRow.id } });
-          return fallbackBattle;
+
+          return this.mapBattle(existingBattle);
         }
 
-        await tx.playerProgress.update({
-          where: { playerId },
+        const persistedBattle = mapBattlePersistence(battle);
+
+        const battleRow = await tx.battleSession.create({
+          data: {
+            playerId,
+            battleType: battle.battleType,
+            locationLevel: battle.locationLevel,
+            biomeCode: battle.biomeCode,
+            enemyCode: battle.enemyCode,
+            enemyName: battle.enemy.name,
+            ...persistedBattle,
+          },
+        });
+
+        const claimedProgress = await tx.playerProgress.updateMany({
+          where: {
+            playerId,
+            activeBattleId: null,
+          },
           data: { activeBattleId: battleRow.id },
         });
+
+        if (claimedProgress.count === 0) {
+          const fallbackBattle = await tx.battleSession.findFirst({
+            where: {
+              playerId,
+              status: 'ACTIVE',
+            },
+            orderBy: { createdAt: 'asc' },
+          });
+
+          if (fallbackBattle && fallbackBattle.id !== battleRow.id) {
+            await tx.playerProgress.update({
+              where: { playerId },
+              data: { activeBattleId: fallbackBattle.id },
+            });
+            await tx.battleSession.delete({ where: { id: battleRow.id } });
+            return this.mapBattle(fallbackBattle);
+          }
+
+          await tx.playerProgress.update({
+            where: { playerId },
+            data: { activeBattleId: battleRow.id },
+          });
+        }
+
+        return this.mapBattle(battleRow);
+      };
+
+      if (options?.commandKey && options.intentId && options.intentStateKey) {
+        return this.runWithCommandIntent(
+          tx,
+          playerId,
+          options.commandKey,
+          options.intentId,
+          options.intentStateKey,
+          options.currentStateKey,
+          apply,
+        );
       }
 
-      return battleRow;
+      return apply();
     });
 
-    return this.mapBattle(created);
+    return created;
   }
 
   public async getActiveBattle(playerId: number): Promise<BattleView | null> {

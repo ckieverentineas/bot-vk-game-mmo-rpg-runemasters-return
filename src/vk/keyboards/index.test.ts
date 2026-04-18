@@ -1,7 +1,15 @@
 import { describe, expect, it } from 'vitest';
 
 import type { BattleView, PlayerState } from '../../shared/types/game';
-import { createBattleKeyboard, createDeleteConfirmationKeyboard, createProfileKeyboard, createRuneKeyboard, createTutorialKeyboard } from './index';
+import {
+  createBattleKeyboard,
+  createBattleResultKeyboard,
+  createDeleteConfirmationKeyboard,
+  createMainMenuKeyboard,
+  createProfileKeyboard,
+  createRuneKeyboard,
+  createTutorialKeyboard,
+} from './index';
 
 const createPlayer = (overrides: Partial<PlayerState> = {}): PlayerState => ({
   userId: 1,
@@ -149,7 +157,14 @@ interface SerializedButtonPayload {
 }
 
 const collectPayloads = (
-  keyboard: ReturnType<typeof createProfileKeyboard> | ReturnType<typeof createRuneKeyboard> | ReturnType<typeof createDeleteConfirmationKeyboard>,
+  keyboard:
+    | ReturnType<typeof createBattleKeyboard>
+    | ReturnType<typeof createBattleResultKeyboard>
+    | ReturnType<typeof createDeleteConfirmationKeyboard>
+    | ReturnType<typeof createMainMenuKeyboard>
+    | ReturnType<typeof createProfileKeyboard>
+    | ReturnType<typeof createRuneKeyboard>
+    | ReturnType<typeof createTutorialKeyboard>,
 ): SerializedButtonPayload[] => {
   const serialized = JSON.parse(JSON.stringify(keyboard)) as {
     rows: Array<Array<{ action: { payload: string } }>>;
@@ -181,11 +196,17 @@ describe('profile keyboard', () => {
 
     const equip = payloads.find((payload) => payload.command === 'надеть');
     const unequip = payloads.find((payload) => payload.command === 'снять');
+    const nextPage = payloads.find((payload) => payload.command === 'руны >');
+    const slotOne = payloads.find((payload) => payload.command === 'руна слот 1');
 
     expect(equip?.intentId).toEqual(expect.any(String));
     expect(equip?.stateKey).toEqual(expect.any(String));
     expect(unequip?.intentId).toEqual(expect.any(String));
     expect(unequip?.stateKey).toEqual(expect.any(String));
+    expect(nextPage?.intentId).toEqual(expect.any(String));
+    expect(nextPage?.stateKey).toEqual(expect.any(String));
+    expect(slotOne?.intentId).toEqual(expect.any(String));
+    expect(slotOne?.stateKey).toEqual(expect.any(String));
   });
 
   it('does not emit partial intent envelopes on rune keyboard without player context', () => {
@@ -215,10 +236,27 @@ describe('profile keyboard', () => {
   it('adds intent metadata to tutorial skip button when onboarding is active', () => {
     const payloads = collectPayloads(createTutorialKeyboard(createPlayer({ tutorialState: 'ACTIVE', locationLevel: 0 })));
 
+    const explore = payloads.find((payload) => payload.command === 'исследовать');
     const skip = payloads.find((payload) => payload.command === 'пропустить обучение');
 
+    expect(explore?.intentId).toEqual(expect.any(String));
+    expect(explore?.stateKey).toEqual(expect.any(String));
     expect(skip?.intentId).toEqual(expect.any(String));
     expect(skip?.stateKey).toEqual(expect.any(String));
+  });
+
+  it('adds intent metadata to main-menu and battle-result explore buttons when player context is available', () => {
+    const player = createPlayer();
+    const mainMenuPayloads = collectPayloads(createMainMenuKeyboard(player));
+    const battleResultPayloads = collectPayloads(createBattleResultKeyboard(createBattle({ status: 'COMPLETED', result: 'VICTORY', rewards: { experience: 6, gold: 2, shards: { USUAL: 1 }, droppedRune: null } }), player));
+
+    const mainExplore = mainMenuPayloads.find((payload) => payload.command === 'исследовать');
+    const newBattle = battleResultPayloads.find((payload) => payload.command === 'исследовать');
+
+    expect(mainExplore?.intentId).toEqual(expect.any(String));
+    expect(mainExplore?.stateKey).toEqual(expect.any(String));
+    expect(newBattle?.intentId).toEqual(expect.any(String));
+    expect(newBattle?.stateKey).toEqual(expect.any(String));
   });
 
   it('adds intent metadata to battle action buttons', () => {

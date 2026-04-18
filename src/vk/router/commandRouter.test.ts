@@ -131,6 +131,21 @@ describe('normalizeCommand', () => {
     expect(returnAlias.intentSource).toBe('legacy_text');
   });
 
+  it('выводит server-owned intent для legacy text исследования', () => {
+    const explore = resolveCommandEnvelope({
+      text: 'исследовать',
+      senderId: 1001,
+      peerId: 2000000001,
+      conversationMessageId: 86,
+      id: 510,
+      messagePayload: null,
+    } as never);
+
+    expect(explore.command).toBe(gameCommands.explore);
+    expect(explore.intentId).toBe('legacy-text:2000000001:1001:86:исследовать');
+    expect(explore.intentSource).toBe('legacy_text');
+  });
+
   it('выводит server-owned intent для legacy text боевых команд', () => {
     const attack = resolveCommandEnvelope({
       text: 'атака',

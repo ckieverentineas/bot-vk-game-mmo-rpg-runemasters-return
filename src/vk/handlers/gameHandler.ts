@@ -75,7 +75,7 @@ export class GameHandler {
         const result = await this.services.registerPlayer.execute(vkId);
         const keyboard = result.created || result.player.tutorialState === 'ACTIVE'
           ? createTutorialKeyboard(result.player)
-          : createMainMenuKeyboard();
+          : createMainMenuKeyboard(result.player);
         await this.reply(
           ctx,
           renderWelcome(result.player, result.created),
@@ -111,12 +111,12 @@ export class GameHandler {
         }
         case gameCommands.skipTutorial: {
           const player = await this.services.skipTutorial.execute(vkId, intentId ?? undefined, stateKey ?? undefined, intentSource);
-          await this.reply(ctx, renderReturnRecap(player, '🧭 Возвращение в приключения'), createMainMenuKeyboard());
+          await this.reply(ctx, renderReturnRecap(player, '🧭 Возвращение в приключения'), createMainMenuKeyboard(player));
           return;
         }
         case gameCommands.returnToAdventure: {
           const player = await this.services.returnToAdventure.execute(vkId, intentId ?? undefined, stateKey ?? undefined, intentSource);
-          await this.reply(ctx, renderReturnRecap(player, '🧭 Возвращение в приключения'), createMainMenuKeyboard());
+          await this.reply(ctx, renderReturnRecap(player, '🧭 Возвращение в приключения'), createMainMenuKeyboard(player));
           return;
         }
         case gameCommands.resetStats: {
@@ -125,8 +125,8 @@ export class GameHandler {
           return;
         }
         case gameCommands.explore: {
-          const battle = await this.services.exploreLocation.execute(vkId);
-          await this.replyWithBattle(ctx, battle);
+          const battle = await this.services.exploreLocation.execute(vkId, intentId ?? undefined, stateKey ?? undefined, intentSource);
+          await this.replyWithBattle(ctx, battle, vkId);
           return;
         }
         case gameCommands.attack: {
@@ -215,14 +215,14 @@ export class GameHandler {
 
     const runeCursorDelta = resolveRuneCursorDeltaCommand(command);
     if (runeCursorDelta !== null) {
-      const player = await this.services.moveRuneCursor.execute(vkId, runeCursorDelta);
+      const player = await this.services.moveRuneCursor.execute(vkId, runeCursorDelta, intentId ?? undefined, stateKey ?? undefined, intentSource);
       await this.replyWithRuneHub(ctx, player);
       return;
     }
 
     const runePageSlot = resolveRunePageSlotCommand(command);
     if (runePageSlot !== null) {
-      const player = await this.services.selectRunePageSlot.execute(vkId, runePageSlot);
+      const player = await this.services.selectRunePageSlot.execute(vkId, runePageSlot, intentId ?? undefined, stateKey ?? undefined, intentSource);
       await this.replyWithRuneHub(ctx, player);
       return;
     }
@@ -244,7 +244,7 @@ export class GameHandler {
 
   private async showMainMenu(ctx: Context, vkId: number): Promise<void> {
     const player = await this.services.getPlayerProfile.execute(vkId);
-    await this.reply(ctx, renderMainMenu(player), createMainMenuKeyboard());
+    await this.reply(ctx, renderMainMenu(player), createMainMenuKeyboard(player));
   }
 
   private async showProfile(ctx: Context, vkId: number): Promise<void> {
@@ -286,12 +286,42 @@ export class GameHandler {
         return true;
       }
 
+      if (command === gameCommands.explore) {
+        const battle = await this.safeGetActiveBattle(vkId);
+        if (battle) {
+          await this.reply(
+            ctx,
+            [error.message, '', renderBattle(battle)].join('\n'),
+            this.resolveBattleKeyboard(battle),
+          );
+          return true;
+        }
+
+        const player = await this.services.getPlayerProfile.execute(vkId);
+        await this.reply(
+          ctx,
+          [error.message, '', renderLocation(player)].join('\n'),
+          createTutorialKeyboard(player),
+        );
+        return true;
+      }
+
       if ([gameCommands.skipTutorial, gameCommands.returnToAdventure].includes(command as typeof gameCommands.skipTutorial | typeof gameCommands.returnToAdventure)) {
         const player = await this.services.getPlayerProfile.execute(vkId);
         await this.reply(
           ctx,
           [error.message, '', renderLocation(player)].join('\n'),
           createTutorialKeyboard(player),
+        );
+        return true;
+      }
+
+      if (resolveRuneCursorDeltaCommand(command) !== null || resolveRunePageSlotCommand(command) !== null) {
+        const player = await this.services.getRuneCollection.execute(vkId);
+        await this.reply(
+          ctx,
+          [error.message, '', renderRuneScreen(player)].join('\n'),
+          createRuneKeyboard(player),
         );
         return true;
       }
@@ -357,7 +387,7 @@ export class GameHandler {
 
   private async showInventory(ctx: Context, vkId: number): Promise<void> {
     const player = await this.services.getPlayerProfile.execute(vkId);
-    await this.reply(ctx, renderInventory(player), createMainMenuKeyboard());
+    await this.reply(ctx, renderInventory(player), createMainMenuKeyboard(player));
   }
 
   private async showLocation(ctx: Context, vkId: number): Promise<void> {
@@ -377,8 +407,16 @@ export class GameHandler {
     await this.reply(ctx, renderRuneScreen(player), createRuneKeyboard(player));
   }
 
-  private async replyWithBattle(ctx: Context, battle: BattleView): Promise<void> {
-    await this.reply(ctx, renderBattle(battle), this.resolveBattleKeyboard(battle));
+  private async replyWithBattle(ctx: Context, battle: BattleView, vkId?: number): Promise<void> {
+    if (battle.status === 'ACTIVE') {
+      await this.reply(ctx, renderBattle(battle), this.resolveBattleKeyboard(battle));
+      return;
+    }
+
+    const player = vkId === undefined
+      ? undefined
+      : await this.services.getPlayerProfile.execute(vkId);
+    await this.reply(ctx, renderBattle(battle), createBattleResultKeyboard(battle, player));
   }
 
   private async useBattleAction(
@@ -391,7 +429,7 @@ export class GameHandler {
   ): Promise<void> {
     try {
       const battle = await this.services.performBattleAction.execute(vkId, action, intentId, intentStateKey, intentSource);
-      await this.replyWithBattle(ctx, battle);
+      await this.replyWithBattle(ctx, battle, vkId);
     } catch (error) {
       if (isAppError(error)) {
         const activeBattle = await this.safeGetActiveBattle(vkId);

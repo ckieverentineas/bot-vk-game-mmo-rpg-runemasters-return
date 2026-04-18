@@ -21,7 +21,7 @@ export class GetActiveBattle {
     }
 
     const recoveredBattle = await finalizeRecoveredBattleIfNeeded(this.repository, player, activeBattle, this.random);
-    if (recoveredBattle.recovered) {
+    if (recoveredBattle.recovered && recoveredBattle.battle.status === 'COMPLETED') {
       throw new AppError('battle_not_found', 'Активный бой уже завершён. Начните новый через «исследовать».');
     }
 

@@ -15,15 +15,17 @@ Covered by intent-based dedupe:
 - `resetAllocatedStats`
 - `equipRune`
 - `unequipRune`
+- keyboard rune hub navigation (`previousRunePage`, `nextRunePage`, `selectRunePageSlot`)
 - `skipTutorial`
 - `returnToAdventure`
+- `exploreLocation`
 - keyboard battle actions (`attack`, `defend`, `runeSkill`)
 - legacy text battle actions (`атака`, `защита`, `навыки`, `спелл`)
 
 Transport surface:
 
 - VK keyboard payloads for guarded buttons;
-- server-owned legacy text intents for `craftRune`, `rerollRuneStat`, `destroyRune`, `allocateStatPoint`, `resetAllocatedStats`, `equipRune`, `unequipRune`, `skipTutorial`, `returnToAdventure`, `attack`, `defend`, `runeSkill`.
+- server-owned legacy text intents for `craftRune`, `rerollRuneStat`, `destroyRune`, `allocateStatPoint`, `resetAllocatedStats`, `equipRune`, `unequipRune`, `skipTutorial`, `returnToAdventure`, `exploreLocation` (`исследовать`), `attack`, `defend`, `runeSkill`.
 
 Not covered yet:
 
@@ -101,6 +103,12 @@ Fields of interest:
 - first arrival clears the current equipped rune exactly once;
 - duplicate same-intent arrival returns the stored post-unequip loadout instead of clearing a newer loadout state.
 
+### Rune hub navigation
+
+- first arrival updates the currently visible rune page or selected slot exactly once for the rendered rune hub snapshot;
+- duplicate same-intent arrival returns the stored post-navigation rune hub state instead of retargeting a fresher selection;
+- stale page or slot buttons restore the latest canonical rune hub instead of silently selecting another rune.
+
 ### Skip tutorial
 
 - first arrival moves the player to the current adaptive adventure path and marks onboarding as skipped if it was still active;
@@ -110,6 +118,12 @@ Fields of interest:
 
 - first arrival moves the player onto the current adaptive adventure path;
 - duplicate same-intent arrival returns the stored post-return player state instead of overwriting fresher navigation state.
+
+### Explore location
+
+- first arrival starts exactly one canonical encounter for the rendered exploration state;
+- duplicate same-intent arrival returns the stored battle instead of minting a second encounter or rerolling enemy selection;
+- stale explore button restores the latest battle or exploration context instead of silently starting another fight.
 
 ### Battle action
 
@@ -121,7 +135,10 @@ Fields of interest:
 
 - keyboard payload is the current source of intent ids;
 - server-owned legacy text ids currently protect rune craft / reroll / destroy / equip / unequip, profile stat allocation / reset, tutorial navigation (`пропустить обучение`, `в приключения`, `в мир`), and battle text inputs (`атака`, `защита`, `навыки`, `спелл`);
+- server-owned legacy text ids also protect exploration entry via `исследовать`;
 - keyboard battle buttons now carry scoped `intentId` + battle `stateKey`;
+- keyboard rune hub page and slot buttons now also carry scoped `intentId` + rune-hub `stateKey`;
+- keyboard explore buttons now also carry scoped `intentId` + exploration `stateKey`;
 - each newly rendered mutation button gets a fresh `intentId`;
 - old keyboard presses after state changes should be rejected as stale and ask the player to refresh the screen;
 - other text aliases remain best-effort only until a later wider intent envelope slice.
@@ -138,11 +155,13 @@ Fields of interest:
 - same-intent skip tutorial -> one canonical post-skip navigation state only;
 - same-intent return to adventure -> one canonical post-return navigation state only;
 - same-intent battle attack / defend / rune skill -> one canonical post-action battle result only;
+- same-intent rune page / slot navigation -> one canonical post-navigation rune hub state only;
+- same-intent explore from main menu / tutorial / battle-result CTA -> one canonical battle only;
 - stale reused intent after state change -> explicit `stale_command_intent` style rejection;
 - different intent ids still allow honest repeated actions.
 
 ## Deferred after v1
 
 - generic mutation intent envelope for all keyboard actions;
-- remaining text-command replay handling beyond guarded rune mutations, profile stat allocation / reset, tutorial navigation, and battle actions;
+- remaining text-command replay handling beyond guarded rune mutations, profile stat allocation / reset, tutorial navigation, exploration entry, and battle actions;
 - broader state-key strategy for non-rune mutations.

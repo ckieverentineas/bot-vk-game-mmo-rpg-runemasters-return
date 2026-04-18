@@ -12,8 +12,10 @@ import type {
 
 export type AllocationCommandIntentKey = 'ALLOCATE_STAT_POINT' | 'RESET_ALLOCATED_STATS';
 export type RuneLoadoutCommandIntentKey = 'EQUIP_RUNE' | 'UNEQUIP_RUNE';
-export type ExplorationCommandIntentKey = 'SKIP_TUTORIAL' | 'RETURN_TO_ADVENTURE';
+export type RuneNavigationCommandIntentKey = 'MOVE_RUNE_CURSOR' | 'SELECT_RUNE_PAGE_SLOT';
+export type ExplorationCommandIntentKey = 'ENTER_TUTORIAL_MODE' | 'SKIP_TUTORIAL' | 'RETURN_TO_ADVENTURE';
 export type BattleActionCommandIntentKey = 'BATTLE_ATTACK' | 'BATTLE_DEFEND' | 'BATTLE_RUNE_SKILL';
+export type BattleCommandIntentKey = BattleActionCommandIntentKey | 'EXPLORE_LOCATION';
 
 export interface SaveAllocationOptions {
   readonly commandKey?: AllocationCommandIntentKey;
@@ -34,6 +36,13 @@ export interface SaveRuneLoadoutOptions {
   readonly expectedRuneIds?: readonly string[];
 }
 
+export interface SaveRuneCursorOptions {
+  readonly commandKey?: RuneNavigationCommandIntentKey;
+  readonly intentId?: string;
+  readonly intentStateKey?: string;
+  readonly expectedPlayerUpdatedAt?: string;
+}
+
 export interface SaveExplorationOptions {
   readonly commandKey?: ExplorationCommandIntentKey;
   readonly intentId?: string;
@@ -47,7 +56,14 @@ export interface SaveExplorationOptions {
 }
 
 export interface SaveBattleOptions {
-  readonly commandKey?: BattleActionCommandIntentKey;
+  readonly commandKey?: BattleCommandIntentKey;
+  readonly intentId?: string;
+  readonly intentStateKey?: string;
+  readonly currentStateKey?: string;
+}
+
+export interface CreateBattleOptions {
+  readonly commandKey?: 'EXPLORE_LOCATION';
   readonly intentId?: string;
   readonly intentStateKey?: string;
   readonly currentStateKey?: string;
@@ -86,7 +102,7 @@ export interface GameRepository {
     state: Pick<PlayerState, 'locationLevel' | 'highestLocationLevel' | 'victoryStreak' | 'defeatStreak' | 'tutorialState'>,
     options?: SaveExplorationOptions,
   ): Promise<PlayerState>;
-  saveRuneCursor(playerId: number, currentRuneIndex: number): Promise<PlayerState>;
+  saveRuneCursor(playerId: number, currentRuneIndex: number, options?: SaveRuneCursorOptions): Promise<PlayerState>;
   equipRune(playerId: number, runeId: string | null, options?: SaveRuneLoadoutOptions): Promise<PlayerState>;
   createRune(playerId: number, rune: RuneDraft): Promise<PlayerState>;
   craftRune(playerId: number, rarity: RuneRarity, rune: RuneDraft, intentId?: string, intentStateKey?: string, currentStateKey?: string): Promise<PlayerState>;
@@ -97,7 +113,7 @@ export interface GameRepository {
   adjustInventory(playerId: number, delta: InventoryDelta): Promise<PlayerState>;
   findBiomeForLocationLevel(locationLevel: number): Promise<BiomeView | null>;
   listMobTemplatesForBiome(biomeCode: string): Promise<MobTemplateView[]>;
-  createBattle(playerId: number, battle: CreateBattleInput): Promise<BattleView>;
+  createBattle(playerId: number, battle: CreateBattleInput, options?: CreateBattleOptions): Promise<BattleView>;
   getActiveBattle(playerId: number): Promise<BattleView | null>;
   saveBattle(battle: BattleView, options?: SaveBattleOptions): Promise<BattleView>;
   finalizeBattle(playerId: number, battle: BattleView, options?: SaveBattleOptions): Promise<FinalizeBattleResult>;

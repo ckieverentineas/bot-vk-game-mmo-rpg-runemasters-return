@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import type { PlayerState } from '../../../shared/types/game';
 
 import {
+  buildExploreLocationIntentStateKey,
   buildReturnToAdventureIntentStateKey,
   buildSkipTutorialIntentStateKey,
 } from './command-intent-state';
@@ -74,5 +75,12 @@ describe('exploration command intent state keys', () => {
     const after = createPlayer({ victoryStreak: 3 });
 
     expect(buildReturnToAdventureIntentStateKey(before)).not.toBe(buildReturnToAdventureIntentStateKey(after));
+  });
+
+  it('changes when active battle context changes for explore', () => {
+    const before = createPlayer({ activeBattleId: null });
+    const after = createPlayer({ activeBattleId: 'battle-1' });
+
+    expect(buildExploreLocationIntentStateKey(before)).not.toBe(buildExploreLocationIntentStateKey(after));
   });
 });

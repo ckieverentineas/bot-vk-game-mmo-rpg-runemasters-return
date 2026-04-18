@@ -342,11 +342,21 @@ describe('GameHandler smoke', () => {
     await handler.handle(exploreContext as never);
 
     expect(services.enterTutorialMode.execute).toHaveBeenCalledWith(1001);
-    expect(services.exploreLocation.execute).toHaveBeenCalledWith(1001);
+    expect(services.exploreLocation.execute).toHaveBeenCalledWith(1001, undefined, undefined, 'payload');
     expect(getReplyCalls(locationContext)[0]?.message).toContain('Обучение');
     expect(getReplyCalls(locationContext)[0]?.message).toContain('первую руну');
     expect(getReplyCalls(exploreContext)[0]?.message).toContain('⚔️ Бой');
     expect(getReplyCalls(exploreContext)[0]?.message).toContain('Доступные действия');
+  });
+
+  it('выводит server-owned legacy intent для текстового исследования', async () => {
+    const services = createServices();
+    const handler = new GameHandler(services);
+    const ctx = createFakeContext({ text: 'исследовать', id: 517, conversationMessageId: 93, peerId: 2000000001 });
+
+    await handler.handle(ctx as never);
+
+    expect(services.exploreLocation.execute).toHaveBeenCalledWith(1001, 'legacy-text:2000000001:1001:93:исследовать', undefined, 'legacy_text');
   });
 
   it('не возвращает пропустившего игрока в учебный бой через старую команду локации', async () => {
@@ -790,18 +800,28 @@ describe('GameHandler smoke', () => {
   it('выбирает руну через слот на странице', async () => {
     const services = createServices();
     const handler = new GameHandler(services);
-    const ctx = createFakeContext({ command: 'руна слот 1' });
+    const ctx = createFakeContext({ command: 'руна слот 1', intentId: 'intent-rune-slot-1', stateKey: 'state-rune-slot-1' });
 
     await handler.handle(ctx as never);
 
-    expect(services.selectRunePageSlot.execute).toHaveBeenCalledWith(1001, 0);
+    expect(services.selectRunePageSlot.execute).toHaveBeenCalledWith(1001, 0, 'intent-rune-slot-1', 'state-rune-slot-1', 'payload');
     expect(getReplyCalls(ctx)[0]?.message).toContain('Руны и мастерская');
+  });
+
+  it('перелистывает страницу рун через transport payload', async () => {
+    const services = createServices();
+    const handler = new GameHandler(services);
+    const ctx = createFakeContext({ command: 'руны >', intentId: 'intent-rune-page-1', stateKey: 'state-rune-page-1' });
+
+    await handler.handle(ctx as never);
+
+    expect(services.moveRuneCursor.execute).toHaveBeenCalledWith(1001, 4, 'intent-rune-page-1', 'state-rune-page-1', 'payload');
   });
 
   it('возвращает rune hub keyboard при выборе пустого слота', async () => {
     const services = createServices();
     const handler = new GameHandler(services);
-    const ctx = createFakeContext({ command: 'руна слот 4' });
+    const ctx = createFakeContext({ command: 'руна слот 4', intentId: 'intent-rune-slot-2', stateKey: 'state-rune-slot-2' });
 
     vi.mocked(services.selectRunePageSlot.execute).mockRejectedValueOnce(
       new AppError('rune_slot_not_found', 'На этой позиции нет руны. Выберите другой слот на странице.'),
@@ -813,6 +833,40 @@ describe('GameHandler smoke', () => {
     expect(replies[0]?.message).toContain('На этой позиции нет руны');
     expect(JSON.stringify(replies[0]?.keyboard)).toContain('✨ Создать');
     expect(JSON.stringify(replies[0]?.keyboard)).toContain('🗑️ Распылить');
+  });
+
+  it('восстанавливает rune hub после stale перелистывания страницы', async () => {
+    const services = createServices();
+    const handler = new GameHandler(services);
+    const ctx = createFakeContext({ command: 'руны >', intentId: 'intent-rune-page-2', stateKey: 'state-rune-page-2' });
+
+    vi.mocked(services.moveRuneCursor.execute).mockRejectedValueOnce(
+      new AppError('stale_command_intent', 'Этот экран рун уже устарел. Я открыл актуальные руны.'),
+    );
+
+    await handler.handle(ctx as never);
+
+    const replies = getReplyCalls(ctx);
+    expect(replies[0]?.message).toContain('Этот экран рун уже устарел');
+    expect(replies[0]?.message).toContain('Руны и мастерская');
+    expect(JSON.stringify(replies[0]?.keyboard)).toContain('руны >');
+  });
+
+  it('восстанавливает rune hub после pending выбора слота', async () => {
+    const services = createServices();
+    const handler = new GameHandler(services);
+    const ctx = createFakeContext({ command: 'руна слот 1', intentId: 'intent-rune-slot-3', stateKey: 'state-rune-slot-3' });
+
+    vi.mocked(services.selectRunePageSlot.execute).mockRejectedValueOnce(
+      new AppError('command_retry_pending', 'Команда уже обрабатывается. Дождитесь ответа и обновите экран.'),
+    );
+
+    await handler.handle(ctx as never);
+
+    const replies = getReplyCalls(ctx);
+    expect(replies[0]?.message).toContain('Команда уже обрабатывается');
+    expect(replies[0]?.message).toContain('Руны и мастерская');
+    expect(JSON.stringify(replies[0]?.keyboard)).toContain('руна слот 1');
   });
 
   it('оставляет игрока в боевом контексте при повторном stale нажатии атаки', async () => {
@@ -845,6 +899,23 @@ describe('GameHandler smoke', () => {
     const replies = getReplyCalls(ctx);
     expect(replies[0]?.message).toContain('Команда уже обрабатывается');
     expect(replies[0]?.message).toContain('⚔️ Бой');
+  });
+
+  it('восстанавливает контекст приключения после stale explore intent', async () => {
+    const services = createServices();
+    const handler = new GameHandler(services);
+    const ctx = createFakeContext({ command: 'исследовать', intentId: 'intent-explore-1', stateKey: 'state-explore-1' });
+
+    vi.mocked(services.getActiveBattle.execute).mockResolvedValueOnce(null);
+    vi.mocked(services.exploreLocation.execute).mockRejectedValueOnce(
+      new AppError('stale_command_intent', 'Этот вход в приключение уже устарел. Я вернул актуальный контекст приключения.'),
+    );
+
+    await handler.handle(ctx as never);
+
+    const replies = getReplyCalls(ctx);
+    expect(replies[0]?.message).toContain('Этот вход в приключение уже устарел');
+    expect(replies[0]?.message).toContain('📘 Обучение');
   });
 
   it('восстанавливает профильный контекст после stale profile intent', async () => {

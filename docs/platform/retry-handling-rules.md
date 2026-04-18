@@ -34,6 +34,8 @@
 - legacy text `создать` / `сломать` / `~stat` теперь получают server-owned message intent id и используют тот же canonical replay receipt.
 - keyboard-issued `equipRune` / `unequipRune` дополнительно привязываются к loadout `stateKey`, чтобы старое сообщение не могло экипировать или снять уже другую руну.
 - legacy text `надеть` / `снять` получают server-owned message intent id и повторно возвращают canonical loadout result вместо второго применения той же команды.
+- keyboard-issued `руны >` / `руны <` / `руна слот 1..4` дополнительно привязываются к rune-hub `stateKey`, чтобы старый экран не мог тихо выбрать уже другую руну или другую страницу.
+- stale или retry-pending rune page/slot input обязан восстанавливать актуальный rune hub вместо silent retargeting.
 
 ## Profile mutation rules
 
@@ -45,6 +47,9 @@
 
 ## Exploration navigation rules
 
+- `explore` / `исследовать` используют keyboard-issued `intentId` + exploration `stateKey` либо server-owned legacy text intent id;
+- duplicate same-intent `explore` обязан вернуть canonical persisted battle, а не создать второй encounter или перероллить врага;
+- stale explore input после уже изменившегося exploration state обязан вернуть игрока в актуальный battle/location context, а не стартовать новый бой поверх свежего состояния;
 - `skipTutorial` и `returnToAdventure` используют keyboard-issued `intentId` + exploration `stateKey`;
 - plain text `пропустить обучение`, `в приключения` и alias `в мир` получают server-owned message intent id и идут через canonical replay receipt;
 - stateKey привязан к `tutorialState`, `activeBattleId`, текущему `locationLevel`, streak state и adaptive adventure destination;
@@ -60,6 +65,7 @@
 - stale / retry profile и rune mutations по возможности восстанавливают актуальный профильный или рунный контекст вместо выброса в главное меню.
 - stale equip / unequip reply обязан показывать актуальную рунную сборку, чтобы игрок сразу видел, какая руна реально экипирована сейчас.
 - stale / retry tutorial-navigation reply обязан восстанавливать актуальный tutorial/adventure экран с правильным следующим CTA.
+- stale / retry explore reply обязан восстанавливать либо текущий бой, либо актуальный exploration screen с правильной кнопкой следующего боя.
 
 ## Logging
 
@@ -70,4 +76,4 @@
 
 - explicit RNG authority rules for reroll / drop / craft are now defined in `docs/platform/rng-authority-rules.md`, but broader legacy-text and non-profile command replay still remains;
 - migration fixtures for versioned persisted contracts;
-- remaining legacy text-command repeated actions beyond guarded rune mutations / profile stat allocation / reset / tutorial navigation / battle actions, plus non-rune mutations beyond rune loadout buttons.
+- remaining legacy text-command repeated actions beyond guarded rune mutations / profile stat allocation / reset / tutorial navigation / exploration entry / battle actions, plus non-rune mutations beyond guarded rune loadout buttons.
