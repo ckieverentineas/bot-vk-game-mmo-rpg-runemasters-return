@@ -32,6 +32,7 @@ export const gameCommands = {
   selectRuneSlot2: 'руна слот 2',
   selectRuneSlot3: 'руна слот 3',
   selectRuneSlot4: 'руна слот 4',
+  selectRuneSlot5: 'руна слот 5',
   increaseAttack: '+атк',
   increaseHealth: '+здр',
   increaseDefence: '+фзащ',
@@ -74,7 +75,8 @@ type RuneSlotCommand =
   | typeof gameCommands.selectRuneSlot1
   | typeof gameCommands.selectRuneSlot2
   | typeof gameCommands.selectRuneSlot3
-  | typeof gameCommands.selectRuneSlot4;
+  | typeof gameCommands.selectRuneSlot4
+  | typeof gameCommands.selectRuneSlot5;
 
 type RuneCursorDelta = number;
 
@@ -110,7 +112,8 @@ const runePageSlotCommandMap = {
   [gameCommands.selectRuneSlot2]: 1,
   [gameCommands.selectRuneSlot3]: 2,
   [gameCommands.selectRuneSlot4]: 3,
-} satisfies Readonly<Record<RuneSlotCommand, 0 | 1 | 2 | 3>>;
+  [gameCommands.selectRuneSlot5]: 4,
+} satisfies Readonly<Record<RuneSlotCommand, 0 | 1 | 2 | 3 | 4>>;
 
 export const commandAliases: Readonly<Record<string, GameCommand>> = {
   'меню': gameCommands.backToMenu,
@@ -150,7 +153,7 @@ export const resolveRuneCursorDeltaCommand = (command: string): RuneCursorDelta 
   return runeCursorCommandMap[command];
 };
 
-export const resolveRunePageSlotCommand = (command: string): 0 | 1 | 2 | 3 | null => {
+export const resolveRunePageSlotCommand = (command: string): 0 | 1 | 2 | 3 | 4 | null => {
   if (!hasOwn(runePageSlotCommandMap, command)) {
     return null;
   }

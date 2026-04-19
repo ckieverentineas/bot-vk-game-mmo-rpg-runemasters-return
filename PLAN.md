@@ -610,6 +610,9 @@ Runemasters Return должен решать это через **школы ру
 ### 12.4 UX and return motivation
 
 - [ ] Обновить rune hub вокруг сравнения школ и ближайших целей
+  - [x] быстрый выбор 5 рун на странице
+  - [x] явная индикация `выбрана / надета`
+  - [x] один активный слот показан явно; future extra slots вынесены в deferred direction через `docs/reviews/rune-hub-ux-v1.md`
 - [ ] Показывать игроку, что именно дала новая редкость
 - [ ] После сессии показывать 2–3 честные next goals
 - [ ] Добавить return recap для игрока после перерыва
@@ -1001,3 +1004,4 @@ Runemasters Return должен решать это через **школы ру
 - **2026-04-19:** progression rework v1 сдвигает рост от level-up stat allocation к school mastery: новые уровни больше не должны начислять новые stat points, а победы с экипированной школой теперь накапливают mastery и открывают первый non-flat боевой payoff.
 - **2026-04-19:** новые игроки теперь стартуют без новых stat points; старая profile-ветка распределения статов остаётся только как compatibility layer для существующих аккаунтов и больше не считается частью normal onboarding path.
 - **2026-04-19:** собран `docs/reviews/starter-synergy-v1.md`; same-school starter synergy v1 зафиксирована для Пламени и Тверди как читаемая `setup -> payoff` пара без новых кнопок и без proc-web хаоса.
+- **2026-04-19:** собран `docs/reviews/rune-hub-ux-v1.md`; rune hub v1 теперь держит быстрый выбор 5 рун на странице, явное состояние `выбрана / надета`, single-slot loadout сейчас и deferred extra slots только после отдельного progression/contract review.

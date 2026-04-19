@@ -156,6 +156,13 @@ interface SerializedButtonPayload {
   readonly stateKey?: string;
 }
 
+interface SerializedButton {
+  readonly action: {
+    readonly label: string;
+    readonly payload: string;
+  };
+}
+
 const collectPayloads = (
   keyboard:
     | ReturnType<typeof createBattleKeyboard>
@@ -167,12 +174,23 @@ const collectPayloads = (
     | ReturnType<typeof createTutorialKeyboard>,
 ): SerializedButtonPayload[] => {
   const serialized = JSON.parse(JSON.stringify(keyboard)) as {
-    rows: Array<Array<{ action: { payload: string } }>>;
-    currentRow?: Array<{ action: { payload: string } }>;
+    rows: Array<Array<SerializedButton>>;
+    currentRow?: Array<SerializedButton>;
   };
 
   return [...serialized.rows.flat(), ...(serialized.currentRow ?? [])]
     .map((button) => JSON.parse(button.action.payload) as SerializedButtonPayload);
+};
+
+const collectLabels = (
+  keyboard: ReturnType<typeof createRuneKeyboard>,
+): string[] => {
+  const serialized = JSON.parse(JSON.stringify(keyboard)) as {
+    rows: Array<Array<SerializedButton>>;
+    currentRow?: Array<SerializedButton>;
+  };
+
+  return [...serialized.rows.flat(), ...(serialized.currentRow ?? [])].map((button) => button.action.label);
 };
 
 describe('profile keyboard', () => {
@@ -216,6 +234,7 @@ describe('profile keyboard', () => {
     const unequip = payloads.find((payload) => payload.command === 'снять');
     const nextPage = payloads.find((payload) => payload.command === 'руны >');
     const slotOne = payloads.find((payload) => payload.command === 'руна слот 1');
+    const slotFive = payloads.find((payload) => payload.command === 'руна слот 5');
 
     expect(equip?.intentId).toEqual(expect.any(String));
     expect(equip?.stateKey).toEqual(expect.any(String));
@@ -225,6 +244,8 @@ describe('profile keyboard', () => {
     expect(nextPage?.stateKey).toEqual(expect.any(String));
     expect(slotOne?.intentId).toEqual(expect.any(String));
     expect(slotOne?.stateKey).toEqual(expect.any(String));
+    expect(slotFive?.intentId).toEqual(expect.any(String));
+    expect(slotFive?.stateKey).toEqual(expect.any(String));
   });
 
   it('does not emit partial intent envelopes on rune keyboard without player context', () => {
@@ -237,6 +258,20 @@ describe('profile keyboard', () => {
     expect(craft?.stateKey).toBeUndefined();
     expect(destroy?.intentId).toBeUndefined();
     expect(destroy?.stateKey).toBeUndefined();
+  });
+
+  it('does not promise unequip when no rune is currently equipped', () => {
+    const labels = collectLabels(createRuneKeyboard(createPlayer({
+      runes: [
+        {
+          ...createPlayer().runes[0]!,
+          isEquipped: false,
+        },
+      ],
+    })));
+
+    expect(labels).toContain('🚫 Снимать нечего');
+    expect(labels).not.toContain('❌ Снять текущую');
   });
 
   it('adds intent metadata to delete confirmation button when player context is available', () => {

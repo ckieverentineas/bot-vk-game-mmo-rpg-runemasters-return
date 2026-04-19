@@ -792,6 +792,25 @@
 
 - progression loop перестал выглядеть как набор разрозненных mastery-бонусов: у locked школ появился первый понятный `setup -> payoff` боевой паттерн без новых кнопок и без proc-web хаоса.
 
+## [0.49] - 2026-04-19
+
+### Commit
+
+- `worktree` — `feat: refine rune hub quick selection`
+
+### Added
+
+- review artifact [`docs/reviews/rune-hub-ux-v1.md`](docs/reviews/rune-hub-ux-v1.md) с locked решением по rune hub: 5 рун на странице, single-slot loadout сейчас, extra slots только после отдельного review.
+
+### Changed
+
+- rune hub теперь ещё явнее разводит `выбрана` и `надета`, показывает один активный slot как текущее правило игры и прямо подсказывает, что дополнительные slots пока закрыты;
+- player-facing copy в rune hub теперь лучше поддерживает быстрый выбор по слотам `1–5`, а keyboard-CTA на экипировку яснее различает `надеть` и `заменить`.
+
+### Fixed
+
+- rune interface меньше выглядит как технический список и сильнее работает как быстрый выбор стиля боя перед следующим PvE шагом.
+
 ## Шаблон следующей записи
 
 ### [0.03] - YYYY-MM-DD

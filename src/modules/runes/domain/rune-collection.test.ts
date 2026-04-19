@@ -32,18 +32,18 @@ describe('rune collection paging', () => {
 
     expect(page.pageNumber).toBe(2);
     expect(page.totalPages).toBe(2);
-    expect(page.entries.map((entry) => entry.absoluteIndex)).toEqual([4, 5]);
-    expect(page.entries[1]?.isSelected).toBe(true);
+    expect(page.entries.map((entry) => entry.absoluteIndex)).toEqual([5]);
+    expect(page.entries[0]?.isSelected).toBe(true);
   });
 
   it('разрешает выбор слота только внутри текущей страницы', () => {
-    expect(resolveRunePageSlotIndex(4, 6, 0)).toBe(4);
-    expect(resolveRunePageSlotIndex(4, 6, 1)).toBe(5);
-    expect(resolveRunePageSlotIndex(4, 6, 2)).toBeNull();
+    expect(resolveRunePageSlotIndex(0, 6, 4)).toBe(4);
+    expect(resolveRunePageSlotIndex(5, 6, 0)).toBe(5);
+    expect(resolveRunePageSlotIndex(5, 6, 1)).toBeNull();
   });
 
   it('переключает страницы от начала текущей страницы, а не от текущего слота', () => {
-    expect(resolveShiftedRunePageIndex(2, 6, 1)).toBe(4);
+    expect(resolveShiftedRunePageIndex(2, 6, 1)).toBe(5);
     expect(resolveShiftedRunePageIndex(5, 6, -1)).toBe(0);
   });
 });

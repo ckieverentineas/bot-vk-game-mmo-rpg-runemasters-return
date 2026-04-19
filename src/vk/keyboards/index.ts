@@ -14,7 +14,7 @@ import {
   buildAllocateStatIntentStateKey,
   buildResetAllocatedStatsIntentStateKey,
 } from '../../modules/player/application/command-intent-state';
-import { getSelectedRune, isPlayerInTutorial, spentStatPoints } from '../../modules/player/domain/player-stats';
+import { getEquippedRune, getSelectedRune, isPlayerInTutorial, spentStatPoints } from '../../modules/player/domain/player-stats';
 import {
   buildCraftIntentStateKey,
   buildDestroyIntentStateKey,
@@ -167,6 +167,7 @@ const createBattleResultLayout = (battle: BattleView, player?: PlayerState): Key
 
 const createRuneLayout = (player?: PlayerState): KeyboardLayout => {
   const selectedRune = player ? getSelectedRune(player) : null;
+  const equippedRune = player ? getEquippedRune(player) : null;
   const craftStateKey = player ? buildCraftIntentStateKey(player) : undefined;
   const equipStateKey = player ? buildEquipIntentStateKey(player) : undefined;
   const unequipStateKey = player ? buildUnequipIntentStateKey(player) : undefined;
@@ -175,6 +176,18 @@ const createRuneLayout = (player?: PlayerState): KeyboardLayout => {
   const destroyStateKey = player && selectedRune
     ? buildDestroyIntentStateKey(player, selectedRune.id, gameBalance.runes.profiles[selectedRune.rarity].shardField)
     : undefined;
+  const equipLabel = !selectedRune
+    ? '✅ Надеть'
+    : selectedRune.isEquipped
+      ? '✅ Надета'
+      : equippedRune
+        ? '🔁 Заменить'
+        : '✅ Надеть';
+  const unequipLabel = !equippedRune
+    ? '🚫 Снимать нечего'
+    : selectedRune?.isEquipped
+      ? '❌ Снять'
+      : '❌ Снять текущую';
 
     return [
       [
@@ -182,14 +195,15 @@ const createRuneLayout = (player?: PlayerState): KeyboardLayout => {
       { label: '2', command: gameCommands.selectRuneSlot2, color: Keyboard.PRIMARY_COLOR, intentScoped: Boolean(player), stateKey: player ? buildSelectRunePageSlotIntentStateKey(player, 1) : undefined },
       { label: '3', command: gameCommands.selectRuneSlot3, color: Keyboard.PRIMARY_COLOR, intentScoped: Boolean(player), stateKey: player ? buildSelectRunePageSlotIntentStateKey(player, 2) : undefined },
       { label: '4', command: gameCommands.selectRuneSlot4, color: Keyboard.PRIMARY_COLOR, intentScoped: Boolean(player), stateKey: player ? buildSelectRunePageSlotIntentStateKey(player, 3) : undefined },
+      { label: '5', command: gameCommands.selectRuneSlot5, color: Keyboard.PRIMARY_COLOR, intentScoped: Boolean(player), stateKey: player ? buildSelectRunePageSlotIntentStateKey(player, 4) : undefined },
       ],
       [
       { label: '◀️ Стр', command: gameCommands.previousRunePage, color: Keyboard.SECONDARY_COLOR, intentScoped: Boolean(player), stateKey: previousPageStateKey },
       { label: '▶️ Стр', command: gameCommands.nextRunePage, color: Keyboard.SECONDARY_COLOR, intentScoped: Boolean(player), stateKey: nextPageStateKey },
       ],
     [
-      { label: '✅ Надеть', command: gameCommands.equipRune, color: Keyboard.POSITIVE_COLOR, intentScoped: Boolean(player), stateKey: equipStateKey },
-      { label: '❌ Снять', command: gameCommands.unequipRune, color: Keyboard.NEGATIVE_COLOR, intentScoped: Boolean(player), stateKey: unequipStateKey },
+      { label: equipLabel, command: gameCommands.equipRune, color: Keyboard.POSITIVE_COLOR, intentScoped: Boolean(player), stateKey: equipStateKey },
+      { label: unequipLabel, command: gameCommands.unequipRune, color: Keyboard.NEGATIVE_COLOR, intentScoped: Boolean(player), stateKey: unequipStateKey },
     ],
     [
       { label: '✨ Создать', command: gameCommands.craftRune, color: Keyboard.POSITIVE_COLOR, intentScoped: true, stateKey: craftStateKey },

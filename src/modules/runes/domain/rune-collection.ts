@@ -1,7 +1,9 @@
 import type { PlayerState, RuneView } from '../../../shared/types/game';
 import { normalizeRuneIndex } from '../../player/domain/player-stats';
 
-export const runeCollectionPageSize = 4;
+export const runeCollectionPageSize = 5;
+
+export type RunePageSlot = 0 | 1 | 2 | 3 | 4;
 
 export interface RuneCollectionPageEntry {
   readonly slot: number;

@@ -3,7 +3,7 @@ import type { PlayerState } from '../../../../shared/types/game';
 import { resolveCommandIntent, type CommandIntentSource } from '../../../shared/application/command-intent';
 import { requirePlayerByVkId } from '../../../shared/application/require-player';
 import type { GameRepository } from '../../../shared/application/ports/GameRepository';
-import { resolveRunePageSlotIndex } from '../../domain/rune-collection';
+import { resolveRunePageSlotIndex, type RunePageSlot } from '../../domain/rune-collection';
 import { buildSelectRunePageSlotIntentStateKey } from '../command-intent-state';
 
 export class SelectRunePageSlot {
@@ -11,7 +11,7 @@ export class SelectRunePageSlot {
 
   public async execute(
     vkId: number,
-    slot: 0 | 1 | 2 | 3,
+    slot: RunePageSlot,
     intentId?: string,
     intentStateKey?: string,
     intentSource: CommandIntentSource = null,

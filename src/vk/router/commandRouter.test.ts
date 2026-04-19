@@ -130,6 +130,14 @@ describe('normalizeCommand', () => {
       id: 510,
       messagePayload: null,
     } as never);
+    const slotFive = resolveCommandEnvelope({
+      text: 'руна слот 5',
+      senderId: 1001,
+      peerId: 2000000001,
+      conversationMessageId: 87,
+      id: 511,
+      messagePayload: null,
+    } as never);
 
     expect(nextPage.command).toBe(gameCommands.nextRunePage);
     expect(nextPage.intentId).toBe('legacy-text:2000000001:1001:84:руны >');
@@ -140,6 +148,9 @@ describe('normalizeCommand', () => {
     expect(slot.command).toBe(gameCommands.selectRuneSlot1);
     expect(slot.intentId).toBe('legacy-text:2000000001:1001:86:руна слот 1');
     expect(slot.intentSource).toBe('legacy_text');
+    expect(slotFive.command).toBe(gameCommands.selectRuneSlot5);
+    expect(slotFive.intentId).toBe('legacy-text:2000000001:1001:87:руна слот 5');
+    expect(slotFive.intentSource).toBe('legacy_text');
   });
 
   it('выводит server-owned intent для tutorial navigation и алиаса возврата', () => {

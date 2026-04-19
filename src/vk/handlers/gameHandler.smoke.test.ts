@@ -882,7 +882,7 @@ describe('GameHandler smoke', () => {
 
     await handler.handle(ctx as never);
 
-    expect(services.moveRuneCursor.execute).toHaveBeenCalledWith(1001, 4, 'intent-rune-page-1', 'state-rune-page-1', 'payload');
+    expect(services.moveRuneCursor.execute).toHaveBeenCalledWith(1001, 5, 'intent-rune-page-1', 'state-rune-page-1', 'payload');
   });
 
   it('выводит server-owned legacy intent для текстовой навигации по рунам и её алиаса', async () => {
@@ -896,8 +896,8 @@ describe('GameHandler smoke', () => {
     await handler.handle(nextAlias as never);
     await handler.handle(slot as never);
 
-    expect(services.moveRuneCursor.execute).toHaveBeenNthCalledWith(1, 1001, 4, 'legacy-text:2000000001:1001:95:руны >', undefined, 'legacy_text');
-    expect(services.moveRuneCursor.execute).toHaveBeenNthCalledWith(2, 1001, 4, 'legacy-text:2000000001:1001:96:руны >', undefined, 'legacy_text');
+    expect(services.moveRuneCursor.execute).toHaveBeenNthCalledWith(1, 1001, 5, 'legacy-text:2000000001:1001:95:руны >', undefined, 'legacy_text');
+    expect(services.moveRuneCursor.execute).toHaveBeenNthCalledWith(2, 1001, 5, 'legacy-text:2000000001:1001:96:руны >', undefined, 'legacy_text');
     expect(services.selectRunePageSlot.execute).toHaveBeenCalledWith(1001, 0, 'legacy-text:2000000001:1001:97:руна слот 1', undefined, 'legacy_text');
   });
 

@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 import { gameBalance } from '../../../config/game-balance';
 import { getEquippedRune, getSelectedRune, resolveCurrentProgressionLocationLevel } from '../../player/domain/player-stats';
 import type { PlayerState, StatKey } from '../../../shared/types/game';
+import type { RunePageSlot } from '../domain/rune-collection';
 
 const rarityPriority = ['MYTHICAL', 'LEGENDARY', 'EPIC', 'RARE', 'UNUSUAL', 'USUAL'] as const;
 
@@ -29,7 +30,7 @@ export const buildMoveRuneCursorIntentStateKey = (player: PlayerState, direction
   ...buildRuneLoadoutState(player),
 });
 
-export const buildSelectRunePageSlotIntentStateKey = (player: PlayerState, slot: 0 | 1 | 2 | 3): string => serializeStateKey({
+export const buildSelectRunePageSlotIntentStateKey = (player: PlayerState, slot: RunePageSlot): string => serializeStateKey({
   action: 'select_rune_page_slot',
   slot,
   ...buildRuneLoadoutState(player),

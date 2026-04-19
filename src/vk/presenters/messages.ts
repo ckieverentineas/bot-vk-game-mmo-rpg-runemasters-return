@@ -261,6 +261,22 @@ const formatRune = (rune: RuneView | null): string => {
   ].join('\n');
 };
 
+const formatRunePageEntryStatus = (isSelected: boolean, isEquipped: boolean): string => {
+  if (isSelected && isEquipped) {
+    return '🎯🛡️ Выбрана и надета';
+  }
+
+  if (isSelected) {
+    return '🎯 Выбрана';
+  }
+
+  if (isEquipped) {
+    return '🛡️ Надета';
+  }
+
+  return '▫️ В запасе';
+};
+
 export const renderWelcome = (player: PlayerState, created: boolean): string => {
   if (created) {
     return [
@@ -395,8 +411,11 @@ export const renderRuneScreen = (player: PlayerState): string => {
   return [
     '🔮 Руны и мастерская',
     '',
-    `Всего рун: ${player.runes.length} · Страница ${page.pageNumber}/${page.totalPages}`,
-    `Экипирована: ${equippedRune ? equippedRune.name : 'нет руны'}`,
+    `Всего рун: ${player.runes.length} · Страница ${page.pageNumber}/${page.totalPages} · Быстрый выбор 1-5`,
+    '🧩 Слоты рун: 1/1 открыт сейчас.',
+    '🔒 Дополнительные слоты пока не активны в этом срезе, а сейчас на герое работает только одна руна.',
+    `🎯 Выбрана: ${selectedRune ? selectedRune.name : 'нет руны'}`,
+    `🛡️ На герое: ${equippedRune ? equippedRune.name : 'нет руны'}`,
     ...(equippedRune ? (() => {
       const school = getRuneSchoolPresentation(equippedRune.archetypeCode);
       return school ? [`Текущий стиль: ${school.schoolLine} · роль ${school.roleName.toLowerCase()}.`] : [];
@@ -405,7 +424,7 @@ export const renderRuneScreen = (player: PlayerState): string => {
     'Список на этой странице:',
     ...page.entries.map((entry) => {
       const school = getRuneSchoolPresentation(entry.rune.archetypeCode);
-      return `${entry.isSelected ? '▶️' : '▫️'} ${entry.slot + 1}. ${entry.rune.isEquipped ? '✅ ' : ''}${entry.rune.name} — ${school?.name ?? 'без школы'} · роль ${school?.roleName.toLowerCase() ?? 'неизвестна'} · ${formatRuneStatSummary(entry.rune)}`;
+      return `${entry.slot + 1}. ${formatRunePageEntryStatus(entry.isSelected, entry.rune.isEquipped)} · ${entry.rune.name} — ${school?.name ?? 'без школы'} · роль ${school?.roleName.toLowerCase() ?? 'неизвестна'} · ${formatRuneStatSummary(entry.rune)}`;
     }),
     '',
     formatRune(selectedRune),
@@ -416,7 +435,7 @@ export const renderRuneScreen = (player: PlayerState): string => {
     `Создать руну: ${gameBalance.runes.craftCost} одинаковых осколков.`,
     'Перековка свойства: 1 осколок той же редкости.',
     'Распыление: возвращает часть осколков выбранной руны.',
-    'Выберите слот 1-4, чтобы открыть руну. Кнопки ◀️/▶️ листают страницы.',
+    'Выберите слот 1-5, чтобы быстро открыть руну. Кнопки ◀️/▶️ листают страницы, а «✅ Надеть» меняет единственную активную руну.',
   ].join('\n');
 };
 

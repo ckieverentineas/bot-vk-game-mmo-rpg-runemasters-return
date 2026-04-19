@@ -80,6 +80,14 @@ const createEquippedRune = () => ({
   isEquipped: true,
 });
 
+const createCollectionRune = (name: string, isEquipped = false) => ({
+  id: `rune-${name}`,
+  createdAt: '2026-04-12T00:00:00.000Z',
+  ...createDroppedRune(),
+  name,
+  isEquipped,
+});
+
 const createBattle = (overrides: Partial<BattleView> = {}): BattleView => ({
   id: 'battle-1',
   playerId: 1,
@@ -173,6 +181,30 @@ describe('messages school-first onboarding framing', () => {
     ['Пламя', 'Твердь', 'Буря', 'Прорицание'].forEach((schoolName) => {
       expect(message).toContain(schoolName);
     });
+  });
+
+  it('shows selected and equipped rune states distinctly on the rune screen', () => {
+    const message = renderRuneScreen(createPlayer({
+      currentRuneIndex: 1,
+      runes: [
+        createCollectionRune('Руна A', true),
+        createCollectionRune('Руна B'),
+        createCollectionRune('Руна C'),
+        createCollectionRune('Руна D'),
+        createCollectionRune('Руна E'),
+        createCollectionRune('Руна F'),
+      ],
+    }));
+
+    expect(message).toContain('Быстрый выбор 1-5');
+    expect(message).toContain('🧩 Слоты рун: 1/1 открыт сейчас.');
+    expect(message).toContain('🎯 Выбрана: Руна B');
+    expect(message).toContain('🛡️ На герое: Руна A');
+    expect(message).toContain('1. 🛡️ Надета · Руна A');
+    expect(message).toContain('2. 🎯 Выбрана · Руна B');
+    expect(message).toContain('5. ▫️ В запасе · Руна E');
+    expect(message).toContain('Дополнительные слоты пока не активны');
+    expect(message).toContain('Выберите слот 1-5, чтобы быстро открыть руну.');
   });
 
   it('keeps skipped players on the adventure path even with stale intro location state', () => {
