@@ -25,6 +25,23 @@ describe('normalizeCommand', () => {
     expect(normalizeCommand('неизвестная-команда')).toBe('неизвестная-команда');
   });
 
+  it('больше не считает старые stat-команды поддержанным transport-командным слоем', () => {
+    expect(normalizeCommand('+АТК')).toBe('+атк');
+
+    const resolved = resolveCommandEnvelope({
+      text: '+атк',
+      senderId: 1001,
+      peerId: 2000000001,
+      conversationMessageId: 79,
+      id: 503,
+      messagePayload: null,
+    } as never);
+
+    expect(resolved.command).toBe('+атк');
+    expect(resolved.intentId).toBeNull();
+    expect(resolved.intentSource).toBeNull();
+  });
+
   it('читает command intent из payload, если он есть', () => {
     const resolved = resolveCommandEnvelope({
       messagePayload: {

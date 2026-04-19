@@ -646,6 +646,16 @@ describe('GameHandler smoke', () => {
     expect(services.unequipCurrentRune.execute).toHaveBeenCalledWith(1001, 'legacy-text:2000000001:1001:83:снять', undefined, 'legacy_text');
   });
 
+  it('старые stat-команды теперь идут в unknown command вместо скрытой profile-ветки', async () => {
+    const services = createServices();
+    const handler = new GameHandler(services);
+    const ctx = createFakeContext({ text: '+атк', id: 504, conversationMessageId: 80, peerId: 2000000001 });
+
+    await handler.handle(ctx as never);
+
+    expect(getReplyCalls(ctx)[0]?.message).toContain('Неизвестная команда');
+  });
+
   it('пробрасывает intentId для экипировки руны через transport payload', async () => {
     const services = createServices();
     const handler = new GameHandler(services);
