@@ -1,6 +1,6 @@
 import { AppError } from '../../../../shared/domain/AppError';
 import { requirePlayerByVkId } from '../../../shared/application/require-player';
-import { getEquippedRune, getSelectedRune } from '../../../player/domain/player-stats';
+import { getEquippedRune, getEquippedRuneIdsBySlot, getRuneEquippedSlot, getSelectedRune, getUnlockedRuneSlotCount } from '../../../player/domain/player-stats';
 
 import type { PlayerState } from '../../../../shared/types/game';
 import { resolveCommandIntent, type CommandIntentSource } from '../../../shared/application/command-intent';
@@ -24,7 +24,12 @@ export class UnequipCurrentRune {
       }
     }
 
-    const currentStateKey = buildUnequipIntentStateKey(player);
+    const targetSlot = getSelectedRune(player) ? getRuneEquippedSlot(getSelectedRune(player)!) ?? 0 : 0;
+    if (targetSlot === 0 && getEquippedRune(player, 1)) {
+      throw new AppError('rune_primary_required', 'Сначала снимите или переставьте руну поддержки, а потом освобождайте основной слот.');
+    }
+
+    const currentStateKey = buildUnequipIntentStateKey(player, targetSlot);
     const intent = resolveCommandIntent(intentId, intentStateKey, intentSource, intentSource === null);
 
     if (intentSource !== 'legacy_text' && intent && intent.intentStateKey !== currentStateKey) {
@@ -33,12 +38,15 @@ export class UnequipCurrentRune {
 
     return this.repository.equipRune(player.playerId, null, {
       commandKey: 'UNEQUIP_RUNE',
+      targetSlot,
       intentId: intent?.intentId,
       intentStateKey: intent?.intentStateKey,
       expectedPlayerUpdatedAt: player.updatedAt,
       expectedCurrentRuneIndex: player.currentRuneIndex,
+      expectedUnlockedRuneSlotCount: getUnlockedRuneSlotCount(player),
       expectedSelectedRuneId: getSelectedRune(player)?.id ?? null,
-      expectedEquippedRuneId: getEquippedRune(player)?.id ?? null,
+      expectedEquippedRuneId: getEquippedRune(player, targetSlot)?.id ?? null,
+      expectedEquippedRuneIdsBySlot: getEquippedRuneIdsBySlot(player),
       expectedRuneIds: player.runes.map((entry) => entry.id),
     });
   }

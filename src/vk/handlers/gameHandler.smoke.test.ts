@@ -633,7 +633,7 @@ describe('GameHandler smoke', () => {
 
     await handler.handle(ctx as never);
 
-    expect(services.equipCurrentRune.execute).toHaveBeenCalledWith(1001, 'legacy-text:2000000001:1001:82:надеть', undefined, 'legacy_text');
+    expect(services.equipCurrentRune.execute).toHaveBeenCalledWith(1001, 0, 'legacy-text:2000000001:1001:82:надеть', undefined, 'legacy_text');
   });
 
   it('выводит server-owned legacy intent для текстового снятия руны', async () => {
@@ -663,7 +663,17 @@ describe('GameHandler smoke', () => {
 
     await handler.handle(ctx as never);
 
-    expect(services.equipCurrentRune.execute).toHaveBeenCalledWith(1001, 'intent-equip-1', 'state-equip-1', 'payload');
+    expect(services.equipCurrentRune.execute).toHaveBeenCalledWith(1001, 0, 'intent-equip-1', 'state-equip-1', 'payload');
+  });
+
+  it('пробрасывает intentId для экипировки в support-slot через transport payload', async () => {
+    const services = createServices();
+    const handler = new GameHandler(services);
+    const ctx = createFakeContext({ command: 'надеть в поддержку', intentId: 'intent-support-1', stateKey: 'state-support-1' });
+
+    await handler.handle(ctx as never);
+
+    expect(services.equipCurrentRune.execute).toHaveBeenCalledWith(1001, 1, 'intent-support-1', 'state-support-1', 'payload');
   });
 
   it('пробрасывает intentId для снятия руны через transport payload', async () => {

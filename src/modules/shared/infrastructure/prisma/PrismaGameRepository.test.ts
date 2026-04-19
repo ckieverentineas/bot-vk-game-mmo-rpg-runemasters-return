@@ -31,6 +31,7 @@ const createPlayerRecord = () => ({
     playerId: 1,
     locationLevel: 1,
     currentRuneIndex: 0,
+    unlockedRuneSlotCount: 1,
     activeBattleId: null,
     tutorialState: 'SKIPPED',
     victories: 2,
@@ -213,6 +214,7 @@ const createPlayerStateSnapshot = (): PlayerState => ({
   },
   locationLevel: 1,
   currentRuneIndex: 0,
+  unlockedRuneSlotCount: 1,
   activeBattleId: null,
   victories: 2,
   victoryStreak: 1,
@@ -961,6 +963,7 @@ describe('PrismaGameRepository release hardening', () => {
       dexterity: 0,
       intelligence: 0,
       isEquipped: true,
+      equippedSlot: 0,
       createdAt: new Date('2026-04-12T00:00:00.000Z'),
       updatedAt: new Date('2026-04-12T00:00:00.000Z'),
     }];
@@ -1018,6 +1021,96 @@ describe('PrismaGameRepository release hardening', () => {
         rank: 1,
       },
     });
+    expect(tx.playerProgress.update).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
+        unlockedRuneSlotCount: 2,
+      }),
+    }));
+  });
+
+  it('rejects moving the only primary rune into support slot through repository path', async () => {
+    const { repository, tx } = createPrismaMock();
+    const currentPlayer = createPlayerRecord();
+    currentPlayer.progress.unlockedRuneSlotCount = 2;
+    currentPlayer.runes = [{
+      id: 'rune-1',
+      runeCode: 'rune-1',
+      archetypeCode: 'ember',
+      passiveAbilityCodes: '[]',
+      activeAbilityCodes: '[]',
+      name: 'Руна Пламени',
+      rarity: 'USUAL',
+      health: 1,
+      attack: 2,
+      defence: 0,
+      magicDefence: 0,
+      dexterity: 0,
+      intelligence: 0,
+      isEquipped: true,
+      equippedSlot: 0,
+      createdAt: new Date('2026-04-12T00:00:00.000Z'),
+      updatedAt: new Date('2026-04-12T00:00:00.000Z'),
+    }];
+    tx.player.findUnique.mockResolvedValue(currentPlayer);
+
+    await expect(repository.equipRune(1, 'rune-1', { targetSlot: 1 })).rejects.toMatchObject({
+      code: 'rune_primary_required',
+    });
+
+    expect(tx.rune.updateMany).not.toHaveBeenCalled();
+  });
+
+  it('rejects removing the primary rune while support slot is still filled', async () => {
+    const { repository, tx } = createPrismaMock();
+    const currentPlayer = createPlayerRecord();
+    currentPlayer.progress.unlockedRuneSlotCount = 2;
+    currentPlayer.runes = [
+      {
+        id: 'rune-1',
+        runeCode: 'rune-1',
+        archetypeCode: 'ember',
+        passiveAbilityCodes: '[]',
+        activeAbilityCodes: '[]',
+        name: 'Руна Пламени',
+        rarity: 'USUAL',
+        health: 1,
+        attack: 2,
+        defence: 0,
+        magicDefence: 0,
+        dexterity: 0,
+        intelligence: 0,
+        isEquipped: true,
+        equippedSlot: 0,
+        createdAt: new Date('2026-04-12T00:00:00.000Z'),
+        updatedAt: new Date('2026-04-12T00:00:00.000Z'),
+      },
+      {
+        id: 'rune-2',
+        runeCode: 'rune-2',
+        archetypeCode: 'stone',
+        passiveAbilityCodes: '[]',
+        activeAbilityCodes: '[]',
+        name: 'Руна Тверди',
+        rarity: 'USUAL',
+        health: 2,
+        attack: 0,
+        defence: 2,
+        magicDefence: 0,
+        dexterity: 0,
+        intelligence: 0,
+        isEquipped: true,
+        equippedSlot: 1,
+        createdAt: new Date('2026-04-12T00:00:00.000Z'),
+        updatedAt: new Date('2026-04-12T00:00:00.000Z'),
+      },
+    ];
+    tx.player.findUnique.mockResolvedValue(currentPlayer);
+
+    await expect(repository.equipRune(1, null, { targetSlot: 0 })).rejects.toMatchObject({
+      code: 'rune_primary_required',
+    });
+
+    expect(tx.rune.updateMany).not.toHaveBeenCalled();
   });
 
   it('does not snap skipped players back to intro after finishing a stale intro battle', async () => {

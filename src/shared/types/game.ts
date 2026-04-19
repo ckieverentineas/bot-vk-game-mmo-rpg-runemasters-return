@@ -62,6 +62,7 @@ export interface RuneDraft extends StatBlock {
   name: string;
   rarity: RuneRarity;
   isEquipped: boolean;
+  equippedSlot?: number | null;
 }
 
 export interface RuneView extends RuneDraft {
@@ -79,6 +80,7 @@ export interface PlayerState {
   baseStats: StatBlock;
   locationLevel: number;
   currentRuneIndex: number;
+  unlockedRuneSlotCount?: number;
   activeBattleId: string | null;
   victories: number;
   victoryStreak: number;

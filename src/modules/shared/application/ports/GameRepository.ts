@@ -18,12 +18,15 @@ export type BattleCommandIntentKey = BattleActionCommandIntentKey | 'EXPLORE_LOC
 
 export interface SaveRuneLoadoutOptions {
   readonly commandKey?: RuneLoadoutCommandIntentKey;
+  readonly targetSlot?: number;
   readonly intentId?: string;
   readonly intentStateKey?: string;
   readonly expectedPlayerUpdatedAt?: string;
   readonly expectedCurrentRuneIndex?: number;
+  readonly expectedUnlockedRuneSlotCount?: number;
   readonly expectedSelectedRuneId?: string | null;
   readonly expectedEquippedRuneId?: string | null;
+  readonly expectedEquippedRuneIdsBySlot?: readonly (string | null)[];
   readonly expectedRuneIds?: readonly string[];
 }
 

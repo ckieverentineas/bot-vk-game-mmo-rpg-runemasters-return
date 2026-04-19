@@ -123,7 +123,7 @@ src/
 
 `src/vk/keyboards/index.ts` строит клавиатуры из layout-массивов. Новые кнопки добавляются декларативно, а не длинными chain-вызовами.
 
-В текущем rune UX это позволяет держать один и тот же action set для unified rune hub: page navigation, быстрый выбор 5 рун на странице, slot selection, equip/unequip, craft, reroll и destroy без размножения handler-веток.
+В текущем rune UX это позволяет держать один и тот же action set для unified rune hub: page navigation, быстрый выбор 5 рун на странице, slot selection, equip primary/support, unequip, craft, reroll и destroy без размножения handler-веток.
 
 ### 3. Централизованная сериализация
 
@@ -139,7 +139,7 @@ src/
 - консистентность рунных архетипов и способностей;
 - базовые ограничения игрового баланса и стартовой конфигурации.
 
-Текущее правило: `archetypeCode` остаётся внутренним content/storage key, а player-facing **школа** выводится через canonical `SchoolDefinition` read-model поверх этого key. Это позволяет развести fantasy-domain и combat-role без миграции базы на раннем этапе и не держать отдельную hand-written карту school presentation. Тот же read-model теперь используется в onboarding-presenter слое, чтобы welcome / tutorial / rune hub говорили об одной и той же school identity. Return recap v1 также остаётся presenter-only слоем поверх текущего `PlayerState` и не требует отдельного persistence-контракта. Rune hub v1 при этом явно показывает только один активный loadout slot; future extra slots остаются deferred до отдельного contract review.
+Текущее правило: `archetypeCode` остаётся внутренним content/storage key, а player-facing **школа** выводится через canonical `SchoolDefinition` read-model поверх этого key. Это позволяет развести fantasy-domain и combat-role без миграции базы на раннем этапе и не держать отдельную hand-written карту school presentation. Тот же read-model теперь используется в onboarding-presenter слое, чтобы welcome / tutorial / rune hub говорили об одной и той же school identity. Return recap v1 также остаётся presenter-only слоем поверх текущего `PlayerState` и не требует отдельного persistence-контракта. Rune hub теперь явно показывает `основу` и `поддержку`, но только `основа` остаётся источником активной боевой руны; support-slot живёт как bounded pre-battle breadth до отдельного multi-action review.
 
 Эта валидация запускается через `npm run content:validate`, входит в `npm run check`, включена в `npm run release:preflight` и вызывается перед [`seed()`](src/database/seed.ts:5), чтобы не заливать битый контент в базу.
 
@@ -206,6 +206,7 @@ src/
 - legacy stat-allocation удалена из runtime и persistence-контрактов полностью;
 - новая ось роста начинает идти через `PlayerSchoolMastery`, чтобы школа усиливала именно стиль боя, а не только голые числа.
 - для locked slice первые same-school synergies у Пламени и Тверди живут прямо в battle-domain rules и используют уже существующее состояние боя (`cooldown`, `guard`, `hp threshold`), а не отдельный новый runtime layer.
+- support-slot открывается через mastery milestone и пока даёт только половину статов выбранной руны; это первый loadout breadth slice без второй active action семантики.
 
 ### 8. Release discipline
 

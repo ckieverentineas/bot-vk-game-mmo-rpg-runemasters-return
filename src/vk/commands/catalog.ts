@@ -18,6 +18,7 @@ export const gameCommands = {
   spell: 'спелл',
   runeCollection: 'руна',
   equipRune: 'надеть',
+  equipSupportRune: 'надеть в поддержку',
   unequipRune: 'снять',
   altar: 'алтарь',
   craftRune: 'создать',

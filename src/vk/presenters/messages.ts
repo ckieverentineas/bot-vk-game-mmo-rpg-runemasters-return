@@ -2,7 +2,9 @@ import { gameBalance } from '../../config/game-balance';
 import {
   derivePlayerStats,
   getEquippedRune,
+  getRuneEquippedSlot,
   getSelectedRune,
+  getUnlockedRuneSlotCount,
   isPlayerInTutorial,
   resolveAdaptiveAdventureLocationLevel,
 } from '../../modules/player/domain/player-stats';
@@ -84,9 +86,10 @@ const renderSchoolMasteryLine = (player: PlayerState): string => {
   const nextThreshold = resolveNextSchoolMasteryThreshold(mastery.rank);
   const nextUnlock = definition?.unlocks.find((entry) => entry.rank === mastery.rank + 1) ?? null;
   const currentUnlock = definition?.unlocks.find((entry) => entry.rank === mastery.rank) ?? null;
+  const slotSuffix = getUnlockedRuneSlotCount(player) > 1 ? ' · слот поддержки открыт.' : '.';
 
   if (nextThreshold === null) {
-    return `Мастерство школы: ${equippedSchool.name} · ранг ${mastery.rank}${currentUnlock ? ` · открыто: ${currentUnlock.title}.` : '.'}`;
+    return `Мастерство школы: ${equippedSchool.name} · ранг ${mastery.rank}${currentUnlock ? ` · открыто: ${currentUnlock.title}${slotSuffix}` : slotSuffix}`;
   }
 
   return `Мастерство школы: ${equippedSchool.name} · ранг ${mastery.rank} · ${mastery.experience}/${nextThreshold} до «${nextUnlock?.title ?? 'новой вехи'}».`;
@@ -135,6 +138,10 @@ const resolvePlayerObjectiveBody = (player: PlayerState): string => {
     return masteryObjective;
   }
 
+  if (getUnlockedRuneSlotCount(player) > 1 && !getEquippedRune(player, 1)) {
+    return 'откройте «🔮 Руны» и заполните слот поддержки второй руной для более широкой сборки';
+  }
+
   return 'усиливайте руну и пробуйте более высокий уровень угрозы дальше';
 };
 
@@ -150,6 +157,10 @@ const resolvePrimaryAction = (player: PlayerState): string => {
   }
 
   if (!getEquippedRune(player)) {
+    return '🔮 Руны';
+  }
+
+  if (getUnlockedRuneSlotCount(player) > 1 && !getEquippedRune(player, 1)) {
     return '🔮 Руны';
   }
 
@@ -177,6 +188,10 @@ const resolveReturnFocusBody = (player: PlayerState): string => {
   const masteryObjective = resolveSchoolMasteryObjective(player);
   if (masteryObjective) {
     return masteryObjective;
+  }
+
+  if (getUnlockedRuneSlotCount(player) > 1 && !getEquippedRune(player, 1)) {
+    return 'откройте «🔮 Руны» и подберите руну поддержки для второго слота';
   }
 
   return 'идите в приключения и развивайте текущую школу рун дальше';
@@ -244,7 +259,16 @@ const formatRune = (rune: RuneView | null): string => {
   ));
 
   return [
-    `${rune.isEquipped ? '✅ Экипирована' : '💠 Выбрана'}: ${rune.name}`,
+    `${(() => {
+      const equippedSlot = getRuneEquippedSlot(rune);
+      if (equippedSlot === 0) {
+        return '🛡️ В основе';
+      }
+      if (equippedSlot === 1) {
+        return '🧩 В поддержке';
+      }
+      return '💠 Выбрана';
+    })()}: ${rune.name}`,
     `Редкость: ${gameBalance.runes.profiles[rune.rarity].title}`,
     ...(school ? [`Школа: ${school.name}`, `Роль: ${school.roleName}`, school.styleLine, school.playPatternLine, school.battleLine] : []),
     `Бонусы: ${formatRuneStatSummary({
@@ -260,17 +284,25 @@ const formatRune = (rune: RuneView | null): string => {
   ].join('\n');
 };
 
-const formatRunePageEntryStatus = (isSelected: boolean, isEquipped: boolean): string => {
-  if (isSelected && isEquipped) {
-    return '🎯🛡️ Выбрана и надета';
+const formatRunePageEntryStatus = (isSelected: boolean, equippedSlot: number | null): string => {
+  if (isSelected && equippedSlot === 0) {
+    return '🎯🛡️ Основа';
+  }
+
+  if (isSelected && equippedSlot === 1) {
+    return '🎯🧩 Поддержка';
   }
 
   if (isSelected) {
     return '🎯 Выбрана';
   }
 
-  if (isEquipped) {
-    return '🛡️ Надета';
+  if (equippedSlot === 0) {
+    return '🛡️ Основа';
+  }
+
+  if (equippedSlot === 1) {
+    return '🧩 Поддержка';
   }
 
   return '▫️ В запасе';
@@ -310,6 +342,7 @@ export const renderMainMenu = (player: PlayerState): string => {
       : `🎯 Уровень угрозы: ${resolveAdaptiveAdventureLocationLevel(player)}`,
     `💰 Руная пыль: ${player.gold}`,
     `🧭 Максимально пройденная угроза: ${player.highestLocationLevel}`,
+    `🧩 Слоты рун: ${getUnlockedRuneSlotCount(player)}/2`,
     `🔮 Экипирована: ${equippedRune ? equippedRune.name : 'нет руны'}`,
     renderSchoolMasteryLine(player),
     ...(player.tutorialState === 'ACTIVE' ? ['🜂 Первый бой ведёт к первой руне, а первая руна открывает школу рун.'] : []),
@@ -334,6 +367,7 @@ export const renderProfile = (player: PlayerState): string => {
     `📊 Опыт: ${player.experience}/${nextLevelXp}`,
     `💰 Руная пыль: ${player.gold}`,
     `🏆 Победы / Поражения: ${player.victories}/${player.defeats}`,
+    `🧩 Слоты рун: ${getUnlockedRuneSlotCount(player)}/2`,
     renderSchoolMasteryLine(player),
     'Дальнейший рост силы идёт через руны, школу рун и её мастерство, а не через ручное распределение статов.',
     '',
@@ -407,10 +441,11 @@ export const renderRuneScreen = (player: PlayerState): string => {
     '🔮 Руны и мастерская',
     '',
     `Всего рун: ${player.runes.length} · Страница ${page.pageNumber}/${page.totalPages} · Быстрый выбор 1-5`,
-    '🧩 Слоты рун: 1/1 открыт сейчас.',
-    '🔒 Дополнительные слоты пока не активны в этом срезе, а сейчас на герое работает только одна руна.',
+    `🧩 Слоты рун: ${getUnlockedRuneSlotCount(player)}/2 открыто сейчас.`,
+    `🛡️ Основа: ${getEquippedRune(player, 0)?.name ?? 'пусто'}`,
+    `🧩 Поддержка: ${getUnlockedRuneSlotCount(player) > 1 ? (getEquippedRune(player, 1)?.name ?? 'пусто') : '🔒 откроется на mastery-вехе'}`,
     `🎯 Выбрана: ${selectedRune ? selectedRune.name : 'нет руны'}`,
-    `🛡️ На герое: ${equippedRune ? equippedRune.name : 'нет руны'}`,
+    `⚔️ Активная руна в бою: ${equippedRune ? equippedRune.name : 'нет руны'}`,
     ...(equippedRune ? (() => {
       const school = getRuneSchoolPresentation(equippedRune.archetypeCode);
       return school ? [`Текущий стиль: ${school.schoolLine} · роль ${school.roleName.toLowerCase()}.`] : [];
@@ -419,18 +454,18 @@ export const renderRuneScreen = (player: PlayerState): string => {
     'Список на этой странице:',
     ...page.entries.map((entry) => {
       const school = getRuneSchoolPresentation(entry.rune.archetypeCode);
-      return `${entry.slot + 1}. ${formatRunePageEntryStatus(entry.isSelected, entry.rune.isEquipped)} · ${entry.rune.name} — ${school?.name ?? 'без школы'} · роль ${school?.roleName.toLowerCase() ?? 'неизвестна'} · ${formatRuneStatSummary(entry.rune)}`;
+      return `${entry.slot + 1}. ${formatRunePageEntryStatus(entry.isSelected, getRuneEquippedSlot(entry.rune))} · ${entry.rune.name} — ${school?.name ?? 'без школы'} · роль ${school?.roleName.toLowerCase() ?? 'неизвестна'} · ${formatRuneStatSummary(entry.rune)}`;
     }),
     '',
     formatRune(selectedRune),
     '',
-    ...(selectedRune && !selectedRune.isEquipped && (selectedRune.activeAbilityCodes?.length ?? 0) > 0
+    ...(selectedRune && getRuneEquippedSlot(selectedRune) === null && (selectedRune.activeAbilityCodes?.length ?? 0) > 0
       ? ['Подсказка: наденьте эту руну, чтобы её активное действие появилось прямо в бою.', '']
       : []),
     `Создать руну: ${gameBalance.runes.craftCost} одинаковых осколков.`,
     'Перековка свойства: 1 осколок той же редкости.',
     'Распыление: возвращает часть осколков выбранной руны.',
-    'Выберите слот 1-5, чтобы быстро открыть руну. Кнопки ◀️/▶️ листают страницы, а «✅ Надеть» меняет единственную активную руну.',
+    'Выберите слот 1-5, чтобы быстро открыть руну. «✅ В основу» задаёт единственную активную руну в бою, а «🧩 В поддержку» даёт половину статов выбранной руны без второй боевой кнопки.',
   ].join('\n');
 };
 

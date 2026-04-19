@@ -827,6 +827,38 @@
 
 - progression больше не раздваивается между новой school-mastery моделью и старой stat-allocation системой; у игры теперь один источник правды для роста.
 
+## [0.51] - 2026-04-19
+
+### Commit
+
+- `d8cf28a` — `fix: finalize legacy stat cut cleanup`
+
+### Fixed
+
+- старые profile stat-команды теперь fail-closed как unknown command вместо скрытого fallback в удалённую систему;
+- README и progression review больше не намекают, что legacy stat-allocation ещё жива как актуальный путь роста.
+
+## [0.52] - 2026-04-19
+
+### Commit
+
+- `worktree` — `feat: unlock support rune slot via mastery`
+
+### Added
+
+- review artifact [`docs/reviews/support-rune-slot-v1.md`](docs/reviews/support-rune-slot-v1.md) с locked rules для первого support-slot slice;
+- mastery-driven support-slot unlock rule: первая mastery-веха теперь открывает второй слот как bounded loadout breadth payoff.
+
+### Changed
+
+- rune hub и profile/loadout framing теперь различают `основу` и `поддержку`, а активная боевая руна остаётся только в primary slot;
+- support-slot даёт половину статов выбранной руны без второй активной кнопки и без dual-cast semantics;
+- equip/unequip flow, stale guards и player stat derivation теперь честно учитывают slot-aware loadout state.
+
+### Fixed
+
+- второй слот больше не остаётся только отложенной идеей в UI и плане: у игрока появился первый реальный loadout breadth payoff без перегруза боевого контура.
+
 ## Шаблон следующей записи
 
 ### [0.03] - YYYY-MM-DD

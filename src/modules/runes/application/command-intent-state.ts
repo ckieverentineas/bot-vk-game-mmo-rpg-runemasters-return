@@ -1,7 +1,12 @@
 import { createHash } from 'node:crypto';
 
 import { gameBalance } from '../../../config/game-balance';
-import { getEquippedRune, getSelectedRune, resolveCurrentProgressionLocationLevel } from '../../player/domain/player-stats';
+import {
+  getEquippedRuneIdsBySlot,
+  getSelectedRune,
+  getUnlockedRuneSlotCount,
+  resolveCurrentProgressionLocationLevel,
+} from '../../player/domain/player-stats';
 import type { PlayerState, StatKey } from '../../../shared/types/game';
 import type { RunePageSlot } from '../domain/rune-collection';
 
@@ -19,8 +24,9 @@ const resolveCraftRarity = (player: PlayerState): string | null => {
 
 const buildRuneLoadoutState = (player: PlayerState) => ({
   currentRuneIndex: player.currentRuneIndex,
+  unlockedRuneSlotCount: getUnlockedRuneSlotCount(player),
   selectedRuneId: getSelectedRune(player)?.id ?? null,
-  equippedRuneId: getEquippedRune(player)?.id ?? null,
+  equippedRuneIdsBySlot: getEquippedRuneIdsBySlot(player),
   runeIds: player.runes.map((rune) => rune.id),
 });
 
@@ -85,12 +91,14 @@ export const buildDestroyIntentStateKey = (
   runeIds: player.runes.map((rune) => rune.id),
 });
 
-export const buildEquipIntentStateKey = (player: PlayerState): string => serializeStateKey({
+export const buildEquipIntentStateKey = (player: PlayerState, targetSlot = 0): string => serializeStateKey({
   action: 'equip',
+  targetSlot,
   ...buildRuneLoadoutState(player),
 });
 
-export const buildUnequipIntentStateKey = (player: PlayerState): string => serializeStateKey({
+export const buildUnequipIntentStateKey = (player: PlayerState, targetSlot = 0): string => serializeStateKey({
   action: 'unequip',
+  targetSlot,
   ...buildRuneLoadoutState(player),
 });

@@ -465,28 +465,35 @@ describe.sequential('PrismaGameRepository concurrency rails', () => {
     const [first, second] = await Promise.all([
       repository.equipRune(player.playerId, rune!.id, {
         commandKey: 'EQUIP_RUNE',
+        targetSlot: 0,
         intentId: 'intent-equip-1',
         intentStateKey: 'state-equip-1',
         expectedPlayerUpdatedAt: currentPlayer!.updatedAt,
         expectedCurrentRuneIndex: 0,
+        expectedUnlockedRuneSlotCount: 1,
         expectedSelectedRuneId: rune!.id,
         expectedEquippedRuneId: null,
+        expectedEquippedRuneIdsBySlot: [null],
         expectedRuneIds: [rune!.id],
       }),
       repository.equipRune(player.playerId, rune!.id, {
         commandKey: 'EQUIP_RUNE',
+        targetSlot: 0,
         intentId: 'intent-equip-1',
         intentStateKey: 'state-equip-1',
         expectedPlayerUpdatedAt: currentPlayer!.updatedAt,
         expectedCurrentRuneIndex: 0,
+        expectedUnlockedRuneSlotCount: 1,
         expectedSelectedRuneId: rune!.id,
         expectedEquippedRuneId: null,
+        expectedEquippedRuneIdsBySlot: [null],
         expectedRuneIds: [rune!.id],
       }),
     ]);
 
     expect(first.runes).toEqual(second.runes);
     expect(first.runes[0]?.isEquipped).toBe(true);
+    expect(first.runes[0]?.equippedSlot).toBe(0);
   });
 
   it('rejects a stale equip intent after rune selection changed', async () => {
@@ -500,12 +507,15 @@ describe.sequential('PrismaGameRepository concurrency rails', () => {
 
     await expect(repository.equipRune(player.playerId, runeA!.id, {
       commandKey: 'EQUIP_RUNE',
+      targetSlot: 0,
       intentId: 'intent-equip-stale',
       intentStateKey: 'state-equip-stale',
       expectedPlayerUpdatedAt: persistedPlayer!.updatedAt,
       expectedCurrentRuneIndex: 0,
+      expectedUnlockedRuneSlotCount: 1,
       expectedSelectedRuneId: runeA!.id,
       expectedEquippedRuneId: null,
+      expectedEquippedRuneIdsBySlot: [null],
       expectedRuneIds: [runeA!.id, runeB!.id],
     })).rejects.toMatchObject({
       code: 'stale_command_intent',
@@ -528,12 +538,15 @@ describe.sequential('PrismaGameRepository concurrency rails', () => {
 
     await expect(repository.equipRune(player.playerId, rune!.id, {
       commandKey: 'EQUIP_RUNE',
+      targetSlot: 0,
       intentId: 'intent-equip-after-craft',
       intentStateKey: 'state-equip-after-craft',
       expectedPlayerUpdatedAt: beforeCraft!.updatedAt,
       expectedCurrentRuneIndex: 0,
+      expectedUnlockedRuneSlotCount: 1,
       expectedSelectedRuneId: rune!.id,
       expectedEquippedRuneId: null,
+      expectedEquippedRuneIdsBySlot: [null],
       expectedRuneIds: [rune!.id],
     })).rejects.toMatchObject({
       code: 'stale_command_intent',
@@ -551,22 +564,28 @@ describe.sequential('PrismaGameRepository concurrency rails', () => {
     const [first, second] = await Promise.all([
       repository.equipRune(player.playerId, null, {
         commandKey: 'UNEQUIP_RUNE',
+        targetSlot: 0,
         intentId: 'intent-unequip-1',
         intentStateKey: 'state-unequip-1',
         expectedPlayerUpdatedAt: equippedPlayer!.updatedAt,
         expectedCurrentRuneIndex: 0,
+        expectedUnlockedRuneSlotCount: 1,
         expectedSelectedRuneId: rune!.id,
         expectedEquippedRuneId: rune!.id,
+        expectedEquippedRuneIdsBySlot: [rune!.id],
         expectedRuneIds: [rune!.id],
       }),
       repository.equipRune(player.playerId, null, {
         commandKey: 'UNEQUIP_RUNE',
+        targetSlot: 0,
         intentId: 'intent-unequip-1',
         intentStateKey: 'state-unequip-1',
         expectedPlayerUpdatedAt: equippedPlayer!.updatedAt,
         expectedCurrentRuneIndex: 0,
+        expectedUnlockedRuneSlotCount: 1,
         expectedSelectedRuneId: rune!.id,
         expectedEquippedRuneId: rune!.id,
+        expectedEquippedRuneIdsBySlot: [rune!.id],
         expectedRuneIds: [rune!.id],
       }),
     ]);
@@ -587,12 +606,15 @@ describe.sequential('PrismaGameRepository concurrency rails', () => {
 
     await expect(repository.equipRune(player.playerId, null, {
       commandKey: 'UNEQUIP_RUNE',
+      targetSlot: 0,
       intentId: 'intent-unequip-stale',
       intentStateKey: 'state-unequip-stale',
       expectedPlayerUpdatedAt: equippedPlayer!.updatedAt,
       expectedCurrentRuneIndex: 0,
+      expectedUnlockedRuneSlotCount: 1,
       expectedSelectedRuneId: runeA!.id,
       expectedEquippedRuneId: runeA!.id,
+      expectedEquippedRuneIdsBySlot: [runeA!.id],
       expectedRuneIds: [runeA!.id, runeB!.id],
     })).rejects.toMatchObject({
       code: 'stale_command_intent',
@@ -612,12 +634,15 @@ describe.sequential('PrismaGameRepository concurrency rails', () => {
 
     await expect(repository.equipRune(player.playerId, null, {
       commandKey: 'UNEQUIP_RUNE',
+      targetSlot: 0,
       intentId: 'intent-unequip-after-destroy',
       intentStateKey: 'state-unequip-after-destroy',
       expectedPlayerUpdatedAt: equippedPlayer!.updatedAt,
       expectedCurrentRuneIndex: 0,
+      expectedUnlockedRuneSlotCount: 1,
       expectedSelectedRuneId: runeA!.id,
       expectedEquippedRuneId: runeA!.id,
+      expectedEquippedRuneIdsBySlot: [runeA!.id],
       expectedRuneIds: [runeA!.id, runeB!.id],
     })).rejects.toMatchObject({
       code: 'stale_command_intent',

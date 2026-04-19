@@ -69,14 +69,16 @@ const createEquippedRune = () => ({
   createdAt: '2026-04-12T00:00:00.000Z',
   ...createDroppedRune(),
   isEquipped: true,
+  equippedSlot: 0,
 });
 
-const createCollectionRune = (name: string, isEquipped = false) => ({
+const createCollectionRune = (name: string, equippedSlot: number | null = null) => ({
   id: `rune-${name}`,
   createdAt: '2026-04-12T00:00:00.000Z',
   ...createDroppedRune(),
   name,
-  isEquipped,
+  isEquipped: equippedSlot !== null,
+  equippedSlot,
 });
 
 const createBattle = (overrides: Partial<BattleView> = {}): BattleView => ({
@@ -178,7 +180,7 @@ describe('messages school-first onboarding framing', () => {
     const message = renderRuneScreen(createPlayer({
       currentRuneIndex: 1,
       runes: [
-        createCollectionRune('Руна A', true),
+        createCollectionRune('Руна A', 0),
         createCollectionRune('Руна B'),
         createCollectionRune('Руна C'),
         createCollectionRune('Руна D'),
@@ -188,14 +190,31 @@ describe('messages school-first onboarding framing', () => {
     }));
 
     expect(message).toContain('Быстрый выбор 1-5');
-    expect(message).toContain('🧩 Слоты рун: 1/1 открыт сейчас.');
+    expect(message).toContain('🧩 Слоты рун: 1/2 открыто сейчас.');
+    expect(message).toContain('🛡️ Основа: Руна A');
+    expect(message).toContain('🧩 Поддержка: 🔒 откроется на mastery-вехе');
     expect(message).toContain('🎯 Выбрана: Руна B');
-    expect(message).toContain('🛡️ На герое: Руна A');
-    expect(message).toContain('1. 🛡️ Надета · Руна A');
+    expect(message).toContain('⚔️ Активная руна в бою: Руна A');
+    expect(message).toContain('1. 🛡️ Основа · Руна A');
     expect(message).toContain('2. 🎯 Выбрана · Руна B');
     expect(message).toContain('5. ▫️ В запасе · Руна E');
-    expect(message).toContain('Дополнительные слоты пока не активны');
-    expect(message).toContain('Выберите слот 1-5, чтобы быстро открыть руну.');
+    expect(message).toContain('«🧩 В поддержку» даёт половину статов');
+  });
+
+  it('shows unlocked support slot when school mastery opens the second slot', () => {
+    const message = renderRuneScreen(createPlayer({
+      tutorialState: 'SKIPPED',
+      schoolMasteries: [{ schoolCode: 'ember', experience: 3, rank: 1 }],
+      runes: [
+        createCollectionRune('Руна A', 0),
+        createCollectionRune('Руна B', 1),
+      ],
+      currentRuneIndex: 1,
+    }));
+
+    expect(message).toContain('🧩 Слоты рун: 2/2 открыто сейчас.');
+    expect(message).toContain('🧩 Поддержка: Руна B');
+    expect(message).toContain('2. 🎯🧩 Поддержка · Руна B');
   });
 
   it('keeps skipped players on the adventure path even with stale intro location state', () => {

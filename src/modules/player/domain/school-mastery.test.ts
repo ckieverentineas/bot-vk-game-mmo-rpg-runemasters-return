@@ -6,6 +6,7 @@ import {
   createSchoolMasteryView,
   getPlayerSchoolMasteryForArchetype,
   listMissingStarterSchoolMasteries,
+  resolveUnlockedRuneSlotCountFromSchoolMasteries,
   resolveNextSchoolMasteryThreshold,
   resolveSchoolMasteryRewardGain,
 } from './school-mastery';
@@ -98,5 +99,13 @@ describe('school mastery', () => {
       rank: 1,
     });
     expect(listMissingStarterSchoolMasteries(player).map((entry) => entry.schoolCode)).toEqual(['stone', 'gale', 'echo']);
+  });
+
+  it('unlocks the support slot at the first mastery milestone', () => {
+    const player = createPlayer({
+      schoolMasteries: [createSchoolMasteryView('ember', 3)],
+    });
+
+    expect(resolveUnlockedRuneSlotCountFromSchoolMasteries(player, 1)).toBe(2);
   });
 });

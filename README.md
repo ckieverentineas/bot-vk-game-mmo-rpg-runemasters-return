@@ -26,6 +26,7 @@ Runemasters Return — VK MMO RPG на TypeScript с модульным игро
 - tutorial loop теперь подводит игрока к первой активной руне, экипировке и первому применению рунного действия;
 - новые уровни больше не раздают новые stat points как основной рост; основная ось прогрессии теперь идёт через school mastery;
 - school mastery v0 теперь растёт за победы с экипированной школой и даёт первый non-flat боевой payoff вместо очередного голого +к статам;
+- первая mastery-веха теперь открывает support-slot для рун: основа даёт боевую кнопку, поддержка даёт половину статов и расширяет сборку без второй активки;
 - для locked Vertical Slice у Пламени и Тверди уже зафиксированы первые same-school starter synergies: школа начинает давать читаемую связку `setup -> payoff`, а не только отдельный пассивный бонус;
 - versioned platform contracts для боевой рунной сборки и reward claims: `LoadoutSnapshot`, `RewardIntent`, `RewardLedger`;
 - exact-once reward ledger и canonical battle finalization защищают победную награду от replay/reroll по повторным входящим событиям;
@@ -60,6 +61,7 @@ Runemasters Return — VK MMO RPG на TypeScript с модульным игро
 - `docs/reviews/progression-rework-v1.md` — решение по уходу от новых stat points за уровни к school mastery как следующей оси роста;
 - `docs/reviews/starter-synergy-v1.md` — первый locked same-school synergy slice для Пламени и Тверди;
 - `docs/reviews/rune-hub-ux-v1.md` — rune hub v1: быстрый выбор 5 рун на странице, single-slot loadout сейчас и future extra slots только после отдельного review;
+- `docs/reviews/support-rune-slot-v1.md` — первый runtime slice с support-slot: слот 2 открывается через mastery milestone и даёт только bounded pre-battle breadth;
 - `docs/telemetry/telemetry-plan.md` — минимальный telemetry v1 план для onboarding clarity, school readability, return UX, economy health и exploit review;
 - `docs/content/content-pipeline-plan.md`, `docs/content/validator-scope.md`, `docs/content/templates/school-package-template.md` — source-of-truth по content packages, validator tiers и school package completeness;
 - `src/modules/runes/domain/rune-collection.ts` — paging helper'ы рунной коллекции поверх существующего `currentRuneIndex` без новой persistence-схемы;
@@ -208,6 +210,7 @@ npm run db:studio
 - `руна` / `алтарь` — открывают единый rune hub для просмотра, экипировки, создания, перековки и распыления;
 - `+руна`, `-руна`, `>>руна`, `<<руна`
 - `надеть`, `снять`
+- `надеть в поддержку`
 - `создать`
 - `изменить руну`
 - `сломать`
@@ -247,6 +250,7 @@ npm run db:studio
 - часть старых боевых и рунных текстовых команд всё ещё распознаётся для совместимости, но основной сценарий рассчитан на клавиатуру VK;
 - экраны приветствия, обучения, рун и боя подсказывают следующий шаг прямо в сообщении;
 - рунный экран показывает до 5 рун на странице, явно разводит `выбрана / надета` и позволяет быстро выбирать нужную руну по слотам вместо бесконечного next/prev browsing;
+- rune hub теперь отдельно показывает `основу` и `поддержку`: основа даёт единственную активную боевую руну, поддержка расширяет сборку без второй активной кнопки;
 - экран боя показывает ключевое состояние и последние события, а завершённый бой сразу предлагает `⚔️ Новый бой`;
 - если руна даёт активное действие, battle keyboard показывает его название, готовность, стоимость маны и откат прямо на кнопке/экране;
 - battle screen показывает блок `Доступные действия` и намерение врага, если тот готовит тяжёлый удар;

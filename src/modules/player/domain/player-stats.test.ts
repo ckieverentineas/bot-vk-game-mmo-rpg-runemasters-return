@@ -2,6 +2,10 @@ import { describe, expect, it } from 'vitest';
 
 import type { PlayerState } from '../../../shared/types/game';
 import {
+  derivePlayerStats,
+  getEquippedRuneIdsBySlot,
+  getEquippedRunes,
+  getUnlockedRuneSlotCount,
   isPlayerInTutorial,
   normalizeRuneIndex,
   resolveAdaptiveAdventureLocationLevel,
@@ -139,6 +143,78 @@ describe('normalizeRuneIndex', () => {
   it('зацикливает индекс по кругу в обе стороны', () => {
     expect(normalizeRuneIndex(-1, 5)).toBe(4);
     expect(normalizeRuneIndex(5, 5)).toBe(0);
+  });
+});
+
+describe('rune slot helpers', () => {
+  it('normalizes legacy equipped booleans into slot zero', () => {
+    const player = createPlayerState({
+      runes: [
+        {
+          id: 'rune-1',
+          name: 'Руна давления',
+          rarity: 'EPIC',
+          health: 1,
+          attack: 1,
+          defence: 0,
+          magicDefence: 0,
+          dexterity: 0,
+          intelligence: 0,
+          isEquipped: true,
+          createdAt: '2026-04-12T00:00:00.000Z',
+        },
+      ],
+    });
+
+    expect(getEquippedRunes(player)[0]?.equippedSlot ?? 0).toBe(0);
+    expect(getEquippedRuneIdsBySlot(player)).toEqual(['rune-1']);
+  });
+
+  it('открывает support-slot после mastery milestone и даёт от него половину статов', () => {
+    const player = createPlayerState({
+      schoolMasteries: [{ schoolCode: 'ember', experience: 3, rank: 1 }],
+      runes: [
+        {
+          id: 'rune-1',
+          name: 'Основа',
+          rarity: 'EPIC',
+          health: 6,
+          attack: 4,
+          defence: 2,
+          magicDefence: 0,
+          dexterity: 2,
+          intelligence: 0,
+          isEquipped: true,
+          equippedSlot: 0,
+          createdAt: '2026-04-12T00:00:00.000Z',
+        },
+        {
+          id: 'rune-2',
+          name: 'Поддержка',
+          rarity: 'USUAL',
+          health: 3,
+          attack: 3,
+          defence: 1,
+          magicDefence: 1,
+          dexterity: 1,
+          intelligence: 0,
+          isEquipped: true,
+          equippedSlot: 1,
+          createdAt: '2026-04-12T00:00:00.000Z',
+        },
+      ],
+    });
+
+    expect(getUnlockedRuneSlotCount(player)).toBe(2);
+    expect(getEquippedRuneIdsBySlot(player)).toEqual(['rune-1', 'rune-2']);
+    expect(derivePlayerStats(player)).toEqual({
+      health: 16,
+      attack: 10,
+      defence: 6,
+      magicDefence: 2,
+      dexterity: 6,
+      intelligence: 1,
+    });
   });
 });
 

@@ -77,7 +77,7 @@ describe('UnequipCurrentRune', () => {
       equipRune: vi.fn().mockResolvedValue(player),
     } as unknown as GameRepository;
     const useCase = new UnequipCurrentRune(repository);
-    const stateKey = buildUnequipIntentStateKey(player);
+    const stateKey = buildUnequipIntentStateKey(player, 0);
 
     await useCase.execute(player.vkId, 'intent-unequip-1', stateKey);
 
@@ -86,12 +86,15 @@ describe('UnequipCurrentRune', () => {
       null,
       expect.objectContaining({
         commandKey: 'UNEQUIP_RUNE',
+        targetSlot: 0,
         intentId: 'intent-unequip-1',
         intentStateKey: stateKey,
         expectedPlayerUpdatedAt: player.updatedAt,
         expectedCurrentRuneIndex: 0,
+        expectedUnlockedRuneSlotCount: 1,
         expectedSelectedRuneId: 'rune-1',
         expectedEquippedRuneId: 'rune-1',
+        expectedEquippedRuneIdsBySlot: ['rune-1'],
         expectedRuneIds: ['rune-1'],
       }),
     );
@@ -157,5 +160,46 @@ describe('UnequipCurrentRune', () => {
     });
 
     expect(repository.equipRune).not.toHaveBeenCalled();
+  });
+
+  it('unequips the support slot when the selected rune occupies slot 2', async () => {
+    const player = createPlayer({
+      unlockedRuneSlotCount: 2,
+      runes: [
+        {
+          ...createPlayer().runes[0],
+          isEquipped: true,
+          equippedSlot: 0,
+        },
+        {
+          ...createPlayer().runes[0],
+          id: 'rune-2',
+          runeCode: 'rune-2',
+          name: 'Руна B',
+          isEquipped: true,
+          equippedSlot: 1,
+        },
+      ],
+      currentRuneIndex: 1,
+    });
+    const repository = {
+      findPlayerByVkId: vi.fn().mockResolvedValue(player),
+      getCommandIntentResult: vi.fn(),
+      equipRune: vi.fn().mockResolvedValue(player),
+    } as unknown as GameRepository;
+    const useCase = new UnequipCurrentRune(repository);
+    const stateKey = buildUnequipIntentStateKey(player, 1);
+
+    await useCase.execute(player.vkId, 'intent-unequip-support', stateKey);
+
+    expect(repository.equipRune).toHaveBeenCalledWith(
+      player.playerId,
+      null,
+      expect.objectContaining({
+        targetSlot: 1,
+        expectedEquippedRuneId: 'rune-2',
+        expectedEquippedRuneIdsBySlot: ['rune-1', 'rune-2'],
+      }),
+    );
   });
 });

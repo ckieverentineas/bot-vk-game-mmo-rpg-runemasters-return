@@ -141,7 +141,12 @@ export class GameHandler {
           return;
         }
         case gameCommands.equipRune: {
-          const player = await this.services.equipCurrentRune.execute(vkId, intentId ?? undefined, stateKey ?? undefined, intentSource);
+          const player = await this.services.equipCurrentRune.execute(vkId, 0, intentId ?? undefined, stateKey ?? undefined, intentSource);
+          await this.replyWithRuneHub(ctx, player);
+          return;
+        }
+        case gameCommands.equipSupportRune: {
+          const player = await this.services.equipCurrentRune.execute(vkId, 1, intentId ?? undefined, stateKey ?? undefined, intentSource);
           await this.replyWithRuneHub(ctx, player);
           return;
         }
@@ -311,7 +316,7 @@ export class GameHandler {
         return true;
       }
 
-      if ([gameCommands.equipRune, gameCommands.unequipRune, gameCommands.craftRune, gameCommands.destroyRune].includes(command as typeof gameCommands.equipRune | typeof gameCommands.destroyRune)) {
+      if ([gameCommands.equipRune, gameCommands.equipSupportRune, gameCommands.unequipRune, gameCommands.craftRune, gameCommands.destroyRune].includes(command as typeof gameCommands.equipRune | typeof gameCommands.equipSupportRune | typeof gameCommands.destroyRune)) {
         const player = await this.services.getRuneCollection.execute(vkId);
         await this.reply(
           ctx,

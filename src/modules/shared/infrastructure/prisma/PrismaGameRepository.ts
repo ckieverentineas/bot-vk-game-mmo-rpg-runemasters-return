@@ -21,7 +21,10 @@ import { buildBattleSnapshot, isBattleSnapshot, type BattleSnapshot } from '../.
 import {
   emptyInventory,
   getEquippedRune,
+  getEquippedRuneIdsBySlot,
+  getRuneEquippedSlot,
   getSelectedRune,
+  getUnlockedRuneSlotCount,
   resolveAdaptiveAdventureLocationLevel,
   resolveLevelProgression,
   shardFieldForRarity,
@@ -31,6 +34,7 @@ import {
   createSchoolMasteryView,
   listMissingStarterSchoolMasteries,
   resolveBattleSchoolMasteryRewardGain,
+  resolveUnlockedRuneSlotCountFromSchoolMasteries,
 } from '../../../player/domain/school-mastery';
 import { buildLoadoutSnapshotFromBattle, isLoadoutSnapshot, projectBattleRuneLoadout, type LoadoutSnapshot } from '../../domain/contracts/loadout-snapshot';
 import { createAppliedRewardLedgerEntry } from '../../domain/contracts/reward-ledger';
@@ -138,8 +142,10 @@ interface ParsedBattleSnapshot {
 
 interface CurrentRuneLoadoutState {
   readonly currentRuneIndex: number;
+  readonly unlockedRuneSlotCount: number;
   readonly selectedRuneId: string | null;
   readonly equippedRuneId: string | null;
+  readonly equippedRuneIdsBySlot: readonly (string | null)[];
   readonly runeIds: readonly string[];
 }
 
@@ -306,7 +312,19 @@ const mapBattlePersistence = (battle: PersistedBattleState) => ({
   rewardsSnapshot: battle.rewards ? stringifyJson(battle.rewards, 'null') : null,
 });
 
-const mapRuneDraftPersistence = (playerId: number, rune: RuneDraft, isEquipped = rune.isEquipped) => ({
+const resolvePersistedEquippedSlot = (rune: Pick<RuneDraft, 'equippedSlot' | 'isEquipped'>): number | null => (
+  typeof rune.equippedSlot === 'number' && Number.isInteger(rune.equippedSlot) && rune.equippedSlot >= 0
+    ? rune.equippedSlot
+    : (rune.isEquipped ? 0 : null)
+);
+
+const mapRuneDraftPersistence = (playerId: number, rune: RuneDraft, isEquipped = rune.isEquipped) => {
+  const equippedSlot = resolvePersistedEquippedSlot({
+    equippedSlot: rune.equippedSlot,
+    isEquipped,
+  });
+
+  return {
   playerId,
   runeCode: rune.runeCode ?? null,
   archetypeCode: rune.archetypeCode ?? null,
@@ -320,8 +338,10 @@ const mapRuneDraftPersistence = (playerId: number, rune: RuneDraft, isEquipped =
   magicDefence: rune.magicDefence,
   dexterity: rune.dexterity,
   intelligence: rune.intelligence,
-  isEquipped,
-});
+  isEquipped: equippedSlot !== null,
+  equippedSlot,
+};
+};
 
 export class PrismaGameRepository implements GameRepository {
   public constructor(private readonly prisma: PrismaClient) {}
@@ -329,8 +349,10 @@ export class PrismaGameRepository implements GameRepository {
   private buildCurrentRuneLoadoutState(player: PlayerState): CurrentRuneLoadoutState {
     return {
       currentRuneIndex: player.currentRuneIndex,
+      unlockedRuneSlotCount: getUnlockedRuneSlotCount(player),
       selectedRuneId: getSelectedRune(player)?.id ?? null,
       equippedRuneId: getEquippedRune(player)?.id ?? null,
+      equippedRuneIdsBySlot: getEquippedRuneIdsBySlot(player),
       runeIds: player.runes.map((rune) => rune.id),
     };
   }
@@ -340,8 +362,12 @@ export class PrismaGameRepository implements GameRepository {
 
     if (
       (options.expectedCurrentRuneIndex !== undefined && currentState.currentRuneIndex !== options.expectedCurrentRuneIndex)
+      || (options.expectedUnlockedRuneSlotCount !== undefined && currentState.unlockedRuneSlotCount !== options.expectedUnlockedRuneSlotCount)
       || (options.expectedSelectedRuneId !== undefined && currentState.selectedRuneId !== options.expectedSelectedRuneId)
       || (options.expectedEquippedRuneId !== undefined && currentState.equippedRuneId !== options.expectedEquippedRuneId)
+      || (options.expectedEquippedRuneIdsBySlot !== undefined
+        && (currentState.equippedRuneIdsBySlot.length !== options.expectedEquippedRuneIdsBySlot.length
+          || currentState.equippedRuneIdsBySlot.some((runeId, index) => runeId !== options.expectedEquippedRuneIdsBySlot?.[index])))
       || (options.expectedRuneIds !== undefined
         && (currentState.runeIds.length !== options.expectedRuneIds.length
           || currentState.runeIds.some((runeId, index) => runeId !== options.expectedRuneIds?.[index])))
@@ -945,6 +971,12 @@ export class PrismaGameRepository implements GameRepository {
   public async equipRune(playerId: number, runeId: string | null, options?: SaveRuneLoadoutOptions): Promise<PlayerState> {
     return this.prisma.$transaction(async (tx) => {
       const apply = async (): Promise<PlayerState> => {
+        const targetSlot = options?.targetSlot ?? 0;
+
+        if (!Number.isInteger(targetSlot) || targetSlot < 0) {
+          throw new AppError('invalid_rune_slot', 'Слот руны указан некорректно. Обновите экран и попробуйте снова.');
+        }
+
         if (options?.expectedPlayerUpdatedAt) {
           const playerGuard = await tx.player.updateMany({
             where: {
@@ -961,22 +993,47 @@ export class PrismaGameRepository implements GameRepository {
           }
         }
 
+        let currentPlayer: PlayerState | null = null;
+
         if (options?.expectedSelectedRuneId !== undefined
+          || options?.expectedUnlockedRuneSlotCount !== undefined
           || options?.expectedEquippedRuneId !== undefined
+          || options?.expectedEquippedRuneIdsBySlot !== undefined
           || options?.expectedRuneIds !== undefined) {
-          const currentPlayer = this.mapPlayer(await this.requirePlayerRecord(tx, playerId));
+          currentPlayer = this.mapPlayer(await this.requirePlayerRecord(tx, playerId));
           this.assertExpectedRuneLoadoutState(currentPlayer, options);
         }
 
+        currentPlayer ??= this.mapPlayer(await this.requirePlayerRecord(tx, playerId));
+
+        if (targetSlot >= getUnlockedRuneSlotCount(currentPlayer)) {
+          throw new AppError('rune_slot_locked', 'Этот слот рун пока закрыт. Продвигайтесь дальше, чтобы открыть его.');
+        }
+
+        const primaryRune = getEquippedRune(currentPlayer, 0);
+        const supportRune = getEquippedRune(currentPlayer, 1);
+
+        if (targetSlot > 0 && !primaryRune) {
+          throw new AppError('rune_primary_required', 'Сначала наденьте руну в основной слот, а потом расширяйте сборку поддержкой.');
+        }
+
+        if (targetSlot > 0 && runeId && primaryRune?.id === runeId) {
+          throw new AppError('rune_primary_required', 'Нельзя увести единственную основную руну в поддержку, пока основной слот не занят другой руной.');
+        }
+
+        if (targetSlot === 0 && runeId === null && supportRune) {
+          throw new AppError('rune_primary_required', 'Сначала снимите или переставьте руну поддержки, а потом освобождайте основной слот.');
+        }
+
         await tx.rune.updateMany({
-          where: { playerId },
-          data: { isEquipped: false },
+          where: { playerId, equippedSlot: targetSlot },
+          data: { isEquipped: false, equippedSlot: null },
         });
 
         if (runeId) {
           const equipped = await tx.rune.updateMany({
             where: { id: runeId, playerId },
-            data: { isEquipped: true },
+            data: { isEquipped: true, equippedSlot: targetSlot },
           });
 
           if (equipped.count === 0) {
@@ -1553,6 +1610,7 @@ export class PrismaGameRepository implements GameRepository {
       let nextLocationLevel = currentPlayer.locationLevel;
       let nextHighestLocationLevel = currentPlayer.highestLocationLevel;
       let nextTutorialState = currentPlayer.tutorialState;
+      let nextUnlockedRuneSlotCount = currentPlayer.unlockedRuneSlotCount ?? 1;
       const inventoryDelta: InventoryDelta = {};
       const schoolMasteryReward = resolveBattleSchoolMasteryRewardGain(battle);
 
@@ -1616,6 +1674,39 @@ export class PrismaGameRepository implements GameRepository {
         nextLocationLevel = nextAdventureLocationLevel;
       }
 
+      if (schoolMasteryReward) {
+        const currentMastery = currentPlayer.schoolMasteries?.find((entry) => entry.schoolCode === schoolMasteryReward.schoolCode) ?? null;
+        const nextMastery = applySchoolMasteryExperience(currentMastery, schoolMasteryReward.schoolCode, schoolMasteryReward.experienceGain);
+        const nextSchoolMasteries = [
+          ...(currentPlayer.schoolMasteries?.filter((entry) => entry.schoolCode !== schoolMasteryReward.schoolCode) ?? []),
+          nextMastery,
+        ];
+
+        nextUnlockedRuneSlotCount = resolveUnlockedRuneSlotCountFromSchoolMasteries(
+          { schoolMasteries: nextSchoolMasteries },
+          nextUnlockedRuneSlotCount,
+        );
+
+        await tx.playerSchoolMastery.upsert({
+          where: {
+            playerId_schoolCode: {
+              playerId,
+              schoolCode: schoolMasteryReward.schoolCode,
+            },
+          },
+          update: {
+            experience: nextMastery.experience,
+            rank: nextMastery.rank,
+          },
+          create: {
+            playerId,
+            schoolCode: schoolMasteryReward.schoolCode,
+            experience: nextMastery.experience,
+            rank: nextMastery.rank,
+          },
+        });
+      }
+
       await tx.player.update({
         where: { id: playerId },
         data: {
@@ -1629,6 +1720,7 @@ export class PrismaGameRepository implements GameRepository {
         where: { playerId },
         data: {
           locationLevel: nextLocationLevel,
+          unlockedRuneSlotCount: nextUnlockedRuneSlotCount,
           activeBattleId: null,
           tutorialState: nextTutorialState,
           victories: nextVictories,
@@ -1651,30 +1743,6 @@ export class PrismaGameRepository implements GameRepository {
       if (rewardIntent?.payload.droppedRune) {
         await tx.rune.create({
           data: mapRuneDraftPersistence(playerId, rewardIntent.payload.droppedRune, false),
-        });
-      }
-
-      if (schoolMasteryReward) {
-        const currentMastery = currentPlayer.schoolMasteries?.find((entry) => entry.schoolCode === schoolMasteryReward.schoolCode) ?? null;
-        const nextMastery = applySchoolMasteryExperience(currentMastery, schoolMasteryReward.schoolCode, schoolMasteryReward.experienceGain);
-
-        await tx.playerSchoolMastery.upsert({
-          where: {
-            playerId_schoolCode: {
-              playerId,
-              schoolCode: schoolMasteryReward.schoolCode,
-            },
-          },
-          update: {
-            experience: nextMastery.experience,
-            rank: nextMastery.rank,
-          },
-          create: {
-            playerId,
-            schoolCode: schoolMasteryReward.schoolCode,
-            experience: nextMastery.experience,
-            rank: nextMastery.rank,
-          },
         });
       }
 
@@ -1786,6 +1854,10 @@ export class PrismaGameRepository implements GameRepository {
       },
       locationLevel: player.progress?.locationLevel ?? gameBalance.world.introLocationLevel,
       currentRuneIndex: player.progress?.currentRuneIndex ?? 0,
+      unlockedRuneSlotCount: resolveUnlockedRuneSlotCountFromSchoolMasteries(
+        { schoolMasteries: player.schoolMasteries.map((entry) => createSchoolMasteryView(entry.schoolCode, entry.experience)) },
+        player.progress?.unlockedRuneSlotCount ?? 1,
+      ),
       activeBattleId: player.progress?.activeBattleId ?? null,
       victories: player.progress?.victories ?? 0,
       victoryStreak: player.progress?.victoryStreak ?? 0,
@@ -1830,7 +1902,8 @@ export class PrismaGameRepository implements GameRepository {
         magicDefence: rune.magicDefence,
         dexterity: rune.dexterity,
         intelligence: rune.intelligence,
-        isEquipped: rune.isEquipped,
+        isEquipped: getRuneEquippedSlot({ equippedSlot: rune.equippedSlot, isEquipped: rune.isEquipped }) !== null,
+        equippedSlot: getRuneEquippedSlot({ equippedSlot: rune.equippedSlot, isEquipped: rune.isEquipped }),
         createdAt: rune.createdAt.toISOString(),
       })),
       createdAt: player.createdAt.toISOString(),

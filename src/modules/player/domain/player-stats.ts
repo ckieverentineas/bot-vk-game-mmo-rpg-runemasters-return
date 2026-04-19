@@ -1,5 +1,8 @@
 import { gameBalance } from '../../../config/game-balance';
 import type { InventoryView, PlayerState, RuneRarity, RuneView, ShardField, StatBlock } from '../../../shared/types/game';
+import { resolveUnlockedRuneSlotCountFromSchoolMasteries } from './school-mastery';
+
+export const DEFAULT_UNLOCKED_RUNE_SLOT_COUNT = 1;
 
 export const emptyStats = (): StatBlock => ({
   health: 0,
@@ -34,7 +37,68 @@ export const addStats = (left: StatBlock, right: StatBlock): StatBlock => ({
   intelligence: left.intelligence + right.intelligence,
 });
 
-export const getEquippedRune = (player: PlayerState): RuneView | null => player.runes.find((rune) => rune.isEquipped) ?? null;
+export const getUnlockedRuneSlotCount = (player: Pick<PlayerState, 'unlockedRuneSlotCount' | 'schoolMasteries'>): number => {
+  const slotCount = player.unlockedRuneSlotCount ?? DEFAULT_UNLOCKED_RUNE_SLOT_COUNT;
+  const normalizedSlotCount = Number.isInteger(slotCount) && slotCount > 0 ? slotCount : DEFAULT_UNLOCKED_RUNE_SLOT_COUNT;
+
+  return 'schoolMasteries' in player
+    ? resolveUnlockedRuneSlotCountFromSchoolMasteries(player, normalizedSlotCount)
+    : normalizedSlotCount;
+};
+
+export const getRuneEquippedSlot = (rune: Pick<RuneView, 'equippedSlot' | 'isEquipped'>): number | null => {
+  if (typeof rune.equippedSlot === 'number' && Number.isInteger(rune.equippedSlot) && rune.equippedSlot >= 0) {
+    return rune.equippedSlot;
+  }
+
+  return rune.isEquipped ? 0 : null;
+};
+
+export const getEquippedRunes = (player: PlayerState): RuneView[] => player.runes
+  .filter((rune) => getRuneEquippedSlot(rune) !== null)
+  .sort((left, right) => {
+    const leftSlot = getRuneEquippedSlot(left) ?? Number.MAX_SAFE_INTEGER;
+    const rightSlot = getRuneEquippedSlot(right) ?? Number.MAX_SAFE_INTEGER;
+
+    if (leftSlot !== rightSlot) {
+      return leftSlot - rightSlot;
+    }
+
+    return left.createdAt.localeCompare(right.createdAt) || left.id.localeCompare(right.id);
+  });
+
+export const getEquippedRuneIdsBySlot = (
+  player: PlayerState,
+  slotCount = getUnlockedRuneSlotCount(player),
+): Array<string | null> => {
+  const runeIdsBySlot = Array.from({ length: slotCount }, () => null as string | null);
+
+  for (const rune of getEquippedRunes(player)) {
+    const slot = getRuneEquippedSlot(rune);
+    if (slot === null || slot >= runeIdsBySlot.length || runeIdsBySlot[slot] !== null) {
+      continue;
+    }
+
+    runeIdsBySlot[slot] = rune.id;
+  }
+
+  return runeIdsBySlot;
+};
+
+export const getEquippedRune = (player: PlayerState, slot = 0): RuneView | null => (
+  getEquippedRunes(player).find((rune) => getRuneEquippedSlot(rune) === slot) ?? null
+);
+
+const scaleSupportRuneStat = (value: number): number => (value <= 0 ? 0 : Math.ceil(value / 2));
+
+const projectSupportRuneStats = (rune: RuneView): StatBlock => ({
+  health: scaleSupportRuneStat(rune.health),
+  attack: scaleSupportRuneStat(rune.attack),
+  defence: scaleSupportRuneStat(rune.defence),
+  magicDefence: scaleSupportRuneStat(rune.magicDefence),
+  dexterity: scaleSupportRuneStat(rune.dexterity),
+  intelligence: scaleSupportRuneStat(rune.intelligence),
+});
 
 export const getSelectedRune = (player: PlayerState): RuneView | null => {
   if (player.runes.length === 0) {
@@ -45,8 +109,14 @@ export const getSelectedRune = (player: PlayerState): RuneView | null => {
 };
 
 export const derivePlayerStats = (player: PlayerState): StatBlock => {
-  const equippedRune = getEquippedRune(player) ?? emptyStats();
-  return addStats(player.baseStats, equippedRune);
+  const equippedRunes = getEquippedRunes(player);
+  const primaryRune = equippedRunes.find((rune) => getRuneEquippedSlot(rune) === 0) ?? null;
+  const supportRunes = equippedRunes.filter((rune) => getRuneEquippedSlot(rune) !== 0);
+
+  return supportRunes.reduce(
+    (stats, rune) => addStats(stats, projectSupportRuneStats(rune)),
+    addStats(player.baseStats, primaryRune ?? emptyStats()),
+  );
 };
 
 export const clamp = (value: number, min: number, max: number): number => Math.max(min, Math.min(max, value));

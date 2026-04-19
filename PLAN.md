@@ -601,18 +601,25 @@ Runemasters Return должен решать это через **школы ру
 
 ### 12.3 Rarity and loadout slice
 
-- [ ] Ввести pre-battle loadout decisions v1
+- [x] Ввести pre-battle loadout decisions v1
+  - [x] mastery-веха открывает support-slot как первый breadth payoff
+  - [x] основа остаётся единственным источником активной рунной кнопки
+  - [x] support-slot даёт только половину статов и не вводит вторую боевую кнопку
 - [ ] Привязать rarity growth к breadth, а не к stat inflation
 - [ ] Добавить targeted school drops / source family для locked slice
-- [ ] Ввести первые same-school starter synergies
+- [x] Ввести первые same-school starter synergies
 - [ ] Проверить, что higher rarity не убивает low-rarity relevance
+- Deferred after first Vertical Slice proof:
+  - расширять rune slot system дальше support-slot v1 только после отдельного contract review;
+  - не включать 3+ слота или multi-action loadout до loadout clarity proof.
 
 ### 12.4 UX and return motivation
 
 - [ ] Обновить rune hub вокруг сравнения школ и ближайших целей
   - [x] быстрый выбор 5 рун на странице
   - [x] явная индикация `выбрана / надета`
-  - [x] один активный слот показан явно; future extra slots вынесены в deferred direction через `docs/reviews/rune-hub-ux-v1.md`
+  - [x] основа / поддержка читаются отдельно, а active combat rune остаётся очевидной
+  - [x] support-slot открывается позже через mastery, но не создаёт вторую боевую кнопку
 - [ ] Показывать игроку, что именно дала новая редкость
 - [ ] После сессии показывать 2–3 честные next goals
 - [ ] Добавить return recap для игрока после перерыва
@@ -662,6 +669,10 @@ Runemasters Return должен решать это через **школы ру
 ### 13.1 Progression and build game
 
 - [ ] Ввести school mastery tracks v1
+- [ ] Расширить rune slot system beyond support-slot v1
+  - [ ] решить, нужен ли 3-й слот или richer support rules после playtest evidence
+  - [ ] сохранить один очевидный primary active rune, если бой всё ещё single-button
+  - [ ] проверить save/load и battle contracts до расширения дальше support-slot v1
 - [ ] Ввести codex / archive v1
 - [ ] Ввести первый prestige layer без mandatory power cliff
 - [ ] Настроить respec / adjustment rules без чрезмерного regret
@@ -686,6 +697,11 @@ Runemasters Return должен решать это через **школы ру
 
 - [ ] Ввести quest platform v1
 - [ ] Добавить school questlines
+- [ ] Prototype exploration events beyond combat
+  - [ ] 2–3 небойовых события с явным выбором
+  - [ ] лёгкие persistent consequences / `след решений в исследовании` без глобальной оси добра/зла
+  - [ ] проверить, усиливают ли выборы school identity, variety сессий и return motivation
+  - [ ] отдельно решить позже, нужна ли вообще глобальная шкала, вместо обещания её заранее
 - [ ] Добавить short-term / weekly goals без daily coercion
 - [ ] Добавить targeted chase objectives
 - [ ] Проверить, что цели усиливают сборку, а не превращаются в chores
@@ -1006,3 +1022,5 @@ Runemasters Return должен решать это через **школы ру
 - **2026-04-19:** legacy stat allocation полностью удалена из проекта: убраны `+стат` / `сброс`, persistence contract `PlayerStatAllocation`, profile-copy и runtime-зависимости derive/adaptive difficulty от старой stat-point модели.
 - **2026-04-19:** собран `docs/reviews/starter-synergy-v1.md`; same-school starter synergy v1 зафиксирована для Пламени и Тверди как читаемая `setup -> payoff` пара без новых кнопок и без proc-web хаоса.
 - **2026-04-19:** собран `docs/reviews/rune-hub-ux-v1.md`; rune hub v1 теперь держит быстрый выбор 5 рун на странице, явное состояние `выбрана / надета`, single-slot loadout сейчас и deferred extra slots только после отдельного progression/contract review.
+- **2026-04-19:** support-slot v1 включён как первый реальный loadout breadth payoff: mastery milestone открывает 2-й слот, но только `основа` даёт боевую кнопку, а `поддержка` пока добавляет половину статов без второй активки и без proc-web хаоса.
+- **2026-04-19:** backlog дополнен двумя post-Vertical-Slice направлениями: prototype второго rune slot unlock через progression/mastery branches и prototype exploration events beyond combat с `следом решений в исследовании` без преждевременного обещания глобальной шкалы добра/зла.

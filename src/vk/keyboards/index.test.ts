@@ -244,6 +244,90 @@ describe('profile keyboard', () => {
     expect(labels).not.toContain('❌ Снять текущую');
   });
 
+  it('shows support-slot equip CTA only after the second slot is unlocked', () => {
+    const lockedLabels = collectLabels(createRuneKeyboard(createPlayer()));
+    const unlockedKeyboard = createRuneKeyboard(createPlayer({
+      unlockedRuneSlotCount: 2,
+      runes: [
+        {
+          ...createPlayer().runes[0],
+          isEquipped: true,
+          equippedSlot: 0,
+        },
+        {
+          ...createPlayer().runes[0],
+          id: 'rune-2',
+          runeCode: 'rune-2',
+          name: 'Руна B',
+          isEquipped: false,
+        },
+      ],
+      currentRuneIndex: 1,
+    }));
+    const unlockedLabels = collectLabels(unlockedKeyboard);
+    const unlockedPayloads = collectPayloads(unlockedKeyboard);
+
+    expect(lockedLabels).not.toContain('🧩 В поддержку');
+    expect(unlockedLabels).toContain('🧩 В поддержку');
+    expect(unlockedPayloads.find((payload) => payload.command === 'надеть в поддержку')?.intentId).toEqual(expect.any(String));
+  });
+
+  it('does not promise support equip or primary unequip when the selected rune is the only primary anchor', () => {
+    const labels = collectLabels(createRuneKeyboard(createPlayer({
+      unlockedRuneSlotCount: 2,
+      runes: [
+        {
+          ...createPlayer().runes[0],
+          isEquipped: true,
+          equippedSlot: 0,
+        },
+        {
+          ...createPlayer().runes[0],
+          id: 'rune-2',
+          runeCode: 'rune-2',
+          name: 'Руна B',
+          isEquipped: true,
+          equippedSlot: 1,
+        },
+      ],
+      currentRuneIndex: 0,
+    })));
+
+    expect(labels).not.toContain('🧩 В поддержку');
+    expect(labels).not.toContain('❌ Снять основу');
+  });
+
+  it('does not promise primary unequip when support is filled and the player selected a spare rune', () => {
+    const labels = collectLabels(createRuneKeyboard(createPlayer({
+      unlockedRuneSlotCount: 2,
+      runes: [
+        {
+          ...createPlayer().runes[0],
+          isEquipped: true,
+          equippedSlot: 0,
+        },
+        {
+          ...createPlayer().runes[0],
+          id: 'rune-2',
+          runeCode: 'rune-2',
+          name: 'Руна B',
+          isEquipped: true,
+          equippedSlot: 1,
+        },
+        {
+          ...createPlayer().runes[0],
+          id: 'rune-3',
+          runeCode: 'rune-3',
+          name: 'Руна C',
+          isEquipped: false,
+        },
+      ],
+      currentRuneIndex: 2,
+    })));
+
+    expect(labels).not.toContain('❌ Снять основу');
+  });
+
   it('adds intent metadata to delete confirmation button when player context is available', () => {
     const player = createPlayer();
     const payloads = collectPayloads(createDeleteConfirmationKeyboard(player));

@@ -14,6 +14,8 @@ export interface SchoolMasteryDefinition {
 }
 
 const maxSchoolMasteryRank = 1;
+export const supportRuneSlotUnlockMasteryRank = 1;
+export const supportRuneSlotCount = 2;
 
 const schoolMasteryDefinitions: readonly SchoolMasteryDefinition[] = [
   {
@@ -116,7 +118,7 @@ export const getPlayerSchoolMasteryForArchetype = (
 };
 
 export const resolveSchoolMasteryRewardGain = (player: Pick<PlayerState, 'runes'>): { schoolCode: string; experienceGain: number } | null => {
-  const equippedRune = player.runes.find((rune) => rune.isEquipped) ?? null;
+  const equippedRune = player.runes.find((rune) => rune.equippedSlot === 0 || (rune.equippedSlot === undefined && rune.isEquipped)) ?? null;
   const school = getSchoolDefinitionForArchetype(equippedRune?.archetypeCode);
   if (!equippedRune || !school) {
     return null;
@@ -162,4 +164,14 @@ export const listMissingStarterSchoolMasteries = (player: Pick<PlayerState, 'sch
   return listSchoolDefinitions()
     .filter((school) => !existing.has(school.code))
     .map((school) => createSchoolMasteryView(school.code));
+};
+
+export const resolveUnlockedRuneSlotCountFromSchoolMasteries = (
+  player: Pick<PlayerState, 'schoolMasteries'>,
+  currentUnlockedSlotCount = 1,
+): number => {
+  const hasSupportSlotUnlock = listPlayerSchoolMasteries(player).some((mastery) => mastery.rank >= supportRuneSlotUnlockMasteryRank);
+  return hasSupportSlotUnlock
+    ? Math.max(currentUnlockedSlotCount, supportRuneSlotCount)
+    : currentUnlockedSlotCount;
 };

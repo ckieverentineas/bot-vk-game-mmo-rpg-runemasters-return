@@ -1,5 +1,7 @@
 # Rune Hub UX v1
 
+> Исторический базовый review. Актуальное runtime-расширение слотов теперь продолжено в `docs/reviews/support-rune-slot-v1.md`.
+
 ## Purpose
 
 Сделать rune hub быстрым и понятным в chat UX без преждевременного расширения loadout-модели.
