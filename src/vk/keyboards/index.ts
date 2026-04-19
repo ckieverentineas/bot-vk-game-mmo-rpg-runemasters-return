@@ -10,11 +10,7 @@ import {
   buildReturnToAdventureIntentStateKey,
   buildSkipTutorialIntentStateKey,
 } from '../../modules/exploration/application/command-intent-state';
-import {
-  buildAllocateStatIntentStateKey,
-  buildResetAllocatedStatsIntentStateKey,
-} from '../../modules/player/application/command-intent-state';
-import { getEquippedRune, getSelectedRune, isPlayerInTutorial, spentStatPoints } from '../../modules/player/domain/player-stats';
+import { getEquippedRune, getSelectedRune, isPlayerInTutorial } from '../../modules/player/domain/player-stats';
 import {
   buildCraftIntentStateKey,
   buildDestroyIntentStateKey,
@@ -92,38 +88,11 @@ const entryLayout: KeyboardLayout = [
   [{ label: '🎮 Начать', command: gameCommands.start, color: Keyboard.POSITIVE_COLOR }],
 ];
 
-const createProfileLayout = (player?: PlayerState): KeyboardLayout => {
-  const hasLegacyStatAllocation = Boolean(player) && ((player?.unspentStatPoints ?? 0) > 0 || spentStatPoints(player?.allocationPoints ?? {
-    health: 0,
-    attack: 0,
-    defence: 0,
-    magicDefence: 0,
-    dexterity: 0,
-    intelligence: 0,
-  }) > 0);
-  const allocateStateKey = (stat: 'attack' | 'health' | 'defence' | 'magicDefence' | 'dexterity' | 'intelligence') => (
-    player ? buildAllocateStatIntentStateKey(player, stat) : undefined
-  );
-  const resetStateKey = player ? buildResetAllocatedStatsIntentStateKey(player) : undefined;
-
-  return [
-    ...(hasLegacyStatAllocation ? [[
-      { label: '+АТК', command: gameCommands.increaseAttack, color: Keyboard.POSITIVE_COLOR, intentScoped: Boolean(player), stateKey: allocateStateKey('attack') },
-      { label: '+ЗДР', command: gameCommands.increaseHealth, color: Keyboard.POSITIVE_COLOR, intentScoped: Boolean(player), stateKey: allocateStateKey('health') },
-    ], [
-      { label: '+ФЗАЩ', command: gameCommands.increaseDefence, color: Keyboard.POSITIVE_COLOR, intentScoped: Boolean(player), stateKey: allocateStateKey('defence') },
-      { label: '+МЗАЩ', command: gameCommands.increaseMagicDefence, color: Keyboard.POSITIVE_COLOR, intentScoped: Boolean(player), stateKey: allocateStateKey('magicDefence') },
-    ], [
-      { label: '+ЛВК', command: gameCommands.increaseDexterity, color: Keyboard.POSITIVE_COLOR, intentScoped: Boolean(player), stateKey: allocateStateKey('dexterity') },
-      { label: '+ИНТ', command: gameCommands.increaseIntelligence, color: Keyboard.POSITIVE_COLOR, intentScoped: Boolean(player), stateKey: allocateStateKey('intelligence') },
-    ]] : []),
-    [
-      ...(hasLegacyStatAllocation ? [{ label: '🔄 СБРОС', command: gameCommands.resetStats, color: Keyboard.NEGATIVE_COLOR, intentScoped: Boolean(player), stateKey: resetStateKey } as const] : []),
-      { label: '◀ Меню', command: gameCommands.backToMenu, color: Keyboard.SECONDARY_COLOR },
-    ],
-    [{ label: '🗑️ Удалить персонажа', command: gameCommands.deletePlayer, color: Keyboard.NEGATIVE_COLOR }],
-  ];
-};
+const createProfileLayout = (_player?: PlayerState): KeyboardLayout => [[
+  { label: '◀ Меню', command: gameCommands.backToMenu, color: Keyboard.SECONDARY_COLOR },
+], [
+  { label: '🗑️ Удалить персонажа', command: gameCommands.deletePlayer, color: Keyboard.NEGATIVE_COLOR },
+]];
 
 const createBattleSkillButton = (battle: BattleView): KeyboardButtonDefinition => {
   const activeAbility = battle.player.runeLoadout?.activeAbility ?? null;

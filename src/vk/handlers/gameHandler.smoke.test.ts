@@ -76,15 +76,6 @@ const createPlayer = (overrides: Partial<PlayerState> = {}): PlayerState => ({
     dexterity: 3,
     intelligence: 1,
   },
-  allocationPoints: {
-    health: 0,
-    attack: 0,
-    defence: 0,
-    magicDefence: 0,
-    dexterity: 0,
-    intelligence: 0,
-  },
-  unspentStatPoints: 1,
   locationLevel: 0,
   currentRuneIndex: 0,
   activeBattleId: null,
@@ -233,12 +224,6 @@ const createServices = (): AppServices => {
     getPlayerProfile: {
       execute: vi.fn().mockResolvedValue(basePlayer),
     } as unknown as AppServices['getPlayerProfile'],
-    allocateStatPoint: {
-      execute: vi.fn().mockResolvedValue(basePlayer),
-    } as unknown as AppServices['allocateStatPoint'],
-    resetAllocatedStats: {
-      execute: vi.fn().mockResolvedValue(basePlayer),
-    } as unknown as AppServices['resetAllocatedStats'],
     enterTutorialMode: {
       execute: vi.fn().mockResolvedValue(tutorialPlayer),
     } as unknown as AppServices['enterTutorialMode'],
@@ -641,46 +626,6 @@ describe('GameHandler smoke', () => {
     expect(services.destroyCurrentRune.execute).toHaveBeenCalledWith(1001, 'legacy-text:2000000001:1001:79:сломать', undefined, 'legacy_text');
   });
 
-  it('пробрасывает intentId для распределения характеристики через transport payload', async () => {
-    const services = createServices();
-    const handler = new GameHandler(services);
-    const ctx = createFakeContext({ command: '+атк', intentId: 'intent-alloc-1', stateKey: 'state-alloc-1' });
-
-    await handler.handle(ctx as never);
-
-    expect(services.allocateStatPoint.execute).toHaveBeenCalledWith(1001, 'attack', 'intent-alloc-1', 'state-alloc-1', 'payload');
-  });
-
-  it('пробрасывает intentId для сброса характеристик через transport payload', async () => {
-    const services = createServices();
-    const handler = new GameHandler(services);
-    const ctx = createFakeContext({ command: 'сброс', intentId: 'intent-reset-1', stateKey: 'state-reset-1' });
-
-    await handler.handle(ctx as never);
-
-    expect(services.resetAllocatedStats.execute).toHaveBeenCalledWith(1001, 'intent-reset-1', 'state-reset-1', 'payload');
-  });
-
-  it('выводит server-owned legacy intent для текстового распределения характеристики', async () => {
-    const services = createServices();
-    const handler = new GameHandler(services);
-    const ctx = createFakeContext({ text: '+атк', id: 504, conversationMessageId: 80, peerId: 2000000001 });
-
-    await handler.handle(ctx as never);
-
-    expect(services.allocateStatPoint.execute).toHaveBeenCalledWith(1001, 'attack', 'legacy-text:2000000001:1001:80:+атк', undefined, 'legacy_text');
-  });
-
-  it('выводит server-owned legacy intent для текстового сброса характеристик', async () => {
-    const services = createServices();
-    const handler = new GameHandler(services);
-    const ctx = createFakeContext({ text: 'сброс', id: 505, conversationMessageId: 81, peerId: 2000000001 });
-
-    await handler.handle(ctx as never);
-
-    expect(services.resetAllocatedStats.execute).toHaveBeenCalledWith(1001, 'legacy-text:2000000001:1001:81:сброс', undefined, 'legacy_text');
-  });
-
   it('выводит server-owned legacy intent для текстовой экипировки руны', async () => {
     const services = createServices();
     const handler = new GameHandler(services);
@@ -699,28 +644,6 @@ describe('GameHandler smoke', () => {
     await handler.handle(ctx as never);
 
     expect(services.unequipCurrentRune.execute).toHaveBeenCalledWith(1001, 'legacy-text:2000000001:1001:83:снять', undefined, 'legacy_text');
-  });
-
-  it('fail-closed восстанавливает профильный контекст, если legacy text команды не хватает message metadata', async () => {
-    const services = createServices();
-    const handler = new GameHandler(services);
-    const ctx = {
-      senderId: 1001,
-      text: '+атк',
-      messagePayload: null,
-      reply: vi.fn().mockResolvedValue(undefined),
-    };
-
-    vi.mocked(services.allocateStatPoint.execute).mockRejectedValueOnce(
-      new AppError('stale_command_intent', 'Эта кнопка уже устарела. Обновите экран перед повтором команды.'),
-    );
-
-    await handler.handle(ctx as never);
-
-    expect(services.allocateStatPoint.execute).toHaveBeenCalledWith(1001, 'attack', undefined, undefined, 'legacy_text');
-    const replies = ctx.reply.mock.calls;
-    expect(replies[0]?.[0]).toContain('Эта кнопка уже устарела');
-    expect(replies[0]?.[0]).toContain('👤 Профиль');
   });
 
   it('пробрасывает intentId для экипировки руны через transport payload', async () => {
@@ -999,23 +922,6 @@ describe('GameHandler smoke', () => {
     const replies = getReplyCalls(ctx);
     expect(replies[0]?.message).toContain('Этот вход в приключение уже устарел');
     expect(replies[0]?.message).toContain('📘 Обучение');
-  });
-
-  it('восстанавливает профильный контекст после stale profile intent', async () => {
-    const services = createServices();
-    const handler = new GameHandler(services);
-    const ctx = createFakeContext({ command: '+атк', intentId: 'intent-alloc-1', stateKey: 'state-alloc-1' });
-
-    vi.mocked(services.allocateStatPoint.execute).mockRejectedValueOnce(
-      new AppError('stale_command_intent', 'Эта кнопка уже устарела. Обновите экран перед повтором команды.'),
-    );
-
-    await handler.handle(ctx as never);
-
-    const replies = getReplyCalls(ctx);
-    expect(replies[0]?.message).toContain('Эта кнопка уже устарела');
-    expect(replies[0]?.message).toContain('👤 Профиль');
-    expect(JSON.stringify(replies[0]?.keyboard)).toContain('intentId');
   });
 
   it('восстанавливает рунный контекст после pending retry для перековки', async () => {

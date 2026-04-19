@@ -1,5 +1,5 @@
 import { env } from './env';
-import type { InventoryView, RuneRarity, ShardField, StatKey } from '../shared/types/game';
+import type { InventoryView, RuneRarity, ShardField } from '../shared/types/game';
 
 export interface RuneProfile {
   weight: number;
@@ -31,14 +31,6 @@ export const gameBalance = Object.freeze({
     spellManaCost: 3,
     battleLogLimit: 12,
   },
-  statPointEffects: {
-    health: 4,
-    attack: 2,
-    defence: 3,
-    magicDefence: 3,
-    dexterity: 2,
-    intelligence: 2,
-  } satisfies Record<StatKey, number>,
   starterInventory: {
     usualShards: env.game.startingUsualShards,
     unusualShards: env.game.startingUnusualShards,

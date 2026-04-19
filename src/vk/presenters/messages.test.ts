@@ -18,15 +18,6 @@ const createPlayer = (overrides: Partial<PlayerState> = {}): PlayerState => ({
     dexterity: 3,
     intelligence: 1,
   },
-  allocationPoints: {
-    health: 0,
-    attack: 0,
-    defence: 0,
-    magicDefence: 0,
-    dexterity: 0,
-    intelligence: 0,
-  },
-  unspentStatPoints: 1,
   locationLevel: 0,
   currentRuneIndex: 0,
   activeBattleId: null,
@@ -241,7 +232,6 @@ describe('messages school-first onboarding framing', () => {
     const message = renderReturnRecap(createPlayer({
       tutorialState: 'SKIPPED',
       locationLevel: 1,
-      unspentStatPoints: 1,
       victories: 3,
       highestLocationLevel: 3,
       schoolMasteries: [{ schoolCode: 'ember', experience: 1, rank: 0 }],

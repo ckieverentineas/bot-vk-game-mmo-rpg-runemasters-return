@@ -77,8 +77,6 @@ export interface PlayerState {
   experience: number;
   gold: number;
   baseStats: StatBlock;
-  allocationPoints: StatBlock;
-  unspentStatPoints: number;
   locationLevel: number;
   currentRuneIndex: number;
   activeBattleId: string | null;

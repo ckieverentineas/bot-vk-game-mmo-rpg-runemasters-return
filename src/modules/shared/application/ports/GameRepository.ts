@@ -10,20 +10,11 @@ import type {
   StatBlock,
 } from '../../../../shared/types/game';
 
-export type AllocationCommandIntentKey = 'ALLOCATE_STAT_POINT' | 'RESET_ALLOCATED_STATS';
 export type RuneLoadoutCommandIntentKey = 'EQUIP_RUNE' | 'UNEQUIP_RUNE';
 export type RuneNavigationCommandIntentKey = 'MOVE_RUNE_CURSOR' | 'SELECT_RUNE_PAGE_SLOT';
 export type ExplorationCommandIntentKey = 'ENTER_TUTORIAL_MODE' | 'SKIP_TUTORIAL' | 'RETURN_TO_ADVENTURE';
 export type BattleActionCommandIntentKey = 'BATTLE_ATTACK' | 'BATTLE_DEFEND' | 'BATTLE_RUNE_SKILL';
 export type BattleCommandIntentKey = BattleActionCommandIntentKey | 'EXPLORE_LOCATION';
-
-export interface SaveAllocationOptions {
-  readonly commandKey?: AllocationCommandIntentKey;
-  readonly intentId?: string;
-  readonly intentStateKey?: string;
-  readonly expectedAllocationPoints?: StatBlock;
-  readonly expectedUnspentStatPoints?: number;
-}
 
 export interface SaveRuneLoadoutOptions {
   readonly commandKey?: RuneLoadoutCommandIntentKey;
@@ -97,7 +88,6 @@ export interface GameRepository {
     expectedCommandKeys?: readonly string[],
     expectedStateKey?: string,
   ): Promise<CommandIntentReplayResult<TResult> | null>;
-  saveAllocation(playerId: number, allocationPoints: StatBlock, unspentStatPoints: number, options?: SaveAllocationOptions): Promise<PlayerState>;
   saveExplorationState(
     playerId: number,
     state: Pick<PlayerState, 'locationLevel' | 'highestLocationLevel' | 'victoryStreak' | 'defeatStreak' | 'tutorialState'>,

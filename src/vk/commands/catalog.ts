@@ -11,7 +11,6 @@ export const gameCommands = {
   location: 'локация',
   skipTutorial: 'пропустить обучение',
   returnToAdventure: 'в приключения',
-  resetStats: 'сброс',
   explore: 'исследовать',
   attack: 'атака',
   defend: 'защита',
@@ -33,12 +32,6 @@ export const gameCommands = {
   selectRuneSlot3: 'руна слот 3',
   selectRuneSlot4: 'руна слот 4',
   selectRuneSlot5: 'руна слот 5',
-  increaseAttack: '+атк',
-  increaseHealth: '+здр',
-  increaseDefence: '+фзащ',
-  increaseMagicDefence: '+мзащ',
-  increaseDexterity: '+лвк',
-  increaseIntelligence: '+инт',
   rerollAttack: '~атк',
   rerollHealth: '~здр',
   rerollDefence: '~фзащ',
@@ -48,14 +41,6 @@ export const gameCommands = {
 } as const;
 
 export type GameCommand = (typeof gameCommands)[keyof typeof gameCommands];
-
-type StatAllocationCommand =
-  | typeof gameCommands.increaseAttack
-  | typeof gameCommands.increaseHealth
-  | typeof gameCommands.increaseDefence
-  | typeof gameCommands.increaseMagicDefence
-  | typeof gameCommands.increaseDexterity
-  | typeof gameCommands.increaseIntelligence;
 
 type RuneStatRerollCommand =
   | typeof gameCommands.rerollAttack
@@ -81,15 +66,6 @@ type RuneSlotCommand =
 type RuneCursorDelta = number;
 
 const hasOwn = <T extends object>(record: T, key: PropertyKey): key is keyof T => Object.prototype.hasOwnProperty.call(record, key);
-
-const statAllocationCommandMap = {
-  [gameCommands.increaseAttack]: 'attack',
-  [gameCommands.increaseHealth]: 'health',
-  [gameCommands.increaseDefence]: 'defence',
-  [gameCommands.increaseMagicDefence]: 'magicDefence',
-  [gameCommands.increaseDexterity]: 'dexterity',
-  [gameCommands.increaseIntelligence]: 'intelligence',
-} satisfies Readonly<Record<StatAllocationCommand, StatKey>>;
 
 const runeStatRerollCommandMap = {
   [gameCommands.rerollAttack]: 'attack',
@@ -127,14 +103,6 @@ export const commandAliases: Readonly<Record<string, GameCommand>> = {
   '<<руна': gameCommands.previousRunePage,
   '~+руна': gameCommands.nextRune,
   '~-руна': gameCommands.previousRune,
-};
-
-export const resolveStatAllocationCommand = (command: string): StatKey | null => {
-  if (!hasOwn(statAllocationCommandMap, command)) {
-    return null;
-  }
-
-  return statAllocationCommandMap[command];
 };
 
 export const resolveRuneStatRerollCommand = (command: string): StatKey | null => {

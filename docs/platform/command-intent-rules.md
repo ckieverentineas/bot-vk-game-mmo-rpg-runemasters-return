@@ -11,12 +11,10 @@ Covered by intent-based dedupe:
 - `craftRune`
 - `rerollRuneStat`
 - `destroyRune`
-- `allocateStatPoint`
-- `resetAllocatedStats`
 - `equipRune`
 - `unequipRune`
 - keyboard rune hub navigation (`previousRunePage`, `nextRunePage`, `selectRunePageSlot`)
-- legacy text rune hub navigation (`+руна`, `-руна`, `руны >`, `руны <`, `руна слот 1..4` and aliases)
+- legacy text rune hub navigation (`+руна`, `-руна`, `руны >`, `руны <`, `руна слот 1..5` and aliases)
 - `confirmDeletePlayer`
 - `enterTutorialMode`
 - `skipTutorial`
@@ -28,12 +26,12 @@ Covered by intent-based dedupe:
 Transport surface:
 
 - VK keyboard payloads for guarded buttons;
-- server-owned legacy text intents for `craftRune`, `rerollRuneStat`, `destroyRune`, `allocateStatPoint`, `resetAllocatedStats`, `equipRune`, `unequipRune`, rune hub navigation (`+руна`, `-руна`, `руны >`, `руны <`, `руна слот 1..4` and aliases), `enterTutorialMode` (`локация`, `обучение`), `skipTutorial`, `returnToAdventure`, `exploreLocation` (`исследовать`), `attack`, `defend`, `runeSkill`.
+- server-owned legacy text intents for `craftRune`, `rerollRuneStat`, `destroyRune`, `equipRune`, `unequipRune`, rune hub navigation (`+руна`, `-руна`, `руны >`, `руны <`, `руна слот 1..5` and aliases), `enterTutorialMode` (`локация`, `обучение`), `skipTutorial`, `returnToAdventure`, `exploreLocation` (`исследовать`), `attack`, `defend`, `runeSkill`.
 
 Not covered yet:
 
-- other free-text legacy commands outside rune mutations / profile stat allocation-reset;
-- broader profile/progression mutations beyond stat allocation / reset;
+- other free-text legacy commands outside rune mutations;
+- broader profile/progression mutations beyond the shipped school/rune flows;
 - full repo-wide exact-once command handling.
 
 ## Core rule
@@ -87,16 +85,6 @@ Fields of interest:
 - first arrival deletes the rune and applies one refund;
 - duplicate same-intent arrival returns the stored post-destroy snapshot, not a second refund.
 
-### Allocate stat point
-
-- first arrival spends one свободное очко характеристики и сохраняет новый профиль;
-- duplicate same-intent arrival returns the stored post-allocation profile instead of spending a second point.
-
-### Reset allocated stats
-
-- first arrival returns all потраченные очки характеристик exactly once;
-- duplicate same-intent arrival returns the stored reset profile instead of refunding twice.
-
 ### Equip rune
 
 - first arrival equips the currently selected rune from the rendered rune screen;
@@ -111,7 +99,7 @@ Fields of interest:
 
 - first arrival updates the currently visible rune page or selected slot exactly once for the rendered rune hub snapshot;
 - duplicate same-intent arrival returns the stored post-navigation rune hub state instead of retargeting a fresher selection;
-- same-intent replay rules now also apply to legacy text rune navigation (`+руна`, `-руна`, `руны >`, `руны <`, `руна слот 1..4` and aliases), not only keyboard payloads;
+- same-intent replay rules now also apply to legacy text rune navigation (`+руна`, `-руна`, `руны >`, `руны <`, `руна слот 1..5` and aliases), not only keyboard payloads;
 - stale page or slot buttons restore the latest canonical rune hub instead of silently selecting another rune.
 
 ### Delete player confirmation
@@ -152,8 +140,8 @@ Fields of interest:
 
 - keyboard payload is the current source of intent ids;
 - delete confirmation uses keyboard-issued `intentId` + profile `updatedAt` stateKey and is replayed through an account-scoped delete receipt;
-- server-owned legacy text ids currently protect rune craft / reroll / destroy / equip / unequip, profile stat allocation / reset, tutorial navigation (`пропустить обучение`, `в приключения`, `в мир`), and battle text inputs (`атака`, `защита`, `навыки`, `спелл`);
-- server-owned legacy text ids also protect rune hub navigation (`+руна`, `-руна`, `руны >`, `руны <`, `руна слот 1..4` and aliases);
+- server-owned legacy text ids currently protect rune craft / reroll / destroy / equip / unequip, tutorial navigation (`пропустить обучение`, `в приключения`, `в мир`), and battle text inputs (`атака`, `защита`, `навыки`, `спелл`);
+- server-owned legacy text ids also protect rune hub navigation (`+руна`, `-руна`, `руны >`, `руны <`, `руна слот 1..5` and aliases);
 - server-owned legacy text ids also protect tutorial entry via `локация` / `обучение`;
 - server-owned legacy text ids also protect exploration entry via `исследовать`;
 - keyboard battle buttons now carry scoped `intentId` + battle `stateKey`;
@@ -168,8 +156,6 @@ Fields of interest:
 - same-intent craft with enough shards for two crafts -> one craft only;
 - same-intent reroll with enough shards for two rerolls -> one reroll only;
 - same-intent destroy -> one refund only;
-- same-intent stat allocation with enough free points for two spends -> one spend only;
-- same-intent stat reset -> one refund only;
 - same-intent equip -> one canonical equipped loadout only;
 - same-intent unequip -> one canonical unequipped loadout only;
 - same-intent skip tutorial -> one canonical post-skip navigation state only;
@@ -186,5 +172,5 @@ Fields of interest:
 ## Deferred after v1
 
 - generic mutation intent envelope for all keyboard actions;
-- remaining text-command replay handling beyond guarded rune mutations, profile stat allocation / reset, tutorial navigation, exploration entry, and battle actions;
+- remaining text-command replay handling beyond guarded rune mutations, tutorial navigation, exploration entry, and battle actions;
 - broader state-key strategy for non-rune mutations.

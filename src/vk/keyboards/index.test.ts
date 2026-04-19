@@ -26,15 +26,6 @@ const createPlayer = (overrides: Partial<PlayerState> = {}): PlayerState => ({
     dexterity: 2,
     intelligence: 1,
   },
-  allocationPoints: {
-    health: 0,
-    attack: 1,
-    defence: 0,
-    magicDefence: 0,
-    dexterity: 0,
-    intelligence: 0,
-  },
-  unspentStatPoints: 2,
   locationLevel: 1,
   currentRuneIndex: 0,
   activeBattleId: null,
@@ -194,37 +185,16 @@ const collectLabels = (
 };
 
 describe('profile keyboard', () => {
-  it('adds intent metadata to stat and reset buttons when player context is available', () => {
+  it('keeps profile keyboard focused on navigation and delete confirmation', () => {
     const payloads = collectPayloads(createProfileKeyboard(createPlayer()));
 
-    const attack = payloads.find((payload) => payload.command === '+атк');
-    const reset = payloads.find((payload) => payload.command === 'сброс');
     const back = payloads.find((payload) => payload.command === 'назад');
+    const deletePlayer = payloads.find((payload) => payload.command === 'удалить персонажа');
 
-    expect(attack?.intentId).toEqual(expect.any(String));
-    expect(attack?.stateKey).toEqual(expect.any(String));
-    expect(reset?.intentId).toEqual(expect.any(String));
-    expect(reset?.stateKey).toEqual(expect.any(String));
     expect(back?.intentId).toBeUndefined();
     expect(back?.stateKey).toBeUndefined();
-  });
-
-  it('hides legacy stat-allocation buttons when the player no longer has old stat points', () => {
-    const payloads = collectPayloads(createProfileKeyboard(createPlayer({
-      unspentStatPoints: 0,
-      allocationPoints: {
-        health: 0,
-        attack: 0,
-        defence: 0,
-        magicDefence: 0,
-        dexterity: 0,
-        intelligence: 0,
-      },
-    })));
-
-    expect(payloads.find((payload) => payload.command === '+атк')).toBeUndefined();
-    expect(payloads.find((payload) => payload.command === 'сброс')).toBeUndefined();
-    expect(payloads.find((payload) => payload.command === 'назад')).toBeDefined();
+    expect(payloads.find((payload) => payload.command === 'удалить персонажа')).toBeDefined();
+    expect(deletePlayer?.intentId).toBeUndefined();
   });
 
   it('adds intent metadata to equip and unequip buttons when rune context is available', () => {

@@ -811,6 +811,22 @@
 
 - rune interface меньше выглядит как технический список и сильнее работает как быстрый выбор стиля боя перед следующим PvE шагом.
 
+## [0.50] - 2026-04-19
+
+### Commit
+
+- `worktree` — `refactor: remove legacy stat allocation completely`
+
+### Changed
+
+- legacy stat-allocation полностью удалена из runtime, persistence, VK-команд, profile UI и retry rails;
+- `PlayerState`, repository mapping и Prisma schema больше не содержат `allocationPoints`, `unspentStatPoints` и `PlayerStatAllocation`;
+- профиль теперь целиком описывает рост через школу рун, mastery и боевой стиль без transitional legacy copy.
+
+### Fixed
+
+- progression больше не раздваивается между новой school-mastery моделью и старой stat-allocation системой; у игры теперь один источник правды для роста.
+
 ## Шаблон следующей записи
 
 ### [0.03] - YYYY-MM-DD

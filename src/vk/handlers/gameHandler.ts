@@ -9,7 +9,6 @@ import {
   resolveRuneCursorDeltaCommand,
   resolveRunePageSlotCommand,
   resolveRuneStatRerollCommand,
-  resolveStatAllocationCommand,
 } from '../commands/catalog';
 import {
   createBattleKeyboard,
@@ -118,11 +117,6 @@ export class GameHandler {
           await this.reply(ctx, renderReturnRecap(player, '🧭 Возвращение в приключения'), createMainMenuKeyboard(player));
           return;
         }
-        case gameCommands.resetStats: {
-          const player = await this.services.resetAllocatedStats.execute(vkId, intentId ?? undefined, stateKey ?? undefined, intentSource);
-          await this.replyWithProfile(ctx, player);
-          return;
-        }
         case gameCommands.explore: {
           const battle = await this.services.exploreLocation.execute(vkId, intentId ?? undefined, stateKey ?? undefined, intentSource);
           await this.replyWithBattle(ctx, battle, vkId);
@@ -205,13 +199,6 @@ export class GameHandler {
     stateKey: string | null,
     intentSource: ReturnType<typeof resolveCommandEnvelope>['intentSource'],
   ): Promise<void> {
-    const allocationStat = resolveStatAllocationCommand(command);
-    if (allocationStat) {
-      const player = await this.services.allocateStatPoint.execute(vkId, allocationStat, intentId ?? undefined, stateKey ?? undefined, intentSource);
-      await this.replyWithProfile(ctx, player);
-      return;
-    }
-
     const runeCursorDelta = resolveRuneCursorDeltaCommand(command);
     if (runeCursorDelta !== null) {
       const player = await this.services.moveRuneCursor.execute(vkId, runeCursorDelta, intentId ?? undefined, stateKey ?? undefined, intentSource);
@@ -263,16 +250,6 @@ export class GameHandler {
           await this.reply(ctx, [error.message, '', renderBattle(battle)].join('\n'), this.resolveBattleKeyboard(battle));
           return true;
         }
-      }
-
-      if (command === gameCommands.resetStats || resolveStatAllocationCommand(command)) {
-        const player = await this.services.getPlayerProfile.execute(vkId);
-        await this.reply(
-          ctx,
-          [error.message, '', renderProfile(player)].join('\n'),
-          createProfileKeyboard(player),
-        );
-        return true;
       }
 
       if (command === gameCommands.confirmDeletePlayer) {

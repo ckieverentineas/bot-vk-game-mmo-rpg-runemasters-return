@@ -4,11 +4,9 @@ import { ExploreLocation } from '../modules/exploration/application/use-cases/Ex
 import { EnterTutorialMode } from '../modules/exploration/application/use-cases/EnterTutorialMode';
 import { ReturnToAdventure } from '../modules/exploration/application/use-cases/ReturnToAdventure';
 import { SkipTutorial } from '../modules/exploration/application/use-cases/SkipTutorial';
-import { AllocateStatPoint } from '../modules/player/application/use-cases/AllocateStatPoint';
 import { DeletePlayer } from '../modules/player/application/use-cases/DeletePlayer';
 import { GetPlayerProfile } from '../modules/player/application/use-cases/GetPlayerProfile';
 import { RegisterPlayer } from '../modules/player/application/use-cases/RegisterPlayer';
-import { ResetAllocatedStats } from '../modules/player/application/use-cases/ResetAllocatedStats';
 import { CraftRune } from '../modules/runes/application/use-cases/CraftRune';
 import { DestroyCurrentRune } from '../modules/runes/application/use-cases/DestroyCurrentRune';
 import { EquipCurrentRune } from '../modules/runes/application/use-cases/EquipCurrentRune';
@@ -25,8 +23,6 @@ export interface AppServices {
   registerPlayer: RegisterPlayer;
   deletePlayer: DeletePlayer;
   getPlayerProfile: GetPlayerProfile;
-  allocateStatPoint: AllocateStatPoint;
-  resetAllocatedStats: ResetAllocatedStats;
   enterTutorialMode: EnterTutorialMode;
   returnToAdventure: ReturnToAdventure;
   skipTutorial: SkipTutorial;
@@ -51,8 +47,6 @@ export const createAppServices = (): AppServices => {
     registerPlayer: new RegisterPlayer(repository),
     deletePlayer: new DeletePlayer(repository),
     getPlayerProfile: new GetPlayerProfile(repository),
-    allocateStatPoint: new AllocateStatPoint(repository),
-    resetAllocatedStats: new ResetAllocatedStats(repository),
     enterTutorialMode: new EnterTutorialMode(repository),
     returnToAdventure: new ReturnToAdventure(repository),
     skipTutorial: new SkipTutorial(repository),

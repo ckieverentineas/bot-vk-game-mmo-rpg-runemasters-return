@@ -15,8 +15,6 @@ const createPlayer = (overrides: Partial<PlayerState> = {}): PlayerState => ({
   experience: 0,
   gold: 0,
   baseStats: { health: 8, attack: 4, defence: 3, magicDefence: 1, dexterity: 2, intelligence: 1 },
-  allocationPoints: { health: 0, attack: 0, defence: 0, magicDefence: 0, dexterity: 0, intelligence: 0 },
-  unspentStatPoints: 0,
   locationLevel: 1,
   currentRuneIndex: 0,
   activeBattleId: 'battle-1',

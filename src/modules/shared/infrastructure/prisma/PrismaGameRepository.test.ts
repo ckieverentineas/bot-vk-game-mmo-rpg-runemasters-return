@@ -27,17 +27,8 @@ const createPlayerRecord = () => ({
   user: {
     vkId: 1001,
   },
-  allocation: {
-    health: 0,
-    attack: 0,
-    defence: 0,
-    magicDefence: 0,
-    dexterity: 0,
-    intelligence: 0,
-  },
   progress: {
     playerId: 1,
-    unspentStatPoints: 1,
     locationLevel: 1,
     currentRuneIndex: 0,
     activeBattleId: null,
@@ -220,15 +211,6 @@ const createPlayerStateSnapshot = (): PlayerState => ({
     dexterity: 2,
     intelligence: 1,
   },
-  allocationPoints: {
-    health: 0,
-    attack: 0,
-    defence: 0,
-    magicDefence: 0,
-    dexterity: 0,
-    intelligence: 0,
-  },
-  unspentStatPoints: 1,
   locationLevel: 1,
   currentRuneIndex: 0,
   activeBattleId: null,
@@ -271,10 +253,6 @@ const createPrismaMock = () => {
     user: {
       create: vi.fn(),
       delete: vi.fn(),
-    },
-    playerStatAllocation: {
-      update: vi.fn(),
-      updateMany: vi.fn(),
     },
     playerProgress: {
       update: vi.fn(),
@@ -389,7 +367,7 @@ describe('PrismaGameRepository release hardening', () => {
           create: expect.objectContaining({
             progress: expect.objectContaining({
               create: expect.objectContaining({
-                unspentStatPoints: 0,
+                locationLevel: 0,
               }),
             }),
           }),
@@ -512,83 +490,6 @@ describe('PrismaGameRepository release hardening', () => {
     expect(player.playerId).toBe(1);
     expect(tx.playerInventory.updateMany).not.toHaveBeenCalled();
     expect(tx.rune.create).not.toHaveBeenCalled();
-  });
-
-  it('returns canonical profile allocation result for a duplicate command intent without spending twice', async () => {
-    const { repository, tx } = createPrismaMock();
-
-    tx.commandIntentRecord.findUnique.mockResolvedValue({
-      commandKey: 'ALLOCATE_STAT_POINT',
-      stateKey: 'state-profile-1',
-      status: 'APPLIED',
-      resultSnapshot: JSON.stringify(createPlayerStateSnapshot()),
-    });
-
-    const player = await repository.saveAllocation(
-      1,
-      {
-        health: 0,
-        attack: 1,
-        defence: 0,
-        magicDefence: 0,
-        dexterity: 0,
-        intelligence: 0,
-      },
-      0,
-      {
-        commandKey: 'ALLOCATE_STAT_POINT',
-        intentId: 'intent-profile-1',
-        intentStateKey: 'state-profile-1',
-        expectedAllocationPoints: {
-          health: 0,
-          attack: 0,
-          defence: 0,
-          magicDefence: 0,
-          dexterity: 0,
-          intelligence: 0,
-        },
-        expectedUnspentStatPoints: 1,
-      },
-    );
-
-    expect(player.playerId).toBe(1);
-    expect(tx.playerStatAllocation.updateMany).not.toHaveBeenCalled();
-    expect(tx.playerProgress.updateMany).not.toHaveBeenCalled();
-  });
-
-  it('rejects stale profile allocation writes when the expected state no longer matches', async () => {
-    const { repository, tx } = createPrismaMock();
-
-    tx.playerStatAllocation.updateMany.mockResolvedValue({ count: 0 });
-
-    await expect(repository.saveAllocation(
-      1,
-      {
-        health: 0,
-        attack: 1,
-        defence: 0,
-        magicDefence: 0,
-        dexterity: 0,
-        intelligence: 0,
-      },
-      0,
-      {
-        commandKey: 'ALLOCATE_STAT_POINT',
-        intentId: 'intent-profile-stale',
-        intentStateKey: 'state-profile-stale',
-        expectedAllocationPoints: {
-          health: 0,
-          attack: 0,
-          defence: 0,
-          magicDefence: 0,
-          dexterity: 0,
-          intelligence: 0,
-        },
-        expectedUnspentStatPoints: 1,
-      },
-    )).rejects.toMatchObject({
-      code: 'stale_command_intent',
-    });
   });
 
   it('returns canonical exploration result for a duplicate tutorial navigation intent', async () => {
@@ -999,12 +900,11 @@ describe('PrismaGameRepository release hardening', () => {
     });
   });
 
-  it('stops granting new stat points from level ups during battle rewards', async () => {
+  it('levels up from battle rewards without touching any removed stat-point state', async () => {
     const { repository, tx } = createPrismaMock();
     const currentPlayer = createPlayerRecord();
     currentPlayer.level = 1;
     currentPlayer.experience = 49;
-    currentPlayer.progress.unspentStatPoints = 1;
     const persistedBattle = createBattleRow({
       status: 'COMPLETED',
       result: 'VICTORY',
@@ -1038,7 +938,7 @@ describe('PrismaGameRepository release hardening', () => {
     }));
     expect(tx.playerProgress.update).toHaveBeenCalledWith(expect.objectContaining({
       data: expect.objectContaining({
-        unspentStatPoints: 1,
+        activeBattleId: null,
       }),
     }));
   });

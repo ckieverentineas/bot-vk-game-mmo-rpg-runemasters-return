@@ -34,15 +34,6 @@ export const addStats = (left: StatBlock, right: StatBlock): StatBlock => ({
   intelligence: left.intelligence + right.intelligence,
 });
 
-export const allocationToBonus = (allocationPoints: StatBlock): StatBlock => ({
-  health: allocationPoints.health * gameBalance.statPointEffects.health,
-  attack: allocationPoints.attack * gameBalance.statPointEffects.attack,
-  defence: allocationPoints.defence * gameBalance.statPointEffects.defence,
-  magicDefence: allocationPoints.magicDefence * gameBalance.statPointEffects.magicDefence,
-  dexterity: allocationPoints.dexterity * gameBalance.statPointEffects.dexterity,
-  intelligence: allocationPoints.intelligence * gameBalance.statPointEffects.intelligence,
-});
-
 export const getEquippedRune = (player: PlayerState): RuneView | null => player.runes.find((rune) => rune.isEquipped) ?? null;
 
 export const getSelectedRune = (player: PlayerState): RuneView | null => {
@@ -55,7 +46,7 @@ export const getSelectedRune = (player: PlayerState): RuneView | null => {
 
 export const derivePlayerStats = (player: PlayerState): StatBlock => {
   const equippedRune = getEquippedRune(player) ?? emptyStats();
-  return addStats(addStats(player.baseStats, allocationToBonus(player.allocationPoints)), equippedRune);
+  return addStats(player.baseStats, equippedRune);
 };
 
 export const clamp = (value: number, min: number, max: number): number => Math.max(min, Math.min(max, value));
@@ -114,21 +105,11 @@ export const normalizeRuneIndex = (index: number, runeCount: number): number => 
   return normalized >= 0 ? normalized : runeCount + normalized;
 };
 
-export const spentStatPoints = (allocationPoints: StatBlock): number => (
-  allocationPoints.health
-  + allocationPoints.attack
-  + allocationPoints.defence
-  + allocationPoints.magicDefence
-  + allocationPoints.dexterity
-  + allocationPoints.intelligence
-);
-
 export const resolveLevelProgression = (
   level: number,
   experience: number,
   experienceGain: number,
-  unspentStatPoints: number,
-): { level: number; experience: number; unspentStatPoints: number } => {
+): { level: number; experience: number } => {
   let nextLevel = level;
   let nextExperience = experience + experienceGain;
 
@@ -140,7 +121,6 @@ export const resolveLevelProgression = (
   return {
     level: nextLevel,
     experience: nextExperience,
-    unspentStatPoints,
   };
 };
 

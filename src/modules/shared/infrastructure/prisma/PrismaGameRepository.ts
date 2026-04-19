@@ -20,7 +20,6 @@ import type {
 import { buildBattleSnapshot, isBattleSnapshot, type BattleSnapshot } from '../../domain/contracts/battle-snapshot';
 import {
   emptyInventory,
-  emptyStats,
   getEquippedRune,
   getSelectedRune,
   resolveAdaptiveAdventureLocationLevel,
@@ -42,14 +41,12 @@ import type {
   GameRepository,
   SaveBattleOptions,
   SaveExplorationOptions,
-  SaveAllocationOptions,
   SaveRuneCursorOptions,
   SaveRuneLoadoutOptions,
 } from '../../application/ports/GameRepository';
 
 const playerInclude = {
   user: true,
-  allocation: true,
   progress: true,
   inventory: true,
   schoolMasteries: true,
@@ -62,7 +59,7 @@ const playerInclude = {
 
 type PlayerRecord = Prisma.PlayerGetPayload<{ include: typeof playerInclude }>;
 type TransactionClient = Prisma.TransactionClient;
-type CommandIntentKey = 'CRAFT_RUNE' | 'REROLL_RUNE_STAT' | 'DESTROY_RUNE' | 'ALLOCATE_STAT_POINT' | 'RESET_ALLOCATED_STATS' | 'EQUIP_RUNE' | 'UNEQUIP_RUNE' | 'MOVE_RUNE_CURSOR' | 'SELECT_RUNE_PAGE_SLOT' | 'ENTER_TUTORIAL_MODE' | 'SKIP_TUTORIAL' | 'RETURN_TO_ADVENTURE' | 'EXPLORE_LOCATION' | 'BATTLE_ATTACK' | 'BATTLE_DEFEND' | 'BATTLE_RUNE_SKILL';
+type CommandIntentKey = 'CRAFT_RUNE' | 'REROLL_RUNE_STAT' | 'DESTROY_RUNE' | 'EQUIP_RUNE' | 'UNEQUIP_RUNE' | 'MOVE_RUNE_CURSOR' | 'SELECT_RUNE_PAGE_SLOT' | 'ENTER_TUTORIAL_MODE' | 'SKIP_TUTORIAL' | 'RETURN_TO_ADVENTURE' | 'EXPLORE_LOCATION' | 'BATTLE_ATTACK' | 'BATTLE_DEFEND' | 'BATTLE_RUNE_SKILL';
 
 type PersistedBattleState = Pick<BattleView, 'status' | 'turnOwner' | 'player' | 'enemy' | 'log' | 'result' | 'rewards' | 'actionRevision'>;
 
@@ -726,12 +723,8 @@ export class PrismaGameRepository implements GameRepository {
               baseMagicDefence: 1,
               baseDexterity: 3,
               baseIntelligence: 1,
-              allocation: {
-                create: {},
-              },
               progress: {
                 create: {
-                  unspentStatPoints: 0,
                   locationLevel: gameBalance.world.introLocationLevel,
                   currentRuneIndex: 0,
                   activeBattleId: null,
@@ -823,95 +816,6 @@ export class PrismaGameRepository implements GameRepository {
     return {
       status: 'PENDING',
     };
-  }
-
-  public async saveAllocation(
-    playerId: number,
-    allocationPoints: StatBlock,
-    unspentStatPoints: number,
-    options?: SaveAllocationOptions,
-  ): Promise<PlayerState> {
-    return this.prisma.$transaction(async (tx) => {
-      const apply = async (): Promise<PlayerState> => {
-        const allocationUpdate = options?.expectedAllocationPoints
-          ? await tx.playerStatAllocation.updateMany({
-              where: {
-                playerId,
-                health: options.expectedAllocationPoints.health,
-                attack: options.expectedAllocationPoints.attack,
-                defence: options.expectedAllocationPoints.defence,
-                magicDefence: options.expectedAllocationPoints.magicDefence,
-                dexterity: options.expectedAllocationPoints.dexterity,
-                intelligence: options.expectedAllocationPoints.intelligence,
-              },
-              data: {
-                health: allocationPoints.health,
-                attack: allocationPoints.attack,
-                defence: allocationPoints.defence,
-                magicDefence: allocationPoints.magicDefence,
-                dexterity: allocationPoints.dexterity,
-                intelligence: allocationPoints.intelligence,
-              },
-            })
-          : { count: 1 };
-
-        if (allocationUpdate.count === 0) {
-          throw new AppError('stale_command_intent', 'Эта кнопка уже устарела. Обновите экран перед повтором команды.');
-        }
-
-        const progressUpdate = options?.expectedUnspentStatPoints !== undefined
-          ? await tx.playerProgress.updateMany({
-              where: {
-                playerId,
-                unspentStatPoints: options.expectedUnspentStatPoints,
-              },
-              data: { unspentStatPoints },
-            })
-          : { count: 1 };
-
-        if (progressUpdate.count === 0) {
-          throw new AppError('stale_command_intent', 'Эта кнопка уже устарела. Обновите экран перед повтором команды.');
-        }
-
-        if (!options?.expectedAllocationPoints) {
-          await tx.playerStatAllocation.update({
-            where: { playerId },
-            data: {
-              health: allocationPoints.health,
-              attack: allocationPoints.attack,
-              defence: allocationPoints.defence,
-              magicDefence: allocationPoints.magicDefence,
-              dexterity: allocationPoints.dexterity,
-              intelligence: allocationPoints.intelligence,
-            },
-          });
-        }
-
-        if (options?.expectedUnspentStatPoints === undefined) {
-          await tx.playerProgress.update({
-            where: { playerId },
-            data: { unspentStatPoints },
-          });
-        }
-
-        const updatedPlayer = await this.requirePlayerRecord(tx, playerId);
-        return this.mapPlayer(updatedPlayer);
-      };
-
-      if (options?.commandKey && options.intentId && options.intentStateKey) {
-        return this.runWithCommandIntent(
-          tx,
-          playerId,
-          options.commandKey,
-          options.intentId,
-          options.intentStateKey,
-          options.intentStateKey,
-          apply,
-        );
-      }
-
-      return apply();
-    });
   }
 
   public async saveExplorationState(
@@ -1641,7 +1545,6 @@ export class PrismaGameRepository implements GameRepository {
       let nextLevel = player.level;
       let nextExperience = player.experience;
       let nextGold = player.gold;
-      let nextUnspentStatPoints = player.progress?.unspentStatPoints ?? 0;
       let nextVictories = player.progress?.victories ?? 0;
       let nextDefeats = player.progress?.defeats ?? 0;
       let nextMobsKilled = player.progress?.mobsKilled ?? 0;
@@ -1658,11 +1561,9 @@ export class PrismaGameRepository implements GameRepository {
           player.level,
           player.experience,
           rewardIntent.payload.experience,
-          nextUnspentStatPoints,
         );
         nextLevel = progression.level;
         nextExperience = progression.experience;
-        nextUnspentStatPoints = progression.unspentStatPoints;
         nextGold = player.gold + rewardIntent.payload.gold;
         nextVictories += 1;
         nextVictoryStreak += 1;
@@ -1727,7 +1628,6 @@ export class PrismaGameRepository implements GameRepository {
       await tx.playerProgress.update({
         where: { playerId },
         data: {
-          unspentStatPoints: nextUnspentStatPoints,
           locationLevel: nextLocationLevel,
           activeBattleId: null,
           tutorialState: nextTutorialState,
@@ -1884,17 +1784,6 @@ export class PrismaGameRepository implements GameRepository {
         dexterity: player.baseDexterity,
         intelligence: player.baseIntelligence,
       },
-      allocationPoints: player.allocation
-        ? {
-            health: player.allocation.health,
-            attack: player.allocation.attack,
-            defence: player.allocation.defence,
-            magicDefence: player.allocation.magicDefence,
-            dexterity: player.allocation.dexterity,
-            intelligence: player.allocation.intelligence,
-          }
-        : emptyStats(),
-      unspentStatPoints: player.progress?.unspentStatPoints ?? 0,
       locationLevel: player.progress?.locationLevel ?? gameBalance.world.introLocationLevel,
       currentRuneIndex: player.progress?.currentRuneIndex ?? 0,
       activeBattleId: player.progress?.activeBattleId ?? null,

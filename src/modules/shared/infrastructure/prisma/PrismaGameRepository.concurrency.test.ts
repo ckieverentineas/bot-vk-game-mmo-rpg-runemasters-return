@@ -6,6 +6,7 @@ import path from 'node:path';
 import { PrismaClient } from '@prisma/client';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
+import { env } from '../../../../config/env';
 import { gameBalance } from '../../../../config/game-balance';
 import type { CreateBattleInput, PlayerState, RuneDraft, StatBlock } from '../../../../shared/types/game';
 import { PrismaGameRepository } from './PrismaGameRepository';
@@ -146,7 +147,6 @@ describe.sequential('PrismaGameRepository concurrency rails', () => {
     await prisma.playerInventory.deleteMany();
     await prisma.playerSchoolMastery.deleteMany();
     await prisma.playerProgress.deleteMany();
-    await prisma.playerStatAllocation.deleteMany();
     await prisma.player.deleteMany();
     await prisma.user.deleteMany();
   });
@@ -173,8 +173,8 @@ describe.sequential('PrismaGameRepository concurrency rails', () => {
   it('starts newly created players without fresh legacy stat points', async () => {
     const player = await createPlayer(2998);
 
-    expect(player.unspentStatPoints).toBe(0);
-    expect(player.allocationPoints.attack).toBe(0);
+    expect(player.level).toBe(env.game.startingLevel);
+    expect(player.schoolMasteries?.length).toBeGreaterThan(0);
   });
 
   it('treats parallel delete confirmations for one intent as one destructive action', async () => {
@@ -456,55 +456,6 @@ describe.sequential('PrismaGameRepository concurrency rails', () => {
     expect(runeCount).toBe(1);
   });
 
-  it('returns the canonical profile allocation result for a duplicate intent even with enough points for two spends', async () => {
-    const player = await createPlayer(2018);
-    await prisma.playerProgress.update({
-      where: { playerId: player.playerId },
-      data: {
-        unspentStatPoints: 2,
-      },
-    });
-
-    const nextAllocation = {
-      health: 0,
-      attack: 1,
-      defence: 0,
-      magicDefence: 0,
-      dexterity: 0,
-      intelligence: 0,
-    } as const;
-    const expectedAllocation = {
-      health: 0,
-      attack: 0,
-      defence: 0,
-      magicDefence: 0,
-      dexterity: 0,
-      intelligence: 0,
-    } as const;
-
-    const [first, second] = await Promise.all([
-      repository.saveAllocation(player.playerId, nextAllocation, 1, {
-        commandKey: 'ALLOCATE_STAT_POINT',
-        intentId: 'intent-allocate-1',
-        intentStateKey: 'state-allocate-1',
-        expectedAllocationPoints: expectedAllocation,
-        expectedUnspentStatPoints: 2,
-      }),
-      repository.saveAllocation(player.playerId, nextAllocation, 1, {
-        commandKey: 'ALLOCATE_STAT_POINT',
-        intentId: 'intent-allocate-1',
-        intentStateKey: 'state-allocate-1',
-        expectedAllocationPoints: expectedAllocation,
-        expectedUnspentStatPoints: 2,
-      }),
-    ]);
-
-    expect(first.allocationPoints.attack).toBe(second.allocationPoints.attack);
-    expect(first.unspentStatPoints).toBe(second.unspentStatPoints);
-    expect(first.allocationPoints.attack).toBe(1);
-    expect(first.unspentStatPoints).toBe(1);
-  });
-
   it('returns the canonical equip result for a duplicate intent', async () => {
     const player = await createPlayer(2021);
     await repository.createRune(player.playerId, createRuneDraft('Руна для экипировки'));
@@ -671,111 +622,6 @@ describe.sequential('PrismaGameRepository concurrency rails', () => {
     })).rejects.toMatchObject({
       code: 'stale_command_intent',
     });
-  });
-
-  it('rejects a stale profile allocation intent after allocation state already changed', async () => {
-    const player = await createPlayer(2019);
-    await prisma.playerProgress.update({
-      where: { playerId: player.playerId },
-      data: {
-        unspentStatPoints: 2,
-      },
-    });
-
-    const expectedAllocation = {
-      health: 0,
-      attack: 0,
-      defence: 0,
-      magicDefence: 0,
-      dexterity: 0,
-      intelligence: 0,
-    } as const;
-
-    await repository.saveAllocation(player.playerId, {
-      ...expectedAllocation,
-      attack: 1,
-    }, 1, {
-      commandKey: 'ALLOCATE_STAT_POINT',
-      intentId: 'intent-allocate-before',
-      intentStateKey: 'state-allocate-before',
-      expectedAllocationPoints: expectedAllocation,
-      expectedUnspentStatPoints: 2,
-    });
-
-    await expect(repository.saveAllocation(player.playerId, {
-      ...expectedAllocation,
-      dexterity: 1,
-    }, 1, {
-      commandKey: 'ALLOCATE_STAT_POINT',
-      intentId: 'intent-allocate-stale',
-      intentStateKey: 'state-allocate-before',
-      expectedAllocationPoints: expectedAllocation,
-      expectedUnspentStatPoints: 2,
-    })).rejects.toMatchObject({
-      code: 'stale_command_intent',
-    });
-  });
-
-  it('returns the canonical reset result for a duplicate intent without refunding twice', async () => {
-    const player = await createPlayer(2020);
-    await prisma.playerStatAllocation.update({
-      where: { playerId: player.playerId },
-      data: {
-        attack: 1,
-        dexterity: 1,
-      },
-    });
-    await prisma.playerProgress.update({
-      where: { playerId: player.playerId },
-      data: {
-        unspentStatPoints: 0,
-      },
-    });
-
-    const expectedAllocation = {
-      health: 0,
-      attack: 1,
-      defence: 0,
-      magicDefence: 0,
-      dexterity: 1,
-      intelligence: 0,
-    } as const;
-
-    const [first, second] = await Promise.all([
-      repository.saveAllocation(player.playerId, {
-        health: 0,
-        attack: 0,
-        defence: 0,
-        magicDefence: 0,
-        dexterity: 0,
-        intelligence: 0,
-      }, 2, {
-        commandKey: 'RESET_ALLOCATED_STATS',
-        intentId: 'intent-reset-1',
-        intentStateKey: 'state-reset-1',
-        expectedAllocationPoints: expectedAllocation,
-        expectedUnspentStatPoints: 0,
-      }),
-      repository.saveAllocation(player.playerId, {
-        health: 0,
-        attack: 0,
-        defence: 0,
-        magicDefence: 0,
-        dexterity: 0,
-        intelligence: 0,
-      }, 2, {
-        commandKey: 'RESET_ALLOCATED_STATS',
-        intentId: 'intent-reset-1',
-        intentStateKey: 'state-reset-1',
-        expectedAllocationPoints: expectedAllocation,
-        expectedUnspentStatPoints: 0,
-      }),
-    ]);
-
-    expect(first.allocationPoints).toEqual(second.allocationPoints);
-    expect(first.unspentStatPoints).toBe(second.unspentStatPoints);
-    expect(first.allocationPoints.attack).toBe(0);
-    expect(first.unspentStatPoints).toBe(2);
   });
 
   it('returns the canonical crafted rune for a duplicate intent even with enough budget for two crafts', async () => {

@@ -19,7 +19,7 @@
 - новые игроки теперь стартуют без новых stat points и не получают старую profile-ветку по умолчанию;
 - school mastery v0 растёт за победы с экипированной руной школы;
 - rank 1 у текущих школ даёт маленький, но **не плоский** боевой payoff;
-- старые `allocationPoints` и оставшиеся `unspentStatPoints` пока сохраняются как compatibility layer для существующих профилей.
+- legacy stat-allocation полностью удалена из runtime, persistence, UI и transport-команд.
 
 ## Why this slice
 
@@ -32,6 +32,5 @@
 ## Deferred after v1
 
 - полный skill tree / doctrine layer;
-- конвертация legacy allocation в новую систему;
 - player-state versioning policy для полного удаления старых stat-point полей;
 - school mastery depth beyond first rank / first unlock layer.

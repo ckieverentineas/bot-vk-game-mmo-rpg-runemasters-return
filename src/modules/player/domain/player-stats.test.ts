@@ -24,15 +24,6 @@ const createPlayerState = (overrides: Partial<PlayerState> = {}): PlayerState =>
     dexterity: 3,
     intelligence: 1,
   },
-  allocationPoints: {
-    health: 0,
-    attack: 0,
-    defence: 0,
-    magicDefence: 0,
-    dexterity: 0,
-    intelligence: 0,
-  },
-  unspentStatPoints: 0,
   locationLevel: 1,
   currentRuneIndex: 0,
   activeBattleId: null,
@@ -165,11 +156,10 @@ describe('tutorial state gating', () => {
 });
 
 describe('level progression', () => {
-  it('больше не выдаёт новые stat points просто за уровень', () => {
-    expect(resolveLevelProgression(1, 49, 11, 1)).toEqual({
+  it('считает только уровень и остаток опыта без stat-point логики', () => {
+    expect(resolveLevelProgression(1, 49, 11)).toEqual({
       level: 2,
       experience: 0,
-      unspentStatPoints: 1,
     });
   });
 });

@@ -5,7 +5,6 @@ import {
   getSelectedRune,
   isPlayerInTutorial,
   resolveAdaptiveAdventureLocationLevel,
-  spentStatPoints,
 } from '../../modules/player/domain/player-stats';
 import {
   getPlayerSchoolMasteryForArchetype,
@@ -310,7 +309,6 @@ export const renderMainMenu = (player: PlayerState): string => {
       ? '📘 Режим: обучение'
       : `🎯 Уровень угрозы: ${resolveAdaptiveAdventureLocationLevel(player)}`,
     `💰 Руная пыль: ${player.gold}`,
-    ...(player.unspentStatPoints > 0 ? [`🎯 Legacy-очки характеристик: ${player.unspentStatPoints}`] : []),
     `🧭 Максимально пройденная угроза: ${player.highestLocationLevel}`,
     `🔮 Экипирована: ${equippedRune ? equippedRune.name : 'нет руны'}`,
     renderSchoolMasteryLine(player),
@@ -335,12 +333,9 @@ export const renderProfile = (player: PlayerState): string => {
     `⭐ Уровень: ${player.level}`,
     `📊 Опыт: ${player.experience}/${nextLevelXp}`,
     `💰 Руная пыль: ${player.gold}`,
-    ...(player.unspentStatPoints > 0 ? [`🎯 Legacy-очки характеристик: ${player.unspentStatPoints}`] : []),
     `🏆 Победы / Поражения: ${player.victories}/${player.defeats}`,
     renderSchoolMasteryLine(player),
-    ...(player.unspentStatPoints > 0 || spentStatPoints(player.allocationPoints) > 0
-      ? ['Старые очки характеристик ещё можно распределить или сбросить, но новые уровни больше не начисляют такие очки.']
-      : ['Дальнейший рост силы идёт через руны, школу боя и её мастерство, а не через новые stat points за уровень.']),
+    'Дальнейший рост силы идёт через руны, школу рун и её мастерство, а не через ручное распределение статов.',
     '',
     formatStatBlock(stats),
   ].join('\n');

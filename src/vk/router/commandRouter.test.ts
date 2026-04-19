@@ -57,30 +57,6 @@ describe('normalizeCommand', () => {
     expect(resolved.intentSource).toBe('legacy_text');
   });
 
-  it('выводит server-owned intent для legacy text профильных мутаций', () => {
-    const allocate = resolveCommandEnvelope({
-      text: '+атк',
-      senderId: 1001,
-      peerId: 2000000001,
-      conversationMessageId: 79,
-      id: 503,
-      messagePayload: null,
-    } as never);
-    const reset = resolveCommandEnvelope({
-      text: 'сброс',
-      senderId: 1001,
-      peerId: 2000000001,
-      conversationMessageId: 80,
-      id: 504,
-      messagePayload: null,
-    } as never);
-
-    expect(allocate.intentId).toBe('legacy-text:2000000001:1001:79:+атк');
-    expect(allocate.intentSource).toBe('legacy_text');
-    expect(reset.intentId).toBe('legacy-text:2000000001:1001:80:сброс');
-    expect(reset.intentSource).toBe('legacy_text');
-  });
-
   it('выводит server-owned intent для legacy text loadout мутаций', () => {
     const equip = resolveCommandEnvelope({
       text: 'надеть',
@@ -266,7 +242,7 @@ describe('normalizeCommand', () => {
 
   it('не теряет legacy text intent из-за пустого payload объекта', () => {
     const resolved = resolveCommandEnvelope({
-      text: '+атк',
+      text: 'создать',
       senderId: 1001,
       peerId: 2000000001,
       conversationMessageId: 81,
@@ -274,13 +250,13 @@ describe('normalizeCommand', () => {
       messagePayload: {},
     } as never);
 
-    expect(resolved.intentId).toBe('legacy-text:2000000001:1001:81:+атк');
+    expect(resolved.intentId).toBe('legacy-text:2000000001:1001:81:создать');
     expect(resolved.intentSource).toBe('legacy_text');
   });
 
   it('fails closed when guarded legacy text command lacks message metadata', () => {
     const resolved = resolveCommandEnvelope({
-      text: '+атк',
+      text: 'создать',
       senderId: 1001,
       messagePayload: null,
     } as never);

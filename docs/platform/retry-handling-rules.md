@@ -34,17 +34,9 @@
 - legacy text `создать` / `сломать` / `~stat` теперь получают server-owned message intent id и используют тот же canonical replay receipt.
 - keyboard-issued `equipRune` / `unequipRune` дополнительно привязываются к loadout `stateKey`, чтобы старое сообщение не могло экипировать или снять уже другую руну.
 - legacy text `надеть` / `снять` получают server-owned message intent id и повторно возвращают canonical loadout result вместо второго применения той же команды.
-- keyboard-issued `руны >` / `руны <` / `руна слот 1..4` дополнительно привязываются к rune-hub `stateKey`, чтобы старый экран не мог тихо выбрать уже другую руну или другую страницу.
-- legacy text `+руна` / `-руна` / `руны >` / `руны <` / `руна слот 1..4` и alias теперь тоже получают server-owned message intent id и используют тот же canonical replay receipt.
+- keyboard-issued `руны >` / `руны <` / `руна слот 1..5` дополнительно привязываются к rune-hub `stateKey`, чтобы старый экран не мог тихо выбрать уже другую руну или другую страницу.
+- legacy text `+руна` / `-руна` / `руны >` / `руны <` / `руна слот 1..5` и alias теперь тоже получают server-owned message intent id и используют тот же canonical replay receipt.
 - stale или retry-pending rune page/slot input обязан восстанавливать актуальный rune hub вместо silent retargeting.
-
-## Profile mutation rules
-
-- `allocateStatPoint` и `resetAllocatedStats` используют keyboard-issued `intentId` + profile `stateKey`;
-- plain text `+атк` / `+здр` / `+фзащ` / `+мзащ` / `+лвк` / `+инт` / `сброс` получают server-owned message intent id и тоже идут через canonical replay receipt;
-- stateKey привязан к `allocationPoints`, `unspentStatPoints` и целевой характеристике там, где это важно;
-- duplicate same-intent profile mutation обязан вернуть canonical stored profile, а не второй spend/refund;
-- stale profile button после уже применённого изменения обязан быть отклонён как `stale_command_intent`, а не применён поверх нового профиля.
 
 ## Destructive confirmation rules
 
@@ -89,4 +81,4 @@
 
 - explicit RNG authority rules for reroll / drop / craft are now defined in `docs/platform/rng-authority-rules.md`, but broader legacy-text and non-profile command replay still remains;
 - migration fixtures for versioned persisted contracts;
-- remaining legacy text-command repeated actions beyond guarded rune mutations / profile stat allocation / reset / tutorial navigation / exploration entry / battle actions, plus non-rune mutations beyond guarded rune loadout buttons; delete confirmation exact-once is now covered.
+- remaining legacy text-command repeated actions beyond guarded rune mutations / tutorial navigation / exploration entry / battle actions, plus non-rune mutations beyond guarded rune loadout buttons; delete confirmation exact-once is now covered.
