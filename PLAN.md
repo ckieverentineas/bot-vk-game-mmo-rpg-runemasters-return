@@ -482,9 +482,10 @@ Runemasters Return должен решать это через **школы ру
 - [ ] Зафиксировать skill budget в бою
   - [ ] сколько активных рунных кнопок допустимо в 1.0
   - [ ] какой рост сложности живёт pre-battle, а не in-battle
-- [ ] Зафиксировать same-school starter synergy rules
-  - [ ] setup -> payoff без proc-web хаоса
-  - [ ] без infinite resource loops
+- [x] Зафиксировать same-school starter synergy rules
+  - [x] setup -> payoff без proc-web хаоса
+  - [x] без infinite resource loops
+  - [x] locked scope v1: только Пламя + Твердь через `docs/reviews/starter-synergy-v1.md`
 - [ ] Зафиксировать targeted chase philosophy
   - [ ] школа должна быть targetable
   - [ ] targeted chase не должен становиться казино
@@ -999,3 +1000,4 @@ Runemasters Return должен решать это через **школы ру
 - **2026-04-19:** утверждён `docs/product/1-0-release-charter.md`; 1.0 promise, explicit out-of-scope, ethical retention charter и governance baseline теперь вынесены в отдельный source-of-truth, а не размазаны только по roadmap-частям `PLAN.md`.
 - **2026-04-19:** progression rework v1 сдвигает рост от level-up stat allocation к school mastery: новые уровни больше не должны начислять новые stat points, а победы с экипированной школой теперь накапливают mastery и открывают первый non-flat боевой payoff.
 - **2026-04-19:** новые игроки теперь стартуют без новых stat points; старая profile-ветка распределения статов остаётся только как compatibility layer для существующих аккаунтов и больше не считается частью normal onboarding path.
+- **2026-04-19:** собран `docs/reviews/starter-synergy-v1.md`; same-school starter synergy v1 зафиксирована для Пламени и Тверди как читаемая `setup -> payoff` пара без новых кнопок и без proc-web хаоса.

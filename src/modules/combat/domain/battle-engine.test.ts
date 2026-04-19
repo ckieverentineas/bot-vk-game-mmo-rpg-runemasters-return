@@ -164,6 +164,34 @@ describe('BattleEngine', () => {
     expect(resolved.log.some((entry) => entry.includes('Мастерство Пламени'))).toBe(true);
   });
 
+  it('пламя получает starter synergy после рунной техники в окно добивания', () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0.5);
+    const battle = createBattle({
+      player: {
+        ...createBattle().player,
+        runeLoadout: {
+          ...createBattle().player.runeLoadout!,
+          schoolCode: 'ember',
+          schoolMasteryRank: 1,
+          activeAbility: {
+            ...createBattle().player.runeLoadout!.activeAbility!,
+            currentCooldown: 1,
+          },
+        },
+      },
+      enemy: {
+        ...createBattle().enemy,
+        maxHealth: 16,
+        currentHealth: 8,
+      },
+    });
+
+    const resolved = BattleEngine.attack(battle);
+
+    expect(resolved.enemy.currentHealth).toBe(1);
+    expect(resolved.log.some((entry) => entry.includes('Разогрев Пламени'))).toBe(true);
+  });
+
   it('даёт игроку универсальную защиту вместо атаки', () => {
     const battle = createBattle();
 
@@ -252,6 +280,41 @@ describe('BattleEngine', () => {
     expect(resolved.player.guardPoints).toBeGreaterThanOrEqual(6);
     expect(resolved.log.some((entry) => entry.includes('Каменный отпор'))).toBe(true);
     expect(resolved.log.some((entry) => entry.includes('Школа Тверди'))).toBe(true);
+  });
+
+  it('твердь получает starter synergy, если каменный отпор разыгран из уже собранной стойки', () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0.5);
+    const battle = createBattle({
+      player: {
+        ...createBattle().player,
+        guardPoints: 2,
+        runeLoadout: {
+          ...createBattle().player.runeLoadout!,
+          archetypeCode: 'stone',
+          archetypeName: 'Страж',
+          schoolCode: 'stone',
+          schoolMasteryRank: 1,
+          passiveAbilityCodes: ['stone_guard'],
+          activeAbility: {
+            code: 'stone_bastion',
+            name: 'Каменный отпор',
+            manaCost: 2,
+            cooldownTurns: 2,
+            currentCooldown: 0,
+          },
+        },
+      },
+      enemy: {
+        ...createBattle().enemy,
+        defence: 1,
+      },
+    });
+
+    const resolved = BattleEngine.useRuneSkill(battle);
+
+    expect(resolved.enemy.currentHealth).toBe(4);
+    expect(resolved.player.guardPoints).toBe(8);
+    expect(resolved.log.some((entry) => entry.includes('Ответ стойки'))).toBe(true);
   });
 
   it('школа прорицания превращает телеграф врага в усиленную атаку', () => {

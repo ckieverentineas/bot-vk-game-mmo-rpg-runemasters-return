@@ -771,6 +771,27 @@
 
 - progression rework больше не конфликтует с new-player bootstrap: игра перестала сначала отказываться от stat-point growth, а потом сразу же выдавать новые legacy-очки на старте.
 
+## [0.48] - 2026-04-19
+
+### Commit
+
+- `worktree` — `feat: add starter school synergies`
+
+### Added
+
+- review artifact [`docs/reviews/starter-synergy-v1.md`](docs/reviews/starter-synergy-v1.md) с locked scope для first same-school synergy slice;
+- battle regression coverage на Ember/Stone starter synergy windows.
+
+### Changed
+
+- `Пламя` теперь получает читаемую same-school starter synergy: после рунной техники в окно отката базовая атака сильнее дожимает просевшую цель;
+- `Твердь` теперь получает читаемую same-school starter synergy: `Каменный отпор` из уже собранной стойки бьёт сильнее и лучше удерживает guard;
+- `PLAN.md`, `README.md` и `ARCHITECTURE.md` синхронизированы под locked synergy scope для Пламени + Тверди.
+
+### Fixed
+
+- progression loop перестал выглядеть как набор разрозненных mastery-бонусов: у locked школ появился первый понятный `setup -> payoff` боевой паттерн без новых кнопок и без proc-web хаоса.
+
 ## Шаблон следующей записи
 
 ### [0.03] - YYYY-MM-DD

@@ -22,8 +22,8 @@ const schoolMasteryDefinitions: readonly SchoolMasteryDefinition[] = [
     unlocks: [
       {
         rank: 1,
-        title: 'Искра дожима',
-        description: 'Базовая атака сильнее добивает врага, который уже просел ниже половины здоровья.',
+        title: 'Разогрев дожима',
+        description: 'После «Импульса углей» базовая атака ещё сильнее добивает врага ниже половины здоровья.',
       },
     ],
   },
@@ -33,8 +33,8 @@ const schoolMasteryDefinitions: readonly SchoolMasteryDefinition[] = [
     unlocks: [
       {
         rank: 1,
-        title: 'Опорная стойка',
-        description: 'Защита набирает ещё больше guard и заметнее переживает опасный ход.',
+        title: 'Ответ стойки',
+        description: 'Если вы уже держите guard, «Каменный отпор» бьёт сильнее и крепче держит стойку.',
       },
     ],
   },

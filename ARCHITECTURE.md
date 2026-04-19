@@ -205,6 +205,7 @@ src/
 - новые игроки больше не стартуют с fresh stat points;
 - старые `allocationPoints` остаются compatibility-слоем для уже существующих профилей;
 - новая ось роста начинает идти через `PlayerSchoolMastery`, чтобы школа усиливала именно стиль боя, а не только голые числа.
+- для locked slice первые same-school synergies у Пламени и Тверди живут прямо в battle-domain rules и используют уже существующее состояние боя (`cooldown`, `guard`, `hp threshold`), а не отдельный новый runtime layer.
 
 ### 8. Release discipline
 

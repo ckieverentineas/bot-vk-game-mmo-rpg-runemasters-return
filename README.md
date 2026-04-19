@@ -26,6 +26,7 @@ Runemasters Return — VK MMO RPG на TypeScript с модульным игро
 - tutorial loop теперь подводит игрока к первой активной руне, экипировке и первому применению рунного действия;
 - новые уровни больше не раздают новые stat points как основной рост; дальнейшая ось прогрессии начинает смещаться в school mastery;
 - school mastery v0 теперь растёт за победы с экипированной школой и даёт первый non-flat боевой payoff вместо очередного голого +к статам;
+- для locked Vertical Slice у Пламени и Тверди уже зафиксированы первые same-school starter synergies: школа начинает давать читаемую связку `setup -> payoff`, а не только отдельный пассивный бонус;
 - versioned platform contracts для боевой рунной сборки и reward claims: `LoadoutSnapshot`, `RewardIntent`, `RewardLedger`;
 - exact-once reward ledger и canonical battle finalization защищают победную награду от replay/reroll по повторным входящим событиям;
 - battle mutation revision защищает активный бой от stale overwrite при спаме и transport retry;
@@ -57,6 +58,7 @@ Runemasters Return — VK MMO RPG на TypeScript с модульным игро
 - `docs/product/1-0-release-charter.md` — утверждённое обещание релиза 1.0, explicit out-of-scope и ethical retention red lines;
 - `docs/reviews/phase-1-exit-gate.md` — единый gate-review для перехода из Foundation & Platform к Vertical Slice scope lock;
 - `docs/reviews/progression-rework-v1.md` — решение по уходу от новых stat points за уровни к school mastery как следующей оси роста;
+- `docs/reviews/starter-synergy-v1.md` — первый locked same-school synergy slice для Пламени и Тверди;
 - `docs/telemetry/telemetry-plan.md` — минимальный telemetry v1 план для onboarding clarity, school readability, return UX, economy health и exploit review;
 - `docs/content/content-pipeline-plan.md`, `docs/content/validator-scope.md`, `docs/content/templates/school-package-template.md` — source-of-truth по content packages, validator tiers и school package completeness;
 - `src/modules/runes/domain/rune-collection.ts` — paging helper'ы рунной коллекции поверх существующего `currentRuneIndex` без новой persistence-схемы;

@@ -20,10 +20,13 @@ import {
   resolveEchoMasteryAttackBonus,
   resolveEchoIntentAttackBonus,
   resolveEmberAttackBonus,
+  resolveEmberComboBonus,
   resolveEmberExecutionBonus,
   resolveGaleMasteryAttackGuardGain,
   resolveStoneGuardCapBonus,
   resolveStoneGuardGainBonus,
+  resolveStoneSynergyDamageBonus,
+  resolveStoneSynergyGuardBonus,
   resolveStoneMasteryGuardGainBonus,
 } from './battle-rune-passives';
 
@@ -233,10 +236,11 @@ export class BattleEngine {
     const baseDamage = calculatePhysicalDamage(nextBattle.player.attack, nextBattle.enemy.defence);
     const emberBonus = resolveEmberAttackBonus(nextBattle);
     const emberExecutionBonus = resolveEmberExecutionBonus(nextBattle);
+    const emberComboBonus = resolveEmberComboBonus(nextBattle);
     const echoBonus = resolveEchoIntentAttackBonus(nextBattle);
     const echoMasteryBonus = resolveEchoMasteryAttackBonus(nextBattle);
     const galeGuardGain = resolveGaleMasteryAttackGuardGain(nextBattle);
-    const totalDamage = baseDamage + emberBonus + emberExecutionBonus + echoBonus + echoMasteryBonus;
+    const totalDamage = baseDamage + emberBonus + emberExecutionBonus + emberComboBonus + echoBonus + echoMasteryBonus;
 
     if (galeGuardGain > 0) {
       nextBattle.player.guardPoints = Math.min(
@@ -251,6 +255,7 @@ export class BattleEngine {
       `⚔️ Вы наносите ${totalDamage} урона врагу ${nextBattle.enemy.name}.`,
       ...(emberBonus > 0 ? [`🔥 Школа Пламени усиливает атаку ещё на ${emberBonus}.`] : []),
       ...(emberExecutionBonus > 0 ? [`🔥 Мастерство Пламени помогает дожать врага ещё на ${emberExecutionBonus}.`] : []),
+      ...(emberComboBonus > 0 ? ['🔥 Разогрев Пламени превращает откат рунной техники в окно для ещё более сильного добивания.'] : []),
       ...(echoBonus > 0 ? [`🧠 Школа Прорицания считывает намерение врага и добавляет ${echoBonus} магического урона.`] : []),
       ...(echoMasteryBonus > 0 ? [`🧠 Мастерство Прорицания добавляет ещё ${echoMasteryBonus} урона по раскрытой угрозе.`] : []),
       ...(galeGuardGain > 0 ? [`🌪️ Мастерство Бури готовит защиту ещё на ${galeGuardGain} урона.`] : []),
@@ -285,12 +290,14 @@ export class BattleEngine {
   }
 
   private static performStoneBastion(nextBattle: BattleView, activeAbility: BattleRuneActionSnapshot): BattleView {
+    const synergyDamageBonus = resolveStoneSynergyDamageBonus(nextBattle);
+    const synergyGuardBonus = resolveStoneSynergyGuardBonus(nextBattle);
     const damage = calculatePhysicalDamage(
       Math.max(1, Math.floor(nextBattle.player.attack * 0.6) + Math.floor(nextBattle.player.defence / 2)),
       nextBattle.enemy.defence,
-    );
+    ) + synergyDamageBonus;
     const intentBonus = nextBattle.enemy.intent?.code === 'HEAVY_STRIKE' ? 2 : 0;
-    const guardGain = resolveDefendGuardGain(nextBattle.player) + resolveStoneGuardGainBonus(nextBattle) + 1 + intentBonus;
+    const guardGain = resolveDefendGuardGain(nextBattle.player) + resolveStoneGuardGainBonus(nextBattle) + 1 + intentBonus + synergyGuardBonus;
     const guardCap = resolveGuardCap(nextBattle.player) + resolveStoneGuardCapBonus(nextBattle);
 
     nextBattle.enemy.currentHealth = Math.max(0, nextBattle.enemy.currentHealth - damage);
@@ -301,6 +308,7 @@ export class BattleEngine {
       nextBattle.log,
       `🌀 ${activeAbility.name} наносит ${damage} урона и поднимает каменную защиту на ${guardGain}.`,
       ...(intentBonus > 0 ? ['🪨 Школа Тверди укрепляется ещё сильнее против заранее раскрытой угрозы.'] : []),
+      ...(synergyDamageBonus > 0 ? ['🪨 Ответ стойки превращает накопленную защиту в более жёсткий контрудар.'] : []),
       `💙 Мана: ${nextBattle.player.currentMana}/${nextBattle.player.maxMana}.`,
     );
 
