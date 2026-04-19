@@ -3,7 +3,7 @@ import type { BattleView } from '../../../../shared/types/game';
 import { finalizeRecoveredBattleIfNeeded } from '../../../combat/application/finalize-recovered-battle';
 import { BattleEngine } from '../../../combat/domain/battle-engine';
 import { buildBattlePlayerSnapshot } from '../../../combat/domain/build-battle-player-snapshot';
-import { derivePlayerStats, getEquippedRune, resolveEncounterLocationLevel } from '../../../player/domain/player-stats';
+import { derivePlayerStats, resolveEncounterLocationLevel } from '../../../player/domain/player-stats';
 import { resolveCommandIntent, type CommandIntentSource } from '../../../shared/application/command-intent';
 import { requirePlayerByVkId } from '../../../shared/application/require-player';
 import type { GameRandom } from '../../../shared/application/ports/GameRandom';
@@ -117,7 +117,7 @@ export class ExploreLocation {
       biomeCode: biome.code,
       enemyCode: template.code,
       turnOwner,
-      player: buildBattlePlayerSnapshot(currentPlayer.playerId, vkId, playerStats, getEquippedRune(currentPlayer), currentPlayer),
+      player: buildBattlePlayerSnapshot(currentPlayer.playerId, vkId, playerStats, currentPlayer),
       enemy,
       log: [describeEncounter(biome, enemy)],
       result: null,

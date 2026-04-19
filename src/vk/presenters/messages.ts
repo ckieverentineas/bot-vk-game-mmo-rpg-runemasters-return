@@ -527,6 +527,7 @@ const renderBattleActorStats = (
 
 const renderBattleRuneState = (battle: BattleView): string => {
   const runeLoadout = battle.player.runeLoadout ?? null;
+  const supportRuneLoadout = battle.player.supportRuneLoadout ?? null;
   if (!runeLoadout) {
     return '🔮 Без экипированной руны: доступна только базовая атака.';
   }
@@ -548,7 +549,22 @@ const renderBattleRuneState = (battle: BattleView): string => {
     ? ` · защита ${battle.player.guardPoints}`
     : '';
 
-  return `🔮 ${runeLoadout.runeName}: ${school?.schoolLine ?? 'школа неизвестна'} · роль ${school?.roleName.toLowerCase() ?? 'неизвестна'} · «${activeAbility.name}» · ${activeAbility.manaCost} маны · ${state}${guardLine}`;
+  const primaryLine = `🔮 ${runeLoadout.runeName}: ${school?.schoolLine ?? 'школа неизвестна'} · роль ${school?.roleName.toLowerCase() ?? 'неизвестна'} · «${activeAbility.name}» · ${activeAbility.manaCost} маны · ${state}${guardLine}`;
+  if (!supportRuneLoadout) {
+    return primaryLine;
+  }
+
+  const supportSchool = getRuneSchoolPresentation(supportRuneLoadout.archetypeCode);
+  const supportHint = supportRuneLoadout.passiveAbilityCodes.includes('ember_heart') && runeLoadout.schoolCode === 'ember'
+    ? 'усиливает давление базовой атаки'
+    : supportRuneLoadout.passiveAbilityCodes.includes('stone_guard') && runeLoadout.schoolCode === 'stone'
+      ? 'укрепляет guard и защитный темп'
+      : 'добавляет пассивную поддержку сборке';
+
+  return [
+    primaryLine,
+    `🧩 Поддержка: ${supportRuneLoadout.runeName} · ${supportSchool?.name ?? 'без школы'} · ${supportHint}.`,
+  ].join('\n');
 };
 
 const renderBattleEnemyIntent = (battle: BattleView): string | null => {
@@ -564,6 +580,7 @@ const renderBattleActionState = (battle: BattleView): string => {
   const defendGain = resolveDefendGuardGain(battle.player);
   const activeAbility = battle.player.runeLoadout?.activeAbility ?? null;
   const school = getRuneSchoolPresentation(battle.player.runeLoadout?.archetypeCode);
+  const supportRune = battle.player.supportRuneLoadout ?? null;
   const runeRole = !activeAbility
     ? school?.passiveLine ?? null
     : activeAbility.code === 'ember_pulse'
@@ -586,6 +603,7 @@ const renderBattleActionState = (battle: BattleView): string => {
     '⚔️ Атака — стабильный урон.',
     `🛡️ Защита — готовит ${defendGain} защиты на следующий удар.`,
     runeLine,
+    ...(supportRune ? ['🧩 Поддержка работает пассивно и пока не даёт вторую боевую кнопку.'] : []),
   ].join('\n');
 };
 

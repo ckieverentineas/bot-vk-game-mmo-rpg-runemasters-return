@@ -329,4 +329,45 @@ describe('messages school-first onboarding framing', () => {
     expect(message).toContain('🎯 Следующая цель: проверьте «🔮 Руны» и текущую школу или начните новый бой снова.');
     expect(message).toContain('спокойнее подготовитесь');
   });
+
+  it('shows support rune contribution in battle text without adding a second active skill promise', () => {
+    const message = renderBattle(createBattle({
+      status: 'ACTIVE',
+      result: null,
+      rewards: null,
+      player: {
+        ...createBattle().player,
+        runeLoadout: {
+          runeId: 'rune-primary-1',
+          runeName: 'Руна Пламени',
+          archetypeCode: 'ember',
+          archetypeName: 'Штурм',
+          schoolCode: 'ember',
+          schoolMasteryRank: 1,
+          passiveAbilityCodes: ['ember_heart'],
+          activeAbility: {
+            code: 'ember_pulse',
+            name: 'Импульс углей',
+            manaCost: 3,
+            cooldownTurns: 2,
+            currentCooldown: 0,
+          },
+        },
+        supportRuneLoadout: {
+          runeId: 'rune-support-1',
+          runeName: 'Искра поддержки',
+          archetypeCode: 'ember',
+          archetypeName: 'Штурм',
+          schoolCode: 'ember',
+          schoolMasteryRank: 0,
+          passiveAbilityCodes: ['ember_heart'],
+          activeAbility: null,
+        },
+      },
+    }));
+
+    expect(message).toContain('🧩 Поддержка: Искра поддержки');
+    expect(message).toContain('усиливает давление базовой атаки');
+    expect(message).toContain('пока не даёт вторую боевую кнопку');
+  });
 });

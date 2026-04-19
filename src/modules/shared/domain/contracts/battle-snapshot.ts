@@ -87,6 +87,7 @@ const isBattlePlayerSnapshot = (value: unknown): value is BattlePlayerSnapshot =
   && isNumber(value.maxMana)
   && isNumber(value.currentMana)
   && (value.runeLoadout === undefined || value.runeLoadout === null || isBattleRuneLoadoutSnapshot(value.runeLoadout))
+  && (value.supportRuneLoadout === undefined || value.supportRuneLoadout === null || isBattleRuneLoadoutSnapshot(value.supportRuneLoadout))
   && (value.guardPoints === undefined || isNumber(value.guardPoints))
 );
 

@@ -27,6 +27,7 @@ Runemasters Return — VK MMO RPG на TypeScript с модульным игро
 - новые уровни больше не раздают новые stat points как основной рост; основная ось прогрессии теперь идёт через school mastery;
 - school mastery v0 теперь растёт за победы с экипированной школой и даёт первый non-flat боевой payoff вместо очередного голого +к статам;
 - первая mastery-веха теперь открывает support-slot для рун: основа даёт боевую кнопку, поддержка даёт половину статов и расширяет сборку без второй активки;
+- support-slot v2 теперь даёт ещё и первый ограниченный passive battle contribution для locked школ, но это всё ещё не второй активный навык;
 - для locked Vertical Slice у Пламени и Тверди уже зафиксированы первые same-school starter synergies: школа начинает давать читаемую связку `setup -> payoff`, а не только отдельный пассивный бонус;
 - versioned platform contracts для боевой рунной сборки и reward claims: `LoadoutSnapshot`, `RewardIntent`, `RewardLedger`;
 - exact-once reward ledger и canonical battle finalization защищают победную награду от replay/reroll по повторным входящим событиям;
@@ -62,6 +63,7 @@ Runemasters Return — VK MMO RPG на TypeScript с модульным игро
 - `docs/reviews/starter-synergy-v1.md` — первый locked same-school synergy slice для Пламени и Тверди;
 - `docs/reviews/rune-hub-ux-v1.md` — rune hub v1: быстрый выбор 5 рун на странице, single-slot loadout сейчас и future extra slots только после отдельного review;
 - `docs/reviews/support-rune-slot-v1.md` — первый runtime slice с support-slot: слот 2 открывается через mastery milestone и даёт только bounded pre-battle breadth;
+- `docs/reviews/support-rune-slot-v2.md` — следующий support-slot slice: поддержка начинает влиять на бой пассивно, но future multi-skill остаётся отдельным budget decision;
 - `docs/telemetry/telemetry-plan.md` — минимальный telemetry v1 план для onboarding clarity, school readability, return UX, economy health и exploit review;
 - `docs/content/content-pipeline-plan.md`, `docs/content/validator-scope.md`, `docs/content/templates/school-package-template.md` — source-of-truth по content packages, validator tiers и school package completeness;
 - `src/modules/runes/domain/rune-collection.ts` — paging helper'ы рунной коллекции поверх существующего `currentRuneIndex` без новой persistence-схемы;

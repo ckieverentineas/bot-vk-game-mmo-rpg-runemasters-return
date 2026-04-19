@@ -1255,6 +1255,80 @@ describe('PrismaGameRepository release hardening', () => {
     expect(battle?.player.runeLoadout?.schoolMasteryRank).toBe(1);
   });
 
+  it('hydrates support rune loadout from the versioned battle snapshot', async () => {
+    const { repository, tx } = createPrismaMock();
+
+    tx.battleSession.findFirst.mockResolvedValue(createBattleRow({
+      battleSnapshot: JSON.stringify({
+        schemaVersion: 1,
+        actionRevision: 0,
+        player: {
+          playerId: 1,
+          name: 'Рунный мастер #1001',
+          attack: 4,
+          defence: 3,
+          magicDefence: 1,
+          dexterity: 2,
+          intelligence: 1,
+          maxHealth: 8,
+          currentHealth: 8,
+          maxMana: 4,
+          currentMana: 4,
+          runeLoadout: {
+            runeId: 'rune-1',
+            runeName: 'Руна Пламени',
+            archetypeCode: 'ember',
+            archetypeName: 'Штурм',
+            schoolCode: 'ember',
+            schoolMasteryRank: 1,
+            passiveAbilityCodes: ['ember_heart'],
+            activeAbility: {
+              code: 'ember_pulse',
+              name: 'Импульс углей',
+              manaCost: 3,
+              cooldownTurns: 2,
+              currentCooldown: 1,
+            },
+          },
+          supportRuneLoadout: {
+            runeId: 'rune-2',
+            runeName: 'Щит поддержки',
+            archetypeCode: 'stone',
+            archetypeName: 'Страж',
+            schoolCode: 'stone',
+            schoolMasteryRank: 0,
+            passiveAbilityCodes: ['stone_guard'],
+            activeAbility: null,
+          },
+          guardPoints: 0,
+        },
+        enemy: JSON.parse(createBattleRow().enemySnapshot),
+        log: ['Враг найден.'],
+        result: null,
+        rewards: null,
+      }),
+      playerSnapshot: JSON.stringify({
+        playerId: 1,
+        name: 'Рунный мастер #1001',
+        attack: 4,
+        defence: 3,
+        magicDefence: 1,
+        dexterity: 2,
+        intelligence: 1,
+        maxHealth: 8,
+        currentHealth: 8,
+        maxMana: 4,
+        currentMana: 4,
+      }),
+    }));
+
+    const battle = await repository.getActiveBattle(1);
+
+    expect(battle?.player.runeLoadout?.runeId).toBe('rune-1');
+    expect(battle?.player.supportRuneLoadout?.runeId).toBe('rune-2');
+    expect(battle?.player.supportRuneLoadout?.passiveAbilityCodes).toEqual(['stone_guard']);
+  });
+
   it('rejects unsupported loadout snapshot versions instead of silently masking them', async () => {
     const { repository, tx } = createPrismaMock();
 

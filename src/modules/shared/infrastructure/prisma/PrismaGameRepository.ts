@@ -104,6 +104,7 @@ const defaultBattlePlayerSnapshot = (playerId: number): BattleView['player'] => 
   maxMana: 0,
   currentMana: 0,
   runeLoadout: null,
+  supportRuneLoadout: null,
   guardPoints: 0,
 });
 
@@ -272,11 +273,16 @@ const hydrateBattlePlayerSnapshot = (
     loadoutSnapshot ?? buildLoadoutSnapshotFromBattle(snapshot.runeLoadout ?? null),
     currentCooldown,
   );
+  const normalizedSupportLoadout = projectBattleRuneLoadout(
+    buildLoadoutSnapshotFromBattle(snapshot.supportRuneLoadout ?? null),
+    snapshot.supportRuneLoadout?.activeAbility?.currentCooldown ?? 0,
+  );
 
   return {
     ...fallback,
     ...snapshot,
     runeLoadout: normalizedLoadout,
+    supportRuneLoadout: normalizedSupportLoadout,
     guardPoints: snapshot.guardPoints ?? fallback.guardPoints,
   };
 };

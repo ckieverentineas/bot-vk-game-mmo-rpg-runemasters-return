@@ -4,6 +4,10 @@ const hasPassive = (battle: BattleView, code: string): boolean => (
   battle.player.runeLoadout?.passiveAbilityCodes.includes(code) ?? false
 );
 
+const hasSupportPassive = (battle: BattleView, code: string): boolean => (
+  battle.player.supportRuneLoadout?.passiveAbilityCodes.includes(code) ?? false
+);
+
 const hasSchoolMastery = (battle: BattleView, schoolCode: string, rank = 1): boolean => (
   battle.player.runeLoadout?.schoolCode === schoolCode
   && (battle.player.runeLoadout?.schoolMasteryRank ?? 0) >= rank
@@ -15,6 +19,10 @@ const hasActiveCooldownWindow = (battle: BattleView): boolean => (
 
 export const resolveEmberAttackBonus = (battle: BattleView): number => (
   hasPassive(battle, 'ember_heart') ? 1 : 0
+);
+
+export const resolveSupportEmberAttackBonus = (battle: BattleView): number => (
+  battle.player.runeLoadout?.schoolCode === 'ember' && hasSupportPassive(battle, 'ember_heart') ? 1 : 0
 );
 
 export const resolveEmberExecutionBonus = (battle: BattleView): number => (
@@ -35,8 +43,16 @@ export const resolveStoneGuardGainBonus = (battle: BattleView): number => (
   hasPassive(battle, 'stone_guard') ? 2 : 0
 );
 
+export const resolveSupportStoneGuardGainBonus = (battle: BattleView): number => (
+  battle.player.runeLoadout?.schoolCode === 'stone' && hasSupportPassive(battle, 'stone_guard') ? 1 : 0
+);
+
 export const resolveStoneGuardCapBonus = (battle: BattleView): number => (
   hasPassive(battle, 'stone_guard') ? 2 : 0
+);
+
+export const resolveSupportStoneGuardCapBonus = (battle: BattleView): number => (
+  battle.player.runeLoadout?.schoolCode === 'stone' && hasSupportPassive(battle, 'stone_guard') ? 1 : 0
 );
 
 export const resolveStoneMasteryGuardGainBonus = (battle: BattleView): number => (
@@ -62,6 +78,7 @@ export const resolveEchoIntentAttackBonus = (battle: BattleView): number => {
 
   return 1 + Math.floor(battle.player.intelligence / 2);
 };
+
 
 export const resolveEchoMasteryAttackBonus = (battle: BattleView): number => (
   hasSchoolMastery(battle, 'echo') && battle.enemy.intent ? 1 : 0

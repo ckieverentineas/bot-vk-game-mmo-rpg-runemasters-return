@@ -134,6 +134,7 @@ export interface BattlePlayerSnapshot {
   maxMana: number;
   currentMana: number;
   runeLoadout?: BattleRuneLoadoutSnapshot | null;
+  supportRuneLoadout?: BattleRuneLoadoutSnapshot | null;
   guardPoints?: number;
 }
 

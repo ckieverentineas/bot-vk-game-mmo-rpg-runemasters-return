@@ -207,6 +207,7 @@ src/
 - новая ось роста начинает идти через `PlayerSchoolMastery`, чтобы школа усиливала именно стиль боя, а не только голые числа.
 - для locked slice первые same-school synergies у Пламени и Тверди живут прямо в battle-domain rules и используют уже существующее состояние боя (`cooldown`, `guard`, `hp threshold`), а не отдельный новый runtime layer.
 - support-slot открывается через mastery milestone и пока даёт только половину статов выбранной руны; это первый loadout breadth slice без второй active action семантики.
+- support-slot v2 добавляет bounded passive modifier layer для locked школ, но current one-active combat budget остаётся временным readability rule, а не permanent ban на future multi-skill expansion.
 
 ### 8. Release discipline
 

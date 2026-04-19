@@ -1,5 +1,7 @@
 # Support Rune Slot v1
 
+> Исторический baseline slice. Актуальное боевое развитие поддержки продолжено в `docs/reviews/support-rune-slot-v2.md`.
+
 ## Purpose
 
 Дать первый реальный шаг к `pre-battle loadout decisions` без взрыва боевого интерфейса.

@@ -605,6 +605,7 @@ Runemasters Return должен решать это через **школы ру
   - [x] mastery-веха открывает support-slot как первый breadth payoff
   - [x] основа остаётся единственным источником активной рунной кнопки
   - [x] support-slot даёт только половину статов и не вводит вторую боевую кнопку
+  - [x] support-slot v2 даёт первый ограниченный passive contribution без второй активной кнопки
 - [ ] Привязать rarity growth к breadth, а не к stat inflation
 - [ ] Добавить targeted school drops / source family для locked slice
 - [x] Ввести первые same-school starter synergies
@@ -1023,4 +1024,5 @@ Runemasters Return должен решать это через **школы ру
 - **2026-04-19:** собран `docs/reviews/starter-synergy-v1.md`; same-school starter synergy v1 зафиксирована для Пламени и Тверди как читаемая `setup -> payoff` пара без новых кнопок и без proc-web хаоса.
 - **2026-04-19:** собран `docs/reviews/rune-hub-ux-v1.md`; rune hub v1 теперь держит быстрый выбор 5 рун на странице, явное состояние `выбрана / надета`, single-slot loadout сейчас и deferred extra slots только после отдельного progression/contract review.
 - **2026-04-19:** support-slot v1 включён как первый реальный loadout breadth payoff: mastery milestone открывает 2-й слот, но только `основа` даёт боевую кнопку, а `поддержка` пока добавляет половину статов без второй активки и без proc-web хаоса.
+- **2026-04-19:** support-slot v2 делает поддержку реально заметной в бою: Пламя и Твердь теперь получают первый bounded passive support modifier, но current one-active rule остаётся readability budget сейчас, а не permanent cap на future multi-skill combat.
 - **2026-04-19:** backlog дополнен двумя post-Vertical-Slice направлениями: prototype второго rune slot unlock через progression/mastery branches и prototype exploration events beyond combat с `следом решений в исследовании` без преждевременного обещания глобальной шкалы добра/зла.

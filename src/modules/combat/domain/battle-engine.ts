@@ -28,6 +28,9 @@ import {
   resolveStoneSynergyDamageBonus,
   resolveStoneSynergyGuardBonus,
   resolveStoneMasteryGuardGainBonus,
+  resolveSupportEmberAttackBonus,
+  resolveSupportStoneGuardCapBonus,
+  resolveSupportStoneGuardGainBonus,
 } from './battle-rune-passives';
 
 const finalizeBattle = (battle: BattleView, result: BattleResult): BattleView => {
@@ -139,15 +142,17 @@ export class BattleEngine {
 
     const guardGain = resolveDefendGuardGain(nextBattle.player)
       + resolveStoneGuardGainBonus(nextBattle)
+      + resolveSupportStoneGuardGainBonus(nextBattle)
       + resolveStoneMasteryGuardGainBonus(nextBattle);
     const nextGuard = Math.min(
-      resolveGuardCap(nextBattle.player) + resolveStoneGuardCapBonus(nextBattle),
+      resolveGuardCap(nextBattle.player) + resolveStoneGuardCapBonus(nextBattle) + resolveSupportStoneGuardCapBonus(nextBattle),
       getGuardPoints(nextBattle.player) + guardGain,
     );
     nextBattle.player.guardPoints = nextGuard;
     nextBattle.log = appendBattleLog(
       nextBattle.log,
       `🛡️ Вы занимаете защитную стойку и готовите защиту на ${guardGain} урона.`,
+      ...(resolveSupportStoneGuardGainBonus(nextBattle) > 0 ? ['🧩 Поддержка Тверди усиливает стойку ещё на 1 guard.'] : []),
       ...(resolveStoneMasteryGuardGainBonus(nextBattle) > 0 ? ['🪨 Мастерство Тверди усиливает защитную стойку.'] : []),
     );
     nextBattle.turnOwner = 'ENEMY';
@@ -235,12 +240,13 @@ export class BattleEngine {
   private static performAttack(nextBattle: BattleView): BattleView {
     const baseDamage = calculatePhysicalDamage(nextBattle.player.attack, nextBattle.enemy.defence);
     const emberBonus = resolveEmberAttackBonus(nextBattle);
+    const supportEmberBonus = resolveSupportEmberAttackBonus(nextBattle);
     const emberExecutionBonus = resolveEmberExecutionBonus(nextBattle);
     const emberComboBonus = resolveEmberComboBonus(nextBattle);
     const echoBonus = resolveEchoIntentAttackBonus(nextBattle);
     const echoMasteryBonus = resolveEchoMasteryAttackBonus(nextBattle);
     const galeGuardGain = resolveGaleMasteryAttackGuardGain(nextBattle);
-    const totalDamage = baseDamage + emberBonus + emberExecutionBonus + emberComboBonus + echoBonus + echoMasteryBonus;
+    const totalDamage = baseDamage + emberBonus + supportEmberBonus + emberExecutionBonus + emberComboBonus + echoBonus + echoMasteryBonus;
 
     if (galeGuardGain > 0) {
       nextBattle.player.guardPoints = Math.min(
@@ -254,6 +260,7 @@ export class BattleEngine {
       nextBattle.log,
       `⚔️ Вы наносите ${totalDamage} урона врагу ${nextBattle.enemy.name}.`,
       ...(emberBonus > 0 ? [`🔥 Школа Пламени усиливает атаку ещё на ${emberBonus}.`] : []),
+      ...(supportEmberBonus > 0 ? ['🧩 Поддержка Пламени добавляет ещё 1 давления к базовой атаке.'] : []),
       ...(emberExecutionBonus > 0 ? [`🔥 Мастерство Пламени помогает дожать врага ещё на ${emberExecutionBonus}.`] : []),
       ...(emberComboBonus > 0 ? ['🔥 Разогрев Пламени превращает откат рунной техники в окно для ещё более сильного добивания.'] : []),
       ...(echoBonus > 0 ? [`🧠 Школа Прорицания считывает намерение врага и добавляет ${echoBonus} магического урона.`] : []),
@@ -297,8 +304,9 @@ export class BattleEngine {
       nextBattle.enemy.defence,
     ) + synergyDamageBonus;
     const intentBonus = nextBattle.enemy.intent?.code === 'HEAVY_STRIKE' ? 2 : 0;
-    const guardGain = resolveDefendGuardGain(nextBattle.player) + resolveStoneGuardGainBonus(nextBattle) + 1 + intentBonus + synergyGuardBonus;
-    const guardCap = resolveGuardCap(nextBattle.player) + resolveStoneGuardCapBonus(nextBattle);
+    const supportGuardBonus = resolveSupportStoneGuardGainBonus(nextBattle);
+    const guardGain = resolveDefendGuardGain(nextBattle.player) + resolveStoneGuardGainBonus(nextBattle) + supportGuardBonus + 1 + intentBonus + synergyGuardBonus;
+    const guardCap = resolveGuardCap(nextBattle.player) + resolveStoneGuardCapBonus(nextBattle) + resolveSupportStoneGuardCapBonus(nextBattle);
 
     nextBattle.enemy.currentHealth = Math.max(0, nextBattle.enemy.currentHealth - damage);
     nextBattle.player.guardPoints = Math.min(guardCap, getGuardPoints(nextBattle.player) + guardGain);
@@ -308,6 +316,7 @@ export class BattleEngine {
       nextBattle.log,
       `🌀 ${activeAbility.name} наносит ${damage} урона и поднимает каменную защиту на ${guardGain}.`,
       ...(intentBonus > 0 ? ['🪨 Школа Тверди укрепляется ещё сильнее против заранее раскрытой угрозы.'] : []),
+      ...(supportGuardBonus > 0 ? ['🧩 Поддержка Тверди добавляет ещё 1 защиты к каменному отпору.'] : []),
       ...(synergyDamageBonus > 0 ? ['🪨 Ответ стойки превращает накопленную защиту в более жёсткий контрудар.'] : []),
       `💙 Мана: ${nextBattle.player.currentMana}/${nextBattle.player.maxMana}.`,
     );

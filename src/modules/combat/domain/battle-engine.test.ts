@@ -192,6 +192,35 @@ describe('BattleEngine', () => {
     expect(resolved.log.some((entry) => entry.includes('Разогрев Пламени'))).toBe(true);
   });
 
+  it('поддержка пламени добавляет пассивное давление без второй активной кнопки', () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0.5);
+    const battle = createBattle({
+      player: {
+        ...createBattle().player,
+        runeLoadout: {
+          ...createBattle().player.runeLoadout!,
+          passiveAbilityCodes: [],
+          schoolCode: 'ember',
+        },
+        supportRuneLoadout: {
+          runeId: 'rune-support-1',
+          runeName: 'Искра поддержки',
+          archetypeCode: 'ember',
+          archetypeName: 'Штурм',
+          schoolCode: 'ember',
+          schoolMasteryRank: 0,
+          passiveAbilityCodes: ['ember_heart'],
+          activeAbility: null,
+        },
+      },
+    });
+
+    const resolved = BattleEngine.attack(battle);
+
+    expect(resolved.enemy.currentHealth).toBe(3);
+    expect(resolved.log.some((entry) => entry.includes('Поддержка Пламени'))).toBe(true);
+  });
+
   it('даёт игроку универсальную защиту вместо атаки', () => {
     const battle = createBattle();
 
@@ -241,6 +270,37 @@ describe('BattleEngine', () => {
 
     expect(resolved.player.guardPoints).toBe(5);
     expect(resolved.log.some((entry) => entry.includes('Мастерство Тверди'))).toBe(true);
+  });
+
+  it('поддержка тверди усиливает guard без второй активной кнопки', () => {
+    const battle = createBattle({
+      player: {
+        ...createBattle().player,
+        runeLoadout: {
+          ...createBattle().player.runeLoadout!,
+          archetypeCode: 'stone',
+          archetypeName: 'Страж',
+          passiveAbilityCodes: [],
+          activeAbility: null,
+          schoolCode: 'stone',
+        },
+        supportRuneLoadout: {
+          runeId: 'rune-support-2',
+          runeName: 'Щит поддержки',
+          archetypeCode: 'stone',
+          archetypeName: 'Страж',
+          schoolCode: 'stone',
+          schoolMasteryRank: 0,
+          passiveAbilityCodes: ['stone_guard'],
+          activeAbility: null,
+        },
+      },
+    });
+
+    const resolved = BattleEngine.defend(battle);
+
+    expect(resolved.player.guardPoints).toBe(3);
+    expect(resolved.log.some((entry) => entry.includes('Поддержка Тверди'))).toBe(true);
   });
 
   it('школа тверди даёт активный отпор против опасного хода', () => {

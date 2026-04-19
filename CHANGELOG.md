@@ -859,6 +859,27 @@
 
 - второй слот больше не остаётся только отложенной идеей в UI и плане: у игрока появился первый реальный loadout breadth payoff без перегруза боевого контура.
 
+## [0.53] - 2026-04-19
+
+### Commit
+
+- `worktree` — `feat: deepen support rune battle impact`
+
+### Added
+
+- review artifact [`docs/reviews/support-rune-slot-v2.md`](docs/reviews/support-rune-slot-v2.md) с locked rules для passive-only support battle contribution;
+- явное представление `supportRuneLoadout` в battle snapshot/presenter слое.
+
+### Changed
+
+- support-slot v2 теперь влияет на бой не только через полстатов, но и через ограниченный passive contribution для locked школ Пламени и Тверди;
+- battle text теперь показывает поддержку как отдельный пассивный слой и прямо фиксирует, что второй активной кнопки пока нет;
+- docs теперь явно разделяют current one-active readability rule и future multi-skill decision, чтобы текущий slice не выглядел permanent cap.
+
+### Fixed
+
+- support rune больше не выглядит как почти пустой слот: у игрока появился первый заметный вклад второй руны прямо в бою без dual-cast хаоса.
+
 ## Шаблон следующей записи
 
 ### [0.03] - YYYY-MM-DD
