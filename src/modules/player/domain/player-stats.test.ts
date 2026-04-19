@@ -6,6 +6,7 @@ import {
   normalizeRuneIndex,
   resolveAdaptiveAdventureLocationLevel,
   resolveEncounterLocationLevel,
+  resolveLevelProgression,
 } from './player-stats';
 
 const createPlayerState = (overrides: Partial<PlayerState> = {}): PlayerState => ({
@@ -160,5 +161,15 @@ describe('tutorial state gating', () => {
     const player = createPlayerState({ tutorialState: 'SKIPPED', locationLevel: 0, level: 5 });
 
     expect(resolveEncounterLocationLevel(player)).toBe(resolveAdaptiveAdventureLocationLevel(player));
+  });
+});
+
+describe('level progression', () => {
+  it('больше не выдаёт новые stat points просто за уровень', () => {
+    expect(resolveLevelProgression(1, 49, 11, 1)).toEqual({
+      level: 2,
+      experience: 0,
+      unspentStatPoints: 1,
+    });
   });
 });

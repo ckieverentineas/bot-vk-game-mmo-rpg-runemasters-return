@@ -67,6 +67,8 @@ const isBattleRuneLoadoutSnapshot = (value: unknown): value is BattleRuneLoadout
   && isString(value.runeName)
   && isNullableString(value.archetypeCode)
   && isNullableString(value.archetypeName)
+  && (value.schoolCode === undefined || isNullableString(value.schoolCode))
+  && (value.schoolMasteryRank === undefined || isNumber(value.schoolMasteryRank))
   && isStringArray(value.passiveAbilityCodes)
   && (value.activeAbility === null || isBattleRuneActionSnapshot(value.activeAbility))
 );

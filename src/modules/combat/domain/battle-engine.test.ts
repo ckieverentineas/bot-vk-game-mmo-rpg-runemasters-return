@@ -142,6 +142,28 @@ describe('BattleEngine', () => {
     expect(resolved.log.some((entry) => entry.includes('Школа Пламени'))).toBe(true);
   });
 
+  it('мастерство пламени усиливает добивающую атаку по просевшему врагу', () => {
+    const battle = createBattle({
+      player: {
+        ...createBattle().player,
+        runeLoadout: {
+          ...createBattle().player.runeLoadout!,
+          schoolCode: 'ember',
+          schoolMasteryRank: 1,
+        },
+      },
+      enemy: {
+        ...createBattle().enemy,
+        currentHealth: 4,
+      },
+    });
+
+    const resolved = BattleEngine.attack(battle);
+
+    expect(resolved.result).toBe('VICTORY');
+    expect(resolved.log.some((entry) => entry.includes('Мастерство Пламени'))).toBe(true);
+  });
+
   it('даёт игроку универсальную защиту вместо атаки', () => {
     const battle = createBattle();
 
@@ -169,6 +191,28 @@ describe('BattleEngine', () => {
     const resolved = BattleEngine.defend(battle);
 
     expect(resolved.player.guardPoints).toBe(4);
+  });
+
+  it('мастерство тверди добавляет guard к защите', () => {
+    const battle = createBattle({
+      player: {
+        ...createBattle().player,
+        runeLoadout: {
+          ...createBattle().player.runeLoadout!,
+          archetypeCode: 'stone',
+          archetypeName: 'Страж',
+          schoolCode: 'stone',
+          schoolMasteryRank: 1,
+          passiveAbilityCodes: ['stone_guard'],
+          activeAbility: null,
+        },
+      },
+    });
+
+    const resolved = BattleEngine.defend(battle);
+
+    expect(resolved.player.guardPoints).toBe(5);
+    expect(resolved.log.some((entry) => entry.includes('Мастерство Тверди'))).toBe(true);
   });
 
   it('школа тверди даёт активный отпор против опасного хода', () => {
@@ -238,6 +282,60 @@ describe('BattleEngine', () => {
 
     expect(resolved.enemy.currentHealth).toBe(3);
     expect(resolved.log.some((entry) => entry.includes('Школа Прорицания'))).toBe(true);
+  });
+
+  it('мастерство бури оставляет guard после атаки', () => {
+    const battle = createBattle({
+      player: {
+        ...createBattle().player,
+        runeLoadout: {
+          ...createBattle().player.runeLoadout!,
+          archetypeCode: 'gale',
+          archetypeName: 'Налётчик',
+          schoolCode: 'gale',
+          schoolMasteryRank: 1,
+          passiveAbilityCodes: [],
+          activeAbility: null,
+        },
+      },
+    });
+
+    const resolved = BattleEngine.attack(battle);
+
+    expect(resolved.player.guardPoints).toBe(1);
+    expect(resolved.log.some((entry) => entry.includes('Мастерство Бури'))).toBe(true);
+  });
+
+  it('мастерство прорицания усиливает атаку по раскрытому намерению', () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0.5);
+    const battle = createBattle({
+      player: {
+        ...createBattle().player,
+        runeLoadout: {
+          ...createBattle().player.runeLoadout!,
+          archetypeCode: 'echo',
+          archetypeName: 'Провидец',
+          schoolCode: 'echo',
+          schoolMasteryRank: 1,
+          passiveAbilityCodes: ['echo_mind'],
+          activeAbility: null,
+        },
+      },
+      enemy: {
+        ...createBattle().enemy,
+        intent: {
+          code: 'HEAVY_STRIKE',
+          title: 'Тяжёлый удар',
+          description: 'Следующая атака врага будет сильнее обычной.',
+          bonusAttack: 3,
+        },
+      },
+    });
+
+    const resolved = BattleEngine.attack(battle);
+
+    expect(resolved.enemy.currentHealth).toBe(2);
+    expect(resolved.log.some((entry) => entry.includes('Мастерство Прорицания'))).toBe(true);
   });
 
   it('телеграфирует тяжёлый удар у подходящего врага вместо обычной атаки', () => {

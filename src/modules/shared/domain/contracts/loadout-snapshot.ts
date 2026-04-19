@@ -18,6 +18,8 @@ export interface LoadoutSnapshotV1 {
   readonly runeId: string;
   readonly runeName: string;
   readonly archetypeCode: string | null;
+  readonly schoolCode?: string | null;
+  readonly schoolMasteryRank?: number;
   readonly passiveAbilityCodes: readonly string[];
   readonly activeAbility: LoadoutActionSnapshotV1 | null;
 }
@@ -42,11 +44,16 @@ export const isLoadoutSnapshot = (value: unknown): value is LoadoutSnapshot => (
   && isString(value.runeId)
   && isString(value.runeName)
   && isNullableString(value.archetypeCode)
+  && (value.schoolCode === undefined || isNullableString(value.schoolCode))
+  && (value.schoolMasteryRank === undefined || isPositiveNumber(value.schoolMasteryRank))
   && isStringArray(value.passiveAbilityCodes)
   && (value.activeAbility === null || isLoadoutActionSnapshotV1(value.activeAbility))
 );
 
-export const buildLoadoutSnapshot = (equippedRune: RuneView | null): LoadoutSnapshot | null => {
+export const buildLoadoutSnapshot = (
+  equippedRune: RuneView | null,
+  options: { schoolCode?: string | null; schoolMasteryRank?: number } = {},
+): LoadoutSnapshot | null => {
   if (!equippedRune) {
     return null;
   }
@@ -59,6 +66,8 @@ export const buildLoadoutSnapshot = (equippedRune: RuneView | null): LoadoutSnap
     runeId: equippedRune.id,
     runeName: equippedRune.name,
     archetypeCode: equippedRune.archetypeCode ?? null,
+    schoolCode: options.schoolCode ?? null,
+    schoolMasteryRank: options.schoolMasteryRank ?? 0,
     passiveAbilityCodes: [...(equippedRune.passiveAbilityCodes ?? [])],
     activeAbility: activeAbility
       ? {
@@ -83,6 +92,8 @@ export const buildLoadoutSnapshotFromBattle = (
     runeId: loadout.runeId,
     runeName: loadout.runeName,
     archetypeCode: loadout.archetypeCode,
+    schoolCode: loadout.schoolCode ?? null,
+    schoolMasteryRank: loadout.schoolMasteryRank ?? 0,
     passiveAbilityCodes: [...loadout.passiveAbilityCodes],
     activeAbility: loadout.activeAbility
       ? {
@@ -114,6 +125,8 @@ export const projectBattleRuneLoadout = (
     runeName: snapshot.runeName,
     archetypeCode: snapshot.archetypeCode,
     archetypeName: runeContent.archetype?.name ?? null,
+    schoolCode: snapshot.schoolCode ?? null,
+    schoolMasteryRank: snapshot.schoolMasteryRank ?? 0,
     passiveAbilityCodes: [...snapshot.passiveAbilityCodes],
     activeAbility: snapshot.activeAbility
       ? {

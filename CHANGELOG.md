@@ -731,6 +731,30 @@
 
 - обещание 1.0 и его red lines больше не размазаны только по roadmap-тексту; у команды появился отдельный approval-oriented source of truth для anti-drift решений.
 
+## [0.46] - 2026-04-19
+
+### Commit
+
+- `worktree` — `feat: shift progression toward school mastery`
+
+### Added
+
+- domain rail [`src/modules/player/domain/school-mastery.ts`](src/modules/player/domain/school-mastery.ts) и тесты [`src/modules/player/domain/school-mastery.test.ts`](src/modules/player/domain/school-mastery.test.ts) для school mastery v0;
+- persistence contract [`PlayerSchoolMastery`](prisma/schema.prisma) и миграция [`prisma/migrations/20260419124000_add_player_school_mastery/migration.sql`](prisma/migrations/20260419124000_add_player_school_mastery/migration.sql);
+- review artifact [`docs/reviews/progression-rework-v1.md`](docs/reviews/progression-rework-v1.md) с первым staged решением по уходу от level-up stat allocation.
+
+### Changed
+
+- новые уровни больше не начисляют новые `unspentStatPoints`; старые allocation points остаются как compatibility layer для уже существующих профилей;
+- победы с экипированной школой теперь двигают school mastery, а profile/main-menu copy и return focus смещены от “раскидай очки” к school-driven growth;
+- profile keyboard скрывает старые stat-allocation кнопки, если у профиля уже нет legacy-очков для траты или сброса;
+- battle snapshot теперь несёт active school mastery rank, чтобы школа могла менять бой не только статами, но и первым mastery payoff.
+
+### Fixed
+
+- progression loop больше не опирается только на рутинную раздачу +АТК/+ЗДР за уровень;
+- уровни и return-goal copy теперь меньше толкают игрока в profile housekeeping и лучше поддерживают fantasy мастера конкретной школы.
+
 ## Шаблон следующей записи
 
 ### [0.03] - YYYY-MM-DD

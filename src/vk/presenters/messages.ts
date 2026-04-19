@@ -5,11 +5,17 @@ import {
   getSelectedRune,
   isPlayerInTutorial,
   resolveAdaptiveAdventureLocationLevel,
+  spentStatPoints,
 } from '../../modules/player/domain/player-stats';
+import {
+  getPlayerSchoolMasteryForArchetype,
+  getSchoolMasteryDefinition,
+  resolveNextSchoolMasteryThreshold,
+} from '../../modules/player/domain/school-mastery';
 import { resolveDefendGuardGain } from '../../modules/combat/domain/battle-tactics';
 import { describeRuneContent } from '../../modules/runes/domain/rune-abilities';
 import { buildRuneCollectionPage } from '../../modules/runes/domain/rune-collection';
-import { getRuneSchoolPresentation, listSchoolDefinitions } from '../../modules/runes/domain/rune-schools';
+import { getRuneSchoolPresentation, listSchoolDefinitions, getSchoolDefinitionForArchetype } from '../../modules/runes/domain/rune-schools';
 import type { BattleView, PlayerState, RuneView, StatBlock } from '../../shared/types/game';
 
 const formatStatBlock = (stats: StatBlock): string => [
@@ -63,13 +69,53 @@ const renderStarterSchoolLine = (): string => {
 const renderSchoolFirstLoopLine = (): string => 'Путь первого входа: базовая атака → первая боевая руна → школа рун → новый стиль боя.';
 const renderSchoolFirstRarityLine = (): string => 'Сначала первая руна открывает школу рун, а новая редкость позже расширяет сборку.';
 
+const renderSchoolMasteryLine = (player: PlayerState): string => {
+  if (player.runes.length === 0) {
+    return 'Мастерство школы: откроется после первой боевой руны.';
+  }
+
+  const equippedRune = getEquippedRune(player);
+  const equippedSchool = getRuneSchoolPresentation(equippedRune?.archetypeCode);
+  const mastery = getPlayerSchoolMasteryForArchetype(player, equippedRune?.archetypeCode);
+  if (!equippedRune || !equippedSchool || !mastery) {
+    return 'Мастерство школы: наденьте руну, чтобы начать путь конкретной школы.';
+  }
+
+  const definition = getSchoolMasteryDefinition(mastery.schoolCode);
+  const nextThreshold = resolveNextSchoolMasteryThreshold(mastery.rank);
+  const nextUnlock = definition?.unlocks.find((entry) => entry.rank === mastery.rank + 1) ?? null;
+  const currentUnlock = definition?.unlocks.find((entry) => entry.rank === mastery.rank) ?? null;
+
+  if (nextThreshold === null) {
+    return `Мастерство школы: ${equippedSchool.name} · ранг ${mastery.rank}${currentUnlock ? ` · открыто: ${currentUnlock.title}.` : '.'}`;
+  }
+
+  return `Мастерство школы: ${equippedSchool.name} · ранг ${mastery.rank} · ${mastery.experience}/${nextThreshold} до «${nextUnlock?.title ?? 'новой вехи'}».`;
+};
+
+const resolveSchoolMasteryObjective = (player: PlayerState): string | null => {
+  const equippedRune = getEquippedRune(player);
+  const equippedSchool = getRuneSchoolPresentation(equippedRune?.archetypeCode);
+  const schoolDefinition = getSchoolDefinitionForArchetype(equippedRune?.archetypeCode);
+  const mastery = getPlayerSchoolMasteryForArchetype(player, equippedRune?.archetypeCode);
+  if (!equippedRune || !equippedSchool || !mastery) {
+    return null;
+  }
+
+  const definition = getSchoolMasteryDefinition(mastery.schoolCode);
+  const nextThreshold = resolveNextSchoolMasteryThreshold(mastery.rank);
+  const nextUnlock = definition?.unlocks.find((entry) => entry.rank === mastery.rank + 1) ?? null;
+  if (nextThreshold === null || !nextUnlock) {
+    return null;
+  }
+
+  const remainingVictories = Math.max(1, nextThreshold - mastery.experience);
+  return `одержите ещё ${remainingVictories} побед${remainingVictories === 1 ? 'у' : remainingVictories < 5 ? 'ы' : ''} школой ${schoolDefinition?.nameGenitive ?? equippedSchool.name}, чтобы открыть «${nextUnlock.title}»`;
+};
+
 const resolvePlayerObjectiveBody = (player: PlayerState): string => {
   if (player.tutorialState === 'ACTIVE') {
     return 'пройдите учебный бой, заберите первую боевую руну и откройте свою школу рун';
-  }
-
-  if (player.unspentStatPoints > 0) {
-    return 'откройте профиль и распределите свободные очки, чтобы усилить стиль боя';
   }
 
   if (player.runes.length === 0) {
@@ -83,6 +129,11 @@ const resolvePlayerObjectiveBody = (player: PlayerState): string => {
 
   if (describeRuneContent(equippedRune).activeAbilities.length > 0 && player.victories <= 2) {
     return 'войдите в бой и примените активное действие экипированной руны';
+  }
+
+  const masteryObjective = resolveSchoolMasteryObjective(player);
+  if (masteryObjective) {
+    return masteryObjective;
   }
 
   return 'усиливайте руну и пробуйте более высокий уровень угрозы дальше';
@@ -103,10 +154,6 @@ const resolvePrimaryAction = (player: PlayerState): string => {
     return '🔮 Руны';
   }
 
-  if (player.unspentStatPoints > 0) {
-    return '👤 Профиль';
-  }
-
   return '⚔️ Исследовать';
 };
 
@@ -123,8 +170,14 @@ const resolveReturnFocusBody = (player: PlayerState): string => {
     return 'откройте «🔮 Руны» и наденьте лучшую руну перед следующим боем';
   }
 
-  if (player.unspentStatPoints > 0) {
-    return 'откройте профиль и распределите свободные очки, чтобы усилить текущую сборку';
+  const equippedRune = getEquippedRune(player);
+  if (equippedRune && describeRuneContent(equippedRune).activeAbilities.length > 0 && player.victories <= 2) {
+    return 'войдите в бой и примените активное действие экипированной руны';
+  }
+
+  const masteryObjective = resolveSchoolMasteryObjective(player);
+  if (masteryObjective) {
+    return masteryObjective;
   }
 
   return 'идите в приключения и развивайте текущую школу рун дальше';
@@ -241,9 +294,10 @@ export const renderMainMenu = (player: PlayerState): string => {
       ? '📘 Режим: обучение'
       : `🎯 Уровень угрозы: ${resolveAdaptiveAdventureLocationLevel(player)}`,
     `💰 Руная пыль: ${player.gold}`,
-    `🎯 Свободные очки: ${player.unspentStatPoints}`,
+    ...(player.unspentStatPoints > 0 ? [`🎯 Legacy-очки характеристик: ${player.unspentStatPoints}`] : []),
     `🧭 Максимально пройденная угроза: ${player.highestLocationLevel}`,
     `🔮 Экипирована: ${equippedRune ? equippedRune.name : 'нет руны'}`,
+    renderSchoolMasteryLine(player),
     ...(player.tutorialState === 'ACTIVE' ? ['🜂 Первый бой ведёт к первой руне, а первая руна открывает школу рун.'] : []),
     ...(equippedSchool ? [`🜂 Ваш путь: ${equippedSchool.schoolLine} · роль ${equippedSchool.roleName.toLowerCase()}.`] : []),
     player.defeatStreak > 0
@@ -265,8 +319,12 @@ export const renderProfile = (player: PlayerState): string => {
     `⭐ Уровень: ${player.level}`,
     `📊 Опыт: ${player.experience}/${nextLevelXp}`,
     `💰 Руная пыль: ${player.gold}`,
-    `🎯 Свободные очки: ${player.unspentStatPoints}`,
+    ...(player.unspentStatPoints > 0 ? [`🎯 Legacy-очки характеристик: ${player.unspentStatPoints}`] : []),
     `🏆 Победы / Поражения: ${player.victories}/${player.defeats}`,
+    renderSchoolMasteryLine(player),
+    ...(player.unspentStatPoints > 0 || spentStatPoints(player.allocationPoints) > 0
+      ? ['Старые очки характеристик ещё можно распределить или сбросить, но новые уровни больше не начисляют такие очки.']
+      : ['Дальнейший рост силы идёт через руны, школу боя и её мастерство, а не через новые stat points за уровень.']),
     '',
     formatStatBlock(stats),
   ].join('\n');
@@ -502,7 +560,7 @@ const renderBattleNextGoal = (battle: BattleView): string[] => {
   }
 
   return [
-    '🎯 Следующая цель: усилите героя в «👤 Профиль» или начните новый бой снова.',
+    '🎯 Следующая цель: проверьте «🔮 Руны» и текущую школу или начните новый бой снова.',
     'Так вы спокойнее подготовитесь к следующему бою без лишнего давления.',
   ];
 };

@@ -66,6 +66,7 @@ const createPlayerRecord = () => ({
     crystal: 0,
     updatedAt: new Date('2026-04-12T00:00:00.000Z'),
   },
+  schoolMasteries: [],
   runes: [],
 });
 
@@ -252,6 +253,7 @@ const createPlayerStateSnapshot = (): PlayerState => ({
     metal: 0,
     crystal: 0,
   },
+  schoolMasteries: [],
   runes: [],
   createdAt: '2026-04-12T00:00:00.000Z',
   updatedAt: '2026-04-12T00:00:00.000Z',
@@ -302,6 +304,9 @@ const createPrismaMock = () => {
       update: vi.fn(),
       delete: vi.fn(),
       deleteMany: vi.fn(),
+    },
+    playerSchoolMastery: {
+      upsert: vi.fn(),
     },
     battleSession: {
       findFirst: vi.fn(),
@@ -968,6 +973,127 @@ describe('PrismaGameRepository release hardening', () => {
     });
   });
 
+  it('stops granting new stat points from level ups during battle rewards', async () => {
+    const { repository, tx } = createPrismaMock();
+    const currentPlayer = createPlayerRecord();
+    currentPlayer.level = 1;
+    currentPlayer.experience = 49;
+    currentPlayer.progress.unspentStatPoints = 1;
+    const persistedBattle = createBattleRow({
+      status: 'COMPLETED',
+      result: 'VICTORY',
+      rewardsSnapshot: JSON.stringify({
+        ...createBattleView().rewards,
+        experience: 11,
+      }),
+    });
+
+    tx.battleSession.updateMany.mockResolvedValue({ count: 1 });
+    tx.player.findUnique.mockResolvedValue(currentPlayer);
+    tx.player.update.mockResolvedValue({});
+    tx.playerProgress.update.mockResolvedValue({});
+    tx.playerInventory.update.mockResolvedValue({});
+    tx.battleSession.findFirst.mockResolvedValue(persistedBattle);
+
+    await repository.finalizeBattle(1, createBattleView({
+      rewards: {
+        experience: 11,
+        gold: 2,
+        shards: { USUAL: 2 },
+        droppedRune: null,
+      },
+    }));
+
+    expect(tx.player.update).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
+        level: 2,
+        experience: 0,
+      }),
+    }));
+    expect(tx.playerProgress.update).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
+        unspentStatPoints: 1,
+      }),
+    }));
+  });
+
+  it('awards school mastery progress from the school that actually fought the battle', async () => {
+    const { repository, tx } = createPrismaMock();
+    const currentPlayer = createPlayerRecord();
+    currentPlayer.runes = [{
+      id: 'rune-stone-1',
+      runeCode: 'rune-stone-1',
+      archetypeCode: 'stone',
+      passiveAbilityCodes: '[]',
+      activeAbilityCodes: '[]',
+      name: 'Руна Тверди',
+      rarity: 'USUAL',
+      health: 0,
+      attack: 1,
+      defence: 0,
+      magicDefence: 0,
+      dexterity: 0,
+      intelligence: 0,
+      isEquipped: true,
+      createdAt: new Date('2026-04-12T00:00:00.000Z'),
+      updatedAt: new Date('2026-04-12T00:00:00.000Z'),
+    }];
+    currentPlayer.schoolMasteries = [{
+      playerId: 1,
+      schoolCode: 'ember',
+      experience: 2,
+      rank: 0,
+      updatedAt: new Date('2026-04-12T00:00:00.000Z'),
+    }];
+    const persistedBattle = createBattleRow({
+      status: 'COMPLETED',
+      result: 'VICTORY',
+      rewardsSnapshot: JSON.stringify(createBattleView().rewards),
+    });
+
+    tx.battleSession.updateMany.mockResolvedValue({ count: 1 });
+    tx.player.findUnique.mockResolvedValue(currentPlayer);
+    tx.player.update.mockResolvedValue({});
+    tx.playerProgress.update.mockResolvedValue({});
+    tx.playerInventory.update.mockResolvedValue({});
+    tx.battleSession.findFirst.mockResolvedValue(persistedBattle);
+
+    await repository.finalizeBattle(1, createBattleView({
+      player: {
+        ...createBattleView().player,
+        runeLoadout: {
+          runeId: 'rune-ember-1',
+          runeName: 'Руна Пламени',
+          archetypeCode: 'ember',
+          archetypeName: 'Штурм',
+          schoolCode: 'ember',
+          schoolMasteryRank: 0,
+          passiveAbilityCodes: ['ember_heart'],
+          activeAbility: null,
+        },
+      },
+    }));
+
+    expect(tx.playerSchoolMastery.upsert).toHaveBeenCalledWith({
+      where: {
+        playerId_schoolCode: {
+          playerId: 1,
+          schoolCode: 'ember',
+        },
+      },
+      update: {
+        experience: 3,
+        rank: 1,
+      },
+      create: {
+        playerId: 1,
+        schoolCode: 'ember',
+        experience: 3,
+        rank: 1,
+      },
+    });
+  });
+
   it('does not snap skipped players back to intro after finishing a stale intro battle', async () => {
     const { repository, tx } = createPrismaMock();
     const currentPlayer = createPlayerRecord();
@@ -1068,6 +1194,46 @@ describe('PrismaGameRepository release hardening', () => {
     expect(battle?.player.runeLoadout?.runeId).toBe('rune-1');
     expect(battle?.player.runeLoadout?.activeAbility?.currentCooldown).toBe(0);
     expect(battle?.player.runeLoadout?.archetypeName).toBe('Штурм');
+  });
+
+  it('preserves school mastery fields when hydrating a persisted loadout snapshot', async () => {
+    const { repository, tx } = createPrismaMock();
+
+    tx.battleSession.findFirst.mockResolvedValue(createBattleRow({
+      playerLoadoutSnapshot: JSON.stringify({
+        schemaVersion: 1,
+        runeId: 'rune-1',
+        runeName: 'Руна Пламени',
+        archetypeCode: 'ember',
+        schoolCode: 'ember',
+        schoolMasteryRank: 1,
+        passiveAbilityCodes: ['ember_heart'],
+        activeAbility: {
+          code: 'ember_pulse',
+          name: 'Импульс углей',
+          manaCost: 3,
+          cooldownTurns: 2,
+        },
+      }),
+      playerSnapshot: JSON.stringify({
+        playerId: 1,
+        name: 'Рунный мастер #1001',
+        attack: 4,
+        defence: 3,
+        magicDefence: 1,
+        dexterity: 2,
+        intelligence: 1,
+        maxHealth: 8,
+        currentHealth: 8,
+        maxMana: 4,
+        currentMana: 4,
+      }),
+    }));
+
+    const battle = await repository.getActiveBattle(1);
+
+    expect(battle?.player.runeLoadout?.schoolCode).toBe('ember');
+    expect(battle?.player.runeLoadout?.schoolMasteryRank).toBe(1);
   });
 
   it('rejects unsupported loadout snapshot versions instead of silently masking them', async () => {

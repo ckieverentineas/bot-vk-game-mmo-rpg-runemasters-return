@@ -12,6 +12,12 @@ export type InventoryField = ShardField | MaterialField;
 export type AbilityKind = 'ACTIVE' | 'PASSIVE';
 export type AbilityTarget = 'SELF' | 'ENEMY' | 'BATTLEFIELD';
 
+export interface SchoolMasteryView {
+  schoolCode: string;
+  experience: number;
+  rank: number;
+}
+
 export interface StatBlock {
   health: number;
   attack: number;
@@ -84,6 +90,7 @@ export interface PlayerState {
   highestLocationLevel: number;
   tutorialState: TutorialState;
   inventory: InventoryView;
+  schoolMasteries?: SchoolMasteryView[];
   runes: RuneView[];
   createdAt: string;
   updatedAt: string;
@@ -143,6 +150,8 @@ export interface BattleRuneLoadoutSnapshot {
   runeName: string;
   archetypeCode: string | null;
   archetypeName: string | null;
+  schoolCode?: string | null;
+  schoolMasteryRank?: number;
   passiveAbilityCodes: string[];
   activeAbility: BattleRuneActionSnapshot | null;
 }

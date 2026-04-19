@@ -38,6 +38,19 @@ model Player {
   battles          BattleSession[]
   rewardLedger     RewardLedgerRecord[]
   commandIntents   CommandIntentRecord[]
+  schoolMasteries  PlayerSchoolMastery[]
+}
+
+model PlayerSchoolMastery {
+  playerId    Int
+  schoolCode  String
+  experience  Int      @default(0)
+  rank        Int      @default(0)
+  updatedAt   DateTime @updatedAt
+  player      Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@id([playerId, schoolCode])
+  @@index([schoolCode, rank])
 }
 
 model PlayerStatAllocation {

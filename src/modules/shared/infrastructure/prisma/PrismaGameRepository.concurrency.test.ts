@@ -144,6 +144,7 @@ describe.sequential('PrismaGameRepository concurrency rails', () => {
     await prisma.battleSession.deleteMany();
     await prisma.rune.deleteMany();
     await prisma.playerInventory.deleteMany();
+    await prisma.playerSchoolMastery.deleteMany();
     await prisma.playerProgress.deleteMany();
     await prisma.playerStatAllocation.deleteMany();
     await prisma.player.deleteMany();

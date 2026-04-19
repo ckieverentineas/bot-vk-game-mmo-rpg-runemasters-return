@@ -131,18 +131,16 @@ export const resolveLevelProgression = (
 ): { level: number; experience: number; unspentStatPoints: number } => {
   let nextLevel = level;
   let nextExperience = experience + experienceGain;
-  let nextPoints = unspentStatPoints;
 
   while (nextExperience >= gameBalance.progression.experienceForNextLevel(nextLevel)) {
     nextExperience -= gameBalance.progression.experienceForNextLevel(nextLevel);
     nextLevel += 1;
-    nextPoints += 1;
   }
 
   return {
     level: nextLevel,
     experience: nextExperience,
-    unspentStatPoints: nextPoints,
+    unspentStatPoints,
   };
 };
 

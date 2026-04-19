@@ -27,6 +27,12 @@ import {
   resolveLevelProgression,
   shardFieldForRarity,
 } from '../../../player/domain/player-stats';
+import {
+  applySchoolMasteryExperience,
+  createSchoolMasteryView,
+  listMissingStarterSchoolMasteries,
+  resolveBattleSchoolMasteryRewardGain,
+} from '../../../player/domain/school-mastery';
 import { buildLoadoutSnapshotFromBattle, isLoadoutSnapshot, projectBattleRuneLoadout, type LoadoutSnapshot } from '../../domain/contracts/loadout-snapshot';
 import { createAppliedRewardLedgerEntry } from '../../domain/contracts/reward-ledger';
 import { createBattleVictoryRewardIntent } from '../../domain/contracts/reward-intent';
@@ -46,6 +52,7 @@ const playerInclude = {
   allocation: true,
   progress: true,
   inventory: true,
+  schoolMasteries: true,
   runes: {
     orderBy: {
       createdAt: 'asc' as const,
@@ -1644,6 +1651,7 @@ export class PrismaGameRepository implements GameRepository {
       let nextHighestLocationLevel = currentPlayer.highestLocationLevel;
       let nextTutorialState = currentPlayer.tutorialState;
       const inventoryDelta: InventoryDelta = {};
+      const schoolMasteryReward = resolveBattleSchoolMasteryRewardGain(battle);
 
       if (battle.result === 'VICTORY' && rewardIntent) {
         const progression = resolveLevelProgression(
@@ -1743,6 +1751,30 @@ export class PrismaGameRepository implements GameRepository {
       if (rewardIntent?.payload.droppedRune) {
         await tx.rune.create({
           data: mapRuneDraftPersistence(playerId, rewardIntent.payload.droppedRune, false),
+        });
+      }
+
+      if (schoolMasteryReward) {
+        const currentMastery = currentPlayer.schoolMasteries?.find((entry) => entry.schoolCode === schoolMasteryReward.schoolCode) ?? null;
+        const nextMastery = applySchoolMasteryExperience(currentMastery, schoolMasteryReward.schoolCode, schoolMasteryReward.experienceGain);
+
+        await tx.playerSchoolMastery.upsert({
+          where: {
+            playerId_schoolCode: {
+              playerId,
+              schoolCode: schoolMasteryReward.schoolCode,
+            },
+          },
+          update: {
+            experience: nextMastery.experience,
+            rank: nextMastery.rank,
+          },
+          create: {
+            playerId,
+            schoolCode: schoolMasteryReward.schoolCode,
+            experience: nextMastery.experience,
+            rank: nextMastery.rank,
+          },
         });
       }
 
@@ -1889,6 +1921,12 @@ export class PrismaGameRepository implements GameRepository {
             crystal: player.inventory.crystal,
           }
         : emptyInventory(),
+      schoolMasteries: [
+        ...(player.schoolMasteries.map((entry) => createSchoolMasteryView(entry.schoolCode, entry.experience))),
+        ...listMissingStarterSchoolMasteries({
+          schoolMasteries: player.schoolMasteries.map((entry) => createSchoolMasteryView(entry.schoolCode, entry.experience)),
+        }),
+      ].sort((left, right) => left.schoolCode.localeCompare(right.schoolCode)),
       runes: player.runes.map((rune): RuneView => ({
         id: rune.id,
         runeCode: rune.runeCode,

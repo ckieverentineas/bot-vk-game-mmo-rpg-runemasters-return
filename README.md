@@ -24,6 +24,8 @@ Runemasters Return — VK MMO RPG на TypeScript с модульным игро
 - стартовые школы получают реальную боевую идентичность: Пламя усиливает давление, Твердь усиливает защиту, Прорицание лучше отвечает на намерения врага;
 - школа Тверди уже получила первый полный пакет: пассивную защитную идентичность и активный `Каменный отпор`;
 - tutorial loop теперь подводит игрока к первой активной руне, экипировке и первому применению рунного действия;
+- новые уровни больше не раздают новые stat points как основной рост; дальнейшая ось прогрессии начинает смещаться в school mastery;
+- school mastery v0 теперь растёт за победы с экипированной школой и даёт первый non-flat боевой payoff вместо очередного голого +к статам;
 - versioned platform contracts для боевой рунной сборки и reward claims: `LoadoutSnapshot`, `RewardIntent`, `RewardLedger`;
 - exact-once reward ledger и canonical battle finalization защищают победную награду от replay/reroll по повторным входящим событиям;
 - battle mutation revision защищает активный бой от stale overwrite при спаме и transport retry;
@@ -54,6 +56,7 @@ Runemasters Return — VK MMO RPG на TypeScript с модульным игро
 - `docs/platform/command-intent-rules.md` — intent-based replay policy для keyboard rune mutations с достаточным бюджетом;
 - `docs/product/1-0-release-charter.md` — утверждённое обещание релиза 1.0, explicit out-of-scope и ethical retention red lines;
 - `docs/reviews/phase-1-exit-gate.md` — единый gate-review для перехода из Foundation & Platform к Vertical Slice scope lock;
+- `docs/reviews/progression-rework-v1.md` — решение по уходу от новых stat points за уровни к school mastery как следующей оси роста;
 - `docs/telemetry/telemetry-plan.md` — минимальный telemetry v1 план для onboarding clarity, school readability, return UX, economy health и exploit review;
 - `docs/content/content-pipeline-plan.md`, `docs/content/validator-scope.md`, `docs/content/templates/school-package-template.md` — source-of-truth по content packages, validator tiers и school package completeness;
 - `src/modules/runes/domain/rune-collection.ts` — paging helper'ы рунной коллекции поверх существующего `currentRuneIndex` без новой persistence-схемы;
@@ -189,6 +192,8 @@ npm run db:studio
 - `+лвк`
 - `+инт`
 - `сброс`
+
+Эти профильные stat-команды остаются только как **legacy-совместимость** для старых персонажей. Новые уровни больше не должны раздавать новые stat points; основной рост начинает переходить в mastery школ рун.
 
 ### Исследование и бой
 

@@ -473,6 +473,10 @@ Runemasters Return должен решать это через **школы ру
 
 ### 11.3 Combat / progression rules
 
+- [x] Зафиксировать progression rework v1: новые уровни больше не дают новые stat points как основной рост
+  - [x] level-up stat allocation остаётся только legacy-слоем для старых профилей
+  - [x] school mastery v0 растёт за победы с экипированной школой
+  - [x] первый mastery payoff меняет боевое поведение, а не даёт ещё один голый stat bump
 - [ ] Зафиксировать scaling role базовой атаки по early / mid / late bands
 - [ ] Зафиксировать skill budget в бою
   - [ ] сколько активных рунных кнопок допустимо в 1.0
@@ -992,3 +996,4 @@ Runemasters Return должен решать это через **школы ру
 - **2026-04-19:** legacy text rune navigation (`+руна`, `-руна`, `руны >`, `руны <`, `руна слот 1..4` и alias) переведена на server-owned message intent ids; duplicate same-message navigation теперь должна возвращать canonical rune hub, а stale rune-hub buttons по-прежнему обязаны восстанавливать актуальный экран вместо silent retargeting.
 - **2026-04-19:** собран `docs/reviews/phase-1-exit-gate.md`; первый Vertical Slice намеренно зафиксирован как один polished PvE-first early-to-mid journey с Пламенем и Твердью, а social/PvP и risky breadth вынесены из near-term committed scope.
 - **2026-04-19:** утверждён `docs/product/1-0-release-charter.md`; 1.0 promise, explicit out-of-scope, ethical retention charter и governance baseline теперь вынесены в отдельный source-of-truth, а не размазаны только по roadmap-частям `PLAN.md`.
+- **2026-04-19:** progression rework v1 сдвигает рост от level-up stat allocation к school mastery: новые уровни больше не должны начислять новые stat points, а победы с экипированной школой теперь накапливают mastery и открывают первый non-flat боевой payoff.

@@ -210,14 +210,33 @@ describe('messages school-first onboarding framing', () => {
       tutorialState: 'SKIPPED',
       locationLevel: 1,
       unspentStatPoints: 1,
+      victories: 3,
       highestLocationLevel: 3,
+      schoolMasteries: [{ schoolCode: 'ember', experience: 1, rank: 0 }],
       runes: [createEquippedRune()],
     }));
 
     expect(message).toContain('🧭 Возвращение');
     expect(message).toContain('Стиль: Школа Пламени · роль штурм.');
-    expect(message).toContain('Фокус: откройте профиль');
-    expect(message).toContain('Дальше: нажмите «👤 Профиль».');
+    expect(message).toContain('Фокус: одержите ещё 2 победы школой Пламени');
+    expect(message).toContain('Дальше: нажмите «⚔️ Исследовать».');
+  });
+
+  it('shows school mastery progress in the main menu once a rune is equipped', () => {
+    const message = renderMainMenu(createPlayer({
+      tutorialState: 'SKIPPED',
+      locationLevel: 1,
+      schoolMasteries: [{ schoolCode: 'stone', experience: 2, rank: 0 }],
+      runes: [{
+        ...createEquippedRune(),
+        archetypeCode: 'stone',
+        passiveAbilityCodes: ['stone_guard'],
+        activeAbilityCodes: ['stone_bastion'],
+        name: 'Руна Тверди',
+      }],
+    }));
+
+    expect(message).toContain('Мастерство школы: Твердь · ранг 0 · 2/3');
   });
 
   it('keeps active tutorial recap focused on the first training battle', () => {
@@ -266,7 +285,7 @@ describe('messages school-first onboarding framing', () => {
       log: ['💥 Поражение.'],
     }));
 
-    expect(message).toContain('🎯 Следующая цель: усилите героя в «👤 Профиль» или начните новый бой снова.');
+    expect(message).toContain('🎯 Следующая цель: проверьте «🔮 Руны» и текущую школу или начните новый бой снова.');
     expect(message).toContain('спокойнее подготовитесь');
   });
 });

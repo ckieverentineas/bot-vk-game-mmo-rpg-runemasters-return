@@ -117,7 +117,7 @@ export class ExploreLocation {
       biomeCode: biome.code,
       enemyCode: template.code,
       turnOwner,
-      player: buildBattlePlayerSnapshot(currentPlayer.playerId, vkId, playerStats, getEquippedRune(currentPlayer)),
+      player: buildBattlePlayerSnapshot(currentPlayer.playerId, vkId, playerStats, getEquippedRune(currentPlayer), currentPlayer),
       enemy,
       log: [describeEncounter(biome, enemy)],
       result: null,

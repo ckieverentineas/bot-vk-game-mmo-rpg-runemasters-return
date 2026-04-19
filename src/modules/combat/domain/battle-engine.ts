@@ -17,10 +17,14 @@ import {
   shouldEnemyPrepareHeavyStrike,
 } from './battle-tactics';
 import {
+  resolveEchoMasteryAttackBonus,
   resolveEchoIntentAttackBonus,
   resolveEmberAttackBonus,
+  resolveEmberExecutionBonus,
+  resolveGaleMasteryAttackGuardGain,
   resolveStoneGuardCapBonus,
   resolveStoneGuardGainBonus,
+  resolveStoneMasteryGuardGainBonus,
 } from './battle-rune-passives';
 
 const finalizeBattle = (battle: BattleView, result: BattleResult): BattleView => {
@@ -130,7 +134,9 @@ export class BattleEngine {
     const nextBattle = cloneBattle(battle);
     this.assertPlayerTurn(nextBattle);
 
-    const guardGain = resolveDefendGuardGain(nextBattle.player) + resolveStoneGuardGainBonus(nextBattle);
+    const guardGain = resolveDefendGuardGain(nextBattle.player)
+      + resolveStoneGuardGainBonus(nextBattle)
+      + resolveStoneMasteryGuardGainBonus(nextBattle);
     const nextGuard = Math.min(
       resolveGuardCap(nextBattle.player) + resolveStoneGuardCapBonus(nextBattle),
       getGuardPoints(nextBattle.player) + guardGain,
@@ -139,6 +145,7 @@ export class BattleEngine {
     nextBattle.log = appendBattleLog(
       nextBattle.log,
       `🛡️ Вы занимаете защитную стойку и готовите защиту на ${guardGain} урона.`,
+      ...(resolveStoneMasteryGuardGainBonus(nextBattle) > 0 ? ['🪨 Мастерство Тверди усиливает защитную стойку.'] : []),
     );
     nextBattle.turnOwner = 'ENEMY';
 
@@ -225,15 +232,28 @@ export class BattleEngine {
   private static performAttack(nextBattle: BattleView): BattleView {
     const baseDamage = calculatePhysicalDamage(nextBattle.player.attack, nextBattle.enemy.defence);
     const emberBonus = resolveEmberAttackBonus(nextBattle);
+    const emberExecutionBonus = resolveEmberExecutionBonus(nextBattle);
     const echoBonus = resolveEchoIntentAttackBonus(nextBattle);
-    const totalDamage = baseDamage + emberBonus + echoBonus;
+    const echoMasteryBonus = resolveEchoMasteryAttackBonus(nextBattle);
+    const galeGuardGain = resolveGaleMasteryAttackGuardGain(nextBattle);
+    const totalDamage = baseDamage + emberBonus + emberExecutionBonus + echoBonus + echoMasteryBonus;
+
+    if (galeGuardGain > 0) {
+      nextBattle.player.guardPoints = Math.min(
+        resolveGuardCap(nextBattle.player) + resolveStoneGuardCapBonus(nextBattle),
+        getGuardPoints(nextBattle.player) + galeGuardGain,
+      );
+    }
 
     nextBattle.enemy.currentHealth = Math.max(0, nextBattle.enemy.currentHealth - totalDamage);
     nextBattle.log = appendBattleLog(
       nextBattle.log,
       `⚔️ Вы наносите ${totalDamage} урона врагу ${nextBattle.enemy.name}.`,
       ...(emberBonus > 0 ? [`🔥 Школа Пламени усиливает атаку ещё на ${emberBonus}.`] : []),
+      ...(emberExecutionBonus > 0 ? [`🔥 Мастерство Пламени помогает дожать врага ещё на ${emberExecutionBonus}.`] : []),
       ...(echoBonus > 0 ? [`🧠 Школа Прорицания считывает намерение врага и добавляет ${echoBonus} магического урона.`] : []),
+      ...(echoMasteryBonus > 0 ? [`🧠 Мастерство Прорицания добавляет ещё ${echoMasteryBonus} урона по раскрытой угрозе.`] : []),
+      ...(galeGuardGain > 0 ? [`🌪️ Мастерство Бури готовит защиту ещё на ${galeGuardGain} урона.`] : []),
     );
 
     if (nextBattle.enemy.currentHealth === 0) {

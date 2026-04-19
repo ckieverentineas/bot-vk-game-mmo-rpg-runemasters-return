@@ -191,6 +191,24 @@ describe('profile keyboard', () => {
     expect(back?.stateKey).toBeUndefined();
   });
 
+  it('hides legacy stat-allocation buttons when the player no longer has old stat points', () => {
+    const payloads = collectPayloads(createProfileKeyboard(createPlayer({
+      unspentStatPoints: 0,
+      allocationPoints: {
+        health: 0,
+        attack: 0,
+        defence: 0,
+        magicDefence: 0,
+        dexterity: 0,
+        intelligence: 0,
+      },
+    })));
+
+    expect(payloads.find((payload) => payload.command === '+атк')).toBeUndefined();
+    expect(payloads.find((payload) => payload.command === 'сброс')).toBeUndefined();
+    expect(payloads.find((payload) => payload.command === 'назад')).toBeDefined();
+  });
+
   it('adds intent metadata to equip and unequip buttons when rune context is available', () => {
     const payloads = collectPayloads(createRuneKeyboard(createPlayer()));
 
