@@ -38,7 +38,6 @@ export const env = Object.freeze({
   databaseUrl: process.env.DATABASE_URL ?? 'file:./dev.db',
   game: {
     startingLevel: readInt('GAME_STARTING_LEVEL', 1),
-    startingStatPoints: readInt('GAME_STARTING_STAT_POINTS', 1),
     startingUsualShards: readInt('GAME_STARTING_USUAL_SHARDS', 25),
     startingUnusualShards: readInt('GAME_STARTING_UNUSUAL_SHARDS', 10),
     startingRareShards: readInt('GAME_STARTING_RARE_SHARDS', 3),

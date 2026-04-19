@@ -16,6 +16,7 @@
 ## Shipped first slice
 
 - новые уровни больше не начисляют новые `unspentStatPoints`;
+- новые игроки теперь стартуют без новых stat points и не получают старую profile-ветку по умолчанию;
 - school mastery v0 растёт за победы с экипированной руной школы;
 - rank 1 у текущих школ даёт маленький, но **не плоский** боевой payoff;
 - старые `allocationPoints` и оставшиеся `unspentStatPoints` пока сохраняются как compatibility layer для существующих профилей.

@@ -146,7 +146,6 @@ VK_TOKEN=your_vk_group_token_here
 VK_GROUP_ID=
 DATABASE_URL="file:./prisma/dev.db"
 GAME_STARTING_LEVEL=1
-GAME_STARTING_STAT_POINTS=1
 GAME_STARTING_USUAL_SHARDS=25
 GAME_STARTING_UNUSUAL_SHARDS=10
 GAME_STARTING_RARE_SHARDS=3
@@ -193,7 +192,7 @@ npm run db:studio
 - `+инт`
 - `сброс`
 
-Эти профильные stat-команды остаются только как **legacy-совместимость** для старых персонажей. Новые уровни больше не должны раздавать новые stat points; основной рост начинает переходить в mastery школ рун.
+Эти профильные stat-команды остаются только как **legacy-совместимость** для старых персонажей. Новые игроки больше не стартуют с такими очками, новые уровни их не раздают, а основной рост начинает переходить в mastery школ рун.
 
 ### Исследование и бой
 

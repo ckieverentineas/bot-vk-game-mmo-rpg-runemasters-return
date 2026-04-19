@@ -170,6 +170,13 @@ describe.sequential('PrismaGameRepository concurrency rails', () => {
     expect(players).toBe(1);
   });
 
+  it('starts newly created players without fresh legacy stat points', async () => {
+    const player = await createPlayer(2998);
+
+    expect(player.unspentStatPoints).toBe(0);
+    expect(player.allocationPoints.attack).toBe(0);
+  });
+
   it('treats parallel delete confirmations for one intent as one destructive action', async () => {
     const player = await createPlayer(2032);
     const intentId = 'intent-delete-2032';

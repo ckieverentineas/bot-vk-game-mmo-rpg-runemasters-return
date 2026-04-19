@@ -372,6 +372,32 @@ describe('PrismaGameRepository release hardening', () => {
     expect(result.player.playerId).toBe(1);
   });
 
+  it('creates new players without fresh legacy stat points', async () => {
+    const { repository, tx } = createPrismaMock();
+
+    tx.player.findFirst.mockResolvedValue(null);
+    tx.user.create.mockResolvedValue({
+      player: createPlayerRecord(),
+    });
+
+    const result = await repository.createPlayer(1001);
+
+    expect(result.created).toBe(true);
+    expect(tx.user.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
+        player: expect.objectContaining({
+          create: expect.objectContaining({
+            progress: expect.objectContaining({
+              create: expect.objectContaining({
+                unspentStatPoints: 0,
+              }),
+            }),
+          }),
+        }),
+      }),
+    }));
+  });
+
   it('replays a confirmed delete intent without requiring the deleted player row', async () => {
     const { repository, tx } = createPrismaMock();
 

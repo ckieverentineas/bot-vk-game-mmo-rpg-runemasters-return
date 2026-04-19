@@ -313,7 +313,6 @@ const validateEnvironmentGameConfig = (issues: GameContentValidationIssue[], env
   }
 
   const nonNegativeEntries = [
-    ['GAME_STARTING_STAT_POINTS', envGameConfig.startingStatPoints],
     ['GAME_STARTING_USUAL_SHARDS', envGameConfig.startingUsualShards],
     ['GAME_STARTING_UNUSUAL_SHARDS', envGameConfig.startingUnusualShards],
     ['GAME_STARTING_RARE_SHARDS', envGameConfig.startingRareShards],

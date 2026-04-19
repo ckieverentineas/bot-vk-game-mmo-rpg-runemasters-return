@@ -731,7 +731,7 @@ export class PrismaGameRepository implements GameRepository {
               },
               progress: {
                 create: {
-                  unspentStatPoints: env.game.startingStatPoints,
+                  unspentStatPoints: 0,
                   locationLevel: gameBalance.world.introLocationLevel,
                   currentRuneIndex: 0,
                   activeBattleId: null,

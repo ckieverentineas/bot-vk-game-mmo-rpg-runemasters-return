@@ -755,6 +755,22 @@
 - progression loop больше не опирается только на рутинную раздачу +АТК/+ЗДР за уровень;
 - уровни и return-goal copy теперь меньше толкают игрока в profile housekeeping и лучше поддерживают fantasy мастера конкретной школы.
 
+## [0.47] - 2026-04-19
+
+### Commit
+
+- `worktree` — `fix: remove legacy stat points from new player start`
+
+### Changed
+
+- новые игроки теперь стартуют без fresh `unspentStatPoints`, а старая profile-ветка stat allocation остаётся только как compatibility path для уже существующих аккаунтов;
+- bootstrap/env/docs больше не трактуют starting stat points как нормальную часть new-player creation;
+- `PLAN.md`, `README.md`, `ARCHITECTURE.md` и `docs/reviews/progression-rework-v1.md` синхронизированы под эту cleanup-границу.
+
+### Fixed
+
+- progression rework больше не конфликтует с new-player bootstrap: игра перестала сначала отказываться от stat-point growth, а потом сразу же выдавать новые legacy-очки на старте.
+
 ## Шаблон следующей записи
 
 ### [0.03] - YYYY-MM-DD
