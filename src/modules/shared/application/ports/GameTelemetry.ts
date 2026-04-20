@@ -31,6 +31,18 @@ export interface GameTelemetry {
       readonly nextGoalType: 'hunt_school_elite';
     },
   ): Promise<void>;
+  schoolNoviceFollowUpActionTaken(
+    userId: number,
+    payload: {
+      readonly schoolCode: string;
+      readonly currentGoalType: NextGoalType;
+      readonly actionType: 'open_runes' | 'equip_school_sign' | 'start_next_battle';
+      readonly signEquipped: boolean;
+      readonly usedSchoolSign: boolean;
+      readonly battleId: string | null;
+      readonly enemyCode: string | null;
+    },
+  ): Promise<void>;
   returnRecapShown(
     userId: number,
     payload: {

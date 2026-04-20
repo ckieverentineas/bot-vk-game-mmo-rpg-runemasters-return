@@ -1,5 +1,7 @@
 import { AppError } from '../../../../shared/domain/AppError';
 import type { PlayerState } from '../../../../shared/types/game';
+import { buildPlayerNextGoalView } from '../../../player/application/read-models/next-goal';
+import { buildPlayerSchoolRecognitionView } from '../../../player/application/read-models/school-recognition';
 import type { GameTelemetry } from '../../../shared/application/ports/GameTelemetry';
 import { getEquippedRune, getEquippedRuneIdsBySlot, getRuneEquippedSlot, getSelectedRune, getUnlockedRuneSlotCount } from '../../../player/domain/player-stats';
 import { getSchoolDefinitionForArchetype } from '../../../runes/domain/rune-schools';
@@ -61,6 +63,8 @@ export class EquipCurrentRune {
     }
 
     const previousRune = getEquippedRune(player, targetSlot);
+    const recognitionBefore = buildPlayerSchoolRecognitionView(player);
+    const nextGoalBefore = buildPlayerNextGoalView(player);
     const updatedPlayer = await this.repository.equipRune(player.playerId, rune.id, {
       commandKey: 'EQUIP_RUNE',
       targetSlot,
@@ -83,6 +87,25 @@ export class EquipCurrentRune {
         afterSchoolCode: getSchoolDefinitionForArchetype(nextRune?.archetypeCode)?.code ?? null,
         beforeRarity: previousRune?.rarity ?? null,
         afterRarity: nextRune?.rarity ?? null,
+      });
+    }
+
+    const recognitionAfter = buildPlayerSchoolRecognitionView(updatedPlayer);
+    if (
+      targetSlot === 0
+      && recognitionBefore
+      && !recognitionBefore.signEquipped
+      && recognitionAfter?.signEquipped
+      && nextGoalBefore.goalType === 'equip_school_sign'
+    ) {
+      await this.telemetry.schoolNoviceFollowUpActionTaken(updatedPlayer.userId, {
+        schoolCode: recognitionAfter.schoolCode,
+        currentGoalType: nextGoalBefore.goalType,
+        actionType: 'equip_school_sign',
+        signEquipped: recognitionAfter.signEquipped,
+        usedSchoolSign: true,
+        battleId: null,
+        enemyCode: null,
       });
     }
 

@@ -158,6 +158,7 @@ const createTelemetry = (): GameTelemetry => ({
   onboardingStarted: vi.fn().mockResolvedValue(undefined),
   loadoutChanged: vi.fn().mockResolvedValue(undefined),
   schoolNoviceEliteEncounterStarted: vi.fn().mockResolvedValue(undefined),
+  schoolNoviceFollowUpActionTaken: vi.fn().mockResolvedValue(undefined),
   returnRecapShown: vi.fn().mockResolvedValue(undefined),
   postSessionNextGoalShown: vi.fn().mockResolvedValue(undefined),
 });
@@ -316,6 +317,69 @@ describe('ExploreLocation', () => {
       locationLevel: resolveEncounterLocationLevel(player),
       targetRewardRarity: 'UNUSUAL',
       nextGoalType: 'hunt_school_elite',
+    });
+  });
+
+  it('logs the next battle as a school follow-up once the first school sign is already equipped', async () => {
+    const player = createPlayer({
+      victories: 3,
+      schoolMasteries: [{ schoolCode: 'ember', experience: 1, rank: 0 }],
+      runes: [
+        {
+          id: 'rune-ember-1',
+          runeCode: 'rune-ember-1',
+          archetypeCode: 'ember',
+          passiveAbilityCodes: ['ember_heart'],
+          activeAbilityCodes: ['ember_pulse'],
+          name: 'Необычная руна Пламени',
+          rarity: 'UNUSUAL',
+          isEquipped: true,
+          equippedSlot: 0,
+          health: 1,
+          attack: 2,
+          defence: 0,
+          magicDefence: 0,
+          dexterity: 0,
+          intelligence: 0,
+          createdAt: '2026-04-12T00:00:00.000Z',
+        },
+      ],
+    });
+    const repository = {
+      findPlayerByVkId: vi.fn().mockResolvedValue(player),
+      getCommandIntentResult: vi.fn().mockResolvedValue(null),
+      getActiveBattle: vi.fn().mockResolvedValue(null),
+      findBiomeForLocationLevel: vi.fn().mockResolvedValue({ ...createBiome(), code: 'dark-forest', name: 'Тёмный лес' }),
+      listMobTemplatesForBiome: vi.fn().mockResolvedValue([
+        {
+          ...createMobTemplate(),
+          code: 'blue-slime',
+          biomeCode: 'dark-forest',
+        },
+      ]),
+      createBattle: vi.fn().mockImplementation(async (_playerId: number, battle: Omit<BattleView, 'id' | 'playerId' | 'createdAt' | 'updatedAt'>) => ({
+        id: 'battle-follow-up-1',
+        playerId: player.playerId,
+        createdAt: '2026-04-12T00:00:00.000Z',
+        updatedAt: '2026-04-12T00:00:00.000Z',
+        ...battle,
+      })),
+    } as unknown as GameRepository;
+    const telemetry = createTelemetry();
+    const useCase = new ExploreLocation(repository, createRandom(), telemetry);
+
+    const battle = await useCase.execute(player.vkId, 'intent-explore-follow-up-1', buildExploreLocationIntentStateKey(player), 'payload');
+
+    expect(battle.id).toBe('battle-follow-up-1');
+    expect(telemetry.schoolNoviceEliteEncounterStarted).not.toHaveBeenCalled();
+    expect(telemetry.schoolNoviceFollowUpActionTaken).toHaveBeenCalledWith(player.userId, {
+      schoolCode: 'ember',
+      currentGoalType: 'reach_next_school_mastery',
+      actionType: 'start_next_battle',
+      signEquipped: true,
+      usedSchoolSign: true,
+      battleId: 'battle-follow-up-1',
+      enemyCode: 'blue-slime',
     });
   });
 

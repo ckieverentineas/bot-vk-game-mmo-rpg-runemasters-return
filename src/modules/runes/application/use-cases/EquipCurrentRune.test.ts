@@ -74,6 +74,7 @@ describe('EquipCurrentRune', () => {
     const player = createPlayer();
     const telemetry = {
       loadoutChanged: vi.fn().mockResolvedValue(undefined),
+      schoolNoviceFollowUpActionTaken: vi.fn().mockResolvedValue(undefined),
     } as unknown as GameTelemetry;
     const repository = {
       findPlayerByVkId: vi.fn().mockResolvedValue(player),
@@ -103,6 +104,7 @@ describe('EquipCurrentRune', () => {
       }),
     );
     expect(telemetry.loadoutChanged).not.toHaveBeenCalled();
+    expect(telemetry.schoolNoviceFollowUpActionTaken).not.toHaveBeenCalled();
   });
 
   it('rejects stale equip intent before persistence', async () => {
@@ -112,7 +114,10 @@ describe('EquipCurrentRune', () => {
       getCommandIntentResult: vi.fn(),
       equipRune: vi.fn(),
     } as unknown as GameRepository;
-    const useCase = new EquipCurrentRune(repository, { loadoutChanged: vi.fn() } as unknown as GameTelemetry);
+    const useCase = new EquipCurrentRune(repository, {
+      loadoutChanged: vi.fn(),
+      schoolNoviceFollowUpActionTaken: vi.fn(),
+    } as unknown as GameTelemetry);
 
     await expect(useCase.execute(player.vkId, 0, 'intent-equip-1', 'stale-state')).rejects.toMatchObject({
       code: 'stale_command_intent',
@@ -128,7 +133,10 @@ describe('EquipCurrentRune', () => {
       getCommandIntentResult: vi.fn(),
       equipRune: vi.fn(),
     } as unknown as GameRepository;
-    const useCase = new EquipCurrentRune(repository, { loadoutChanged: vi.fn() } as unknown as GameTelemetry);
+    const useCase = new EquipCurrentRune(repository, {
+      loadoutChanged: vi.fn(),
+      schoolNoviceFollowUpActionTaken: vi.fn(),
+    } as unknown as GameTelemetry);
 
     await expect(useCase.execute(player.vkId, 0, 'intent-only')).rejects.toMatchObject({
       code: 'stale_command_intent',
@@ -144,7 +152,10 @@ describe('EquipCurrentRune', () => {
       getCommandIntentResult: vi.fn().mockResolvedValue({ status: 'APPLIED', result: replayed }),
       equipRune: vi.fn(),
     } as unknown as GameRepository;
-    const useCase = new EquipCurrentRune(repository, { loadoutChanged: vi.fn() } as unknown as GameTelemetry);
+    const useCase = new EquipCurrentRune(repository, {
+      loadoutChanged: vi.fn(),
+      schoolNoviceFollowUpActionTaken: vi.fn(),
+    } as unknown as GameTelemetry);
 
     await expect(useCase.execute(1001, 0, 'legacy-text:2000000001:1001:82:надеть', undefined, 'legacy_text')).resolves.toEqual(replayed);
 
@@ -158,7 +169,10 @@ describe('EquipCurrentRune', () => {
       getCommandIntentResult: vi.fn(),
       equipRune: vi.fn(),
     } as unknown as GameRepository;
-    const useCase = new EquipCurrentRune(repository, { loadoutChanged: vi.fn() } as unknown as GameTelemetry);
+    const useCase = new EquipCurrentRune(repository, {
+      loadoutChanged: vi.fn(),
+      schoolNoviceFollowUpActionTaken: vi.fn(),
+    } as unknown as GameTelemetry);
 
     await expect(useCase.execute(player.vkId, 0, undefined, undefined, 'legacy_text')).rejects.toMatchObject({
       code: 'stale_command_intent',
@@ -203,6 +217,7 @@ describe('EquipCurrentRune', () => {
     };
     const telemetry = {
       loadoutChanged: vi.fn().mockResolvedValue(undefined),
+      schoolNoviceFollowUpActionTaken: vi.fn().mockResolvedValue(undefined),
     } as unknown as GameTelemetry;
     const repository = {
       findPlayerByVkId: vi.fn().mockResolvedValue(player),
@@ -230,6 +245,70 @@ describe('EquipCurrentRune', () => {
       beforeRarity: null,
       afterRarity: 'USUAL',
     });
+    expect(telemetry.schoolNoviceFollowUpActionTaken).not.toHaveBeenCalled();
+  });
+
+  it('logs equipping the first school sign as a novice follow-up action', async () => {
+    const player = createPlayer({
+      victories: 3,
+      currentRuneIndex: 1,
+      schoolMasteries: [{ schoolCode: 'ember', experience: 1, rank: 0 }],
+      runes: [
+        {
+          ...createPlayer().runes[0],
+          name: 'Обычная руна Пламени',
+          rarity: 'USUAL',
+          isEquipped: true,
+          equippedSlot: 0,
+        },
+        {
+          ...createPlayer().runes[0],
+          id: 'rune-2',
+          runeCode: 'rune-2',
+          name: 'Необычная руна Пламени',
+          rarity: 'UNUSUAL',
+          isEquipped: false,
+          equippedSlot: null,
+        },
+      ],
+    });
+    const updatedPlayer = {
+      ...player,
+      runes: [
+        {
+          ...player.runes[0],
+          isEquipped: false,
+          equippedSlot: null,
+        },
+        {
+          ...player.runes[1],
+          isEquipped: true,
+          equippedSlot: 0,
+        },
+      ],
+    };
+    const telemetry = {
+      loadoutChanged: vi.fn().mockResolvedValue(undefined),
+      schoolNoviceFollowUpActionTaken: vi.fn().mockResolvedValue(undefined),
+    } as unknown as GameTelemetry;
+    const repository = {
+      findPlayerByVkId: vi.fn().mockResolvedValue(player),
+      getCommandIntentResult: vi.fn(),
+      equipRune: vi.fn().mockResolvedValue(updatedPlayer),
+    } as unknown as GameRepository;
+    const useCase = new EquipCurrentRune(repository, telemetry);
+
+    await useCase.execute(player.vkId, 0, 'intent-equip-sign-1', buildEquipIntentStateKey(player, 0));
+
+    expect(telemetry.schoolNoviceFollowUpActionTaken).toHaveBeenCalledWith(updatedPlayer.userId, {
+      schoolCode: 'ember',
+      currentGoalType: 'equip_school_sign',
+      actionType: 'equip_school_sign',
+      signEquipped: true,
+      usedSchoolSign: true,
+      battleId: null,
+      enemyCode: null,
+    });
   });
 
   it('rejects support-slot equip before the slot is unlocked', async () => {
@@ -239,7 +318,10 @@ describe('EquipCurrentRune', () => {
       getCommandIntentResult: vi.fn(),
       equipRune: vi.fn(),
     } as unknown as GameRepository;
-    const useCase = new EquipCurrentRune(repository, { loadoutChanged: vi.fn() } as unknown as GameTelemetry);
+    const useCase = new EquipCurrentRune(repository, {
+      loadoutChanged: vi.fn(),
+      schoolNoviceFollowUpActionTaken: vi.fn(),
+    } as unknown as GameTelemetry);
 
     await expect(useCase.execute(player.vkId, 1, 'intent-support-locked', 'state-support-locked')).rejects.toMatchObject({
       code: 'rune_slot_locked',
@@ -254,7 +336,10 @@ describe('EquipCurrentRune', () => {
       getCommandIntentResult: vi.fn(),
       equipRune: vi.fn(),
     } as unknown as GameRepository;
-    const useCase = new EquipCurrentRune(repository, { loadoutChanged: vi.fn() } as unknown as GameTelemetry);
+    const useCase = new EquipCurrentRune(repository, {
+      loadoutChanged: vi.fn(),
+      schoolNoviceFollowUpActionTaken: vi.fn(),
+    } as unknown as GameTelemetry);
 
     await expect(useCase.execute(player.vkId, 1, 'intent-support-need-primary', buildEquipIntentStateKey(player, 1))).rejects.toMatchObject({
       code: 'rune_primary_required',

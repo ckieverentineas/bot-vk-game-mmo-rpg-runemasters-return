@@ -4,6 +4,7 @@ import { finalizeRecoveredBattleIfNeeded } from '../../../combat/application/fin
 import { BattleEngine } from '../../../combat/domain/battle-engine';
 import { buildBattlePlayerSnapshot } from '../../../combat/domain/build-battle-player-snapshot';
 import { buildPlayerNextGoalView } from '../../../player/application/read-models/next-goal';
+import { buildPlayerSchoolRecognitionView } from '../../../player/application/read-models/school-recognition';
 import { getSchoolNovicePathDefinitionForEnemy, hasRuneOfSchoolAtLeastRarity } from '../../../player/domain/school-novice-path';
 import { derivePlayerStats, getEquippedRune, resolveEncounterLocationLevel } from '../../../player/domain/player-stats';
 import { getSchoolDefinitionForArchetype } from '../../../runes/domain/rune-schools';
@@ -132,6 +133,7 @@ export class ExploreLocation {
     }, turnOwner === 'PLAYER' ? commandOptions : undefined);
 
     await this.trackSchoolNoviceEliteEncounterStarted(currentPlayer, battle, currentSchoolCode);
+    await this.trackSchoolNoviceFollowUpBattleStart(currentPlayer, battle);
 
     if (battle.turnOwner === 'ENEMY') {
       const resolved = BattleEngine.resolveEnemyTurn(battle);
@@ -174,6 +176,34 @@ export class ExploreLocation {
         locationLevel: battle.locationLevel,
         targetRewardRarity: novicePath.rewardRarity,
         nextGoalType: 'hunt_school_elite',
+      });
+    } catch (error) {
+      Logger.warn('Telemetry logging failed', error);
+    }
+  }
+
+  private async trackSchoolNoviceFollowUpBattleStart(player: PlayerState, battle: BattleView): Promise<void> {
+    const recognition = buildPlayerSchoolRecognitionView(player);
+    const nextGoal = buildPlayerNextGoalView(player);
+
+    if (
+      !this.telemetry
+      || !recognition
+      || !recognition.signEquipped
+      || nextGoal.goalType === 'equip_school_sign'
+    ) {
+      return;
+    }
+
+    try {
+      await this.telemetry.schoolNoviceFollowUpActionTaken(player.userId, {
+        schoolCode: recognition.schoolCode,
+        currentGoalType: nextGoal.goalType,
+        actionType: 'start_next_battle',
+        signEquipped: true,
+        usedSchoolSign: true,
+        battleId: battle.id,
+        enemyCode: battle.enemy.code,
       });
     } catch (error) {
       Logger.warn('Telemetry logging failed', error);

@@ -5,6 +5,7 @@ import type { CraftRuneResultView } from '../../modules/runes/application/use-ca
 import type { BattleActionResultView } from '../../modules/combat/application/use-cases/PerformBattleAction';
 import { getSchoolNovicePathDefinitionForEnemy } from '../../modules/player/domain/school-novice-path';
 import { buildBattleResultNextGoalView, buildPlayerNextGoalView } from '../../modules/player/application/read-models/next-goal';
+import { buildPlayerSchoolRecognitionView } from '../../modules/player/application/read-models/school-recognition';
 import { getEquippedRune } from '../../modules/player/domain/player-stats';
 import { getSchoolDefinitionForArchetype } from '../../modules/runes/domain/rune-schools';
 import { AppError, isAppError } from '../../shared/domain/AppError';
@@ -172,6 +173,7 @@ export class GameHandler {
         case gameCommands.runeCollection: {
           const player = await this.services.getRuneCollection.execute(vkId);
           await this.replyWithRuneHub(ctx, player);
+          await this.trackSchoolNoviceRuneHubOpen(player);
           return;
         }
         case gameCommands.equipRune: {
@@ -192,6 +194,7 @@ export class GameHandler {
         case gameCommands.altar: {
           const player = await this.services.getRuneCollection.execute(vkId);
           await this.replyWithRuneHub(ctx, player);
+          await this.trackSchoolNoviceRuneHubOpen(player);
           return;
         }
         case gameCommands.craftRune: {
@@ -541,6 +544,27 @@ export class GameHandler {
         enemyCode: battle.enemy.code,
         battleSchoolCode,
         isSchoolNoviceElite,
+      });
+    });
+  }
+
+  private async trackSchoolNoviceRuneHubOpen(player: PlayerState): Promise<void> {
+    const recognition = buildPlayerSchoolRecognitionView(player);
+    const nextGoal = buildPlayerNextGoalView(player);
+
+    if (!recognition || recognition.signEquipped || nextGoal.goalType !== 'equip_school_sign') {
+      return;
+    }
+
+    await this.safeTrack(async () => {
+      await this.services.telemetry.schoolNoviceFollowUpActionTaken(player.userId, {
+        schoolCode: recognition.schoolCode,
+        currentGoalType: nextGoal.goalType,
+        actionType: 'open_runes',
+        signEquipped: false,
+        usedSchoolSign: false,
+        battleId: null,
+        enemyCode: null,
       });
     });
   }

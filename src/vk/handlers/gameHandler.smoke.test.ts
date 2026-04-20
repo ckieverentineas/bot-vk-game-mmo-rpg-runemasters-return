@@ -217,6 +217,7 @@ const createServices = (): AppServices => {
       onboardingStarted: vi.fn().mockResolvedValue(undefined),
       loadoutChanged: vi.fn().mockResolvedValue(undefined),
       schoolNoviceEliteEncounterStarted: vi.fn().mockResolvedValue(undefined),
+      schoolNoviceFollowUpActionTaken: vi.fn().mockResolvedValue(undefined),
       returnRecapShown: vi.fn().mockResolvedValue(undefined),
       postSessionNextGoalShown: vi.fn().mockResolvedValue(undefined),
     } as unknown as GameTelemetry,
@@ -338,6 +339,67 @@ describe('GameHandler smoke', () => {
       entrySurface: 'start_existing',
       nextStepType: 'complete_tutorial_battle',
     }));
+  });
+
+  it('логирует открытие рун как follow-up после первого school trial, если знак ещё не надет', async () => {
+    const services = createServices();
+    vi.mocked(services.getRuneCollection.execute).mockResolvedValueOnce(createPlayer({
+      tutorialState: 'SKIPPED',
+      victories: 3,
+      schoolMasteries: [{ schoolCode: 'ember', experience: 1, rank: 0 }],
+      runes: [
+        {
+          id: 'rune-1',
+          runeCode: 'rune-1',
+          archetypeCode: 'ember',
+          passiveAbilityCodes: ['ember_heart'],
+          activeAbilityCodes: ['ember_pulse'],
+          name: 'Обычная руна Пламени',
+          rarity: 'USUAL',
+          isEquipped: true,
+          equippedSlot: 0,
+          health: 1,
+          attack: 2,
+          defence: 0,
+          magicDefence: 0,
+          dexterity: 0,
+          intelligence: 0,
+          createdAt: '2026-04-12T00:00:00.000Z',
+        },
+        {
+          id: 'rune-2',
+          runeCode: 'rune-2',
+          archetypeCode: 'ember',
+          passiveAbilityCodes: ['ember_heart'],
+          activeAbilityCodes: ['ember_pulse'],
+          name: 'Необычная руна Пламени',
+          rarity: 'UNUSUAL',
+          isEquipped: false,
+          equippedSlot: null,
+          health: 2,
+          attack: 3,
+          defence: 0,
+          magicDefence: 0,
+          dexterity: 0,
+          intelligence: 0,
+          createdAt: '2026-04-13T00:00:00.000Z',
+        },
+      ],
+    }));
+    const handler = new GameHandler(services);
+    const ctx = createFakeContext({ command: 'руна' });
+
+    await handler.handle(ctx as never);
+
+    expect(services.telemetry.schoolNoviceFollowUpActionTaken).toHaveBeenCalledWith(1, {
+      schoolCode: 'ember',
+      currentGoalType: 'equip_school_sign',
+      actionType: 'open_runes',
+      signEquipped: false,
+      usedSchoolSign: false,
+      battleId: null,
+      enemyCode: null,
+    });
   });
 
   it('логирует показ post-session next goal после завершённого боя', async () => {

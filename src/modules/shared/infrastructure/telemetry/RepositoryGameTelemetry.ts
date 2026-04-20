@@ -25,6 +25,13 @@ export class RepositoryGameTelemetry implements GameTelemetry {
     await this.log(userId, 'school_novice_elite_encounter_started', payload);
   }
 
+  public async schoolNoviceFollowUpActionTaken(
+    userId: number,
+    payload: Parameters<GameTelemetry['schoolNoviceFollowUpActionTaken']>[1],
+  ): Promise<void> {
+    await this.log(userId, 'school_novice_follow_up_action_taken', payload);
+  }
+
   public async returnRecapShown(
     userId: number,
     payload: Parameters<GameTelemetry['returnRecapShown']>[1],
