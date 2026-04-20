@@ -13,10 +13,14 @@ import {
   getSchoolMasteryDefinition,
   resolveNextSchoolMasteryThreshold,
 } from '../../modules/player/domain/school-mastery';
+import {
+  buildBattleResultNextGoalView,
+  buildPlayerNextGoalView,
+} from '../../modules/player/application/read-models/next-goal';
 import { resolveDefendGuardGain } from '../../modules/combat/domain/battle-tactics';
 import { describeRuneContent } from '../../modules/runes/domain/rune-abilities';
 import { buildRuneCollectionPage } from '../../modules/runes/domain/rune-collection';
-import { getRuneSchoolPresentation, listSchoolDefinitions, getSchoolDefinitionForArchetype } from '../../modules/runes/domain/rune-schools';
+import { getRuneSchoolPresentation, listSchoolDefinitions } from '../../modules/runes/domain/rune-schools';
 import type { BattleView, PlayerState, RuneView, StatBlock } from '../../shared/types/game';
 
 const formatStatBlock = (stats: StatBlock): string => [
@@ -67,6 +71,8 @@ const renderStarterSchoolLine = (): string => {
     : 'Стартовые школы уже ждут первую боевую руну.';
 };
 
+const withSentencePeriod = (text: string): string => /[.!?]$/.test(text) ? text : `${text}.`;
+
 const renderSchoolFirstLoopLine = (): string => 'Путь первого входа: базовая атака → первая боевая руна → школа рун → новый стиль боя.';
 const renderSchoolFirstRarityLine = (): string => 'Сначала первая руна открывает школу рун, а новая редкость позже расширяет сборку.';
 
@@ -93,108 +99,6 @@ const renderSchoolMasteryLine = (player: PlayerState): string => {
   }
 
   return `Мастерство школы: ${equippedSchool.name} · ранг ${mastery.rank} · ${mastery.experience}/${nextThreshold} до «${nextUnlock?.title ?? 'новой вехи'}».`;
-};
-
-const resolveSchoolMasteryObjective = (player: PlayerState): string | null => {
-  const equippedRune = getEquippedRune(player);
-  const equippedSchool = getRuneSchoolPresentation(equippedRune?.archetypeCode);
-  const schoolDefinition = getSchoolDefinitionForArchetype(equippedRune?.archetypeCode);
-  const mastery = getPlayerSchoolMasteryForArchetype(player, equippedRune?.archetypeCode);
-  if (!equippedRune || !equippedSchool || !mastery) {
-    return null;
-  }
-
-  const definition = getSchoolMasteryDefinition(mastery.schoolCode);
-  const nextThreshold = resolveNextSchoolMasteryThreshold(mastery.rank);
-  const nextUnlock = definition?.unlocks.find((entry) => entry.rank === mastery.rank + 1) ?? null;
-  if (nextThreshold === null || !nextUnlock) {
-    return null;
-  }
-
-  const remainingVictories = Math.max(1, nextThreshold - mastery.experience);
-  return `одержите ещё ${remainingVictories} побед${remainingVictories === 1 ? 'у' : remainingVictories < 5 ? 'ы' : ''} школой ${schoolDefinition?.nameGenitive ?? equippedSchool.name}, чтобы открыть «${nextUnlock.title}»`;
-};
-
-const resolvePlayerObjectiveBody = (player: PlayerState): string => {
-  if (player.tutorialState === 'ACTIVE') {
-    return 'пройдите учебный бой, заберите первую боевую руну и откройте свою школу рун';
-  }
-
-  if (player.runes.length === 0) {
-    return 'получите первую руну, чтобы открыть школу рун и новый стиль боя';
-  }
-
-  const equippedRune = getEquippedRune(player);
-  if (!equippedRune) {
-    return 'откройте «🔮 Руны» и наденьте руну перед следующим боем';
-  }
-
-  if (describeRuneContent(equippedRune).activeAbilities.length > 0 && player.victories <= 2) {
-    return 'войдите в бой и примените активное действие экипированной руны';
-  }
-
-  const masteryObjective = resolveSchoolMasteryObjective(player);
-  if (masteryObjective) {
-    return masteryObjective;
-  }
-
-  if (getUnlockedRuneSlotCount(player) > 1 && !getEquippedRune(player, 1)) {
-    return 'откройте «🔮 Руны» и заполните слот поддержки второй руной для более широкой сборки';
-  }
-
-  return 'усиливайте руну и пробуйте более высокий уровень угрозы дальше';
-};
-
-const resolvePlayerObjective = (player: PlayerState): string => `🎯 Следующая цель: ${resolvePlayerObjectiveBody(player)}.`;
-
-const resolvePrimaryAction = (player: PlayerState): string => {
-  if (player.tutorialState === 'ACTIVE') {
-    return '⚔️ Учебный бой';
-  }
-
-  if (player.runes.length === 0) {
-    return '⚔️ Исследовать';
-  }
-
-  if (!getEquippedRune(player)) {
-    return '🔮 Руны';
-  }
-
-  if (getUnlockedRuneSlotCount(player) > 1 && !getEquippedRune(player, 1)) {
-    return '🔮 Руны';
-  }
-
-  return '⚔️ Исследовать';
-};
-
-const resolveReturnFocusBody = (player: PlayerState): string => {
-  if (player.tutorialState === 'ACTIVE') {
-    return resolvePlayerObjectiveBody(player);
-  }
-
-  if (player.runes.length === 0) {
-    return 'сделайте первый шаг в приключениях и получите первую руну для открытия школы';
-  }
-
-  if (!getEquippedRune(player)) {
-    return 'откройте «🔮 Руны» и наденьте лучшую руну перед следующим боем';
-  }
-
-  const equippedRune = getEquippedRune(player);
-  if (equippedRune && describeRuneContent(equippedRune).activeAbilities.length > 0 && player.victories <= 2) {
-    return 'войдите в бой и примените активное действие экипированной руны';
-  }
-
-  const masteryObjective = resolveSchoolMasteryObjective(player);
-  if (masteryObjective) {
-    return masteryObjective;
-  }
-
-  if (getUnlockedRuneSlotCount(player) > 1 && !getEquippedRune(player, 1)) {
-    return 'откройте «🔮 Руны» и подберите руну поддержки для второго слота';
-  }
-
-  return 'идите в приключения и развивайте текущую школу рун дальше';
 };
 
 const resolveReturnStateLine = (player: PlayerState): string => {
@@ -229,15 +133,16 @@ const resolveReturnStyleLine = (player: PlayerState): string => {
 };
 
 export const renderReturnRecap = (player: PlayerState, title = '🧭 Возвращение'): string => {
-  const primaryAction = resolvePrimaryAction(player);
+  const nextGoal = buildPlayerNextGoalView(player);
 
   return [
     title,
     '',
     resolveReturnStateLine(player),
     resolveReturnStyleLine(player),
-    `Фокус: ${resolveReturnFocusBody(player)}.`,
-    `Дальше: нажмите «${primaryAction}».`,
+    `Фокус: ${withSentencePeriod(nextGoal.objectiveText)}`,
+    ...(nextGoal.whyText ? [`Почему это важно: ${withSentencePeriod(nextGoal.whyText)}`] : []),
+    `Дальше: нажмите «${nextGoal.primaryActionLabel}».`,
   ].join('\n');
 };
 
@@ -332,6 +237,7 @@ export const renderMainMenu = (player: PlayerState): string => {
   const equippedRune = getEquippedRune(player);
   const inTutorial = isPlayerInTutorial(player);
   const equippedSchool = getRuneSchoolPresentation(equippedRune?.archetypeCode);
+  const nextGoal = buildPlayerNextGoalView(player);
 
   return [
     '🏰 Главное меню Runemasters Return',
@@ -350,7 +256,8 @@ export const renderMainMenu = (player: PlayerState): string => {
     player.defeatStreak > 0
       ? `🛡️ Поражений подряд: ${player.defeatStreak}. Сложность уже смягчена.`
       : `🔥 Побед подряд: ${player.victoryStreak}`,
-    resolvePlayerObjective(player),
+    `🎯 Следующая цель: ${withSentencePeriod(nextGoal.objectiveText)}`,
+    ...(nextGoal.whyText ? [`🜂 Зачем: ${withSentencePeriod(nextGoal.whyText)}`] : []),
     '',
     `⚔️ Боевая мощь: АТК ${stats.attack} / ЗДР ${stats.health}`,
   ].join('\n');
@@ -410,7 +317,7 @@ export const renderLocation = (player: PlayerState): string => [
   player.defeatStreak > 0
     ? `🛡️ После поражений подряд (${player.defeatStreak}) враги становятся слабее, чтобы следующий бой читался спокойнее.`
     : `🔥 Серия побед подряд: ${player.victoryStreak}`,
-  resolvePlayerObjective(player),
+  `🎯 Следующая цель: ${withSentencePeriod(buildPlayerNextGoalView(player).objectiveText)}`,
   '',
   `Следующий шаг: ${player.tutorialState === 'ACTIVE'
     ? 'нажмите «⚔️ Учебный бой».'
@@ -423,6 +330,7 @@ export const renderRuneScreen = (player: PlayerState): string => {
   const selectedRune = getSelectedRune(player);
   const equippedRune = getEquippedRune(player);
   const page = buildRuneCollectionPage(player);
+  const nextGoal = buildPlayerNextGoalView(player);
 
   if (player.runes.length === 0) {
     return [
@@ -450,6 +358,12 @@ export const renderRuneScreen = (player: PlayerState): string => {
       const school = getRuneSchoolPresentation(equippedRune.archetypeCode);
       return school ? [`Текущий стиль: ${school.schoolLine} · роль ${school.roleName.toLowerCase()}.`] : [];
     })() : []),
+    ...(['reach_next_school_mastery', 'fill_support_slot'].includes(nextGoal.goalType)
+      ? [
+          `🎯 Ближайшая веха: ${withSentencePeriod(nextGoal.milestoneProgressText ?? nextGoal.objectiveText)}`,
+          ...(nextGoal.milestoneBenefitText ? [`🜂 Что даст: ${withSentencePeriod(nextGoal.milestoneBenefitText)}`] : []),
+        ]
+      : []),
     '',
     'Список на этой странице:',
     ...page.entries.map((entry) => {
@@ -607,32 +521,19 @@ const renderBattleActionState = (battle: BattleView): string => {
   ].join('\n');
 };
 
-const renderBattleNextGoal = (battle: BattleView): string[] => {
-  if (battle.status !== 'COMPLETED') {
+const renderBattleNextGoal = (battle: BattleView, player?: PlayerState): string[] => {
+  const nextGoal = buildBattleResultNextGoalView(battle, player);
+  if (!nextGoal) {
     return [];
   }
 
-  if (battle.result === 'VICTORY') {
-    if (battle.rewards?.droppedRune) {
-      return [
-        '🎯 Следующая цель: откройте «🔮 Руны» и наденьте новую руну.',
-        'Так вы усилите стиль боя перед следующим боем.',
-      ];
-    }
-
-    return [
-      '🎯 Следующая цель: начните «⚔️ Новый бой» и продолжайте усиливать сборку.',
-      'Сейчас полезнее искать следующую полезную руну и расширять сборку.',
-    ];
-  }
-
   return [
-    '🎯 Следующая цель: проверьте «🔮 Руны» и текущую школу или начните новый бой снова.',
-    'Так вы спокойнее подготовитесь к следующему бою без лишнего давления.',
+    `🎯 Следующая цель: ${withSentencePeriod(nextGoal.objectiveText)}`,
+    ...(nextGoal.whyText ? [`🜂 Что даст: ${withSentencePeriod(nextGoal.whyText)}`] : []),
   ];
 };
 
-export const renderBattle = (battle: BattleView): string => {
+export const renderBattle = (battle: BattleView, player?: PlayerState): string => {
   const log = [...battle.log].slice(-3).reverse().join('\n');
   const activeAbility = battle.player.runeLoadout?.activeAbility ?? null;
   const enemyIntentLine = renderBattleEnemyIntent(battle);
@@ -672,7 +573,7 @@ export const renderBattle = (battle: BattleView): string => {
     : [];
 
   const postSessionLines = battle.status === 'COMPLETED'
-    ? ['', ...renderBattleNextGoal(battle)]
+    ? ['', ...renderBattleNextGoal(battle, player)]
     : [];
 
   return [

@@ -260,6 +260,7 @@ describe('messages school-first onboarding framing', () => {
     expect(message).toContain('🧭 Возвращение');
     expect(message).toContain('Стиль: Школа Пламени · роль штурм.');
     expect(message).toContain('Фокус: одержите ещё 2 победы школой Пламени');
+    expect(message).toContain('Почему это важно: После «Импульса углей»');
     expect(message).toContain('Дальше: нажмите «⚔️ Исследовать».');
   });
 
@@ -313,10 +314,15 @@ describe('messages school-first onboarding framing', () => {
   });
 
   it('adds a forward-looking next goal after victory without a rune drop', () => {
-    const message = renderBattle(createBattle());
+    const message = renderBattle(createBattle(), createPlayer({
+      tutorialState: 'SKIPPED',
+      victories: 3,
+      schoolMasteries: [{ schoolCode: 'ember', experience: 1, rank: 0 }],
+      runes: [createEquippedRune()],
+    }));
 
-    expect(message).toContain('🎯 Следующая цель: начните «⚔️ Новый бой»');
-    expect(message).toContain('расширять сборку');
+    expect(message).toContain('🎯 Следующая цель: одержите ещё 2 победы школой Пламени');
+    expect(message).toContain('🜂 Что даст: После «Импульса углей»');
   });
 
   it('keeps defeat follow-up supportive and without pressure wording', () => {
@@ -324,10 +330,22 @@ describe('messages school-first onboarding framing', () => {
       result: 'DEFEAT',
       rewards: null,
       log: ['💥 Поражение.'],
-    }));
+    }), createPlayer({ tutorialState: 'SKIPPED', runes: [createEquippedRune()] }));
 
     expect(message).toContain('🎯 Следующая цель: проверьте «🔮 Руны» и текущую школу или начните новый бой снова.');
-    expect(message).toContain('спокойнее подготовитесь');
+    expect(message).toContain('🜂 Что даст: Так вы спокойнее подготовитесь');
+  });
+
+  it('shows the nearest school milestone in the rune hub once mastery progress exists', () => {
+    const message = renderRuneScreen(createPlayer({
+      tutorialState: 'SKIPPED',
+      victories: 3,
+      schoolMasteries: [{ schoolCode: 'ember', experience: 1, rank: 0 }],
+      runes: [createEquippedRune()],
+    }));
+
+    expect(message).toContain('🎯 Ближайшая веха: 1/3 до «Разогрев дожима»');
+    expect(message).toContain('🜂 Что даст: После «Импульса углей»');
   });
 
   it('shows support rune contribution in battle text without adding a second active skill promise', () => {

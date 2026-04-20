@@ -1,6 +1,9 @@
 import type { Context } from 'vk-io';
 
 import type { AppServices } from '../../app/composition-root';
+import { buildBattleResultNextGoalView, buildPlayerNextGoalView } from '../../modules/player/application/read-models/next-goal';
+import { getEquippedRune } from '../../modules/player/domain/player-stats';
+import { getSchoolDefinitionForArchetype } from '../../modules/runes/domain/rune-schools';
 import { AppError, isAppError } from '../../shared/domain/AppError';
 import type { BattleActionType, BattleView, PlayerState } from '../../shared/types/game';
 import { Logger } from '../../utils/logger';
@@ -74,11 +77,16 @@ export class GameHandler {
         const keyboard = result.created || result.player.tutorialState === 'ACTIVE'
           ? createTutorialKeyboard(result.player)
           : createMainMenuKeyboard(result.player);
+        const message = renderWelcome(result.player, result.created);
         await this.reply(
           ctx,
-          renderWelcome(result.player, result.created),
+          message,
           keyboard,
         );
+
+        if (!result.created) {
+          await this.trackReturnRecapShown(result.player, 'start_existing');
+        }
         return;
       }
 
@@ -110,11 +118,13 @@ export class GameHandler {
         case gameCommands.skipTutorial: {
           const player = await this.services.skipTutorial.execute(vkId, intentId ?? undefined, stateKey ?? undefined, intentSource);
           await this.reply(ctx, renderReturnRecap(player, '🧭 Возвращение в приключения'), createMainMenuKeyboard(player));
+          await this.trackReturnRecapShown(player, 'skip_tutorial');
           return;
         }
         case gameCommands.returnToAdventure: {
           const player = await this.services.returnToAdventure.execute(vkId, intentId ?? undefined, stateKey ?? undefined, intentSource);
           await this.reply(ctx, renderReturnRecap(player, '🧭 Возвращение в приключения'), createMainMenuKeyboard(player));
+          await this.trackReturnRecapShown(player, 'return_to_adventure');
           return;
         }
         case gameCommands.explore: {
@@ -405,7 +415,11 @@ export class GameHandler {
     const player = vkId === undefined
       ? undefined
       : await this.services.getPlayerProfile.execute(vkId);
-    await this.reply(ctx, renderBattle(battle), createBattleResultKeyboard(battle, player));
+    await this.reply(ctx, renderBattle(battle, player), createBattleResultKeyboard(battle, player));
+
+    if (player) {
+      await this.trackPostSessionNextGoalShown(player, battle);
+    }
   }
 
   private async useBattleAction(
@@ -462,5 +476,45 @@ export class GameHandler {
 
   private async reply(ctx: Context, message: string, keyboard: ReplyKeyboard): Promise<void> {
     await ctx.reply(message, { keyboard });
+  }
+
+  private async trackReturnRecapShown(
+    player: PlayerState,
+    entrySurface: 'start_existing' | 'skip_tutorial' | 'return_to_adventure',
+  ): Promise<void> {
+    const nextGoal = buildPlayerNextGoalView(player);
+    await this.safeTrack(async () => {
+      await this.services.telemetry.returnRecapShown(player.userId, {
+        entrySurface,
+        hasEquippedRune: getEquippedRune(player) !== null,
+        currentSchoolCode: getSchoolDefinitionForArchetype(getEquippedRune(player)?.archetypeCode)?.code ?? null,
+        nextStepType: nextGoal.goalType,
+      });
+    });
+  }
+
+  private async trackPostSessionNextGoalShown(player: PlayerState, battle: BattleView): Promise<void> {
+    const nextGoal = buildBattleResultNextGoalView(battle, player);
+    if (!nextGoal || !battle.result) {
+      return;
+    }
+
+    const battleOutcome = battle.result;
+
+    await this.safeTrack(async () => {
+      await this.services.telemetry.postSessionNextGoalShown(player.userId, {
+        battleOutcome,
+        hadRuneDrop: battle.rewards?.droppedRune != null,
+        suggestedGoalType: nextGoal.goalType,
+      });
+    });
+  }
+
+  private async safeTrack(operation: () => Promise<void>): Promise<void> {
+    try {
+      await operation();
+    } catch (error) {
+      Logger.warn('Telemetry logging failed', error);
+    }
   }
 }

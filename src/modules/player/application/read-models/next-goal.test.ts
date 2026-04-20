@@ -1,0 +1,179 @@
+import { describe, expect, it } from 'vitest';
+
+import type { BattleView, PlayerState } from '../../../../shared/types/game';
+import { buildBattleResultNextGoalView, buildPlayerNextGoalView } from './next-goal';
+
+const createPlayer = (overrides: Partial<PlayerState> = {}): PlayerState => ({
+  userId: 1,
+  vkId: 1001,
+  playerId: 1,
+  level: 1,
+  experience: 0,
+  gold: 0,
+  baseStats: { health: 8, attack: 4, defence: 3, magicDefence: 1, dexterity: 3, intelligence: 1 },
+  locationLevel: 1,
+  currentRuneIndex: 0,
+  activeBattleId: null,
+  victories: 0,
+  victoryStreak: 0,
+  defeats: 0,
+  defeatStreak: 0,
+  mobsKilled: 0,
+  highestLocationLevel: 1,
+  tutorialState: 'SKIPPED',
+  inventory: {
+    usualShards: 25,
+    unusualShards: 10,
+    rareShards: 3,
+    epicShards: 0,
+    legendaryShards: 0,
+    mythicalShards: 0,
+    leather: 0,
+    bone: 0,
+    herb: 0,
+    essence: 0,
+    metal: 0,
+    crystal: 0,
+  },
+  schoolMasteries: [{ schoolCode: 'ember', experience: 1, rank: 0 }],
+  runes: [
+    {
+      id: 'rune-1',
+      runeCode: 'rune-1',
+      archetypeCode: 'ember',
+      passiveAbilityCodes: ['ember_heart'],
+      activeAbilityCodes: ['ember_pulse'],
+      name: 'Руна Пламени',
+      rarity: 'USUAL',
+      isEquipped: true,
+      equippedSlot: 0,
+      health: 1,
+      attack: 2,
+      defence: 0,
+      magicDefence: 0,
+      dexterity: 0,
+      intelligence: 0,
+      createdAt: '2026-04-12T00:00:00.000Z',
+    },
+  ],
+  createdAt: '2026-04-12T00:00:00.000Z',
+  updatedAt: '2026-04-12T00:00:00.000Z',
+  ...overrides,
+});
+
+const createBattle = (overrides: Partial<BattleView> = {}): BattleView => ({
+  id: 'battle-1',
+  playerId: 1,
+  status: 'COMPLETED',
+  battleType: 'PVE',
+  actionRevision: 1,
+  locationLevel: 1,
+  biomeCode: 'initium',
+  enemyCode: 'training-wisp',
+  turnOwner: 'PLAYER',
+  player: {
+    playerId: 1,
+    name: 'Рунный мастер #1001',
+    attack: 4,
+    defence: 3,
+    magicDefence: 1,
+    dexterity: 3,
+    intelligence: 1,
+    maxHealth: 8,
+    currentHealth: 8,
+    maxMana: 4,
+    currentMana: 4,
+    runeLoadout: null,
+    guardPoints: 0,
+  },
+  enemy: {
+    code: 'training-wisp',
+    name: 'Учебный огонёк',
+    kind: 'spirit',
+    isElite: false,
+    isBoss: false,
+    attack: 2,
+    defence: 0,
+    magicDefence: 0,
+    dexterity: 2,
+    intelligence: 1,
+    maxHealth: 6,
+    currentHealth: 0,
+    maxMana: 4,
+    currentMana: 4,
+    experienceReward: 6,
+    goldReward: 2,
+    runeDropChance: 0,
+    attackText: 'касается искрой',
+    intent: null,
+    hasUsedSignatureMove: false,
+  },
+  log: ['🏆 Победа!'],
+  result: 'VICTORY',
+  rewards: {
+    experience: 6,
+    gold: 2,
+    shards: { USUAL: 2 },
+    droppedRune: null,
+  },
+  createdAt: '2026-04-12T00:00:00.000Z',
+  updatedAt: '2026-04-12T00:00:00.000Z',
+  ...overrides,
+});
+
+describe('next goal read-model', () => {
+  it('builds a school-specific mastery goal with progress and payoff', () => {
+    const goal = buildPlayerNextGoalView(createPlayer({ victories: 3 }));
+
+    expect(goal.goalType).toBe('reach_next_school_mastery');
+    expect(goal.objectiveText).toContain('одержите ещё 2 победы школой Пламени');
+    expect(goal.milestoneProgressText).toBe('1/3 до «Разогрев дожима»');
+    expect(goal.whyText).toContain('базовая атака ещё сильнее добивает');
+  });
+
+  it('switches to support-slot goal once the mastery unlock is reached', () => {
+    const goal = buildPlayerNextGoalView(createPlayer({
+      victories: 4,
+      schoolMasteries: [{ schoolCode: 'ember', experience: 3, rank: 1 }],
+      unlockedRuneSlotCount: 2,
+    }));
+
+    expect(goal.goalType).toBe('fill_support_slot');
+    expect(goal.primaryActionLabel).toBe('🔮 Руны');
+    expect(goal.milestoneProgressText).toBe('Слот поддержки уже открыт.');
+  });
+
+  it('keeps battle-result guidance aligned with the current player goal when no rune drops', () => {
+    const goal = buildBattleResultNextGoalView(createBattle(), createPlayer({ victories: 3 }));
+
+    expect(goal?.goalType).toBe('reach_next_school_mastery');
+    expect(goal?.primaryActionLabel).toBe('⚔️ Новый бой');
+    expect(goal?.objectiveText).toContain('одержите ещё 2 победы школой Пламени');
+  });
+
+  it('prioritizes equipping a dropped rune after victory', () => {
+    const goal = buildBattleResultNextGoalView(createBattle({
+      rewards: {
+        ...createBattle().rewards!,
+        droppedRune: {
+          runeCode: 'drop-1',
+          archetypeCode: 'ember',
+          passiveAbilityCodes: ['ember_heart'],
+          activeAbilityCodes: ['ember_pulse'],
+          name: 'Новая руна Пламени',
+          rarity: 'USUAL',
+          isEquipped: false,
+          health: 1,
+          attack: 2,
+          defence: 0,
+          magicDefence: 0,
+          dexterity: 0,
+          intelligence: 0,
+        },
+      },
+    }), createPlayer());
+
+    expect(goal?.goalType).toBe('equip_dropped_rune');
+    expect(goal?.primaryActionLabel).toBe('🔮 Руны');
+  });
+});

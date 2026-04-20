@@ -1,13 +1,21 @@
 import type { PlayerState } from '../../../../shared/types/game';
+import type { GameTelemetry } from '../../../shared/application/ports/GameTelemetry';
 import type { GameRepository } from '../../../shared/application/ports/GameRepository';
 
 export class RegisterPlayer {
-  public constructor(private readonly repository: GameRepository) {}
+  public constructor(
+    private readonly repository: GameRepository,
+    private readonly telemetry: GameTelemetry,
+  ) {}
 
   public async execute(vkId: number): Promise<{ player: PlayerState; created: boolean }> {
     const result = await this.repository.createPlayer(vkId);
     if (result.created) {
       await this.repository.log(result.player.userId, 'player_registered', { vkId });
+      await this.telemetry.onboardingStarted(result.player.userId, {
+        entrySurface: 'start',
+        tutorialState: result.player.tutorialState,
+      });
     }
 
     return {

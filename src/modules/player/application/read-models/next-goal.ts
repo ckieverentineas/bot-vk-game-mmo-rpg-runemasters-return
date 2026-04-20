@@ -1,0 +1,242 @@
+import type { BattleView, PlayerState } from '../../../../shared/types/game';
+import { describeRuneContent } from '../../../runes/domain/rune-abilities';
+import { getRuneSchoolPresentation, getSchoolDefinitionForArchetype } from '../../../runes/domain/rune-schools';
+import { getEquippedRune, getSelectedRune, getUnlockedRuneSlotCount } from '../../domain/player-stats';
+import {
+  getPlayerSchoolMasteryForArchetype,
+  getSchoolMasteryDefinition,
+  resolveNextSchoolMasteryThreshold,
+} from '../../domain/school-mastery';
+
+export type NextGoalType =
+  | 'complete_tutorial_battle'
+  | 'get_first_rune'
+  | 'equip_first_rune'
+  | 'use_active_rune_skill'
+  | 'reach_next_school_mastery'
+  | 'fill_support_slot'
+  | 'push_higher_threat'
+  | 'equip_dropped_rune'
+  | 'review_runes_after_defeat';
+
+export type NextGoalPrimaryAction = 'tutorial_battle' | 'explore' | 'open_runes' | 'new_battle';
+
+export interface NextGoalView {
+  readonly goalType: NextGoalType;
+  readonly primaryAction: NextGoalPrimaryAction;
+  readonly primaryActionLabel: string;
+  readonly objectiveText: string;
+  readonly whyText: string | null;
+  readonly schoolCode: string | null;
+  readonly schoolName: string | null;
+  readonly milestoneTitle: string | null;
+  readonly milestoneProgressText: string | null;
+  readonly milestoneBenefitText: string | null;
+}
+
+const resolvePrimaryActionLabel = (action: NextGoalPrimaryAction): string => {
+  switch (action) {
+    case 'tutorial_battle':
+      return '⚔️ Учебный бой';
+    case 'open_runes':
+      return '🔮 Руны';
+    case 'new_battle':
+      return '⚔️ Новый бой';
+    case 'explore':
+    default:
+      return '⚔️ Исследовать';
+  }
+};
+
+const formatVictoryWord = (count: number): string => {
+  const mod10 = count % 10;
+  const mod100 = count % 100;
+  if (mod10 === 1 && mod100 !== 11) {
+    return 'победу';
+  }
+
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) {
+    return 'победы';
+  }
+
+  return 'побед';
+};
+
+const createGoalView = (
+  goalType: NextGoalType,
+  primaryAction: NextGoalPrimaryAction,
+  objectiveText: string,
+  options: Partial<Omit<NextGoalView, 'goalType' | 'primaryAction' | 'primaryActionLabel' | 'objectiveText'>> = {},
+): NextGoalView => ({
+  goalType,
+  primaryAction,
+  primaryActionLabel: resolvePrimaryActionLabel(primaryAction),
+  objectiveText,
+  whyText: options.whyText ?? null,
+  schoolCode: options.schoolCode ?? null,
+  schoolName: options.schoolName ?? null,
+  milestoneTitle: options.milestoneTitle ?? null,
+  milestoneProgressText: options.milestoneProgressText ?? null,
+  milestoneBenefitText: options.milestoneBenefitText ?? null,
+});
+
+export const buildPlayerNextGoalView = (player: PlayerState): NextGoalView => {
+  if (player.tutorialState === 'ACTIVE') {
+    return createGoalView(
+      'complete_tutorial_battle',
+      'tutorial_battle',
+      'пройдите учебный бой, заберите первую боевую руну и откройте свою школу рун',
+      {
+        whyText: 'После этого первая школа рун задаст ваш ранний стиль боя.',
+      },
+    );
+  }
+
+  if (player.runes.length === 0) {
+    return createGoalView(
+      'get_first_rune',
+      'explore',
+      'получите первую руну, чтобы открыть школу рун и новый стиль боя',
+      {
+        whyText: 'Первая руна открывает узнаваемый стиль боя, а не просто ещё одни цифры.',
+      },
+    );
+  }
+
+  const equippedRune = getEquippedRune(player);
+  const selectedRune = getSelectedRune(player);
+  const selectedSchool = getRuneSchoolPresentation(selectedRune?.archetypeCode);
+  const selectedSchoolDefinition = getSchoolDefinitionForArchetype(selectedRune?.archetypeCode);
+  if (!equippedRune) {
+    return createGoalView(
+      'equip_first_rune',
+      'open_runes',
+      'откройте «🔮 Руны» и наденьте руну перед следующим боем',
+      {
+        schoolCode: selectedSchoolDefinition?.code ?? null,
+        schoolName: selectedSchool?.name ?? null,
+        whyText: selectedSchool
+          ? `Так школа ${selectedSchoolDefinition?.nameGenitive ?? selectedSchool.name} станет вашей реальной боевой сборкой.`
+          : 'Так школа рун перейдёт из коллекции в реальный стиль боя.',
+      },
+    );
+  }
+
+  const equippedSchool = getRuneSchoolPresentation(equippedRune.archetypeCode);
+  const schoolDefinition = getSchoolDefinitionForArchetype(equippedRune.archetypeCode);
+  if (describeRuneContent(equippedRune).activeAbilities.length > 0 && player.victories <= 2) {
+    return createGoalView(
+      'use_active_rune_skill',
+      'explore',
+      'войдите в бой и примените активное действие экипированной руны',
+      {
+        schoolCode: schoolDefinition?.code ?? null,
+        schoolName: equippedSchool?.name ?? null,
+        whyText: equippedSchool
+          ? `${equippedSchool.name} начнёт ощущаться через свой особый боевой приём, а не только через пассивный бонус.`
+          : 'Так руна начнёт менять бой не только статами, но и решением по ходу боя.',
+      },
+    );
+  }
+
+  const mastery = getPlayerSchoolMasteryForArchetype(player, equippedRune.archetypeCode);
+  const masteryDefinition = getSchoolMasteryDefinition(mastery?.schoolCode ?? null);
+  const nextThreshold = resolveNextSchoolMasteryThreshold(mastery?.rank ?? 0);
+  const nextUnlock = masteryDefinition?.unlocks.find((entry) => entry.rank === (mastery?.rank ?? 0) + 1) ?? null;
+  if (mastery && schoolDefinition && nextThreshold !== null && nextUnlock) {
+    const remainingVictories = Math.max(1, nextThreshold - mastery.experience);
+    return createGoalView(
+      'reach_next_school_mastery',
+      'explore',
+      `одержите ещё ${remainingVictories} ${formatVictoryWord(remainingVictories)} школой ${schoolDefinition.nameGenitive}, чтобы открыть «${nextUnlock.title}»`,
+      {
+        schoolCode: mastery.schoolCode,
+        schoolName: equippedSchool?.name ?? schoolDefinition.name,
+        whyText: nextUnlock.description,
+        milestoneTitle: nextUnlock.title,
+        milestoneProgressText: `${mastery.experience}/${nextThreshold} до «${nextUnlock.title}»`,
+        milestoneBenefitText: nextUnlock.description,
+      },
+    );
+  }
+
+  if (getUnlockedRuneSlotCount(player) > 1 && !getEquippedRune(player, 1)) {
+    return createGoalView(
+      'fill_support_slot',
+      'open_runes',
+      'откройте «🔮 Руны» и заполните слот поддержки второй руной для более широкой сборки',
+      {
+        schoolCode: schoolDefinition?.code ?? null,
+        schoolName: equippedSchool?.name ?? null,
+        whyText: 'Поддержка расширяет сборку без второй боевой кнопки и усиливает стиль пассивно.',
+        milestoneTitle: 'Слот поддержки открыт',
+        milestoneProgressText: 'Слот поддержки уже открыт.',
+        milestoneBenefitText: 'Поддержка даёт половину статов выбранной руны и добавляет ограниченный пассивный вклад.',
+      },
+    );
+  }
+
+  return createGoalView(
+    'push_higher_threat',
+    'explore',
+    'усиливайте руну и пробуйте более высокий уровень угрозы дальше',
+    {
+      schoolCode: schoolDefinition?.code ?? null,
+      schoolName: equippedSchool?.name ?? null,
+      whyText: 'Так вы продолжите развивать текущую школу и расширять сборку через честные короткие сессии.',
+    },
+  );
+};
+
+export const buildBattleResultNextGoalView = (
+  battle: BattleView,
+  player?: PlayerState,
+): NextGoalView | null => {
+  if (battle.status !== 'COMPLETED') {
+    return null;
+  }
+
+  if (battle.result === 'VICTORY' && battle.rewards?.droppedRune) {
+    return createGoalView(
+      'equip_dropped_rune',
+      'open_runes',
+      'откройте «🔮 Руны» и наденьте новую руну',
+      {
+        schoolCode: getSchoolDefinitionForArchetype(battle.rewards.droppedRune.archetypeCode)?.code ?? null,
+        schoolName: getRuneSchoolPresentation(battle.rewards.droppedRune.archetypeCode)?.name ?? null,
+        whyText: 'Так вы усилите стиль боя перед следующим боем.',
+      },
+    );
+  }
+
+  if (battle.result === 'DEFEAT') {
+    return createGoalView(
+      'review_runes_after_defeat',
+      'open_runes',
+      'проверьте «🔮 Руны» и текущую школу или начните новый бой снова',
+      {
+        whyText: 'Так вы спокойнее подготовитесь к следующему бою без лишнего давления.',
+      },
+    );
+  }
+
+  if (!player) {
+    return createGoalView(
+      'push_higher_threat',
+      'new_battle',
+      'начните «⚔️ Новый бой» и продолжайте усиливать сборку',
+      {
+        whyText: 'Сейчас полезнее искать следующую полезную руну и расширять сборку.',
+      },
+    );
+  }
+
+  const nextGoal = buildPlayerNextGoalView(player);
+  return {
+    ...nextGoal,
+    primaryAction: nextGoal.primaryAction === 'explore' ? 'new_battle' : nextGoal.primaryAction,
+    primaryActionLabel: nextGoal.primaryAction === 'explore'
+      ? resolvePrimaryActionLabel('new_battle')
+      : nextGoal.primaryActionLabel,
+  };
+};

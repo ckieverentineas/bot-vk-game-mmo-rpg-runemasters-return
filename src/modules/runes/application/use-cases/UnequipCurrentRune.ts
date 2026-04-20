@@ -1,14 +1,19 @@
 import { AppError } from '../../../../shared/domain/AppError';
+import type { PlayerState } from '../../../../shared/types/game';
+import type { GameTelemetry } from '../../../shared/application/ports/GameTelemetry';
 import { requirePlayerByVkId } from '../../../shared/application/require-player';
 import { getEquippedRune, getEquippedRuneIdsBySlot, getRuneEquippedSlot, getSelectedRune, getUnlockedRuneSlotCount } from '../../../player/domain/player-stats';
+import { getSchoolDefinitionForArchetype } from '../../../runes/domain/rune-schools';
 
-import type { PlayerState } from '../../../../shared/types/game';
 import { resolveCommandIntent, type CommandIntentSource } from '../../../shared/application/command-intent';
 import type { GameRepository } from '../../../shared/application/ports/GameRepository';
 import { buildUnequipIntentStateKey } from '../command-intent-state';
 
 export class UnequipCurrentRune {
-  public constructor(private readonly repository: GameRepository) {}
+  public constructor(
+    private readonly repository: GameRepository,
+    private readonly telemetry: GameTelemetry,
+  ) {}
 
   public async execute(vkId: number, intentId?: string, intentStateKey?: string, intentSource: CommandIntentSource = 'payload'): Promise<PlayerState> {
     const player = await requirePlayerByVkId(this.repository, vkId);
@@ -36,7 +41,8 @@ export class UnequipCurrentRune {
       throw new AppError('stale_command_intent', 'Эта кнопка уже устарела. Обновите экран перед повтором команды.');
     }
 
-    return this.repository.equipRune(player.playerId, null, {
+    const previousRune = getEquippedRune(player, targetSlot);
+    const updatedPlayer = await this.repository.equipRune(player.playerId, null, {
       commandKey: 'UNEQUIP_RUNE',
       targetSlot,
       intentId: intent?.intentId,
@@ -49,5 +55,18 @@ export class UnequipCurrentRune {
       expectedEquippedRuneIdsBySlot: getEquippedRuneIdsBySlot(player),
       expectedRuneIds: player.runes.map((entry) => entry.id),
     });
+
+    const nextRune = getEquippedRune(updatedPlayer, targetSlot);
+    if ((previousRune?.id ?? null) !== (nextRune?.id ?? null)) {
+      await this.telemetry.loadoutChanged(updatedPlayer.userId, {
+        changeType: targetSlot === 0 ? 'unequip_primary' : 'unequip_support',
+        beforeSchoolCode: getSchoolDefinitionForArchetype(previousRune?.archetypeCode)?.code ?? null,
+        afterSchoolCode: getSchoolDefinitionForArchetype(nextRune?.archetypeCode)?.code ?? null,
+        beforeRarity: previousRune?.rarity ?? null,
+        afterRarity: nextRune?.rarity ?? null,
+      });
+    }
+
+    return updatedPlayer;
   }
 }

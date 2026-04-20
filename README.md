@@ -21,6 +21,8 @@ Runemasters Return — VK MMO RPG на TypeScript с модульным игро
 - onboarding теперь явно объясняет ранний путь игрока как `базовая атака -> первая руна -> школа рун -> стиль боя` без внутреннего жаргона;
 - завершённый бой теперь всегда заканчивается явной `Следующей целью`, а не только голым CTA на кнопку;
 - existing-player `start`, `пропустить обучение` и `в приключения` теперь дают краткий return recap без guilt/FOMO copy;
+- `main menu`, `return recap`, `rune hub` и `battle result` теперь используют общий school-aware next-goal read-model: игрок видит ближайшую school-веху или ближайший loadout payoff, а не четыре разных подсказки;
+- rune hub теперь показывает ближайшую mastery-веху и то, что она даст школе, а battle result больше не расходится с актуальным return/context состоянием игрока;
 - стартовые школы получают реальную боевую идентичность: Пламя усиливает давление, Твердь усиливает защиту, Прорицание лучше отвечает на намерения врага;
 - школа Тверди уже получила первый полный пакет: пассивную защитную идентичность и активный `Каменный отпор`;
 - tutorial loop теперь подводит игрока к первой активной руне, экипировке и первому применению рунного действия;
@@ -65,6 +67,8 @@ Runemasters Return — VK MMO RPG на TypeScript с модульным игро
 - `docs/reviews/support-rune-slot-v1.md` — первый runtime slice с support-slot: слот 2 открывается через mastery milestone и даёт только bounded pre-battle breadth;
 - `docs/reviews/support-rune-slot-v2.md` — следующий support-slot slice: поддержка начинает влиять на бой пассивно, но future multi-skill остаётся отдельным budget decision;
 - `docs/telemetry/telemetry-plan.md` — минимальный telemetry v1 план для onboarding clarity, school readability, return UX, economy health и exploit review;
+- `src/modules/player/application/read-models/next-goal.ts` — canonical read-model ближайшей school-вехи и next-step guidance для `main menu`, `return recap`, `rune hub` и `battle result`;
+- `src/modules/shared/infrastructure/telemetry/RepositoryGameTelemetry.ts` — typed telemetry adapter над `GameLog` для `onboarding_started`, `loadout_changed`, `return_recap_shown`, `post_session_next_goal_shown`;
 - `docs/content/content-pipeline-plan.md`, `docs/content/validator-scope.md`, `docs/content/templates/school-package-template.md` — source-of-truth по content packages, validator tiers и school package completeness;
 - `src/modules/runes/domain/rune-collection.ts` — paging helper'ы рунной коллекции поверх существующего `currentRuneIndex` без новой persistence-схемы;
 - `src/tooling/release` — правила версионирования, content validation, preflight-проверка и скрипты `npm run content:validate` / `npm run release:status` / `npm run release:preflight`;

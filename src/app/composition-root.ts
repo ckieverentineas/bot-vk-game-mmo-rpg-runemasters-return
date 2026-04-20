@@ -17,9 +17,12 @@ import { SelectRunePageSlot } from '../modules/runes/application/use-cases/Selec
 import { UnequipCurrentRune } from '../modules/runes/application/use-cases/UnequipCurrentRune';
 import { PrismaGameRepository } from '../modules/shared/infrastructure/prisma/PrismaGameRepository';
 import { SystemGameRandom } from '../modules/shared/infrastructure/random/SystemGameRandom';
+import { RepositoryGameTelemetry } from '../modules/shared/infrastructure/telemetry/RepositoryGameTelemetry';
 import { prisma } from '../database/client';
+import type { GameTelemetry } from '../modules/shared/application/ports/GameTelemetry';
 
 export interface AppServices {
+  telemetry: GameTelemetry;
   registerPlayer: RegisterPlayer;
   deletePlayer: DeletePlayer;
   getPlayerProfile: GetPlayerProfile;
@@ -42,9 +45,11 @@ export interface AppServices {
 export const createAppServices = (): AppServices => {
   const repository = new PrismaGameRepository(prisma);
   const random = new SystemGameRandom();
+  const telemetry = new RepositoryGameTelemetry(repository);
 
   return {
-    registerPlayer: new RegisterPlayer(repository),
+    telemetry,
+    registerPlayer: new RegisterPlayer(repository, telemetry),
     deletePlayer: new DeletePlayer(repository),
     getPlayerProfile: new GetPlayerProfile(repository),
     enterTutorialMode: new EnterTutorialMode(repository),
@@ -56,8 +61,8 @@ export const createAppServices = (): AppServices => {
     getRuneCollection: new GetRuneCollection(repository),
     moveRuneCursor: new MoveRuneCursor(repository),
     selectRunePageSlot: new SelectRunePageSlot(repository),
-    equipCurrentRune: new EquipCurrentRune(repository),
-    unequipCurrentRune: new UnequipCurrentRune(repository),
+    equipCurrentRune: new EquipCurrentRune(repository, telemetry),
+    unequipCurrentRune: new UnequipCurrentRune(repository, telemetry),
     craftRune: new CraftRune(repository, random),
     rerollCurrentRuneStat: new RerollCurrentRuneStat(repository, random),
     destroyCurrentRune: new DestroyCurrentRune(repository),

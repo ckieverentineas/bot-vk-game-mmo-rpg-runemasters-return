@@ -1,6 +1,8 @@
 import { AppError } from '../../../../shared/domain/AppError';
 import type { PlayerState } from '../../../../shared/types/game';
+import type { GameTelemetry } from '../../../shared/application/ports/GameTelemetry';
 import { getEquippedRune, getEquippedRuneIdsBySlot, getRuneEquippedSlot, getSelectedRune, getUnlockedRuneSlotCount } from '../../../player/domain/player-stats';
+import { getSchoolDefinitionForArchetype } from '../../../runes/domain/rune-schools';
 
 import { resolveCommandIntent, type CommandIntentSource } from '../../../shared/application/command-intent';
 import { requirePlayerByVkId } from '../../../shared/application/require-player';
@@ -8,7 +10,10 @@ import type { GameRepository } from '../../../shared/application/ports/GameRepos
 import { buildEquipIntentStateKey } from '../command-intent-state';
 
 export class EquipCurrentRune {
-  public constructor(private readonly repository: GameRepository) {}
+  public constructor(
+    private readonly repository: GameRepository,
+    private readonly telemetry: GameTelemetry,
+  ) {}
 
   public async execute(
     vkId: number,
@@ -55,7 +60,8 @@ export class EquipCurrentRune {
       throw new AppError('stale_command_intent', 'Эта кнопка уже устарела. Обновите экран перед повтором команды.');
     }
 
-    return this.repository.equipRune(player.playerId, rune.id, {
+    const previousRune = getEquippedRune(player, targetSlot);
+    const updatedPlayer = await this.repository.equipRune(player.playerId, rune.id, {
       commandKey: 'EQUIP_RUNE',
       targetSlot,
       intentId: intent?.intentId,
@@ -68,5 +74,18 @@ export class EquipCurrentRune {
       expectedEquippedRuneIdsBySlot: getEquippedRuneIdsBySlot(player),
       expectedRuneIds: player.runes.map((entry) => entry.id),
     });
+
+    const nextRune = getEquippedRune(updatedPlayer, targetSlot);
+    if ((previousRune?.id ?? null) !== (nextRune?.id ?? null)) {
+      await this.telemetry.loadoutChanged(updatedPlayer.userId, {
+        changeType: targetSlot === 0 ? 'equip_primary' : 'equip_support',
+        beforeSchoolCode: getSchoolDefinitionForArchetype(previousRune?.archetypeCode)?.code ?? null,
+        afterSchoolCode: getSchoolDefinitionForArchetype(nextRune?.archetypeCode)?.code ?? null,
+        beforeRarity: previousRune?.rarity ?? null,
+        afterRarity: nextRune?.rarity ?? null,
+      });
+    }
+
+    return updatedPlayer;
   }
 }

@@ -139,7 +139,7 @@ src/
 - консистентность рунных архетипов и способностей;
 - базовые ограничения игрового баланса и стартовой конфигурации.
 
-Текущее правило: `archetypeCode` остаётся внутренним content/storage key, а player-facing **школа** выводится через canonical `SchoolDefinition` read-model поверх этого key. Это позволяет развести fantasy-domain и combat-role без миграции базы на раннем этапе и не держать отдельную hand-written карту school presentation. Тот же read-model теперь используется в onboarding-presenter слое, чтобы welcome / tutorial / rune hub говорили об одной и той же school identity. Return recap v1 также остаётся presenter-only слоем поверх текущего `PlayerState` и не требует отдельного persistence-контракта. Rune hub теперь явно показывает `основу` и `поддержку`, но только `основа` остаётся источником активной боевой руны; support-slot живёт как bounded pre-battle breadth до отдельного multi-action review.
+Текущее правило: `archetypeCode` остаётся внутренним content/storage key, а player-facing **школа** выводится через canonical `SchoolDefinition` read-model поверх этого key. Это позволяет развести fantasy-domain и combat-role без миграции базы на раннем этапе и не держать отдельную hand-written карту school presentation. Тот же read-model теперь используется в onboarding-presenter слое, чтобы welcome / tutorial / rune hub говорили об одной и той же school identity. Return recap и battle result больше не собирают next-step guidance локально в `transport`: ближайшая school-веха теперь выводится через общий application read-model [`src/modules/player/application/read-models/next-goal.ts`](src/modules/player/application/read-models/next-goal.ts) поверх текущего `PlayerState`. Rune hub теперь явно показывает `основу` и `поддержку`, но только `основа` остаётся источником активной боевой руны; support-slot живёт как bounded pre-battle breadth до отдельного multi-action review.
 
 Эта валидация запускается через `npm run content:validate`, входит в `npm run check`, включена в `npm run release:preflight` и вызывается перед [`seed()`](src/database/seed.ts:5), чтобы не заливать битый контент в базу.
 
@@ -148,6 +148,8 @@ src/
 `src/modules/shared/application/require-player.ts` убирает копипасту из use-case'ов и делает загрузку игрока вместе с ошибкой `player_not_found` единообразной по всему проекту.
 
 Дополнительно `src/modules/combat/application/finalize-recovered-battle.ts` выносит в одно место сценарий авто-завершения «битого» активного боя, чтобы `combat` и `exploration` не дублировали одинаковую recovery-логику.
+
+Для player-facing guidance приложение теперь также держит отдельный read-model ближайшей цели: `main menu`, `return recap`, `rune hub` и `battle result` читают один и тот же `next-goal` слой, а не размазывают разные эвристики по `vk/presenters`.
 
 ### 6. Чистый combat core
 
@@ -231,6 +233,14 @@ src/
 - победная награда теперь получает отдельный versioned `RewardIntent` и сохраняется в `RewardLedgerRecord`, чтобы повторный retry возвращал canonical battle result вместо повторного reroll.
 - stale active-battle mutation логируется как `battle_stale_action_rejected`, а critical concurrency cases зафиксированы в `docs/testing/concurrency-critical-use-cases.md`.
 - battle persistence versioning и checked-in fixtures теперь описаны отдельно в `docs/platform/persistence-versioning-rules.md`, чтобы rollback/fallback policy не оставалась “в коде по умолчанию”.
+
+### 8.6. Telemetry semantics
+
+Shipped telemetry v1 не вводит отдельную analytics-platform и опирается на существующий `GameLog` rail через typed adapter [`RepositoryGameTelemetry`](src/modules/shared/infrastructure/telemetry/RepositoryGameTelemetry.ts:1).
+
+- application-owned события вроде `loadout_changed` и `onboarding_started` пишутся после committed mutation/use-case transition;
+- transport-owned shown-screen события вроде `return_recap_shown` и `post_session_next_goal_shown` пишутся только после реально отправленного экрана;
+- screen telemetry использует тот же canonical `next-goal` read-model, что и player-facing copy, чтобы telemetry и UX не расходились по смыслу.
 
 ### 9. Smoke verification
 

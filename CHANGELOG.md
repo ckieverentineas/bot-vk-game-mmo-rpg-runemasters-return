@@ -10,6 +10,21 @@
 - коммит `1.00` — это сотый коммит;
 - текущий расчёт статуса можно смотреть через `npm run release:status`.
 
+## [Unreleased]
+
+### Added
+
+- единый school-aware next-goal read-model в [`src/modules/player/application/read-models/next-goal.ts`](src/modules/player/application/read-models/next-goal.ts), чтобы `main menu`, `return recap`, `rune hub` и `battle result` опирались на одну и ту же ближайшую school-веху;
+- типобезопасный telemetry adapter [`RepositoryGameTelemetry`](src/modules/shared/infrastructure/telemetry/RepositoryGameTelemetry.ts) поверх существующего `GameLog` rail для semantic-событий UX и loadout flow;
+- тесты на canonical next-goal read-model в [`src/modules/player/application/read-models/next-goal.test.ts`](src/modules/player/application/read-models/next-goal.test.ts).
+
+### Changed
+
+- `return recap`, главное меню, rune hub и завершённый бой теперь показывают не абстрактный следующий шаг, а ближайшую school-веху или ближайший loadout payoff без guilt/FOMO тона;
+- rune hub теперь явно показывает ближайшую mastery-веху и её payoff, если игрок уже идёт к unlock'у школы или открыл слот поддержки;
+- battle result теперь использует актуальный `PlayerState`, чтобы следующий шаг после боя не расходился с `return recap` и `main menu`;
+- `RegisterPlayer`, `EquipCurrentRune`, `UnequipCurrentRune` и `GameHandler` теперь пишут telemetry v1 события `onboarding_started`, `loadout_changed`, `return_recap_shown` и `post_session_next_goal_shown` после committed transition или реально показанного экрана.
+
 ## [0.01] - 2026-04-11
 
 ### Commit

@@ -622,8 +622,8 @@ Runemasters Return должен решать это через **школы ру
   - [x] основа / поддержка читаются отдельно, а active combat rune остаётся очевидной
   - [x] support-slot открывается позже через mastery, но не создаёт вторую боевую кнопку
 - [ ] Показывать игроку, что именно дала новая редкость
-- [ ] После сессии показывать 2–3 честные next goals
-- [ ] Добавить return recap для игрока после перерыва
+- [x] После сессии показывать 1 честную school-aware next goal
+- [x] Добавить return recap для игрока после перерыва
 - [ ] Проверить, что игрок не тонет в терминах и кнопках
 
 ### 12.5 Social-lite slice
@@ -1007,6 +1007,8 @@ Runemasters Return должен решать это через **школы ру
 - **2026-04-18:** legacy text `+стат` и `сброс` получили server-owned message intent ids; duplicate text replay теперь должен возвращать canonical profile state вместо повторного spend/reset поверх новой сборки.
 - **2026-04-18:** legacy text `надеть` и `снять` получили server-owned message intent ids; duplicate text replay теперь должен возвращать canonical rune loadout result вместо повторного применения той же команды.
 - **2026-04-18:** `в приключения` теперь считается явным выходом из активного обучения; stale intro location больше не должен возвращать игрока к CTA `⚔️ Учебный бой` после добровольного выхода в adventure flow.
+- **2026-04-20:** `main menu`, `return recap`, `rune hub` и `battle result` переведены на общий school-aware next-goal read-model; ближайшая school-веха и payoff теперь описываются единообразно и без drift между экранами.
+- **2026-04-20:** telemetry v1 получил runtime instrumentation для `onboarding_started`, `loadout_changed`, `return_recap_shown` и `post_session_next_goal_shown` через typed adapter поверх `GameLog`.
 - **2026-04-18:** `локация` / `обучение` больше не должны выдёргивать игрока из активного боя в tutorial screen; при активном бою команда теперь безопасно возвращает текущий battle context вместо ложного экрана обучения.
 - **2026-04-18:** `пропустить обучение`, `в приключения` и alias `в мир` переведены на command intent replay rail; duplicate tutorial-navigation commands теперь возвращают canonical exploration state, восстанавливают актуальный tutorial/adventure контекст при stale/pending ветках и не применяются поверх активного боя.
 - **2026-04-18:** keyboard battle inputs `атака` / `защита` / `рунное действие` переведены на command intent replay rail; duplicate same-intent turn input теперь должен возвращать canonical battle result вместо повторного разрешения хода.

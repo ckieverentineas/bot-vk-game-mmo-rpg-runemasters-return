@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { createAppServices, type AppServices } from '../../app/composition-root';
+import type { GameTelemetry } from '../../modules/shared/application/ports/GameTelemetry';
 import { AppError } from '../../shared/domain/AppError';
 import type { BattleView, PlayerState } from '../../shared/types/game';
 import { createRuneKeyboard } from '../keyboards';
@@ -212,6 +213,12 @@ const createServices = (): AppServices => {
   });
 
   return {
+    telemetry: {
+      onboardingStarted: vi.fn().mockResolvedValue(undefined),
+      loadoutChanged: vi.fn().mockResolvedValue(undefined),
+      returnRecapShown: vi.fn().mockResolvedValue(undefined),
+      postSessionNextGoalShown: vi.fn().mockResolvedValue(undefined),
+    } as unknown as GameTelemetry,
     registerPlayer: {
       execute: vi.fn().mockResolvedValue({
         player: tutorialPlayer,
@@ -298,6 +305,10 @@ describe('GameHandler smoke', () => {
 
     expect(getReplyCalls(ctx)[0]?.message).toContain('🧭 Возвращение');
     expect(getReplyCalls(ctx)[0]?.message).toContain('Дальше: нажмите «⚔️ Исследовать»');
+    expect(services.telemetry.returnRecapShown).toHaveBeenCalledWith(1, expect.objectContaining({
+      entrySurface: 'start_existing',
+      nextStepType: 'get_first_rune',
+    }));
   });
 
   it('оставляет tutorial keyboard для вернувшегося игрока с активным обучением', async () => {
@@ -315,6 +326,48 @@ describe('GameHandler smoke', () => {
     expect(replies[0]?.message).toContain('🧭 Возвращение');
     expect(replies[0]?.message).toContain('Дальше: нажмите «⚔️ Учебный бой»');
     expect(JSON.stringify(replies[0]?.keyboard)).toContain('Учебный бой');
+    expect(services.telemetry.returnRecapShown).toHaveBeenCalledWith(1, expect.objectContaining({
+      entrySurface: 'start_existing',
+      nextStepType: 'complete_tutorial_battle',
+    }));
+  });
+
+  it('логирует показ post-session next goal после завершённого боя', async () => {
+    const services = createServices();
+    vi.mocked(services.getPlayerProfile.execute).mockResolvedValueOnce(createPlayer({
+      tutorialState: 'SKIPPED',
+      victories: 3,
+      schoolMasteries: [{ schoolCode: 'ember', experience: 1, rank: 0 }],
+      runes: [
+        {
+          id: 'rune-1',
+          runeCode: 'rune-1',
+          archetypeCode: 'ember',
+          passiveAbilityCodes: ['ember_heart'],
+          activeAbilityCodes: ['ember_pulse'],
+          name: 'Руна Пламени',
+          rarity: 'USUAL',
+          isEquipped: true,
+          equippedSlot: 0,
+          health: 1,
+          attack: 2,
+          defence: 0,
+          magicDefence: 0,
+          dexterity: 0,
+          intelligence: 0,
+          createdAt: '2026-04-12T00:00:00.000Z',
+        },
+      ],
+    }));
+    const handler = new GameHandler(services);
+    const ctx = createFakeContext({ command: 'атака' });
+
+    await handler.handle(ctx as never);
+
+    expect(services.telemetry.postSessionNextGoalShown).toHaveBeenCalledWith(1, expect.objectContaining({
+      battleOutcome: 'VICTORY',
+      suggestedGoalType: 'reach_next_school_mastery',
+    }));
   });
 
   it('проходит сценарий обучения и входа в бой', async () => {
@@ -445,6 +498,31 @@ describe('GameHandler smoke', () => {
 
   it('проходит сценарий завершения боя', async () => {
     const services = createServices();
+    vi.mocked(services.getPlayerProfile.execute).mockResolvedValueOnce(createPlayer({
+      tutorialState: 'SKIPPED',
+      victories: 3,
+      schoolMasteries: [{ schoolCode: 'ember', experience: 1, rank: 0 }],
+      runes: [
+        {
+          id: 'rune-1',
+          runeCode: 'rune-1',
+          archetypeCode: 'ember',
+          passiveAbilityCodes: ['ember_heart'],
+          activeAbilityCodes: ['ember_pulse'],
+          name: 'Руна Пламени',
+          rarity: 'USUAL',
+          isEquipped: true,
+          equippedSlot: 0,
+          health: 1,
+          attack: 2,
+          defence: 0,
+          magicDefence: 0,
+          dexterity: 0,
+          intelligence: 0,
+          createdAt: '2026-04-12T00:00:00.000Z',
+        },
+      ],
+    }));
     const handler = new GameHandler(services);
     const ctx = createFakeContext({ command: 'атака', intentId: 'intent-battle-1', stateKey: 'state-battle-1' });
 
@@ -453,7 +531,7 @@ describe('GameHandler smoke', () => {
     expect(services.performBattleAction.execute).toHaveBeenCalledWith(1001, 'ATTACK', 'intent-battle-1', 'state-battle-1', 'payload');
     expect(getReplyCalls(ctx)[0]?.message).toContain('Завершённый бой');
     expect(getReplyCalls(ctx)[0]?.message).toContain('Победа.');
-    expect(getReplyCalls(ctx)[0]?.message).toContain('🎯 Следующая цель: начните «⚔️ Новый бой»');
+    expect(getReplyCalls(ctx)[0]?.message).toContain('🎯 Следующая цель: одержите ещё 2 победы школой Пламени');
   });
 
   it('выводит server-owned legacy intent для текстовой атаки в бою', async () => {
