@@ -299,6 +299,47 @@ describe('acquisition summary read-model', () => {
     expect(summary?.changeLine).toContain('Буря признала, что вы удержали темп большого боя');
   });
 
+  it('turns the first aligned rare echo reward into a big school battle completion summary', () => {
+    const before = createPlayer({
+      runes: [
+        createRune({ isEquipped: true, equippedSlot: 0, archetypeCode: 'echo', passiveAbilityCodes: ['echo_mind'], activeAbilityCodes: [], rarity: 'UNUSUAL', name: 'Необычная руна Прорицания' }),
+      ],
+      schoolMasteries: [{ schoolCode: 'echo', experience: 1, rank: 0 }],
+      unlockedRuneSlotCount: 1,
+    });
+    const after = createPlayer({
+      runes: [
+        createRune({ isEquipped: true, equippedSlot: 0, archetypeCode: 'echo', passiveAbilityCodes: ['echo_mind'], activeAbilityCodes: [], rarity: 'UNUSUAL', name: 'Необычная руна Прорицания' }),
+        createRune({
+          id: 'rune-3',
+          runeCode: 'rune-3',
+          archetypeCode: 'echo',
+          passiveAbilityCodes: ['echo_mind'],
+          activeAbilityCodes: [],
+          rarity: 'RARE',
+          name: 'Редкая руна Прорицания',
+        }),
+      ],
+      schoolMasteries: [{ schoolCode: 'echo', experience: 1, rank: 0 }],
+      unlockedRuneSlotCount: 1,
+    });
+
+    const summary = buildBattleAcquisitionSummary(before, after, createBattle({
+      enemy: {
+        ...createBattle().enemy,
+        code: 'omen-warden',
+        name: 'Хранитель предзнамений',
+        kind: 'mage',
+        isElite: true,
+        isBoss: true,
+      },
+    }));
+
+    expect(summary?.kind).toBe('school_miniboss_completed');
+    expect(summary?.title).toBe('Большой бой школы пройден');
+    expect(summary?.changeLine).toContain('Прорицание признало, что вы не просто увидели угрозу');
+  });
+
   it('prioritizes support slot unlock when mastery opens build breadth', () => {
     const before = createPlayer({
       runes: [createRune({ isEquipped: true, equippedSlot: 0 })],

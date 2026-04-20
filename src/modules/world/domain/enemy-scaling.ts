@@ -32,6 +32,7 @@ const preferredSchoolBossCodes: Partial<Record<string, string>> = {
   ember: 'ash-matron',
   stone: 'granite-warden',
   gale: 'squall-lord',
+  echo: 'omen-warden',
 };
 
 const encounterHintByEnemyCode: Partial<Record<string, { schoolCode: string; genericHint: string; schoolHint: string }>> = {
@@ -69,6 +70,11 @@ const encounterHintByEnemyCode: Partial<Record<string, { schoolCode: string; gen
     schoolCode: 'gale',
     genericHint: 'Подсказка: этот босс срывает темп резкими выпадами, так что полезнее бить и сразу готовить ответ, а не ждать удобного момента слишком долго.',
     schoolHint: 'Подсказка: это большой бой Бури — здесь особенно важно ударом удерживать темп и не отдавать врагу право на следующий разгон.',
+  },
+  'omen-warden': {
+    schoolCode: 'echo',
+    genericHint: 'Подсказка: этот босс раскрывает опасную угрозу заранее, но наказывает за слепой ответ, так что полезнее читать окно и бить в правильный момент.',
+    schoolHint: 'Подсказка: это большой бой Прорицания — здесь особенно важно читать раскрытую угрозу и отвечать в правильное окно, а не давить вслепую.',
   },
 };
 

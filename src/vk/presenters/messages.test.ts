@@ -484,6 +484,24 @@ describe('messages school-first onboarding framing', () => {
     expect(message).toContain('⭐ Печать Бури: Вы уже пережили большой бой Бури');
   });
 
+  it('shows echo seal recognition once the rare echo rune is already equipped', () => {
+    const message = renderRuneScreen(createPlayer({
+      tutorialState: 'SKIPPED',
+      victories: 5,
+      schoolMasteries: [{ schoolCode: 'echo', experience: 1, rank: 0 }],
+      runes: [{
+        ...createEquippedRune(),
+        archetypeCode: 'echo',
+        passiveAbilityCodes: ['echo_mind'],
+        activeAbilityCodes: [],
+        name: 'Редкая руна Прорицания',
+        rarity: 'RARE',
+      }],
+    }));
+
+    expect(message).toContain('⭐ Печать Прорицания: Вы уже пережили большой бой Прорицания');
+  });
+
   it('shows an impact recap block in the rune hub when a new rune changes the build', () => {
     const message = renderRuneScreen(createPlayer({
       tutorialState: 'SKIPPED',

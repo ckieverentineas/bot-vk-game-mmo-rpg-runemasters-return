@@ -167,6 +167,21 @@ describe('pickEncounterTemplate', () => {
 
     expect(picked.code).toBe('squall-lord');
   });
+
+  it('prefers the echo school miniboss once the first sign is already equipped', () => {
+    const templates = [
+      createTemplate(),
+      createTemplate({ code: 'omen-warden', name: 'Хранитель предзнамений', kind: 'mage', isElite: true, isBoss: true }),
+      createTemplate({ code: 'ash-matron', name: 'Пепельная матрона', kind: 'mage', isElite: true, isBoss: true }),
+    ];
+
+    const picked = pickEncounterTemplate(templates, 6, { schoolCode: 'echo', preferMiniboss: true }, {
+      rollPercentage: (chance) => chance > 0,
+      pickOne: (items) => items[0]!,
+    });
+
+    expect(picked.code).toBe('omen-warden');
+  });
 });
 
 describe('describeEncounter', () => {
@@ -208,6 +223,17 @@ describe('describeEncounter', () => {
 
     expect(description).toContain('Владыка шквала');
     expect(description).toContain('большой бой Бури');
+  });
+
+  it('adds a school-specific hint for the echo miniboss', () => {
+    const description = describeEncounter(
+      createBiome(),
+      createEnemy({ code: 'omen-warden', name: 'Хранитель предзнамений', kind: 'mage', isBoss: true }),
+      'echo',
+    );
+
+    expect(description).toContain('Хранитель предзнамений');
+    expect(description).toContain('большой бой Прорицания');
   });
 
   it('adds a school-specific hint for the echo novice elite', () => {

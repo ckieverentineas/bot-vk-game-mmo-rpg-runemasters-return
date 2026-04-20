@@ -682,6 +682,85 @@ describe('ExploreLocation', () => {
     }));
   });
 
+  it('prefers the echo school miniboss once the first echo sign is already equipped and rare rune is still missing', async () => {
+    const player = createPlayer({
+      victories: 4,
+      locationLevel: 6,
+      schoolMasteries: [{ schoolCode: 'echo', experience: 1, rank: 0 }],
+      runes: [
+        {
+          id: 'rune-echo-1',
+          runeCode: 'rune-echo-1',
+          archetypeCode: 'echo',
+          passiveAbilityCodes: ['echo_mind'],
+          activeAbilityCodes: [],
+          name: 'Необычная руна Прорицания',
+          rarity: 'UNUSUAL',
+          isEquipped: true,
+          equippedSlot: 0,
+          health: 1,
+          attack: 1,
+          defence: 0,
+          magicDefence: 1,
+          dexterity: 0,
+          intelligence: 2,
+          createdAt: '2026-04-12T00:00:00.000Z',
+        },
+      ],
+    });
+    const repository = {
+      findPlayerByVkId: vi.fn().mockResolvedValue(player),
+      getCommandIntentResult: vi.fn().mockResolvedValue(null),
+      getActiveBattle: vi.fn().mockResolvedValue(null),
+      findBiomeForLocationLevel: vi.fn().mockResolvedValue({ ...createBiome(), code: 'dark-forest', name: 'Тёмный лес' }),
+      listMobTemplatesForBiome: vi.fn().mockResolvedValue([
+        {
+          ...createMobTemplate(),
+          code: 'blue-slime',
+          biomeCode: 'dark-forest',
+        },
+        {
+          ...createMobTemplate(),
+          code: 'omen-warden',
+          biomeCode: 'dark-forest',
+          name: 'Хранитель предзнамений',
+          kind: 'mage',
+          isElite: true,
+          isBoss: true,
+          baseExperience: 98,
+          baseGold: 34,
+          runeDropChance: 76,
+          attackText: 'разрывает ход предсказанным ударом',
+        },
+      ]),
+      createBattle: vi.fn().mockImplementation(async (_playerId: number, battle: Omit<BattleView, 'id' | 'playerId' | 'createdAt' | 'updatedAt'>) => ({
+        id: 'battle-echo-miniboss-1',
+        playerId: player.playerId,
+        createdAt: '2026-04-12T00:00:00.000Z',
+        updatedAt: '2026-04-12T00:00:00.000Z',
+        ...battle,
+      })),
+    } as unknown as GameRepository;
+    const random: GameRandom = {
+      nextInt: vi.fn().mockReturnValue(1),
+      rollPercentage: vi.fn().mockReturnValue(true),
+      pickOne: vi.fn((items: readonly MobTemplateView[]) => items[0]),
+    };
+    const telemetry = createTelemetry();
+    const useCase = new ExploreLocation(repository, random, telemetry);
+
+    const battle = await useCase.execute(player.vkId, 'intent-explore-echo-miniboss-1', buildExploreLocationIntentStateKey(player), 'payload');
+
+    expect(battle.enemy.code).toBe('omen-warden');
+    expect(battle.log[0]).toContain('большой бой Прорицания');
+    expect(telemetry.schoolNoviceFollowUpActionTaken).toHaveBeenCalledWith(player.userId, expect.objectContaining({
+      actionType: 'start_next_battle',
+      battleId: 'battle-echo-miniboss-1',
+      enemyCode: 'omen-warden',
+      currentGoalType: 'challenge_school_miniboss',
+    }));
+  });
+
   it('resolves a stuck enemy-first battle before stale payload rejection when the same explore already created it', async () => {
     const activeBattle = createBattle({ turnOwner: 'ENEMY' });
     const recoveredBattle = createBattle({

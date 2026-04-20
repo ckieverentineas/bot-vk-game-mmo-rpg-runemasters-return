@@ -153,4 +153,23 @@ describe('school recognition read-model', () => {
     expect(recognition?.title).toBe('Печать Бури');
     expect(recognition?.statusLine).toContain('темпа и ответного хода');
   });
+
+  it('shows an echo-specific seal message once the rare echo rune is already equipped', () => {
+    const recognition = buildPlayerSchoolRecognitionView(createPlayer({
+      schoolMasteries: [{ schoolCode: 'echo', experience: 1, rank: 0 }],
+      runes: [
+        {
+          ...createPlayer().runes[0]!,
+          archetypeCode: 'echo',
+          passiveAbilityCodes: ['echo_mind'],
+          activeAbilityCodes: [],
+          name: 'Редкая руна Прорицания',
+          rarity: 'RARE',
+        },
+      ],
+    }));
+
+    expect(recognition?.title).toBe('Печать Прорицания');
+    expect(recognition?.statusLine).toContain('чтения боя и точного ответа');
+  });
 });

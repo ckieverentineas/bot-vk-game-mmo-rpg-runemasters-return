@@ -316,6 +316,30 @@ describe('next goal read-model', () => {
     expect(goal.milestoneBenefitText).toContain('первую редкую руну школы Бури');
   });
 
+  it('guides echo to its school miniboss once the first sign is already equipped', () => {
+    const goal = buildPlayerNextGoalView(createPlayer({
+      victories: 4,
+      schoolMasteries: [{ schoolCode: 'echo', experience: 1, rank: 0 }],
+      runes: [
+        {
+          ...createPlayer().runes[0]!,
+          archetypeCode: 'echo',
+          passiveAbilityCodes: ['echo_mind'],
+          activeAbilityCodes: [],
+          name: 'Необычная руна Прорицания',
+          rarity: 'UNUSUAL',
+          isEquipped: true,
+          equippedSlot: 0,
+        },
+      ],
+    }));
+
+    expect(goal.goalType).toBe('challenge_school_miniboss');
+    expect(goal.objectiveText).toContain('разыщите Хранителя предзнамений');
+    expect(goal.milestoneProgressText).toBe('Тёмный лес · Хранитель предзнамений');
+    expect(goal.milestoneBenefitText).toContain('первую редкую руну школы Прорицания');
+  });
+
   it('switches to support-slot goal once the mastery unlock is reached', () => {
     const goal = buildPlayerNextGoalView(createPlayer({
       victories: 4,

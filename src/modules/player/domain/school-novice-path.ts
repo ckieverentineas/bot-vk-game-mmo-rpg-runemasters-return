@@ -63,6 +63,10 @@ const novicePathDefinitions: readonly SchoolNovicePathDefinition[] = [
     biomeName: 'Тёмный лес',
     rewardRarity: 'UNUSUAL',
     forcedArchetypeCode: 'echo',
+    minibossEnemyCode: 'omen-warden',
+    minibossEnemyName: 'Хранитель предзнамений',
+    minibossEnemyNameAccusative: 'Хранителя предзнамений',
+    minibossRewardRarity: 'RARE',
   },
 ];
 

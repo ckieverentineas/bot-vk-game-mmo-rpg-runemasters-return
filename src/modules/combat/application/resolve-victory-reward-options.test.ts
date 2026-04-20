@@ -513,4 +513,67 @@ describe('resolveVictoryRewardOptions', () => {
     expect(result.forcedRune?.archetypeCode).toBe('gale');
     expect(result.forcedRune?.rarity).toBe('RARE');
   });
+
+  it('forces a rare echo rune from the omen warden when the first unusual echo sign is already equipped', () => {
+    const result = resolveVictoryRewardOptions(
+      createPlayer({
+        runes: [
+          {
+            id: 'rune-echo-1',
+            runeCode: 'rune-echo-1',
+            archetypeCode: 'echo',
+            passiveAbilityCodes: ['echo_mind'],
+            activeAbilityCodes: [],
+            name: 'Необычная руна Прорицания',
+            rarity: 'UNUSUAL',
+            isEquipped: true,
+            equippedSlot: 0,
+            health: 1,
+            attack: 1,
+            defence: 0,
+            magicDefence: 1,
+            dexterity: 0,
+            intelligence: 2,
+            createdAt: '2026-04-12T00:00:00.000Z',
+          },
+        ],
+      }),
+      createBattle({
+        locationLevel: 6,
+        enemy: {
+          ...createBattle().enemy,
+          code: 'omen-warden',
+          name: 'Хранитель предзнамений',
+          kind: 'mage',
+          isBoss: true,
+          isElite: true,
+          attack: 15,
+          magicDefence: 8,
+          dexterity: 9,
+          intelligence: 13,
+          maxHealth: 78,
+          experienceReward: 98,
+          goldReward: 34,
+          runeDropChance: 76,
+          attackText: 'разрывает ход предсказанным ударом',
+        },
+        player: {
+          ...createBattle().player,
+          runeLoadout: {
+            ...createBattle().player.runeLoadout!,
+            runeName: 'Необычная руна Прорицания',
+            archetypeCode: 'echo',
+            archetypeName: 'Провидец',
+            schoolCode: 'echo',
+            passiveAbilityCodes: ['echo_mind'],
+            activeAbility: null,
+          },
+        },
+      }),
+      createRandom(),
+    );
+
+    expect(result.forcedRune?.archetypeCode).toBe('echo');
+    expect(result.forcedRune?.rarity).toBe('RARE');
+  });
 });
