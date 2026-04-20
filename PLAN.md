@@ -67,6 +67,7 @@
     - [x] Добавить узкий novice proof для Прорицания на существующих telegraph/intention rails без полного school-v1 package.
     - [x] Довести Бурю до первого полного раннего school path по уже доказанному шаблону без новой tempo-системы.
     - [x] Довести Прорицание до первого полного раннего school path по уже доказанному шаблону без нового combat runtime.
+    - [x] Добавить tooling-отчёт по school-first evidence funnel, чтобы playtest baseline по 4 школам собирался в одном markdown-срезе.
   - [x] Ясно показывать, что именно игрок получил от новой редкости, новой руны или нового unlock'а.
   - [ ] Доказать через playtests и telemetry, что первый school payoff приходит быстро и читаемо.
   - [ ] Не расширять scope в social / PvP / live-ops, пока этот slice не доказан.

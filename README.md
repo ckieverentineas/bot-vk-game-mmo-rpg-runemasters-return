@@ -83,7 +83,8 @@ Runemasters Return — VK MMO RPG на TypeScript с модульным игро
 - `src/modules/player/application/read-models/next-goal.ts` — canonical read-model ближайшей school-вехи и next-step guidance для `main menu`, `return recap`, `rune hub` и `battle result`;
 - `src/modules/shared/infrastructure/telemetry/RepositoryGameTelemetry.ts` — typed telemetry adapter над `GameLog` для `onboarding_started`, `loadout_changed`, `school_novice_elite_encounter_started`, `school_novice_follow_up_action_taken`, `return_recap_shown`, `post_session_next_goal_shown`;
 - `docs/content/content-pipeline-plan.md`, `docs/content/validator-scope.md`, `docs/content/templates/school-package-template.md` — source-of-truth по content packages, validator tiers и school package completeness;
-- `docs/testing/school-path-playtest-v1.md` — ручной playtest/evidence pass для school-first vertical slice по Пламени и Тверди;
+- `docs/testing/school-path-playtest-v1.md` — ручной playtest/evidence pass для school-first vertical slice по Пламени, Тверди, Бури и Прорицанию;
+- `npm run release:school-evidence` — сводный markdown-отчёт по school-first telemetry funnel из `GameLog`, чтобы playtest и runtime evidence смотрелись в одном формате;
 - `src/modules/runes/domain/rune-collection.ts` — paging helper'ы рунной коллекции поверх существующего `currentRuneIndex` без новой persistence-схемы;
 - `src/tooling/release` — правила версионирования, content validation, preflight-проверка и скрипты `npm run content:validate` / `npm run release:status` / `npm run release:preflight`;
 - `src/vk/handlers/gameHandler.smoke.test.ts` — smoke-проверки пользовательских сценариев через transport orchestration без реального VK API;

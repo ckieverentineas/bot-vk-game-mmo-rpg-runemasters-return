@@ -28,6 +28,7 @@
 - `Прорицание` получило первый узкий school-first proof: `Слепой авгур` как novice elite, forced `UNUSUAL` reward и guidance loop вокруг чтения раскрытой угрозы на уже существующих intent rails;
 - `Буря` теперь имеет первый полный ранний school path: `Шквальная рысь` как novice elite, `Владыка шквала` как school miniboss и targeted `RARE` payoff без новой tempo-системы;
 - `Прорицание` теперь имеет первый полный ранний school path: `Слепой авгур` как novice elite, `Хранитель предзнамений` как school miniboss и targeted `RARE` payoff на уже существующих intent rails;
+- tooling slice `release:school-evidence` теперь умеет собирать единый markdown-отчёт по school-first telemetry funnel из `GameLog`, чтобы baseline по 4 школам можно было оценивать не вручную по сырым логам;
 - типобезопасный telemetry adapter [`RepositoryGameTelemetry`](src/modules/shared/infrastructure/telemetry/RepositoryGameTelemetry.ts) поверх существующего `GameLog` rail для semantic-событий UX и loadout flow;
 - тесты на canonical next-goal read-model в [`src/modules/player/application/read-models/next-goal.test.ts`](src/modules/player/application/read-models/next-goal.test.ts).
 
