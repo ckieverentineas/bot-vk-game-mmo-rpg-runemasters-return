@@ -122,8 +122,51 @@ const createBattle = (overrides: Partial<BattleView> = {}): BattleView => ({
 });
 
 describe('next goal read-model', () => {
-  it('builds a school-specific mastery goal with progress and payoff', () => {
+  it('builds a school novice path goal before the first unusual rune of the school is earned', () => {
     const goal = buildPlayerNextGoalView(createPlayer({ victories: 3 }));
+
+    expect(goal.goalType).toBe('hunt_school_elite');
+    expect(goal.objectiveText).toContain('разыщите Пепельную ведунью');
+    expect(goal.milestoneProgressText).toBe('Тёмный лес · Пепельная ведунья');
+    expect(goal.milestoneBenefitText).toContain('первую необычную руну школы Пламени');
+  });
+
+  it('keeps active-skill guidance for schools without a novice elite path', () => {
+    const goal = buildPlayerNextGoalView(createPlayer({
+      victories: 1,
+      runes: [
+        {
+          ...createPlayer().runes[0]!,
+          archetypeCode: 'gale',
+          passiveAbilityCodes: ['gale_mark'],
+          activeAbilityCodes: ['gale_step'],
+          name: 'Руна Бури',
+        },
+      ],
+      schoolMasteries: [{ schoolCode: 'gale', experience: 1, rank: 0 }],
+    }));
+
+    expect(goal.goalType).toBe('use_active_rune_skill');
+    expect(goal.objectiveText).toContain('примените активное действие');
+  });
+
+  it('builds a school-specific mastery goal with progress and payoff', () => {
+    const goal = buildPlayerNextGoalView(createPlayer({
+      victories: 3,
+      runes: [
+        createPlayer().runes[0]!,
+        {
+          ...createPlayer().runes[0]!,
+          id: 'rune-2',
+          runeCode: 'rune-2',
+          name: 'Необычная руна Пламени',
+          rarity: 'UNUSUAL',
+          isEquipped: false,
+          equippedSlot: null,
+          createdAt: '2026-04-13T00:00:00.000Z',
+        },
+      ],
+    }));
 
     expect(goal.goalType).toBe('reach_next_school_mastery');
     expect(goal.objectiveText).toContain('одержите ещё 2 победы школой Пламени');
@@ -145,6 +188,29 @@ describe('next goal read-model', () => {
 
   it('keeps battle-result guidance aligned with the current player goal when no rune drops', () => {
     const goal = buildBattleResultNextGoalView(createBattle(), createPlayer({ victories: 3 }));
+
+    expect(goal?.goalType).toBe('hunt_school_elite');
+    expect(goal?.primaryActionLabel).toBe('⚔️ Новый бой');
+    expect(goal?.objectiveText).toContain('разыщите Пепельную ведунью');
+  });
+
+  it('falls back to mastery guidance once the school already has an unusual rune', () => {
+    const goal = buildBattleResultNextGoalView(createBattle(), createPlayer({
+      victories: 3,
+      runes: [
+        createPlayer().runes[0]!,
+        {
+          ...createPlayer().runes[0]!,
+          id: 'rune-2',
+          runeCode: 'rune-2',
+          name: 'Необычная руна Пламени',
+          rarity: 'UNUSUAL',
+          isEquipped: false,
+          equippedSlot: null,
+          createdAt: '2026-04-13T00:00:00.000Z',
+        },
+      ],
+    }));
 
     expect(goal?.goalType).toBe('reach_next_school_mastery');
     expect(goal?.primaryActionLabel).toBe('⚔️ Новый бой');

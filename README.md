@@ -34,6 +34,7 @@ Runemasters Return — VK MMO RPG на TypeScript с модульным игро
 - для locked Vertical Slice у Пламени и Тверди уже зафиксированы первые same-school starter synergies: школа начинает давать читаемую связку `setup -> payoff`, а не только отдельный пассивный бонус;
 - ранний `dark-forest` теперь получил school-specific elite hooks для Пламени и Тверди: Пепельная ведунья подталкивает к давлению и дожиму, а Камнерогий таран — к чтению тяжёлого удара и защитному ответу;
 - school-aligned elite rewards теперь могут гарантировать первую `необычную` руну своей школы, если игрок ещё не вышел в эту school-веху сам; это делает chase более намеренным и меньше похожим на случайное казино;
+- school-aware next-goal теперь умеет вести новичка по короткому `school novice path`: сначала к первому испытанию школы в `dark-forest`, затем к первой `необычной` руне своей школы;
 - versioned platform contracts для боевой рунной сборки и reward claims: `LoadoutSnapshot`, `RewardIntent`, `RewardLedger`;
 - exact-once reward ledger и canonical battle finalization защищают победную награду от replay/reroll по повторным входящим событиям;
 - battle mutation revision защищает активный бой от stale overwrite при спаме и transport retry;

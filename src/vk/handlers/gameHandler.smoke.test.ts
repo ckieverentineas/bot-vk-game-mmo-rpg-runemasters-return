@@ -373,7 +373,7 @@ describe('GameHandler smoke', () => {
 
     expect(services.telemetry.postSessionNextGoalShown).toHaveBeenCalledWith(1, expect.objectContaining({
       battleOutcome: 'VICTORY',
-      suggestedGoalType: 'reach_next_school_mastery',
+      suggestedGoalType: 'hunt_school_elite',
     }));
   });
 
@@ -538,7 +538,7 @@ describe('GameHandler smoke', () => {
     expect(services.performBattleAction.execute).toHaveBeenCalledWith(1001, 'ATTACK', 'intent-battle-1', 'state-battle-1', 'payload');
     expect(getReplyCalls(ctx)[0]?.message).toContain('Завершённый бой');
     expect(getReplyCalls(ctx)[0]?.message).toContain('Победа.');
-    expect(getReplyCalls(ctx)[0]?.message).toContain('🎯 Следующая цель: одержите ещё 2 победы школой Пламени');
+    expect(getReplyCalls(ctx)[0]?.message).toContain('🎯 Следующая цель: разыщите Пепельную ведунью');
   });
 
   it('показывает impact recap в результате боя, если награда реально меняет сборку', async () => {

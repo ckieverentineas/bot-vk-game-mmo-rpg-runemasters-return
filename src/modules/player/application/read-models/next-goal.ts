@@ -1,4 +1,5 @@
 import type { BattleView, PlayerState } from '../../../../shared/types/game';
+import { getSchoolNovicePathDefinition, hasRuneOfSchoolAtLeastRarity } from '../../domain/school-novice-path';
 import { describeRuneContent } from '../../../runes/domain/rune-abilities';
 import { getRuneSchoolPresentation, getSchoolDefinitionForArchetype } from '../../../runes/domain/rune-schools';
 import { getEquippedRune, getSelectedRune, getUnlockedRuneSlotCount } from '../../domain/player-stats';
@@ -13,6 +14,7 @@ export type NextGoalType =
   | 'get_first_rune'
   | 'equip_first_rune'
   | 'use_active_rune_skill'
+  | 'hunt_school_elite'
   | 'reach_next_school_mastery'
   | 'fill_support_slot'
   | 'push_higher_threat'
@@ -124,7 +126,10 @@ export const buildPlayerNextGoalView = (player: PlayerState): NextGoalView => {
 
   const equippedSchool = getRuneSchoolPresentation(equippedRune.archetypeCode);
   const schoolDefinition = getSchoolDefinitionForArchetype(equippedRune.archetypeCode);
-  if (describeRuneContent(equippedRune).activeAbilities.length > 0 && player.victories <= 2) {
+  const novicePath = schoolDefinition ? getSchoolNovicePathDefinition(schoolDefinition.code) : null;
+  const shouldFocusActiveSkill = describeRuneContent(equippedRune).activeAbilities.length > 0
+    && (player.victories === 0 || (player.victories <= 2 && !novicePath));
+  if (shouldFocusActiveSkill) {
     return createGoalView(
       'use_active_rune_skill',
       'explore',
@@ -135,6 +140,27 @@ export const buildPlayerNextGoalView = (player: PlayerState): NextGoalView => {
         whyText: equippedSchool
           ? `${equippedSchool.name} начнёт ощущаться через свой особый боевой приём, а не только через пассивный бонус.`
           : 'Так руна начнёт менять бой не только статами, но и решением по ходу боя.',
+      },
+    );
+  }
+
+  if (
+    novicePath
+    && schoolDefinition
+    && getUnlockedRuneSlotCount(player) === 1
+    && !hasRuneOfSchoolAtLeastRarity(player, novicePath.schoolCode, novicePath.rewardRarity)
+  ) {
+    return createGoalView(
+      'hunt_school_elite',
+      'explore',
+      `разыщите ${novicePath.enemyNameAccusative} в ${novicePath.biomeName} и пройдите первое испытание школы ${schoolDefinition.nameGenitive}`,
+      {
+        schoolCode: novicePath.schoolCode,
+        schoolName: equippedSchool?.name ?? schoolDefinition.name,
+        whyText: `За победу школа ${schoolDefinition.nameGenitive} может сразу дать первую ${novicePath.rewardRarity === 'UNUSUAL' ? 'необычную' : 'новую'} руну этой школы, если этой вехи у вас ещё нет.`,
+        milestoneTitle: `Первое испытание школы ${schoolDefinition.nameGenitive}`,
+        milestoneProgressText: `${novicePath.biomeName} · ${novicePath.enemyName}`,
+        milestoneBenefitText: `Победа может принести первую ${novicePath.rewardRarity === 'UNUSUAL' ? 'необычную' : 'новую'} руну школы ${schoolDefinition.nameGenitive}.`,
       },
     );
   }

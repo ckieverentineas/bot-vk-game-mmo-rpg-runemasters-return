@@ -1,38 +1,14 @@
 import { gameBalance } from '../../../config/game-balance';
-import type { BattleView, PlayerState, RuneRarity } from '../../../shared/types/game';
+import type { BattleView, PlayerState } from '../../../shared/types/game';
 import { getSchoolDefinitionForArchetype } from '../../runes/domain/rune-schools';
 import type { GameRandom } from '../../shared/application/ports/GameRandom';
 import { systemGameRandom } from '../../shared/infrastructure/random/SystemGameRandom';
 import { RuneFactory } from '../../runes/domain/rune-factory';
+import {
+  getSchoolNovicePathDefinitionForEnemy,
+  hasRuneOfSchoolAtLeastRarity,
+} from '../../player/domain/school-novice-path';
 import type { VictoryRewardOptions } from '../domain/reward-engine';
-
-const schoolEliteRewards: Partial<Record<string, { schoolCode: string; archetypeCode: string; rarity: RuneRarity }>> = {
-  'ash-seer': {
-    schoolCode: 'ember',
-    archetypeCode: 'ember',
-    rarity: 'UNUSUAL',
-  },
-  'stonehorn-ram': {
-    schoolCode: 'stone',
-    archetypeCode: 'stone',
-    rarity: 'UNUSUAL',
-  },
-};
-
-const rarityOrder: readonly RuneRarity[] = ['USUAL', 'UNUSUAL', 'RARE', 'EPIC', 'LEGENDARY', 'MYTHICAL'];
-
-const hasRuneOfSchoolAtLeastRarity = (
-  player: Pick<PlayerState, 'runes'>,
-  schoolCode: string,
-  minimumRarity: RuneRarity,
-): boolean => {
-  const minimumIndex = rarityOrder.indexOf(minimumRarity);
-  return player.runes.some((rune) => {
-    const runeSchoolCode = getSchoolDefinitionForArchetype(rune.archetypeCode)?.code ?? null;
-    const runeRarityIndex = rarityOrder.indexOf(rune.rarity);
-    return runeSchoolCode === schoolCode && runeRarityIndex >= minimumIndex;
-  });
-};
 
 export const resolveVictoryRewardOptions = (
   player: Pick<PlayerState, 'tutorialState' | 'runes'>,
@@ -50,21 +26,21 @@ export const resolveVictoryRewardOptions = (
     };
   }
 
-  const schoolEliteReward = schoolEliteRewards[battle.enemy.code];
-  if (schoolEliteReward) {
+  const novicePath = getSchoolNovicePathDefinitionForEnemy(battle.enemy.code);
+  if (novicePath) {
     const currentSchoolCode = battle.player.runeLoadout?.schoolCode
       ?? getSchoolDefinitionForArchetype(battle.player.runeLoadout?.archetypeCode)?.code
       ?? null;
 
     if (
-      currentSchoolCode === schoolEliteReward.schoolCode
-      && !hasRuneOfSchoolAtLeastRarity(player, schoolEliteReward.schoolCode, schoolEliteReward.rarity)
+      currentSchoolCode === novicePath.schoolCode
+      && !hasRuneOfSchoolAtLeastRarity(player, novicePath.schoolCode, novicePath.rewardRarity)
     ) {
       return {
         forcedRune: RuneFactory.create(
           Math.max(gameBalance.world.minAdventureLocationLevel, battle.locationLevel),
-          schoolEliteReward.rarity,
-          schoolEliteReward.archetypeCode,
+          novicePath.rewardRarity,
+          novicePath.forcedArchetypeCode,
           random,
         ),
       };

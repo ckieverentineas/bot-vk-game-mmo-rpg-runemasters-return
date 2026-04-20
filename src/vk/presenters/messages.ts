@@ -373,7 +373,7 @@ export const renderRuneScreen = (player: PlayerState, acquisitionSummary?: Acqui
       return school ? [`Текущий стиль: ${school.schoolLine} · роль ${school.roleName.toLowerCase()}.`] : [];
     })() : []),
     ...renderAcquisitionSummary(acquisitionSummary),
-    ...(['reach_next_school_mastery', 'fill_support_slot'].includes(nextGoal.goalType)
+    ...(['hunt_school_elite', 'reach_next_school_mastery', 'fill_support_slot'].includes(nextGoal.goalType)
       ? [
           `🎯 Ближайшая веха: ${withSentencePeriod(nextGoal.milestoneProgressText ?? nextGoal.objectiveText)}`,
           ...(nextGoal.milestoneBenefitText ? [`🜂 Что даст: ${withSentencePeriod(nextGoal.milestoneBenefitText)}`] : []),

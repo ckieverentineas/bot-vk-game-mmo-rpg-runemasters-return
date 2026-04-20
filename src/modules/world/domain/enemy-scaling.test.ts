@@ -114,7 +114,7 @@ describe('describeEncounter', () => {
     const description = describeEncounter(createBiome(), createEnemy(), 'ember');
 
     expect(description).toContain('Пепельная ведунья');
-    expect(description).toContain('школа Пламени здесь особенно полезна');
+    expect(description).toContain('первое испытание школы Пламени');
   });
 
   it('adds a generic hint when the enemy pressure does not match the player school', () => {

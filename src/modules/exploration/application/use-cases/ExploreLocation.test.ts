@@ -297,7 +297,7 @@ describe('ExploreLocation', () => {
     const battle = await useCase.execute(player.vkId, 'intent-explore-school-1', buildExploreLocationIntentStateKey(player), 'payload');
 
     expect(battle.enemy.code).toBe('ash-seer');
-    expect(battle.log[0]).toContain('школа Пламени здесь особенно полезна');
+    expect(battle.log[0]).toContain('первое испытание школы Пламени');
   });
 
   it('resolves a stuck enemy-first battle before stale payload rejection when the same explore already created it', async () => {

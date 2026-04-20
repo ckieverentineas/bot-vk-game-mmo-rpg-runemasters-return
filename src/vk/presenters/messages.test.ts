@@ -72,6 +72,16 @@ const createEquippedRune = () => ({
   equippedSlot: 0,
 });
 
+const createUnusualReserveRune = () => ({
+  id: 'rune-2',
+  createdAt: '2026-04-13T00:00:00.000Z',
+  ...createDroppedRune(),
+  name: 'Необычная руна Пламени',
+  rarity: 'UNUSUAL' as const,
+  isEquipped: false,
+  equippedSlot: null,
+});
+
 const createCollectionRune = (name: string, equippedSlot: number | null = null) => ({
   id: `rune-${name}`,
   createdAt: '2026-04-12T00:00:00.000Z',
@@ -254,7 +264,7 @@ describe('messages school-first onboarding framing', () => {
       victories: 3,
       highestLocationLevel: 3,
       schoolMasteries: [{ schoolCode: 'ember', experience: 1, rank: 0 }],
-      runes: [createEquippedRune()],
+      runes: [createEquippedRune(), createUnusualReserveRune()],
     }));
 
     expect(message).toContain('🧭 Возвращение');
@@ -318,7 +328,7 @@ describe('messages school-first onboarding framing', () => {
       tutorialState: 'SKIPPED',
       victories: 3,
       schoolMasteries: [{ schoolCode: 'ember', experience: 1, rank: 0 }],
-      runes: [createEquippedRune()],
+      runes: [createEquippedRune(), createUnusualReserveRune()],
     }));
 
     expect(message).toContain('🎯 Следующая цель: одержите ещё 2 победы школой Пламени');
@@ -341,11 +351,23 @@ describe('messages school-first onboarding framing', () => {
       tutorialState: 'SKIPPED',
       victories: 3,
       schoolMasteries: [{ schoolCode: 'ember', experience: 1, rank: 0 }],
-      runes: [createEquippedRune()],
+      runes: [createEquippedRune(), createUnusualReserveRune()],
     }));
 
     expect(message).toContain('🎯 Ближайшая веха: 1/3 до «Разогрев дожима»');
     expect(message).toContain('🜂 Что даст: После «Импульса углей»');
+  });
+
+  it('shows a school novice path milestone before the first unusual school rune is earned', () => {
+    const message = renderRuneScreen(createPlayer({
+      tutorialState: 'SKIPPED',
+      victories: 3,
+      schoolMasteries: [{ schoolCode: 'ember', experience: 1, rank: 0 }],
+      runes: [createEquippedRune()],
+    }));
+
+    expect(message).toContain('🎯 Ближайшая веха: Тёмный лес · Пепельная ведунья.');
+    expect(message).toContain('🜂 Что даст: Победа может принести первую необычную руну школы Пламени.');
   });
 
   it('shows an impact recap block in the rune hub when a new rune changes the build', () => {
