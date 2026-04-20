@@ -256,7 +256,7 @@ describe('messages school-first onboarding framing', () => {
     const location = renderLocation(player);
 
     expect(welcome).toContain('🧭 Возвращение');
-    expect(welcome).toContain('Дальше: нажмите «⚔️ Исследовать»');
+    expect(welcome).toContain('🧭 Дальше: нажмите «⚔️ Исследовать»');
     expect(welcome).not.toContain('Ваш мастер уже существует');
     expect(welcome).not.toContain('учебная зона доступна для спокойной тренировки');
     expect(menu).not.toContain('Первый бой ведёт к первой руне');
@@ -272,7 +272,7 @@ describe('messages school-first onboarding framing', () => {
     const location = renderLocation(player);
 
     expect(recap).toContain('🧭 Возвращение');
-    expect(recap).toContain('Дальше: нажмите «⚔️ Исследовать»');
+    expect(recap).toContain('🧭 Дальше: нажмите «⚔️ Исследовать»');
     expect(recap).not.toContain('Учебный бой');
     expect(location).toContain('Обучение уже завершено');
     expect(location).toContain('Сейчас открыт режим приключений');
@@ -291,9 +291,9 @@ describe('messages school-first onboarding framing', () => {
     expect(message).toContain('🧭 Возвращение');
     expect(message).toContain('Стиль: Школа Пламени · роль штурм.');
     expect(message).toContain('Статус школы: Вы уже пережили большой бой Пламени: школа доверила вам печать давления и дожима');
-    expect(message).toContain('Фокус: одержите ещё 2 победы школой Пламени');
-    expect(message).toContain('Почему это важно: После «Импульса углей»');
-    expect(message).toContain('Дальше: нажмите «⚔️ Исследовать».');
+    expect(message).toContain('🎯 Следующая цель: одержите ещё 2 победы школой Пламени');
+    expect(message).toContain('🜂 Что это даст: После «Импульса углей»');
+    expect(message).toContain('🧭 Дальше: нажмите «⚔️ Исследовать».');
   });
 
   it('shows school mastery progress in the main menu once a rune is equipped', () => {
@@ -317,7 +317,7 @@ describe('messages school-first onboarding framing', () => {
     const message = renderReturnRecap(createPlayer({ tutorialState: 'ACTIVE', locationLevel: 0 }));
 
     expect(message).toContain('до первой руны и школы рун остался один шаг');
-    expect(message).toContain('Дальше: нажмите «⚔️ Учебный бой».');
+    expect(message).toContain('🧭 Дальше: нажмите «⚔️ Учебный бой».');
   });
 
   it('keeps return recap and post-session guidance free from guilt/fomo wording', () => {
