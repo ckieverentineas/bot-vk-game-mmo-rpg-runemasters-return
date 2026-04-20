@@ -3,93 +3,35 @@ import { resolve } from 'node:path';
 
 import { formatGameContentValidationReport, validateGameContent } from '../../content/validation/validate-game-content';
 import { readGitCommitCount } from './read-git-commit-count';
+import {
+  buildDocumentCheckResult,
+  evaluateReleasePreflight,
+  requiredDocuments,
+  type DocumentCheckResult,
+  type RequiredDocument,
+} from './release-preflight-lib';
 import { resolveReleaseStatus } from './versioning';
 
-interface RequiredDocument {
-  readonly fileName: 'README.md' | 'CHANGELOG.md' | 'PLAN.md' | 'ARCHITECTURE.md' | 'RELEASE_CHECKLIST.md';
-  readonly purpose: string;
-}
-
-interface DocumentCheckResult {
-  readonly fileName: RequiredDocument['fileName'];
-  readonly isValid: boolean;
-  readonly statusLine: string;
-}
-
 const projectRoot = resolve(__dirname, '..', '..', '..');
-
-const requiredDocuments: readonly RequiredDocument[] = [
-  {
-    fileName: 'README.md',
-    purpose: 'пользовательское описание проекта',
-  },
-  {
-    fileName: 'CHANGELOG.md',
-    purpose: 'история пользовательских изменений',
-  },
-  {
-    fileName: 'PLAN.md',
-    purpose: 'план поставки и масштабирования контента',
-  },
-  {
-    fileName: 'ARCHITECTURE.md',
-    purpose: 'архитектурные границы и правила расширения',
-  },
-  {
-    fileName: 'RELEASE_CHECKLIST.md',
-    purpose: 'единый чек-лист локальной поставки и CI',
-  },
-];
 
 const validateRequiredDocument = (requiredDocument: RequiredDocument): DocumentCheckResult => {
   const filePath = resolve(projectRoot, requiredDocument.fileName);
 
   if (!existsSync(filePath)) {
-    return {
-      fileName: requiredDocument.fileName,
-      isValid: false,
-      statusLine: `✗ ${requiredDocument.fileName} — отсутствует (${requiredDocument.purpose})`,
-    };
+    return buildDocumentCheckResult(requiredDocument, 'missing');
   }
 
   if (statSync(filePath).size === 0) {
-    return {
-      fileName: requiredDocument.fileName,
-      isValid: false,
-      statusLine: `✗ ${requiredDocument.fileName} — пустой файл (${requiredDocument.purpose})`,
-    };
+    return buildDocumentCheckResult(requiredDocument, 'empty');
   }
 
-  return {
-    fileName: requiredDocument.fileName,
-    isValid: true,
-    statusLine: `✓ ${requiredDocument.fileName}`,
-  };
+  return buildDocumentCheckResult(requiredDocument, 'ok');
 };
 
 const releaseStatus = resolveReleaseStatus(readGitCommitCount());
 const documentChecks = requiredDocuments.map(validateRequiredDocument);
-const hasBlockingDocumentIssues = documentChecks.some(({ isValid }) => !isValid);
 const contentValidationReport = validateGameContent();
-const hasBlockingContentIssues = !contentValidationReport.isValid;
-
-const resolvePreflightStatusMessage = (): string => {
-  if (hasBlockingDocumentIssues && hasBlockingContentIssues) {
-    return 'Статус: preflight не пройден. Исправьте обязательные документы, контентные данные и баланс перед релизом.';
-  }
-
-  if (hasBlockingDocumentIssues) {
-    return 'Статус: preflight не пройден. Исправьте обязательные документы перед релизом.';
-  }
-
-  if (hasBlockingContentIssues) {
-    return 'Статус: preflight не пройден. Исправьте контентные данные и баланс перед релизом.';
-  }
-
-  return 'Статус: preflight пройден.';
-};
-
-const preflightStatusMessage = resolvePreflightStatusMessage();
+const preflightReport = evaluateReleasePreflight(documentChecks, !contentValidationReport.isValid);
 
 console.log(
   [
@@ -100,12 +42,12 @@ console.log(
     `До следующего релизного рубежа: ${releaseStatus.commitsUntilNextRelease} коммитов`,
     '',
     'Обязательные документы:',
-    ...documentChecks.map(({ statusLine }) => statusLine),
+    ...preflightReport.documentChecks.map(({ statusLine }) => statusLine),
     '',
     'Контент и баланс:',
     ...formatGameContentValidationReport(contentValidationReport),
     '',
-    preflightStatusMessage,
+    preflightReport.statusMessage,
     '',
     'Перед быстрой выкладкой:',
     '1. npm run check',
@@ -115,6 +57,6 @@ console.log(
   ].join('\n'),
 );
 
-if (hasBlockingDocumentIssues || hasBlockingContentIssues) {
-  process.exitCode = 1;
+if (preflightReport.exitCode !== 0) {
+  process.exitCode = preflightReport.exitCode;
 }
