@@ -162,6 +162,26 @@ describe('EquipCurrentRune', () => {
     expect(repository.equipRune).not.toHaveBeenCalled();
   });
 
+  it('returns the canonical replay result before persistence for payload intents too', async () => {
+    const replayed = createPlayer();
+    const telemetry = {
+      loadoutChanged: vi.fn().mockResolvedValue(undefined),
+      schoolNoviceFollowUpActionTaken: vi.fn().mockResolvedValue(undefined),
+    } as unknown as GameTelemetry;
+    const repository = {
+      findPlayerByVkId: vi.fn().mockResolvedValue(createPlayer()),
+      getCommandIntentResult: vi.fn().mockResolvedValue({ status: 'APPLIED', result: replayed }),
+      equipRune: vi.fn(),
+    } as unknown as GameRepository;
+    const useCase = new EquipCurrentRune(repository, telemetry);
+
+    await expect(useCase.execute(1001, 0, 'intent-equip-replay-1', buildEquipIntentStateKey(createPlayer(), 0), 'payload')).resolves.toEqual(replayed);
+
+    expect(repository.equipRune).not.toHaveBeenCalled();
+    expect(telemetry.loadoutChanged).not.toHaveBeenCalled();
+    expect(telemetry.schoolNoviceFollowUpActionTaken).not.toHaveBeenCalled();
+  });
+
   it('rejects legacy text equip commands when no server-owned intent can be derived', async () => {
     const player = createPlayer();
     const repository = {

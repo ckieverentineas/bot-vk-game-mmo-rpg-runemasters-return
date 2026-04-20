@@ -58,6 +58,22 @@ export class EquipCurrentRune {
     const currentStateKey = buildEquipIntentStateKey(player, targetSlot);
     const intent = resolveCommandIntent(intentId, intentStateKey, intentSource, intentSource === null);
 
+    if (intent?.intentId) {
+      const replay = await this.repository.getCommandIntentResult<PlayerState>(
+        player.playerId,
+        intent.intentId,
+        ['EQUIP_RUNE'],
+        intent.intentStateKey,
+      );
+      if (replay?.status === 'APPLIED' && replay.result) {
+        return replay.result;
+      }
+
+      if (replay?.status === 'PENDING') {
+        throw new AppError('command_retry_pending', 'Команда уже обрабатывается. Дождитесь ответа и обновите экран.');
+      }
+    }
+
     if (intentSource !== 'legacy_text' && intent && intent.intentStateKey !== currentStateKey) {
       throw new AppError('stale_command_intent', 'Эта кнопка уже устарела. Обновите экран перед повтором команды.');
     }

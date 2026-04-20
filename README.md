@@ -38,7 +38,7 @@ Runemasters Return — VK MMO RPG на TypeScript с модульным игро
 - evidence layer для early school loop начал собираться прямо в runtime: логируется старт school novice elite encounter, а `reward_claim_applied` теперь различает aligned novice reward вместо безликого общего reward event;
 - первая aligned `unusual` руна школы теперь подаётся как завершение `первого испытания школы`, а не как безымянный дроп: battle result и ключевые экраны закрепляют статус игрока как уже признанного ученика Пламени/Тверди;
 - если первый знак школы уже получен, но ещё не надет, school-aware next-goal теперь ведёт не в абстрактный гринд, а прямо в `🔮 Руны`, чтобы игрок закрепил признание школы в реальной сборке;
-- evidence layer теперь также ловит первый осмысленный шаг после school trial: открытие рун, установку первого знака школы и старт следующего боя после признания школы;
+- evidence layer теперь также ловит осмысленные follow-up шаги после school trial: открытие рун, установку первого знака школы и старт следующего боя после признания школы;
 - versioned platform contracts для боевой рунной сборки и reward claims: `LoadoutSnapshot`, `RewardIntent`, `RewardLedger`;
 - exact-once reward ledger и canonical battle finalization защищают победную награду от replay/reroll по повторным входящим событиям;
 - battle mutation revision защищает активный бой от stale overwrite при спаме и transport retry;
@@ -76,7 +76,7 @@ Runemasters Return — VK MMO RPG на TypeScript с модульным игро
 - `docs/reviews/support-rune-slot-v2.md` — следующий support-slot slice: поддержка начинает влиять на бой пассивно, но future multi-skill остаётся отдельным budget decision;
 - `docs/telemetry/telemetry-plan.md` — минимальный telemetry v1 план для onboarding clarity, school readability, return UX, economy health и exploit review;
 - `src/modules/player/application/read-models/next-goal.ts` — canonical read-model ближайшей school-вехи и next-step guidance для `main menu`, `return recap`, `rune hub` и `battle result`;
-- `src/modules/shared/infrastructure/telemetry/RepositoryGameTelemetry.ts` — typed telemetry adapter над `GameLog` для `onboarding_started`, `loadout_changed`, `return_recap_shown`, `post_session_next_goal_shown`;
+- `src/modules/shared/infrastructure/telemetry/RepositoryGameTelemetry.ts` — typed telemetry adapter над `GameLog` для `onboarding_started`, `loadout_changed`, `school_novice_elite_encounter_started`, `school_novice_follow_up_action_taken`, `return_recap_shown`, `post_session_next_goal_shown`;
 - `docs/content/content-pipeline-plan.md`, `docs/content/validator-scope.md`, `docs/content/templates/school-package-template.md` — source-of-truth по content packages, validator tiers и school package completeness;
 - `src/modules/runes/domain/rune-collection.ts` — paging helper'ы рунной коллекции поверх существующего `currentRuneIndex` без новой persistence-схемы;
 - `src/tooling/release` — правила версионирования, content validation, preflight-проверка и скрипты `npm run content:validate` / `npm run release:status` / `npm run release:preflight`;

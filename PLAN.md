@@ -61,7 +61,7 @@
     - [x] Добавить минимальный telemetry/evidence слой для старта school novice loop и aligned reward claim.
     - [x] Закрепить первую aligned unusual rune как `испытание школы пройдено`, а не как безымянный лут-момент.
     - [x] Добавить post-trial handoff: если первый знак школы уже получен, но ещё не экипирован, вести игрока прямо к его установке.
-    - [x] Начать логировать первый meaningful follow-up после school trial: `open_runes`, `equip_school_sign`, `start_next_battle`.
+    - [x] Начать логировать meaningful follow-up шаги после school trial: `open_runes`, `equip_school_sign`, `start_next_battle`.
   - [x] Ясно показывать, что именно игрок получил от новой редкости, новой руны или нового unlock'а.
   - [ ] Доказать через playtests и telemetry, что первый school payoff приходит быстро и читаемо.
   - [ ] Не расширять scope в social / PvP / live-ops, пока этот slice не доказан.
