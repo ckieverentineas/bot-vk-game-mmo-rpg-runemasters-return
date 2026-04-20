@@ -32,6 +32,7 @@ Runemasters Return — VK MMO RPG на TypeScript с модульным игро
 - первая mastery-веха теперь открывает support-slot для рун: основа даёт боевую кнопку, поддержка даёт половину статов и расширяет сборку без второй активки;
 - support-slot v2 теперь даёт ещё и первый ограниченный passive battle contribution для locked школ, но это всё ещё не второй активный навык;
 - для locked Vertical Slice у Пламени и Тверди уже зафиксированы первые same-school starter synergies: школа начинает давать читаемую связку `setup -> payoff`, а не только отдельный пассивный бонус;
+- ранний `dark-forest` теперь получил school-specific elite hooks для Пламени и Тверди: Пепельная ведунья подталкивает к давлению и дожиму, а Камнерогий таран — к чтению тяжёлого удара и защитному ответу;
 - versioned platform contracts для боевой рунной сборки и reward claims: `LoadoutSnapshot`, `RewardIntent`, `RewardLedger`;
 - exact-once reward ledger и canonical battle finalization защищают победную награду от replay/reroll по повторным входящим событиям;
 - battle mutation revision защищает активный бой от stale overwrite при спаме и transport retry;

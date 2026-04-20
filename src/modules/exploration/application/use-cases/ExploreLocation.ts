@@ -3,7 +3,8 @@ import type { BattleView } from '../../../../shared/types/game';
 import { finalizeRecoveredBattleIfNeeded } from '../../../combat/application/finalize-recovered-battle';
 import { BattleEngine } from '../../../combat/domain/battle-engine';
 import { buildBattlePlayerSnapshot } from '../../../combat/domain/build-battle-player-snapshot';
-import { derivePlayerStats, resolveEncounterLocationLevel } from '../../../player/domain/player-stats';
+import { derivePlayerStats, getEquippedRune, resolveEncounterLocationLevel } from '../../../player/domain/player-stats';
+import { getSchoolDefinitionForArchetype } from '../../../runes/domain/rune-schools';
 import { resolveCommandIntent, type CommandIntentSource } from '../../../shared/application/command-intent';
 import { requirePlayerByVkId } from '../../../shared/application/require-player';
 import type { GameRandom } from '../../../shared/application/ports/GameRandom';
@@ -99,13 +100,14 @@ export class ExploreLocation {
     const currentPlayer = player;
 
     const locationLevel = resolveEncounterLocationLevel(currentPlayer);
+    const currentSchoolCode = getSchoolDefinitionForArchetype(getEquippedRune(currentPlayer)?.archetypeCode)?.code ?? null;
     const biome = await this.repository.findBiomeForLocationLevel(locationLevel);
     if (!biome) {
       throw new AppError('biome_not_found', 'Для текущего уровня локации не найден биом.');
     }
 
     const templates = await this.repository.listMobTemplatesForBiome(biome.code);
-    const template = pickEncounterTemplate(templates, locationLevel);
+    const template = pickEncounterTemplate(templates, locationLevel, currentSchoolCode, this.random);
     const playerStats = derivePlayerStats(currentPlayer);
     const enemy = buildEnemySnapshot(template, locationLevel);
     const turnOwner = resolveInitialTurnOwner(playerStats.dexterity, enemy.dexterity);
@@ -119,7 +121,7 @@ export class ExploreLocation {
       turnOwner,
       player: buildBattlePlayerSnapshot(currentPlayer.playerId, vkId, playerStats, currentPlayer),
       enemy,
-      log: [describeEncounter(biome, enemy)],
+      log: [describeEncounter(biome, enemy, currentSchoolCode)],
       result: null,
       rewards: null,
     }, turnOwner === 'PLAYER' ? commandOptions : undefined);

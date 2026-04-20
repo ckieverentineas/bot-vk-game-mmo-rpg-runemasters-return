@@ -480,6 +480,26 @@ describe('BattleEngine', () => {
     expect(resolved.log.some((entry) => entry.includes('готовит'))).toBe(true);
   });
 
+  it('телеграфирует тяжёлый удар у камнерогого тарана, чтобы школа тверди читалась по делу', () => {
+    const battle = createBattle({
+      turnOwner: 'ENEMY',
+      enemy: {
+        ...createBattle().enemy,
+        code: 'stonehorn-ram',
+        name: 'Камнерогий таран',
+        kind: 'boar',
+        isElite: true,
+        currentHealth: 10,
+        maxHealth: 16,
+      },
+    });
+
+    const resolved = BattleEngine.resolveEnemyTurn(battle);
+
+    expect(resolved.turnOwner).toBe('PLAYER');
+    expect(resolved.enemy.intent?.code).toBe('HEAVY_STRIKE');
+  });
+
   it('разыгрывает тяжёлый удар после телеграфа и сбрасывает намерение', () => {
     vi.spyOn(Math, 'random').mockReturnValue(0.5);
     const battle = createBattle({

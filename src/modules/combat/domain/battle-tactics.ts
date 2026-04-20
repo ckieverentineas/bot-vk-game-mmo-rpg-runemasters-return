@@ -6,6 +6,7 @@ import type {
 
 const heavyStrikeEnemyKinds = new Set<BattleEnemySnapshot['kind']>([
   'wolf',
+  'boar',
   'goblin',
   'knight',
   'dragon',
