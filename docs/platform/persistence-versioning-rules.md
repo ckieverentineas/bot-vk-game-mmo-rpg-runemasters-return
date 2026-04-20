@@ -15,6 +15,23 @@ Versioned persistence contracts must let the runtime distinguish between:
 - `RewardLedger` — exact-once reward application audit trail;
 - `BattleSnapshot` — versioned persisted JSON snapshot for mutable battle state (`player`, `enemy`, `log`, `result`, `rewards`).
 
+## Player-state hydration rules
+
+Полная versioned schema для `player state` всё ещё не введена, но runtime теперь обязан гидратировать persisted player state через один compatibility-safe helper, а не через разрозненные ad-hoc fallback'и.
+
+- `Player`, `PlayerProgress`, `PlayerInventory`, `Rune` и `PlayerSchoolMastery` остаются source-of-truth таблицами;
+- runtime должен уметь безопасно гидратировать:
+  - current persisted state;
+  - legacy state с неполным `progress` / `inventory` / legacy equipped-slot semantics;
+  - newer/unknown state с лишними полями или неизвестным `tutorialState`;
+- безопасные fallback rules для player hydration сейчас включают:
+  - clamp `currentRuneIndex` в границы текущей коллекции;
+  - `highestLocationLevel >= locationLevel`;
+  - unknown `tutorialState -> ACTIVE`;
+  - missing inventory -> `emptyInventory()`;
+  - missing starter school masteries -> derived fallback views;
+  - support-slot availability по persisted value и mastery-derived unlock без silent downgrade.
+
 ## Battle snapshot rules
 
 - `BattleSession.battleSnapshot` is the preferred source for versioned mutable battle JSON;
@@ -33,6 +50,12 @@ Every new persistence contract that crosses a roadmap gate should get checked-in
 
 Current fixtures live in `src/modules/shared/infrastructure/prisma/fixtures/`.
 
+Текущий fixture baseline включает не только battle contracts, но и player-state hydration payloads:
+
+- `player-state-current.json`;
+- `player-state-legacy.json`;
+- `player-state-future.json`.
+
 ## Release rule
 
 - additive persistence change must ship with:
@@ -44,5 +67,5 @@ Current fixtures live in `src/modules/shared/infrastructure/prisma/fixtures/`.
 ## Still open after v1
 
 - schema versioning for full `player state`;
-- broader migration harness beyond current checked-in fixtures;
+- broader migration harness beyond current checked-in fixtures and hydration tests;
 - future decision on whether legacy battle columns remain permanent fallback or are retired after a migration window.

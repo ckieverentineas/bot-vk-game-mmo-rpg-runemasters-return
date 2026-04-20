@@ -45,6 +45,7 @@ Runemasters Return — VK MMO RPG на TypeScript с модульным игро
 - `Буря` теперь тоже доведена до первого полного раннего пути: `Шквальная рысь -> первый знак школы -> Владыка шквала -> первая rare-печать`, без отдельной tempo/initiative системы;
 - `Прорицание` теперь тоже доведено до полного раннего пути: `Слепой авгур -> первый знак школы -> Хранитель предзнамений -> первая rare-печать`, без новой боевой системы поверх уже существующих enemy intent rails;
 - versioned platform contracts для боевой рунной сборки и reward claims: `LoadoutSnapshot`, `RewardIntent`, `RewardLedger`;
+- player-state hydration теперь тоже проходит через compatibility-safe слой с current / legacy / future fixtures, так что persisted player state меньше зависит от ad-hoc fallback'ов при реэнтри и rollback-сценариях;
 - exact-once reward ledger и canonical battle finalization защищают победную награду от replay/reroll по повторным входящим событиям;
 - battle mutation revision защищает активный бой от stale overwrite при спаме и transport retry;
 - versioned `BattleSnapshot` и checked-in compatibility fixtures страхуют save/load battle state перед будущими миграциями;
@@ -82,6 +83,7 @@ Runemasters Return — VK MMO RPG на TypeScript с модульным игро
 - `docs/telemetry/telemetry-plan.md` — минимальный telemetry v1 план для onboarding clarity, school readability, return UX, economy health и exploit review;
 - `src/modules/player/application/read-models/next-goal.ts` — canonical read-model ближайшей school-вехи и next-step guidance для `main menu`, `return recap`, `rune hub` и `battle result`;
 - `src/modules/shared/infrastructure/telemetry/RepositoryGameTelemetry.ts` — typed telemetry adapter над `GameLog` для `onboarding_started`, `loadout_changed`, `school_novice_elite_encounter_started`, `school_novice_follow_up_action_taken`, `return_recap_shown`, `post_session_next_goal_shown`;
+- `src/modules/shared/infrastructure/prisma/player-state-hydration.ts` — compatibility-safe hydration layer для persisted player state с current / legacy / future fixtures;
 - `docs/content/content-pipeline-plan.md`, `docs/content/validator-scope.md`, `docs/content/templates/school-package-template.md` — source-of-truth по content packages, validator tiers и school package completeness;
 - `docs/testing/school-path-playtest-v1.md` — ручной playtest/evidence pass для school-first vertical slice по Пламени, Тверди, Бури и Прорицанию;
 - `npm run release:school-evidence` — сводный markdown-отчёт по school-first telemetry funnel из `GameLog`, чтобы playtest и runtime evidence смотрелись в одном формате;

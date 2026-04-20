@@ -14,15 +14,12 @@ import type {
   PlayerState,
   RuneDraft,
   RuneRarity,
-  RuneView,
   StatBlock,
 } from '../../../../shared/types/game';
 import { buildBattleSnapshot, isBattleSnapshot, type BattleSnapshot } from '../../domain/contracts/battle-snapshot';
 import {
-  emptyInventory,
   getEquippedRune,
   getEquippedRuneIdsBySlot,
-  getRuneEquippedSlot,
   getSelectedRune,
   getUnlockedRuneSlotCount,
   resolveAdaptiveAdventureLocationLevel,
@@ -31,13 +28,12 @@ import {
 } from '../../../player/domain/player-stats';
 import {
   applySchoolMasteryExperience,
-  createSchoolMasteryView,
-  listMissingStarterSchoolMasteries,
   resolveBattleSchoolMasteryRewardGain,
   resolveUnlockedRuneSlotCountFromSchoolMasteries,
 } from '../../../player/domain/school-mastery';
 import { getSchoolNovicePathDefinitionForEnemy, hasRuneOfSchoolAtLeastRarity } from '../../../player/domain/school-novice-path';
 import { getSchoolDefinitionForArchetype } from '../../../runes/domain/rune-schools';
+import { hydratePlayerStateFromPersistence } from './player-state-hydration';
 import { buildLoadoutSnapshotFromBattle, isLoadoutSnapshot, projectBattleRuneLoadout, type LoadoutSnapshot } from '../../domain/contracts/loadout-snapshot';
 import { createAppliedRewardLedgerEntry } from '../../domain/contracts/reward-ledger';
 import { createBattleVictoryRewardIntent } from '../../domain/contracts/reward-intent';
@@ -1884,7 +1880,7 @@ export class PrismaGameRepository implements GameRepository {
   }
 
   private mapPlayer(player: PlayerRecord): PlayerState {
-    return {
+    return hydratePlayerStateFromPersistence({
       userId: player.userId,
       vkId: player.user.vkId,
       playerId: player.id,
@@ -1899,20 +1895,21 @@ export class PrismaGameRepository implements GameRepository {
         dexterity: player.baseDexterity,
         intelligence: player.baseIntelligence,
       },
-      locationLevel: player.progress?.locationLevel ?? gameBalance.world.introLocationLevel,
-      currentRuneIndex: player.progress?.currentRuneIndex ?? 0,
-      unlockedRuneSlotCount: resolveUnlockedRuneSlotCountFromSchoolMasteries(
-        { schoolMasteries: player.schoolMasteries.map((entry) => createSchoolMasteryView(entry.schoolCode, entry.experience)) },
-        player.progress?.unlockedRuneSlotCount ?? 1,
-      ),
-      activeBattleId: player.progress?.activeBattleId ?? null,
-      victories: player.progress?.victories ?? 0,
-      victoryStreak: player.progress?.victoryStreak ?? 0,
-      defeats: player.progress?.defeats ?? 0,
-      defeatStreak: player.progress?.defeatStreak ?? 0,
-      mobsKilled: player.progress?.mobsKilled ?? 0,
-      highestLocationLevel: player.progress?.highestLocationLevel ?? gameBalance.world.introLocationLevel,
-      tutorialState: (player.progress?.tutorialState as PlayerState['tutorialState'] | undefined) ?? 'ACTIVE',
+      progress: player.progress
+        ? {
+            locationLevel: player.progress.locationLevel,
+            currentRuneIndex: player.progress.currentRuneIndex,
+            unlockedRuneSlotCount: player.progress.unlockedRuneSlotCount,
+            activeBattleId: player.progress.activeBattleId,
+            tutorialState: player.progress.tutorialState,
+            victories: player.progress.victories,
+            victoryStreak: player.progress.victoryStreak,
+            defeats: player.progress.defeats,
+            defeatStreak: player.progress.defeatStreak,
+            mobsKilled: player.progress.mobsKilled,
+            highestLocationLevel: player.progress.highestLocationLevel,
+          }
+        : null,
       inventory: player.inventory
         ? {
             usualShards: player.inventory.usualShards,
@@ -1928,34 +1925,32 @@ export class PrismaGameRepository implements GameRepository {
             metal: player.inventory.metal,
             crystal: player.inventory.crystal,
           }
-        : emptyInventory(),
-      schoolMasteries: [
-        ...(player.schoolMasteries.map((entry) => createSchoolMasteryView(entry.schoolCode, entry.experience))),
-        ...listMissingStarterSchoolMasteries({
-          schoolMasteries: player.schoolMasteries.map((entry) => createSchoolMasteryView(entry.schoolCode, entry.experience)),
-        }),
-      ].sort((left, right) => left.schoolCode.localeCompare(right.schoolCode)),
-      runes: player.runes.map((rune): RuneView => ({
+        : null,
+      schoolMasteries: player.schoolMasteries.map((entry) => ({
+        schoolCode: entry.schoolCode,
+        experience: entry.experience,
+      })),
+      runes: player.runes.map((rune) => ({
         id: rune.id,
         runeCode: rune.runeCode,
         archetypeCode: rune.archetypeCode,
-        passiveAbilityCodes: parseJson<string[]>(rune.passiveAbilityCodes, []),
-        activeAbilityCodes: parseJson<string[]>(rune.activeAbilityCodes, []),
+        passiveAbilityCodes: rune.passiveAbilityCodes,
+        activeAbilityCodes: rune.activeAbilityCodes,
         name: rune.name,
-        rarity: rune.rarity as RuneRarity,
+        rarity: rune.rarity,
         health: rune.health,
         attack: rune.attack,
         defence: rune.defence,
         magicDefence: rune.magicDefence,
         dexterity: rune.dexterity,
         intelligence: rune.intelligence,
-        isEquipped: getRuneEquippedSlot({ equippedSlot: rune.equippedSlot, isEquipped: rune.isEquipped }) !== null,
-        equippedSlot: getRuneEquippedSlot({ equippedSlot: rune.equippedSlot, isEquipped: rune.isEquipped }),
+        isEquipped: rune.isEquipped,
+        equippedSlot: rune.equippedSlot,
         createdAt: rune.createdAt.toISOString(),
       })),
       createdAt: player.createdAt.toISOString(),
       updatedAt: player.updatedAt.toISOString(),
-    };
+    });
   }
 
   private mapBattle(battle: {

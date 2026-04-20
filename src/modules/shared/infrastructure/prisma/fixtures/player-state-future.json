@@ -1,0 +1,61 @@
+{
+  "userId": 10,
+  "vkId": 1001,
+  "playerId": 1,
+  "level": 8,
+  "experience": 88,
+  "gold": 25,
+  "baseStats": {
+    "health": 10,
+    "attack": 5,
+    "defence": 4,
+    "magicDefence": 2,
+    "dexterity": 4,
+    "intelligence": 3
+  },
+  "progress": {
+    "locationLevel": 3,
+    "currentRuneIndex": -3,
+    "unlockedRuneSlotCount": 0,
+    "activeBattleId": 123,
+    "tutorialState": "ARCHIVED",
+    "victories": 5,
+    "victoryStreak": 2,
+    "defeats": 1,
+    "defeatStreak": 0,
+    "mobsKilled": 11,
+    "highestLocationLevel": 1,
+    "futureField": "ignored"
+  },
+  "inventory": {
+    "usualShards": 4,
+    "unusualShards": 2,
+    "essence": 3
+  },
+  "schoolMasteries": [
+    { "schoolCode": "stone", "experience": 3 }
+  ],
+  "runes": [
+    {
+      "id": "rune-future-1",
+      "runeCode": "rune-future-1",
+      "archetypeCode": "stone",
+      "passiveAbilityCodes": ["stone_guard"],
+      "activeAbilityCodes": ["stone_bastion"],
+      "name": "Необычная руна Тверди",
+      "rarity": "UNUSUAL",
+      "health": 2,
+      "attack": 1,
+      "defence": 2,
+      "magicDefence": 1,
+      "dexterity": 0,
+      "intelligence": 0,
+      "isEquipped": true,
+      "equippedSlot": 0,
+      "createdAt": "2026-04-20T00:00:00.000Z"
+    }
+  ],
+  "createdAt": "2026-04-20T00:00:00.000Z",
+  "updatedAt": "2026-04-20T00:10:00.000Z",
+  "futureTopLevelField": "ignored"
+}

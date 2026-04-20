@@ -90,7 +90,8 @@
 - [x] Ввести stale-action rejection и replay-safe mutation rails.
 - [x] Ввести command-intent dedupe для keyboard и legacy-text hot paths.
 - [~] Поддерживать battle/loadout/reward compatibility fixtures и safe fallback policy при новых срезах.
-- [ ] Довести backlog migration / persistence checks для критических состояний до системного набора.
+- [~] Довести backlog migration / persistence checks для критических состояний до системного набора.
+  - [x] Добавить current / legacy / future fixtures и hydration tests для player-state compatibility.
 - [ ] Держать duplication matrix и concurrency-critical cases как живые release rails, а не разовый аудит.
 
 ### 3. Onboarding, return и next-step clarity

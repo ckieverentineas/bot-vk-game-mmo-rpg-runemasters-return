@@ -1,0 +1,87 @@
+{
+  "userId": 10,
+  "vkId": 1001,
+  "playerId": 1,
+  "level": 6,
+  "experience": 42,
+  "gold": 12,
+  "baseStats": {
+    "health": 8,
+    "attack": 4,
+    "defence": 3,
+    "magicDefence": 1,
+    "dexterity": 3,
+    "intelligence": 1
+  },
+  "progress": {
+    "locationLevel": 4,
+    "currentRuneIndex": 1,
+    "unlockedRuneSlotCount": 1,
+    "activeBattleId": null,
+    "tutorialState": "SKIPPED",
+    "victories": 4,
+    "victoryStreak": 2,
+    "defeats": 1,
+    "defeatStreak": 0,
+    "mobsKilled": 7,
+    "highestLocationLevel": 5
+  },
+  "inventory": {
+    "usualShards": 20,
+    "unusualShards": 6,
+    "rareShards": 2,
+    "epicShards": 0,
+    "legendaryShards": 0,
+    "mythicalShards": 0,
+    "leather": 1,
+    "bone": 2,
+    "herb": 3,
+    "essence": 1,
+    "metal": 0,
+    "crystal": 0
+  },
+  "schoolMasteries": [
+    { "schoolCode": "ember", "experience": 3 },
+    { "schoolCode": "stone", "experience": 0 }
+  ],
+  "runes": [
+    {
+      "id": "rune-1",
+      "runeCode": "rune-1",
+      "archetypeCode": "ember",
+      "passiveAbilityCodes": "[\"ember_heart\"]",
+      "activeAbilityCodes": "[\"ember_pulse\"]",
+      "name": "Необычная руна Пламени",
+      "rarity": "UNUSUAL",
+      "health": 1,
+      "attack": 2,
+      "defence": 0,
+      "magicDefence": 0,
+      "dexterity": 0,
+      "intelligence": 0,
+      "isEquipped": true,
+      "equippedSlot": 0,
+      "createdAt": "2026-04-20T00:00:00.000Z"
+    },
+    {
+      "id": "rune-2",
+      "runeCode": "rune-2",
+      "archetypeCode": "stone",
+      "passiveAbilityCodes": "[\"stone_guard\"]",
+      "activeAbilityCodes": "[\"stone_bastion\"]",
+      "name": "Обычная руна Тверди",
+      "rarity": "USUAL",
+      "health": 1,
+      "attack": 1,
+      "defence": 1,
+      "magicDefence": 0,
+      "dexterity": 0,
+      "intelligence": 0,
+      "isEquipped": false,
+      "equippedSlot": null,
+      "createdAt": "2026-04-20T00:05:00.000Z"
+    }
+  ],
+  "createdAt": "2026-04-20T00:00:00.000Z",
+  "updatedAt": "2026-04-20T00:10:00.000Z"
+}

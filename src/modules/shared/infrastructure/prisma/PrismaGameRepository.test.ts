@@ -5,10 +5,98 @@ import { describe, expect, it, vi } from 'vitest';
 
 import type { BattleView, PlayerState, RuneDraft, StatBlock } from '../../../../shared/types/game';
 import { PrismaGameRepository } from './PrismaGameRepository';
+import type { PersistedPlayerStateHydrationInput } from './player-state-hydration';
 
 const readFixture = <T>(fileName: string): T => JSON.parse(
   readFileSync(new URL(`./fixtures/${fileName}`, import.meta.url), 'utf8'),
 ) as T;
+
+const materializePlayerRecordFixture = (fileName: string) => {
+  const fixture = readFixture<PersistedPlayerStateHydrationInput>(fileName);
+  const base = createPlayerRecord();
+
+  return {
+    ...base,
+    id: fixture.playerId,
+    userId: fixture.userId,
+    level: fixture.level,
+    experience: fixture.experience,
+    gold: fixture.gold,
+    baseHealth: fixture.baseStats.health,
+    baseAttack: fixture.baseStats.attack,
+    baseDefence: fixture.baseStats.defence,
+    baseMagicDefence: fixture.baseStats.magicDefence,
+    baseDexterity: fixture.baseStats.dexterity,
+    baseIntelligence: fixture.baseStats.intelligence,
+    createdAt: new Date(fixture.createdAt),
+    updatedAt: new Date(fixture.updatedAt),
+    user: {
+      vkId: fixture.vkId,
+    },
+    progress: fixture.progress
+      ? {
+          playerId: fixture.playerId,
+          locationLevel: fixture.progress.locationLevel ?? 0,
+          currentRuneIndex: fixture.progress.currentRuneIndex ?? 0,
+          unlockedRuneSlotCount: fixture.progress.unlockedRuneSlotCount ?? 1,
+          activeBattleId: typeof fixture.progress.activeBattleId === 'string' ? fixture.progress.activeBattleId : null,
+          tutorialState: typeof fixture.progress.tutorialState === 'string' ? fixture.progress.tutorialState : 'ACTIVE',
+          victories: fixture.progress.victories ?? 0,
+          victoryStreak: fixture.progress.victoryStreak ?? 0,
+          defeats: fixture.progress.defeats ?? 0,
+          defeatStreak: fixture.progress.defeatStreak ?? 0,
+          mobsKilled: fixture.progress.mobsKilled ?? 0,
+          highestLocationLevel: fixture.progress.highestLocationLevel ?? 0,
+          updatedAt: new Date(fixture.updatedAt),
+        }
+      : null,
+    inventory: fixture.inventory
+      ? {
+          playerId: fixture.playerId,
+          usualShards: fixture.inventory.usualShards ?? 0,
+          unusualShards: fixture.inventory.unusualShards ?? 0,
+          rareShards: fixture.inventory.rareShards ?? 0,
+          epicShards: fixture.inventory.epicShards ?? 0,
+          legendaryShards: fixture.inventory.legendaryShards ?? 0,
+          mythicalShards: fixture.inventory.mythicalShards ?? 0,
+          leather: fixture.inventory.leather ?? 0,
+          bone: fixture.inventory.bone ?? 0,
+          herb: fixture.inventory.herb ?? 0,
+          essence: fixture.inventory.essence ?? 0,
+          metal: fixture.inventory.metal ?? 0,
+          crystal: fixture.inventory.crystal ?? 0,
+          updatedAt: new Date(fixture.updatedAt),
+        }
+      : null,
+    schoolMasteries: (fixture.schoolMasteries ?? []).map((entry) => ({
+      playerId: fixture.playerId,
+      schoolCode: entry.schoolCode,
+      experience: entry.experience,
+      rank: 0,
+      updatedAt: new Date(fixture.updatedAt),
+    })),
+    runes: fixture.runes.map((rune) => ({
+      id: rune.id,
+      playerId: fixture.playerId,
+      runeCode: rune.runeCode ?? null,
+      archetypeCode: rune.archetypeCode ?? null,
+      passiveAbilityCodes: Array.isArray(rune.passiveAbilityCodes) ? JSON.stringify(rune.passiveAbilityCodes) : rune.passiveAbilityCodes ?? '[]',
+      activeAbilityCodes: Array.isArray(rune.activeAbilityCodes) ? JSON.stringify(rune.activeAbilityCodes) : rune.activeAbilityCodes ?? '[]',
+      name: rune.name,
+      rarity: rune.rarity,
+      health: rune.health,
+      attack: rune.attack,
+      defence: rune.defence,
+      magicDefence: rune.magicDefence,
+      dexterity: rune.dexterity,
+      intelligence: rune.intelligence,
+      isEquipped: rune.isEquipped,
+      equippedSlot: rune.equippedSlot ?? null,
+      createdAt: new Date(rune.createdAt),
+      updatedAt: new Date(rune.createdAt),
+    })),
+  };
+};
 
 const createPlayerRecord = () => ({
   id: 1,
@@ -350,6 +438,33 @@ describe('PrismaGameRepository release hardening', () => {
     expect(result.created).toBe(false);
     expect(result.recoveredFromRace).toBe(true);
     expect(result.player.playerId).toBe(1);
+  });
+
+  it('hydrates legacy player-state fixture through repository-safe fallbacks', async () => {
+    const { repository, tx } = createPrismaMock();
+
+    tx.player.findFirst.mockResolvedValue(materializePlayerRecordFixture('player-state-legacy.json'));
+
+    const player = await repository.findPlayerByVkId(1001);
+
+    expect(player?.currentRuneIndex).toBe(0);
+    expect(player?.inventory.rareShards).toBe(0);
+    expect(player?.highestLocationLevel).toBe(2);
+    expect(player?.runes[0]?.equippedSlot).toBe(0);
+    expect(player?.schoolMasteries?.map((entry) => entry.schoolCode)).toEqual(['echo', 'ember', 'gale', 'stone']);
+  });
+
+  it('hydrates newer player-state fixture without corrupting tutorial or slot state', async () => {
+    const { repository, tx } = createPrismaMock();
+
+    tx.player.findFirst.mockResolvedValue(materializePlayerRecordFixture('player-state-future.json'));
+
+    const player = await repository.findPlayerByVkId(1001);
+
+    expect(player?.tutorialState).toBe('ACTIVE');
+    expect(player?.activeBattleId).toBeNull();
+    expect(player?.unlockedRuneSlotCount).toBe(2);
+    expect(player?.highestLocationLevel).toBe(3);
   });
 
   it('creates new players without fresh legacy stat points', async () => {
