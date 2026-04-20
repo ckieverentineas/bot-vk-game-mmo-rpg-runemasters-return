@@ -99,4 +99,20 @@ describe('school recognition read-model', () => {
     expect(recognition?.signEquipped).toBe(true);
     expect(recognition?.statusLine).toContain('школа признала вашу решимость');
   });
+
+  it('shows a school seal message once the rare school rune is already equipped', () => {
+    const recognition = buildPlayerSchoolRecognitionView(createPlayer({
+      runes: [
+        {
+          ...createPlayer().runes[0]!,
+          name: 'Редкая руна Пламени',
+          rarity: 'RARE',
+        },
+      ],
+    }));
+
+    expect(recognition?.title).toBe('Печать Пламени');
+    expect(recognition?.signEquipped).toBe(true);
+    expect(recognition?.statusLine).toContain('большой бой Пламени');
+  });
 });

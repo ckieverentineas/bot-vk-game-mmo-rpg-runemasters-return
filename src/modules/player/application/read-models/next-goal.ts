@@ -174,15 +174,22 @@ export const buildPlayerNextGoalView = (player: PlayerState): NextGoalView => {
   if (novicePath && schoolDefinition) {
     const bestSchoolSign = findBestRuneOfSchoolAtLeastRarity(player, novicePath.schoolCode, novicePath.rewardRarity);
     if (bestSchoolSign && bestSchoolSign.id !== equippedRune.id) {
+      const signNameLabel = bestSchoolSign.rarity === novicePath.minibossRewardRarity
+        ? 'печать школы'
+        : 'первый знак школы';
       return createGoalView(
         'equip_school_sign',
         'open_runes',
-        `откройте «🔮 Руны» и наденьте первый знак школы ${schoolDefinition.nameGenitive}`,
+        `откройте «🔮 Руны» и наденьте ${signNameLabel} ${schoolDefinition.nameGenitive}`,
         {
           schoolCode: novicePath.schoolCode,
           schoolName: equippedSchool?.name ?? schoolDefinition.name,
-          whyText: `Так первое признание школы ${schoolDefinition.nameGenitive} перейдёт из награды в реальную боевую сборку.`,
-          milestoneTitle: `Первый знак школы ${schoolDefinition.nameGenitive}`,
+          whyText: bestSchoolSign.rarity === novicePath.minibossRewardRarity
+            ? `Так большой бой школы ${schoolDefinition.nameGenitive} перейдёт из редкой награды в реальную боевую сборку.`
+            : `Так первое признание школы ${schoolDefinition.nameGenitive} перейдёт из награды в реальную боевую сборку.`,
+          milestoneTitle: bestSchoolSign.rarity === novicePath.minibossRewardRarity
+            ? `Печать школы ${schoolDefinition.nameGenitive}`
+            : `Первый знак школы ${schoolDefinition.nameGenitive}`,
           milestoneProgressText: `«${bestSchoolSign.name}» уже ждёт в коллекции рун.`,
           milestoneBenefitText: `Наденьте «${bestSchoolSign.name}», чтобы следующий бой уже шёл через новый знак школы.`,
         },

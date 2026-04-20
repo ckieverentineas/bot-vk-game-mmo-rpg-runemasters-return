@@ -202,6 +202,36 @@ describe('next goal read-model', () => {
     expect(goal.milestoneProgressText).toContain('«Необычная руна Пламени»');
   });
 
+  it('guides the player to equip the school seal after the miniboss reward if the rare rune is still in reserve', () => {
+    const goal = buildPlayerNextGoalView(createPlayer({
+      victories: 5,
+      runes: [
+        {
+          ...createPlayer().runes[0]!,
+          name: 'Необычная руна Пламени',
+          rarity: 'UNUSUAL',
+          isEquipped: true,
+          equippedSlot: 0,
+        },
+        {
+          ...createPlayer().runes[0]!,
+          id: 'rune-3',
+          runeCode: 'rune-3',
+          name: 'Редкая руна Пламени',
+          rarity: 'RARE',
+          isEquipped: false,
+          equippedSlot: null,
+          createdAt: '2026-04-14T00:00:00.000Z',
+        },
+      ],
+    }));
+
+    expect(goal.goalType).toBe('equip_school_sign');
+    expect(goal.objectiveText).toContain('наденьте печать школы Пламени');
+    expect(goal.whyText).toContain('большой бой школы Пламени');
+    expect(goal.milestoneTitle).toBe('Печать школы Пламени');
+  });
+
   it('guides the player to the school miniboss once the first sign is already equipped', () => {
     const goal = buildPlayerNextGoalView(createPlayer({
       victories: 4,

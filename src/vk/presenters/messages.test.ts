@@ -281,7 +281,7 @@ describe('messages school-first onboarding framing', () => {
 
     expect(message).toContain('🧭 Возвращение');
     expect(message).toContain('Стиль: Школа Пламени · роль штурм.');
-    expect(message).toContain('Статус школы: Вы уже прошли первое испытание Пламени: школа признала вашу решимость');
+    expect(message).toContain('Статус школы: Вы уже пережили большой бой Пламени: школа доверила вам печать давления и дожима');
     expect(message).toContain('Фокус: одержите ещё 2 победы школой Пламени');
     expect(message).toContain('Почему это важно: После «Импульса углей»');
     expect(message).toContain('Дальше: нажмите «⚔️ Исследовать».');
@@ -369,7 +369,7 @@ describe('messages school-first onboarding framing', () => {
 
     expect(message).toContain('🎯 Ближайшая веха: 1/3 до «Разогрев дожима»');
     expect(message).toContain('🜂 Что даст: После «Импульса углей»');
-    expect(message).toContain('⭐ Первый знак Пламени: Вы уже прошли первое испытание Пламени');
+    expect(message).toContain('⭐ Печать Пламени: Вы уже пережили большой бой Пламени');
   });
 
   it('shows school sign equip guidance after recognition if the unusual rune is still not equipped', () => {
@@ -383,6 +383,25 @@ describe('messages school-first onboarding framing', () => {
     expect(message).toContain('⭐ Первый знак Пламени: Вы уже прошли первое испытание Пламени. Первый знак школы ждёт в рунах');
     expect(message).toContain('🎯 Ближайшая веха: «Необычная руна Пламени» уже ждёт в коллекции рун.');
     expect(message).toContain('🜂 Что даст: Наденьте «Необычная руна Пламени», чтобы следующий бой уже шёл через новый знак школы.');
+  });
+
+  it('guides the player to equip the school seal after the miniboss reward if the rare rune is still in reserve', () => {
+    const message = renderRuneScreen(createPlayer({
+      tutorialState: 'SKIPPED',
+      victories: 5,
+      schoolMasteries: [{ schoolCode: 'ember', experience: 1, rank: 0 }],
+      runes: [createEquippedUnusualRune(), {
+        ...createUnusualReserveRune(),
+        id: 'rune-3',
+        runeCode: 'rune-3',
+        name: 'Редкая руна Пламени',
+        rarity: 'RARE',
+      }],
+    }));
+
+    expect(message).toContain('⭐ Печать Пламени: Вы уже пережили большой бой Пламени. Печать школы ждёт в рунах');
+    expect(message).toContain('🎯 Ближайшая веха: «Редкая руна Пламени» уже ждёт в коллекции рун.');
+    expect(message).toContain('🜂 Что даст: Наденьте «Редкая руна Пламени», чтобы следующий бой уже шёл через новый знак школы.');
   });
 
   it('shows the school miniboss milestone once the first sign is already equipped', () => {

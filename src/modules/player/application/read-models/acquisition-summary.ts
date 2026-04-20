@@ -5,7 +5,7 @@ import { getUnlockedRuneSlotCount } from '../../domain/player-stats';
 import { getSchoolNovicePathDefinitionForEnemy, hasRuneOfSchoolAtLeastRarity } from '../../domain/school-novice-path';
 import { getSchoolMasteryDefinition } from '../../domain/school-mastery';
 
-export type AcquisitionSummaryKind = 'new_rune' | 'new_rarity' | 'mastery_unlock' | 'slot_unlock' | 'school_trial_completed';
+export type AcquisitionSummaryKind = 'new_rune' | 'new_rarity' | 'mastery_unlock' | 'slot_unlock' | 'school_trial_completed' | 'school_miniboss_completed';
 
 export interface AcquisitionSummaryView {
   readonly kind: AcquisitionSummaryKind;
@@ -194,6 +194,36 @@ const buildSchoolTrialCompletedSummary = (
   }
 };
 
+const buildSchoolMinibossCompletedSummary = (
+  schoolCode: string,
+  schoolName: string,
+  schoolNameGenitive: string,
+): AcquisitionSummaryView => {
+  switch (schoolCode) {
+    case 'ember':
+      return createSummary(
+        'school_miniboss_completed',
+        'Большой бой школы пройден',
+        'Пламя признало, что вы выдержали большой бой школы. Теперь редкая руна — это уже не первый знак, а печать вашего стиля.',
+        'Откройте «🔮 Руны», наденьте новую печать школы и проверьте её в следующем бою.',
+      );
+    case 'stone':
+      return createSummary(
+        'school_miniboss_completed',
+        'Большой бой школы пройден',
+        'Твердь признала, что вы выдержали большой бой школы. Теперь редкая руна — это уже не первый знак, а печать вашей стойкости.',
+        'Откройте «🔮 Руны», наденьте новую печать школы и проверьте её в следующем бою.',
+      );
+    default:
+      return createSummary(
+        'school_miniboss_completed',
+        'Большой бой школы пройден',
+        `${schoolName} признала, что вы выдержали большой бой школы ${schoolNameGenitive}. Теперь редкая руна стала печатью этого пути.`,
+        'Откройте «🔮 Руны» и закрепите новую печать школы в сборке.',
+      );
+  }
+};
+
 export const buildBattleAcquisitionSummary = (
   before: PlayerState,
   after: PlayerState,
@@ -217,6 +247,19 @@ export const buildBattleAcquisitionSummary = (
   if (addedRune) {
     const novicePath = getSchoolNovicePathDefinitionForEnemy(battle.enemy.code);
     const addedRuneSchool = getSchoolDefinitionForArchetype(addedRune.archetypeCode);
+    if (
+      novicePath
+      && addedRuneSchool?.code === novicePath.schoolCode
+      && addedRune.rarity === novicePath.minibossRewardRarity
+      && !hasRuneOfSchoolAtLeastRarity(before, novicePath.schoolCode, novicePath.minibossRewardRarity)
+    ) {
+      return buildSchoolMinibossCompletedSummary(
+        novicePath.schoolCode,
+        addedRuneSchool.name,
+        addedRuneSchool.nameGenitive,
+      );
+    }
+
     if (
       novicePath
       && addedRuneSchool?.code === novicePath.schoolCode

@@ -25,6 +25,39 @@ export const buildPlayerSchoolRecognitionView = (player: PlayerState): SchoolRec
 
   const bestSchoolSign = findBestRuneOfSchoolAtLeastRarity(player, novicePath.schoolCode, novicePath.rewardRarity);
   const signEquipped = bestSchoolSign?.id === equippedRune?.id;
+  const hasSchoolSeal = !!bestSchoolSign && bestSchoolSign.rarity === novicePath.minibossRewardRarity;
+
+  if (hasSchoolSeal) {
+    switch (novicePath.schoolCode) {
+      case 'ember':
+        return {
+          schoolCode: novicePath.schoolCode,
+          title: 'Печать Пламени',
+          statusLine: signEquipped
+            ? 'Вы уже пережили большой бой Пламени: школа доверила вам печать давления и дожима, а не просто первый знак.'
+            : 'Вы уже пережили большой бой Пламени. Печать школы ждёт в рунах — наденьте её, чтобы закрепить следующий ранг стиля.',
+          signEquipped,
+        };
+      case 'stone':
+        return {
+          schoolCode: novicePath.schoolCode,
+          title: 'Печать Тверди',
+          statusLine: signEquipped
+            ? 'Вы уже пережили большой бой Тверди: школа доверила вам печать выдержки и ответного хода, а не просто первый знак.'
+            : 'Вы уже пережили большой бой Тверди. Печать школы ждёт в рунах — наденьте её, чтобы закрепить следующий ранг стиля.',
+          signEquipped,
+        };
+      default:
+        return {
+          schoolCode: novicePath.schoolCode,
+          title: `Печать школы ${school.name}`,
+          statusLine: signEquipped
+            ? `Вы уже пережили большой бой школы ${school.nameGenitive} и получили её печать.`
+            : `Вы уже пережили большой бой школы ${school.nameGenitive}. Печать ждёт, пока вы закрепите её в сборке.`,
+          signEquipped,
+        };
+    }
+  }
 
   switch (novicePath.schoolCode) {
     case 'ember':

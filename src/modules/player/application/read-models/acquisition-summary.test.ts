@@ -220,6 +220,44 @@ describe('acquisition summary read-model', () => {
     expect(summary?.changeLine).toContain('Пламя признало вашу решимость');
   });
 
+  it('turns the first aligned rare miniboss reward into a big school battle completion summary', () => {
+    const before = createPlayer({
+      runes: [
+        createRune({ isEquipped: true, equippedSlot: 0, rarity: 'UNUSUAL', name: 'Необычная руна Пламени' }),
+      ],
+      schoolMasteries: [{ schoolCode: 'ember', experience: 1, rank: 0 }],
+      unlockedRuneSlotCount: 1,
+    });
+    const after = createPlayer({
+      runes: [
+        createRune({ isEquipped: true, equippedSlot: 0, rarity: 'UNUSUAL', name: 'Необычная руна Пламени' }),
+        createRune({
+          id: 'rune-3',
+          runeCode: 'rune-3',
+          rarity: 'RARE',
+          name: 'Редкая руна Пламени',
+        }),
+      ],
+      schoolMasteries: [{ schoolCode: 'ember', experience: 1, rank: 0 }],
+      unlockedRuneSlotCount: 1,
+    });
+
+    const summary = buildBattleAcquisitionSummary(before, after, createBattle({
+      enemy: {
+        ...createBattle().enemy,
+        code: 'ash-matron',
+        name: 'Пепельная матрона',
+        kind: 'mage',
+        isElite: true,
+        isBoss: true,
+      },
+    }));
+
+    expect(summary?.kind).toBe('school_miniboss_completed');
+    expect(summary?.title).toBe('Большой бой школы пройден');
+    expect(summary?.changeLine).toContain('Пламя признало, что вы выдержали большой бой школы');
+  });
+
   it('prioritizes support slot unlock when mastery opens build breadth', () => {
     const before = createPlayer({
       runes: [createRune({ isEquipped: true, equippedSlot: 0 })],
