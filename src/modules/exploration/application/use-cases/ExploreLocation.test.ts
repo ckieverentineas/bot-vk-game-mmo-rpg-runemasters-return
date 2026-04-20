@@ -391,6 +391,77 @@ describe('ExploreLocation', () => {
     }));
   });
 
+  it('adds a gale-specific novice elite hook once the player fights as Буря', async () => {
+    const player = createPlayer({
+      victories: 1,
+      schoolMasteries: [{ schoolCode: 'gale', experience: 1, rank: 0 }],
+      runes: [
+        {
+          id: 'rune-gale-1',
+          runeCode: 'rune-gale-1',
+          archetypeCode: 'gale',
+          passiveAbilityCodes: [],
+          activeAbilityCodes: ['gale_step'],
+          name: 'Руна Бури',
+          rarity: 'USUAL',
+          isEquipped: true,
+          equippedSlot: 0,
+          health: 1,
+          attack: 2,
+          defence: 0,
+          magicDefence: 0,
+          dexterity: 2,
+          intelligence: 0,
+          createdAt: '2026-04-12T00:00:00.000Z',
+        },
+      ],
+    });
+    const repository = {
+      findPlayerByVkId: vi.fn().mockResolvedValue(player),
+      getCommandIntentResult: vi.fn().mockResolvedValue(null),
+      getActiveBattle: vi.fn().mockResolvedValue(null),
+      findBiomeForLocationLevel: vi.fn().mockResolvedValue({ ...createBiome(), code: 'dark-forest', name: 'Тёмный лес' }),
+      listMobTemplatesForBiome: vi.fn().mockResolvedValue([
+        {
+          ...createMobTemplate(),
+          code: 'storm-lynx',
+          biomeCode: 'dark-forest',
+          name: 'Шквальная рысь',
+          kind: 'wolf',
+          isElite: true,
+          baseExperience: 24,
+          baseGold: 9,
+          runeDropChance: 28,
+          attackText: 'срывается шквальным выпадом',
+        },
+      ]),
+      createBattle: vi.fn().mockImplementation(async (_playerId: number, battle: Omit<BattleView, 'id' | 'playerId' | 'createdAt' | 'updatedAt'>) => ({
+        id: 'battle-gale-hook',
+        playerId: player.playerId,
+        createdAt: '2026-04-12T00:00:00.000Z',
+        updatedAt: '2026-04-12T00:00:00.000Z',
+        ...battle,
+      })),
+    } as unknown as GameRepository;
+    const random: GameRandom = {
+      nextInt: vi.fn().mockReturnValue(1),
+      rollPercentage: vi.fn().mockReturnValue(true),
+      pickOne: vi.fn((items: readonly MobTemplateView[]) => items[0]),
+    };
+    const telemetry = createTelemetry();
+    const useCase = new ExploreLocation(repository, random, telemetry);
+
+    const battle = await useCase.execute(player.vkId, 'intent-explore-gale-1', buildExploreLocationIntentStateKey(player), 'payload');
+
+    expect(battle.enemy.code).toBe('storm-lynx');
+    expect(battle.log[0]).toContain('первое испытание школы Бури');
+    expect(telemetry.schoolNoviceEliteEncounterStarted).toHaveBeenCalledWith(player.userId, expect.objectContaining({
+      battleId: 'battle-gale-hook',
+      schoolCode: 'gale',
+      enemyCode: 'storm-lynx',
+    }));
+  });
+
   it('logs the next battle as a school follow-up once the first school sign is already equipped', async () => {
     const player = createPlayer({
       victories: 3,

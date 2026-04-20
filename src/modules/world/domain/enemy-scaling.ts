@@ -24,6 +24,7 @@ const defaultEncounterRandom: EncounterRandomSource = {
 const preferredSchoolEliteCodes: Partial<Record<string, string>> = {
   ember: 'ash-seer',
   stone: 'stonehorn-ram',
+  gale: 'storm-lynx',
   echo: 'blind-augur',
 };
 
@@ -47,6 +48,11 @@ const encounterHintByEnemyCode: Partial<Record<string, { schoolCode: string; gen
     schoolCode: 'echo',
     genericHint: 'Подсказка: этот элитный враг заранее раскрывает опасный ход, так что его полезнее читать и наказывать в окно телеграфа.',
     schoolHint: 'Подсказка: это первое испытание школы Прорицания — читайте раскрытую угрозу и отвечайте в правильный ход, а не давите вслепую.',
+  },
+  'storm-lynx': {
+    schoolCode: 'gale',
+    genericHint: 'Подсказка: этот элитный враг резко меняет темп и готовит опасный выпад, так что полезнее ударить и сразу подготовить ответный ход.',
+    schoolHint: 'Подсказка: это первое испытание школы Бури — бейте и готовьте защиту в одном темпе, а не отдавайте врагу право на разгон.',
   },
   'ash-matron': {
     schoolCode: 'ember',

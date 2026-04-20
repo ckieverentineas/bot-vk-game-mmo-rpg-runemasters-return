@@ -43,6 +43,15 @@ const novicePathDefinitions: readonly SchoolNovicePathDefinition[] = [
     minibossRewardRarity: 'RARE',
   },
   {
+    schoolCode: 'gale',
+    enemyCode: 'storm-lynx',
+    enemyName: 'Шквальная рысь',
+    enemyNameAccusative: 'Шквальную рысь',
+    biomeName: 'Тёмный лес',
+    rewardRarity: 'UNUSUAL',
+    forcedArchetypeCode: 'gale',
+  },
+  {
     schoolCode: 'echo',
     enemyCode: 'blind-augur',
     enemyName: 'Слепой авгур',

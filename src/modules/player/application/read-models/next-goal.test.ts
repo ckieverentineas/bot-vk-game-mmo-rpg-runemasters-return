@@ -131,9 +131,9 @@ describe('next goal read-model', () => {
     expect(goal.milestoneBenefitText).toContain('первую необычную руну школы Пламени');
   });
 
-  it('keeps active-skill guidance for schools without a novice elite path', () => {
+  it('keeps active-skill guidance for gale before the first victory, even though the novice path exists later', () => {
     const goal = buildPlayerNextGoalView(createPlayer({
-      victories: 1,
+      victories: 0,
       runes: [
         {
           ...createPlayer().runes[0]!,
@@ -148,6 +148,26 @@ describe('next goal read-model', () => {
 
     expect(goal.goalType).toBe('use_active_rune_skill');
     expect(goal.objectiveText).toContain('примените активное действие');
+  });
+
+  it('builds a gale novice path goal once the first gale battle is already behind the player', () => {
+    const goal = buildPlayerNextGoalView(createPlayer({
+      victories: 1,
+      runes: [
+        {
+          ...createPlayer().runes[0]!,
+          archetypeCode: 'gale',
+          passiveAbilityCodes: [],
+          activeAbilityCodes: ['gale_step'],
+          name: 'Руна Бури',
+        },
+      ],
+      schoolMasteries: [{ schoolCode: 'gale', experience: 1, rank: 0 }],
+    }));
+
+    expect(goal.goalType).toBe('hunt_school_elite');
+    expect(goal.objectiveText).toContain('разыщите Шквальную рысь');
+    expect(goal.milestoneProgressText).toBe('Тёмный лес · Шквальная рысь');
   });
 
   it('builds an echo novice path goal even without an active rune skill', () => {

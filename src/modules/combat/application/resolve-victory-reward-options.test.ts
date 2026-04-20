@@ -284,6 +284,52 @@ describe('resolveVictoryRewardOptions', () => {
     expect(result.forcedRune?.rarity).toBe('UNUSUAL');
   });
 
+  it('forces an unusual gale rune from the storm lynx when gale is the current school and no better gale rune exists', () => {
+    const result = resolveVictoryRewardOptions(
+      createPlayer(),
+      createBattle({
+        enemy: {
+          ...createBattle().enemy,
+          code: 'storm-lynx',
+          name: 'Шквальная рысь',
+          kind: 'wolf',
+          isElite: true,
+          isBoss: false,
+          attack: 7,
+          dexterity: 9,
+          intelligence: 5,
+          maxHealth: 23,
+          experienceReward: 24,
+          goldReward: 9,
+          runeDropChance: 28,
+          attackText: 'срывается шквальным выпадом',
+        },
+        player: {
+          ...createBattle().player,
+          runeLoadout: {
+            ...createBattle().player.runeLoadout!,
+            runeName: 'Руна Бури',
+            archetypeCode: 'gale',
+            archetypeName: 'Налётчик',
+            schoolCode: 'gale',
+            passiveAbilityCodes: [],
+            activeAbility: {
+              code: 'gale_step',
+              name: 'Шаг шквала',
+              manaCost: 2,
+              cooldownTurns: 2,
+              currentCooldown: 0,
+            },
+          },
+        },
+      }),
+      createRandom(),
+    );
+
+    expect(result.forcedRune?.archetypeCode).toBe('gale');
+    expect(result.forcedRune?.rarity).toBe('UNUSUAL');
+  });
+
   it('forces a rare ember rune from the ash matron when the first unusual ember sign is already equipped', () => {
     const result = resolveVictoryRewardOptions(
       createPlayer({

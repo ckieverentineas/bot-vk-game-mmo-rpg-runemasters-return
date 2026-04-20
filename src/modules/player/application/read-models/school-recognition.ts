@@ -78,6 +78,15 @@ export const buildPlayerSchoolRecognitionView = (player: PlayerState): SchoolRec
           : 'Вы уже прошли первое испытание Тверди. Первый знак школы ждёт в рунах — наденьте его, чтобы закрепить выдержку и ответный ход.',
         signEquipped,
       };
+    case 'gale':
+      return {
+        schoolCode: novicePath.schoolCode,
+        title: 'Первый знак Бури',
+        statusLine: signEquipped
+          ? 'Вы уже прошли первое испытание Бури: школа признала, что вы умеете бить и сразу готовить следующий ответ.'
+          : 'Вы уже прошли первое испытание Бури. Первый знак школы ждёт в рунах — наденьте его, чтобы закрепить темп и ответный ход.',
+        signEquipped,
+      };
     case 'echo':
       return {
         schoolCode: novicePath.schoolCode,

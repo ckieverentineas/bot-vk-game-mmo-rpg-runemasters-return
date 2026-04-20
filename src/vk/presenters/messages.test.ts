@@ -446,6 +446,24 @@ describe('messages school-first onboarding framing', () => {
     expect(message).toContain('🜂 Что даст: Победа может принести первую необычную руну школы Прорицания.');
   });
 
+  it('shows a gale novice path milestone once the player reaches Буря without an unusual rune yet', () => {
+    const message = renderRuneScreen(createPlayer({
+      tutorialState: 'SKIPPED',
+      victories: 1,
+      schoolMasteries: [{ schoolCode: 'gale', experience: 1, rank: 0 }],
+      runes: [{
+        ...createEquippedRune(),
+        archetypeCode: 'gale',
+        passiveAbilityCodes: [],
+        activeAbilityCodes: ['gale_step'],
+        name: 'Руна Бури',
+      }],
+    }));
+
+    expect(message).toContain('🎯 Ближайшая веха: Тёмный лес · Шквальная рысь.');
+    expect(message).toContain('🜂 Что даст: Победа может принести первую необычную руну школы Бури.');
+  });
+
   it('shows an impact recap block in the rune hub when a new rune changes the build', () => {
     const message = renderRuneScreen(createPlayer({
       tutorialState: 'SKIPPED',

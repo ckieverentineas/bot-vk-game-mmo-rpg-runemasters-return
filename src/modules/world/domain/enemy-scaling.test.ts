@@ -123,6 +123,21 @@ describe('pickEncounterTemplate', () => {
     expect(picked.code).toBe('blind-augur');
   });
 
+  it('prefers the gale school elite early when the player already fights as Буря', () => {
+    const templates = [
+      createTemplate(),
+      createTemplate({ code: 'storm-lynx', name: 'Шквальная рысь', kind: 'wolf', isElite: true }),
+      createTemplate({ code: 'stonehorn-ram', name: 'Камнерогий таран', kind: 'boar', isElite: true }),
+    ];
+
+    const picked = pickEncounterTemplate(templates, 4, { schoolCode: 'gale' }, {
+      rollPercentage: (chance) => chance > 0,
+      pickOne: (items) => items[0]!,
+    });
+
+    expect(picked.code).toBe('storm-lynx');
+  });
+
   it('prefers the ember school miniboss once the first sign is already equipped', () => {
     const templates = [
       createTemplate(),
@@ -178,5 +193,16 @@ describe('describeEncounter', () => {
 
     expect(description).toContain('Слепой авгур');
     expect(description).toContain('первое испытание школы Прорицания');
+  });
+
+  it('adds a school-specific hint for the gale novice elite', () => {
+    const description = describeEncounter(
+      createBiome(),
+      createEnemy({ code: 'storm-lynx', name: 'Шквальная рысь', kind: 'wolf' }),
+      'gale',
+    );
+
+    expect(description).toContain('Шквальная рысь');
+    expect(description).toContain('первое испытание школы Бури');
   });
 });
