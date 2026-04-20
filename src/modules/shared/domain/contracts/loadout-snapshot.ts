@@ -17,6 +17,8 @@ export interface LoadoutSnapshotV1 {
   readonly schemaVersion: typeof LOADOUT_SNAPSHOT_SCHEMA_VERSION;
   readonly runeId: string;
   readonly runeName: string;
+  readonly runeRarity?: RuneView['rarity'] | null;
+  readonly schoolProgressStage?: 'FIRST_SIGN' | 'SEAL' | null;
   readonly archetypeCode: string | null;
   readonly schoolCode?: string | null;
   readonly schoolMasteryRank?: number;
@@ -43,6 +45,8 @@ export const isLoadoutSnapshot = (value: unknown): value is LoadoutSnapshot => (
   hasSchemaVersion(value, LOADOUT_SNAPSHOT_SCHEMA_VERSION)
   && isString(value.runeId)
   && isString(value.runeName)
+  && (value.runeRarity === undefined || isNullableString(value.runeRarity))
+  && (value.schoolProgressStage === undefined || value.schoolProgressStage === null || value.schoolProgressStage === 'FIRST_SIGN' || value.schoolProgressStage === 'SEAL')
   && isNullableString(value.archetypeCode)
   && (value.schoolCode === undefined || isNullableString(value.schoolCode))
   && (value.schoolMasteryRank === undefined || isPositiveNumber(value.schoolMasteryRank))
@@ -52,7 +56,7 @@ export const isLoadoutSnapshot = (value: unknown): value is LoadoutSnapshot => (
 
 export const buildLoadoutSnapshot = (
   equippedRune: RuneView | null,
-  options: { schoolCode?: string | null; schoolMasteryRank?: number } = {},
+  options: { schoolCode?: string | null; schoolMasteryRank?: number; schoolProgressStage?: 'FIRST_SIGN' | 'SEAL' | null } = {},
 ): LoadoutSnapshot | null => {
   if (!equippedRune) {
     return null;
@@ -65,6 +69,8 @@ export const buildLoadoutSnapshot = (
     schemaVersion: LOADOUT_SNAPSHOT_SCHEMA_VERSION,
     runeId: equippedRune.id,
     runeName: equippedRune.name,
+    runeRarity: equippedRune.rarity,
+    schoolProgressStage: options.schoolProgressStage ?? null,
     archetypeCode: equippedRune.archetypeCode ?? null,
     schoolCode: options.schoolCode ?? null,
     schoolMasteryRank: options.schoolMasteryRank ?? 0,
@@ -91,6 +97,8 @@ export const buildLoadoutSnapshotFromBattle = (
     schemaVersion: LOADOUT_SNAPSHOT_SCHEMA_VERSION,
     runeId: loadout.runeId,
     runeName: loadout.runeName,
+    runeRarity: loadout.runeRarity ?? null,
+    schoolProgressStage: loadout.schoolProgressStage ?? null,
     archetypeCode: loadout.archetypeCode,
     schoolCode: loadout.schoolCode ?? null,
     schoolMasteryRank: loadout.schoolMasteryRank ?? 0,
@@ -123,6 +131,8 @@ export const projectBattleRuneLoadout = (
   return {
     runeId: snapshot.runeId,
     runeName: snapshot.runeName,
+    runeRarity: snapshot.runeRarity ?? null,
+    schoolProgressStage: snapshot.schoolProgressStage ?? null,
     archetypeCode: snapshot.archetypeCode,
     archetypeName: runeContent.archetype?.name ?? null,
     schoolCode: snapshot.schoolCode ?? null,

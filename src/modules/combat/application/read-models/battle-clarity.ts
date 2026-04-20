@@ -22,14 +22,34 @@ const resolveEnemyRiskLabel = (battle: BattleView): string => {
 };
 
 const resolveSchoolHint = (battle: BattleView): string | null => {
+  const firstSchoolSignEquipped = battle.player.runeLoadout?.schoolProgressStage === 'FIRST_SIGN';
+
   switch (battle.player.runeLoadout?.schoolCode) {
     case 'ember': {
       const threshold = Math.ceil(battle.enemy.maxHealth / 2);
+      if (firstSchoolSignEquipped) {
+        return battle.enemy.currentHealth <= threshold
+          ? '🔥 Первый знак Пламени: враг уже просел — дожмите его сейчас, чтобы сразу почувствовать стиль школы.'
+          : '🔥 Первый знак Пламени: держите давление базовой атакой или техникой, пока цель не войдёт в окно дожима.';
+      }
+
       return battle.enemy.currentHealth <= threshold
         ? '🔥 Пламя: враг уже просел — сейчас особенно ценно дожимать и не отдавать темп.'
         : '🔥 Пламя: держите давление и ищите окно, где бой можно быстро переломить в дожим.';
     }
     case 'stone':
+      if (firstSchoolSignEquipped && battle.enemy.intent?.code === 'HEAVY_STRIKE') {
+        return '🪨 Первый знак Тверди: переживите тяжёлый удар защитой или «Каменным отпором», а затем ответьте сильнее обычного.';
+      }
+
+      if (firstSchoolSignEquipped && battle.enemy.intent?.code === 'GUARD_BREAK') {
+        return '🪨 Первый знак Тверди: guard-break наказывает слепую стойку — добавьте ответный ход, а не только защиту.';
+      }
+
+      if (firstSchoolSignEquipped) {
+        return '🪨 Первый знак Тверди: школа уже в сборке — переживите опасный ход и отвечайте сильнее, чем обычная руна.';
+      }
+
       if (battle.enemy.intent?.code === 'HEAVY_STRIKE') {
         return '🪨 Твердь: тяжёлый удар лучше пережить защитой или «Каменным отпором», а затем наказать в окно ответа.';
       }
@@ -41,6 +61,14 @@ const resolveSchoolHint = (battle: BattleView): string | null => {
       return '🪨 Твердь: ценность школы в том, чтобы пережить опасный ход и ответить сильнее, чем обычная сборка.';
     case 'gale': {
       const activeAbility = battle.player.runeLoadout?.activeAbility;
+      if (firstSchoolSignEquipped && activeAbility && activeAbility.currentCooldown <= 0 && battle.player.currentMana >= activeAbility.manaCost) {
+        return '🌪️ Первый знак Бури: ударьте «Шагом шквала», чтобы сразу нанести урон и подготовить защиту на ответ врага.';
+      }
+
+      if (firstSchoolSignEquipped) {
+        return '🌪️ Первый знак Бури: держите темп — ваш лучший ход должен и бить, и готовить следующий ответ.';
+      }
+
       if (activeAbility && activeAbility.currentCooldown <= 0 && battle.player.currentMana >= activeAbility.manaCost) {
         return '🌪️ Буря: «Шаг шквала» позволяет ударить и сразу подготовить защиту на следующий ответ врага.';
       }
@@ -48,6 +76,12 @@ const resolveSchoolHint = (battle: BattleView): string | null => {
       return '🌪️ Буря: играйте от темпа — ваш ход должен не только бить, но и готовить следующий ответ.';
     }
     case 'echo':
+      if (firstSchoolSignEquipped) {
+        return battle.enemy.intent
+          ? '🧠 Первый знак Прорицания: раскрытая угроза — ваше главное окно для точного ответа, не тратьте ход вслепую.'
+          : '🧠 Первый знак Прорицания: ждите раскрытую угрозу и отвечайте в правильный момент, чтобы почувствовать школу.';
+      }
+
       return battle.enemy.intent
         ? '🧠 Прорицание: раскрытая угроза даёт лучшее окно для точного ответа — не тратьте ход вслепую.'
         : '🧠 Прорицание: ждите раскрытую угрозу и наказывайте врага в правильный момент, а не наугад.';

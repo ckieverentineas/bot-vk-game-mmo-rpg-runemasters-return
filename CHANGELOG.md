@@ -31,6 +31,7 @@
 - tooling slice `release:school-evidence` теперь умеет собирать единый markdown-отчёт по school-first telemetry funnel из `GameLog`, чтобы baseline по 4 школам можно было оценивать не вручную по сырым логам;
 - tooling slice `release:evidence` теперь собирает unified markdown-отчёт по runtime evidence: onboarding coverage, school payoff, next-goal/return clarity и QA/exploit guardrails в одном release review артефакте;
 - telemetry baseline теперь закрывает и ранний onboarding funnel: `tutorial_path_chosen`, `first_school_presented` и `first_school_committed` дают evidence между `onboarding_started` и первым school payoff;
+- установка первого знака школы теперь сразу даёт compact payoff recap в rune hub, а следующий бой сильнее подсказывает, как именно проверить новый стиль этой школы на практике;
 - player-state hydration теперь проходит через compatibility-safe helper с current / legacy / future fixtures и repository hydration tests, чтобы persisted player state безопаснее переживал missing/unknown fields и rollback-сценарии;
 - `content:validate` теперь содержит hard completeness gate для shipped school packages, чтобы 4 стартовые школы не уходили в релиз с тихим drift между identity, encounter hooks и reward/chase wiring;
 - active battle теперь показывает compact combat clarity block с текущим состоянием боя и school-aware tactical hint, чтобы игроку было проще читать следующий meaningful ход без перегруза интерфейса;

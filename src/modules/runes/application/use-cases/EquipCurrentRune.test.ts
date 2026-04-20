@@ -81,6 +81,7 @@ describe('EquipCurrentRune', () => {
       findPlayerByVkId: vi.fn().mockResolvedValue(player),
       getCommandIntentResult: vi.fn(),
       equipRune: vi.fn().mockResolvedValue(player),
+      storeCommandIntentResult: vi.fn().mockResolvedValue(undefined),
     } as unknown as GameRepository;
     const useCase = new EquipCurrentRune(repository, telemetry);
     const stateKey = buildEquipIntentStateKey(player, 0);
@@ -158,7 +159,11 @@ describe('EquipCurrentRune', () => {
       schoolNoviceFollowUpActionTaken: vi.fn(),
     } as unknown as GameTelemetry);
 
-    await expect(useCase.execute(1001, 0, 'legacy-text:2000000001:1001:82:надеть', undefined, 'legacy_text')).resolves.toEqual(replayed);
+    await expect(useCase.execute(1001, 0, 'legacy-text:2000000001:1001:82:надеть', undefined, 'legacy_text')).resolves.toEqual({
+      player: replayed,
+      acquisitionSummary: null,
+      replayed: true,
+    });
 
     expect(repository.equipRune).not.toHaveBeenCalled();
   });
@@ -177,7 +182,11 @@ describe('EquipCurrentRune', () => {
     } as unknown as GameRepository;
     const useCase = new EquipCurrentRune(repository, telemetry);
 
-    await expect(useCase.execute(1001, 0, 'intent-equip-replay-1', buildEquipIntentStateKey(createPlayer(), 0), 'payload')).resolves.toEqual(replayed);
+    await expect(useCase.execute(1001, 0, 'intent-equip-replay-1', buildEquipIntentStateKey(createPlayer(), 0), 'payload')).resolves.toEqual({
+      player: replayed,
+      acquisitionSummary: null,
+      replayed: true,
+    });
 
     expect(repository.equipRune).not.toHaveBeenCalled();
     expect(telemetry.loadoutChanged).not.toHaveBeenCalled();
@@ -246,6 +255,7 @@ describe('EquipCurrentRune', () => {
       findPlayerByVkId: vi.fn().mockResolvedValue(player),
       getCommandIntentResult: vi.fn(),
       equipRune: vi.fn().mockResolvedValue(updatedPlayer),
+      storeCommandIntentResult: vi.fn().mockResolvedValue(undefined),
     } as unknown as GameRepository;
     const useCase = new EquipCurrentRune(repository, telemetry);
     const stateKey = buildEquipIntentStateKey(player, 1);
@@ -319,6 +329,7 @@ describe('EquipCurrentRune', () => {
       findPlayerByVkId: vi.fn().mockResolvedValue(player),
       getCommandIntentResult: vi.fn(),
       equipRune: vi.fn().mockResolvedValue(updatedPlayer),
+      storeCommandIntentResult: vi.fn().mockResolvedValue(undefined),
     } as unknown as GameRepository;
     const useCase = new EquipCurrentRune(repository, telemetry);
 
@@ -389,6 +400,7 @@ describe('EquipCurrentRune', () => {
       findPlayerByVkId: vi.fn().mockResolvedValue(player),
       getCommandIntentResult: vi.fn(),
       equipRune: vi.fn().mockResolvedValue(updatedPlayer),
+      storeCommandIntentResult: vi.fn().mockResolvedValue(undefined),
     } as unknown as GameRepository;
     const useCase = new EquipCurrentRune(repository, telemetry);
 
@@ -432,6 +444,7 @@ describe('EquipCurrentRune', () => {
       findPlayerByVkId: vi.fn().mockResolvedValue(player),
       getCommandIntentResult: vi.fn(),
       equipRune: vi.fn().mockResolvedValue(updatedPlayer),
+      storeCommandIntentResult: vi.fn().mockResolvedValue(undefined),
     } as unknown as GameRepository;
     const useCase = new EquipCurrentRune(repository, telemetry);
 

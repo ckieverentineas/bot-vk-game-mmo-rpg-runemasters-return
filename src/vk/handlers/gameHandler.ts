@@ -7,7 +7,9 @@ import type { ExploreLocationReplayResult } from '../../modules/exploration/appl
 import { getSchoolNovicePathDefinitionForEnemy } from '../../modules/player/domain/school-novice-path';
 import type { ReturnToAdventureReplayResult } from '../../modules/exploration/application/use-cases/ReturnToAdventure';
 import type { SkipTutorialReplayResult } from '../../modules/exploration/application/use-cases/SkipTutorial';
-import type { AcquisitionSummaryView } from '../../modules/player/application/read-models/acquisition-summary';
+import {
+  type AcquisitionSummaryView,
+} from '../../modules/player/application/read-models/acquisition-summary';
 import { buildBattleResultNextGoalView, buildPlayerNextGoalView } from '../../modules/player/application/read-models/next-goal';
 import { buildPlayerSchoolRecognitionView } from '../../modules/player/application/read-models/school-recognition';
 import { getEquippedRune } from '../../modules/player/domain/player-stats';
@@ -193,8 +195,8 @@ export class GameHandler {
           return;
         }
         case gameCommands.equipRune: {
-          const player = await this.services.equipCurrentRune.execute(vkId, 0, intentId ?? undefined, stateKey ?? undefined, intentSource);
-          await this.replyWithRuneHub(ctx, player);
+          const result = await this.services.equipCurrentRune.execute(vkId, 0, intentId ?? undefined, stateKey ?? undefined, intentSource);
+          await this.replyWithRuneHub(ctx, result);
           return;
         }
         case gameCommands.equipSupportRune: {

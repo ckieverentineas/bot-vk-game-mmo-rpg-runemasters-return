@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import type { BattleView, PlayerState, RuneView } from '../../../../shared/types/game';
-import { buildBattleAcquisitionSummary, buildCraftAcquisitionSummary } from './acquisition-summary';
+import { buildBattleAcquisitionSummary, buildCraftAcquisitionSummary, buildEquipAcquisitionSummary } from './acquisition-summary';
 
 const createRune = (overrides: Partial<RuneView> = {}): RuneView => ({
   id: 'rune-1',
@@ -363,5 +363,29 @@ describe('acquisition summary read-model', () => {
     const player = createPlayer({ runes: [createRune({ isEquipped: true, equippedSlot: 0 })] });
 
     expect(buildBattleAcquisitionSummary(player, player, createBattle())).toBeNull();
+  });
+
+  it('turns equipping the first school sign into a compact payoff confirmation', () => {
+    const before = createPlayer({
+      victories: 3,
+      runes: [
+        createRune({ isEquipped: true, equippedSlot: 0, rarity: 'USUAL', name: 'Обычная руна Пламени' }),
+        createRune({ id: 'rune-2', runeCode: 'rune-2', rarity: 'UNUSUAL', name: 'Первый знак Пламени' }),
+      ],
+    });
+    const after = createPlayer({
+      victories: 3,
+      runes: [
+        createRune({ isEquipped: false, equippedSlot: null, rarity: 'USUAL', name: 'Обычная руна Пламени' }),
+        createRune({ id: 'rune-2', runeCode: 'rune-2', isEquipped: true, equippedSlot: 0, rarity: 'UNUSUAL', name: 'Первый знак Пламени' }),
+      ],
+    });
+
+    const summary = buildEquipAcquisitionSummary(before, after, 0, 'equip_school_sign');
+
+    expect(summary?.kind).toBe('school_style_committed');
+    expect(summary?.title).toBe('Стиль Пламени закреплён');
+    expect(summary?.changeLine).toContain('теперь в основе');
+    expect(summary?.nextStepLine).toContain('добивайте');
   });
 });

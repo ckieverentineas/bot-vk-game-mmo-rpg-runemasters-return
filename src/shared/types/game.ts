@@ -149,6 +149,8 @@ export interface BattleRuneActionSnapshot {
 export interface BattleRuneLoadoutSnapshot {
   runeId: string;
   runeName: string;
+  runeRarity?: RuneRarity | null;
+  schoolProgressStage?: 'FIRST_SIGN' | 'SEAL' | null;
   archetypeCode: string | null;
   archetypeName: string | null;
   schoolCode?: string | null;

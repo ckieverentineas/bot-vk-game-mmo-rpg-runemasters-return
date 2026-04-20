@@ -1,11 +1,12 @@
 import type { BattleView, PlayerState, RuneRarity, RuneView } from '../../../../shared/types/game';
 import { describeRuneContent } from '../../../runes/domain/rune-abilities';
 import { getSchoolDefinition, getSchoolDefinitionForArchetype, getRuneSchoolPresentation } from '../../../runes/domain/rune-schools';
-import { getUnlockedRuneSlotCount } from '../../domain/player-stats';
-import { getSchoolNovicePathDefinitionForEnemy, hasRuneOfSchoolAtLeastRarity } from '../../domain/school-novice-path';
+import { type NextGoalType } from './next-goal';
+import { getEquippedRune, getUnlockedRuneSlotCount } from '../../domain/player-stats';
+import { getSchoolNovicePathDefinition, getSchoolNovicePathDefinitionForEnemy, hasRuneOfSchoolAtLeastRarity } from '../../domain/school-novice-path';
 import { getSchoolMasteryDefinition } from '../../domain/school-mastery';
 
-export type AcquisitionSummaryKind = 'new_rune' | 'new_rarity' | 'mastery_unlock' | 'slot_unlock' | 'school_trial_completed' | 'school_miniboss_completed';
+export type AcquisitionSummaryKind = 'new_rune' | 'new_rarity' | 'mastery_unlock' | 'slot_unlock' | 'school_trial_completed' | 'school_miniboss_completed' | 'school_style_committed';
 
 export interface AcquisitionSummaryView {
   readonly kind: AcquisitionSummaryKind;
@@ -252,6 +253,50 @@ const buildSchoolMinibossCompletedSummary = (
   }
 };
 
+const buildSchoolStyleCommittedSummary = (
+  schoolCode: string,
+  schoolName: string,
+  schoolNameGenitive: string,
+): AcquisitionSummaryView => {
+  switch (schoolCode) {
+    case 'ember':
+      return createSummary(
+        'school_style_committed',
+        'Стиль Пламени закреплён',
+        'Первый знак Пламени теперь в основе: школа перестала быть наградой в запасе и стала вашей реальной боевой сборкой.',
+        'Следующий бой: держите давление и добивайте просевшую цель, чтобы сразу почувствовать стиль школы.',
+      );
+    case 'stone':
+      return createSummary(
+        'school_style_committed',
+        'Стиль Тверди закреплён',
+        'Первый знак Тверди теперь в основе: школа вошла в сборку и начинает играть через выдержку и ответный ход.',
+        'Следующий бой: переживите тяжёлый удар защитой или «Каменным отпором», а затем ответьте сильнее.',
+      );
+    case 'gale':
+      return createSummary(
+        'school_style_committed',
+        'Стиль Бури закреплён',
+        'Первый знак Бури теперь в основе: школа перестала быть просто лутом и стала темповой боевой сборкой.',
+        'Следующий бой: ударьте «Шагом шквала», чтобы сразу нанести урон и подготовить защиту.',
+      );
+    case 'echo':
+      return createSummary(
+        'school_style_committed',
+        'Стиль Прорицания закреплён',
+        'Первый знак Прорицания теперь в основе: школа вошла в сборку и начинает играть через чтение угрозы и точный ответ.',
+        'Следующий бой: дождитесь раскрытой угрозы врага и отвечайте в правильное окно.',
+      );
+    default:
+      return createSummary(
+        'school_style_committed',
+        `Стиль школы ${schoolName} закреплён`,
+        `Первый знак школы ${schoolNameGenitive} теперь в основе: путь школы перестал быть наградой в запасе и стал реальной боевой сборкой.`,
+        'Следующий бой: проверьте, как новый знак школы меняет ваши решения по ходу боя.',
+      );
+  }
+};
+
 export const buildBattleAcquisitionSummary = (
   before: PlayerState,
   after: PlayerState,
@@ -328,4 +373,56 @@ export const buildCraftAcquisitionSummary = (
   }
 
   return null;
+};
+
+export const buildEquipAcquisitionSummary = (
+  before: PlayerState,
+  after: PlayerState,
+  targetSlot: number,
+  goalTypeBefore: NextGoalType,
+): AcquisitionSummaryView | null => {
+  if (targetSlot !== 0 || !['equip_first_rune', 'equip_school_sign'].includes(goalTypeBefore)) {
+    return null;
+  }
+
+  const beforeEquippedRune = getEquippedRune(before, 0);
+  const afterEquippedRune = getEquippedRune(after, 0);
+  if (!afterEquippedRune || beforeEquippedRune?.id === afterEquippedRune.id) {
+    return null;
+  }
+
+  const school = getSchoolDefinitionForArchetype(afterEquippedRune.archetypeCode);
+  const novicePath = getSchoolNovicePathDefinition(school?.code);
+  if (
+    !school
+    || !novicePath
+    || afterEquippedRune.rarity !== novicePath.rewardRarity
+    || !!(novicePath.minibossRewardRarity && hasRuneOfSchoolAtLeastRarity(after, novicePath.schoolCode, novicePath.minibossRewardRarity))
+  ) {
+    return null;
+  }
+
+  return buildSchoolStyleCommittedSummary(novicePath.schoolCode, school.name, school.nameGenitive);
+};
+
+export const buildEquippedSchoolStyleSummary = (
+  player: PlayerState,
+): AcquisitionSummaryView | null => {
+  const equippedRune = getEquippedRune(player, 0);
+  if (!equippedRune) {
+    return null;
+  }
+
+  const school = getSchoolDefinitionForArchetype(equippedRune.archetypeCode);
+  const novicePath = getSchoolNovicePathDefinition(school?.code);
+  if (
+    !school
+    || !novicePath
+    || equippedRune.rarity !== novicePath.rewardRarity
+    || !!(novicePath.minibossRewardRarity && hasRuneOfSchoolAtLeastRarity(player, novicePath.schoolCode, novicePath.minibossRewardRarity))
+  ) {
+    return null;
+  }
+
+  return buildSchoolStyleCommittedSummary(novicePath.schoolCode, school.name, school.nameGenitive);
 };

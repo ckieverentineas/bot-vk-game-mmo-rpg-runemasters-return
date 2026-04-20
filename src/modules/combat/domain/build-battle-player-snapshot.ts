@@ -1,8 +1,33 @@
 import type { BattlePlayerSnapshot, PlayerState, StatBlock } from '../../../shared/types/game';
 import { buildLoadoutSnapshot, projectBattleRuneLoadout } from '../../shared/domain/contracts/loadout-snapshot';
+import { getSchoolNovicePathDefinition, hasRuneOfSchoolAtLeastRarity } from '../../player/domain/school-novice-path';
 import { getPlayerSchoolMasteryForArchetype } from '../../player/domain/school-mastery';
 import { getSchoolDefinitionForArchetype } from '../../runes/domain/rune-schools';
 import { getEquippedRune } from '../../player/domain/player-stats';
+
+const resolveSchoolProgressStage = (
+  player: Pick<PlayerState, 'runes'>,
+  schoolCode: string | null | undefined,
+  equippedRuneRarity: PlayerState['runes'][number]['rarity'] | undefined,
+): 'FIRST_SIGN' | 'SEAL' | null => {
+  const novicePath = getSchoolNovicePathDefinition(schoolCode ?? null);
+  if (!novicePath || !equippedRuneRarity) {
+    return null;
+  }
+
+  if (novicePath.minibossRewardRarity && equippedRuneRarity === novicePath.minibossRewardRarity) {
+    return 'SEAL';
+  }
+
+  if (
+    equippedRuneRarity === novicePath.rewardRarity
+    && (!novicePath.minibossRewardRarity || !hasRuneOfSchoolAtLeastRarity(player as PlayerState, novicePath.schoolCode, novicePath.minibossRewardRarity))
+  ) {
+    return 'FIRST_SIGN';
+  }
+
+  return null;
+};
 
 export const buildBattlePlayerSnapshot = (
   playerId: number,
@@ -17,12 +42,14 @@ export const buildBattlePlayerSnapshot = (
   const loadoutSnapshot = buildLoadoutSnapshot(equippedRune, {
     schoolCode: school?.code ?? null,
     schoolMasteryRank: mastery?.rank ?? 0,
+    schoolProgressStage: resolveSchoolProgressStage(player, school?.code, equippedRune?.rarity),
   });
   const supportSchool = getSchoolDefinitionForArchetype(supportRune?.archetypeCode);
   const supportMastery = supportRune ? getPlayerSchoolMasteryForArchetype(player, supportRune.archetypeCode) : null;
   const supportLoadoutSnapshot = buildLoadoutSnapshot(supportRune, {
     schoolCode: supportSchool?.code ?? null,
     schoolMasteryRank: supportMastery?.rank ?? 0,
+    schoolProgressStage: resolveSchoolProgressStage(player, supportSchool?.code, supportRune?.rarity),
   });
   const projectedLoadout = projectBattleRuneLoadout(loadoutSnapshot);
   const projectedSupportLoadout = projectBattleRuneLoadout(supportLoadoutSnapshot);

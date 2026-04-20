@@ -1,6 +1,10 @@
 import { AppError } from '../../../../shared/domain/AppError';
 import type { PlayerState } from '../../../../shared/types/game';
 import { Logger } from '../../../../utils/logger';
+import {
+  buildEquipAcquisitionSummary,
+  type AcquisitionSummaryView,
+} from '../../../player/application/read-models/acquisition-summary';
 import { buildPlayerNextGoalView } from '../../../player/application/read-models/next-goal';
 import { buildPlayerSchoolRecognitionView } from '../../../player/application/read-models/school-recognition';
 import type { GameTelemetry } from '../../../shared/application/ports/GameTelemetry';
@@ -24,13 +28,19 @@ export class EquipCurrentRune {
     intentId?: string,
     intentStateKey?: string,
     intentSource: CommandIntentSource = 'payload',
-  ): Promise<PlayerState> {
+  ): Promise<PlayerState | EquipRuneResultView> {
     const player = await requirePlayerByVkId(this.repository, vkId);
 
     if (intentSource === 'legacy_text' && intentId) {
-      const replay = await this.repository.getCommandIntentResult(player.playerId, intentId);
+      const replay = await this.repository.getCommandIntentResult<PlayerState | EquipRuneResultView>(player.playerId, intentId);
       if (replay?.status === 'APPLIED' && replay.result) {
-        return replay.result;
+        return 'player' in replay.result
+          ? { ...replay.result, replayed: true }
+          : {
+            player: replay.result,
+            acquisitionSummary: null,
+            replayed: true,
+          };
       }
 
       if (replay?.status === 'PENDING') {
@@ -60,14 +70,20 @@ export class EquipCurrentRune {
     const intent = resolveCommandIntent(intentId, intentStateKey, intentSource, intentSource === null);
 
     if (intent?.intentId) {
-      const replay = await this.repository.getCommandIntentResult<PlayerState>(
+      const replay = await this.repository.getCommandIntentResult<PlayerState | EquipRuneResultView>(
         player.playerId,
         intent.intentId,
         ['EQUIP_RUNE'],
         intent.intentStateKey,
       );
       if (replay?.status === 'APPLIED' && replay.result) {
-        return replay.result;
+        return 'player' in replay.result
+          ? { ...replay.result, replayed: true }
+          : {
+            player: replay.result,
+            acquisitionSummary: null,
+            replayed: true,
+          };
       }
 
       if (replay?.status === 'PENDING') {
@@ -137,6 +153,15 @@ export class EquipCurrentRune {
       Logger.warn('Telemetry logging failed', error);
     }
 
-    return updatedPlayer;
+    const acquisitionSummary = buildEquipAcquisitionSummary(player, updatedPlayer, targetSlot, nextGoalBefore.goalType);
+    return acquisitionSummary
+      ? { player: updatedPlayer, acquisitionSummary }
+      : updatedPlayer;
   }
+}
+
+export interface EquipRuneResultView {
+  readonly player: PlayerState;
+  readonly acquisitionSummary: AcquisitionSummaryView | null;
+  readonly replayed?: true;
 }

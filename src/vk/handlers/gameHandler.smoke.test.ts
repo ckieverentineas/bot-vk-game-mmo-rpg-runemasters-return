@@ -1139,6 +1139,50 @@ describe('GameHandler smoke', () => {
     expect(services.equipCurrentRune.execute).toHaveBeenCalledWith(1001, 0, 'intent-equip-1', 'state-equip-1', 'payload');
   });
 
+  it('показывает payoff recap после установки первого знака школы', async () => {
+    const services = createServices();
+    vi.mocked(services.equipCurrentRune.execute).mockResolvedValueOnce({
+      player: createPlayer({
+        tutorialState: 'SKIPPED',
+        victories: 3,
+        schoolMasteries: [{ schoolCode: 'ember', experience: 1, rank: 0 }],
+        runes: [
+          {
+            id: 'rune-ember-sign',
+            runeCode: 'rune-ember-sign',
+            archetypeCode: 'ember',
+            passiveAbilityCodes: ['ember_heart'],
+            activeAbilityCodes: ['ember_pulse'],
+            name: 'Первый знак Пламени',
+            rarity: 'UNUSUAL',
+            isEquipped: true,
+            equippedSlot: 0,
+            health: 2,
+            attack: 3,
+            defence: 0,
+            magicDefence: 0,
+            dexterity: 0,
+            intelligence: 0,
+            createdAt: '2026-04-12T00:00:00.000Z',
+          },
+        ],
+      }),
+      acquisitionSummary: {
+        kind: 'school_style_committed',
+        title: 'Стиль Пламени закреплён',
+        changeLine: 'Первый знак Пламени теперь в основе: школа перестала быть наградой в запасе и стала вашей реальной боевой сборкой.',
+        nextStepLine: 'Следующий бой: держите давление и добивайте просевшую цель, чтобы сразу почувствовать стиль школы.',
+      },
+    });
+    const handler = new GameHandler(services);
+    const ctx = createFakeContext({ command: 'надеть', intentId: 'intent-equip-style-1', stateKey: 'state-equip-style-1' });
+
+    await handler.handle(ctx as never);
+
+    expect(getReplyCalls(ctx)[0]?.message).toContain('✨ Что изменилось: Стиль Пламени закреплён.');
+    expect(getReplyCalls(ctx)[0]?.message).toContain('👉 Попробовать: Следующий бой: держите давление');
+  });
+
   it('пробрасывает intentId для экипировки в support-slot через transport payload', async () => {
     const services = createServices();
     const handler = new GameHandler(services);
@@ -1147,6 +1191,64 @@ describe('GameHandler smoke', () => {
     await handler.handle(ctx as never);
 
     expect(services.equipCurrentRune.execute).toHaveBeenCalledWith(1001, 1, 'intent-support-1', 'state-support-1', 'payload');
+  });
+
+  it('не поднимает first-sign payoff recap на replayed support-slot equip', async () => {
+    const services = createServices();
+    vi.mocked(services.equipCurrentRune.execute).mockResolvedValueOnce({
+      player: createPlayer({
+        tutorialState: 'SKIPPED',
+        victories: 3,
+        schoolMasteries: [{ schoolCode: 'ember', experience: 1, rank: 0 }],
+        unlockedRuneSlotCount: 2,
+        runes: [
+          {
+            id: 'rune-ember-sign',
+            runeCode: 'rune-ember-sign',
+            archetypeCode: 'ember',
+            passiveAbilityCodes: ['ember_heart'],
+            activeAbilityCodes: ['ember_pulse'],
+            name: 'Первый знак Пламени',
+            rarity: 'UNUSUAL',
+            isEquipped: true,
+            equippedSlot: 0,
+            health: 2,
+            attack: 3,
+            defence: 0,
+            magicDefence: 0,
+            dexterity: 0,
+            intelligence: 0,
+            createdAt: '2026-04-12T00:00:00.000Z',
+          },
+          {
+            id: 'rune-support-1',
+            runeCode: 'rune-support-1',
+            archetypeCode: 'stone',
+            passiveAbilityCodes: ['stone_skin'],
+            activeAbilityCodes: ['stone_counter'],
+            name: 'Каменный отклик',
+            rarity: 'USUAL',
+            isEquipped: true,
+            equippedSlot: 1,
+            health: 1,
+            attack: 0,
+            defence: 2,
+            magicDefence: 0,
+            dexterity: 0,
+            intelligence: 0,
+            createdAt: '2026-04-12T00:00:00.000Z',
+          },
+        ],
+      }),
+      acquisitionSummary: null,
+      replayed: true,
+    });
+    const handler = new GameHandler(services);
+    const ctx = createFakeContext({ command: 'надеть в поддержку', intentId: 'intent-support-replay-1', stateKey: 'state-support-replay-1' });
+
+    await handler.handle(ctx as never);
+
+    expect(getReplyCalls(ctx)[0]?.message).not.toContain('Стиль Пламени закреплён');
   });
 
   it('пробрасывает intentId для снятия руны через transport payload', async () => {

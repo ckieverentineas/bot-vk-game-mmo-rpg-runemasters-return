@@ -187,6 +187,7 @@ src/
 - `enemy.intent` для телеграфируемого тяжёлого удара без выхода в отдельную AI-state-machine.
 - тот же `enemy.intent` теперь несёт и anti-guard pattern, поэтому игроку приходится читать не только “когда защищаться”, но и “когда защита будет плохим ответом”.
 - battle-only passive resolver добавляет school identity поверх существующего snapshot-контракта без миграции базы и без новых transport-owned состояний.
+- battle loadout snapshot теперь также может нести rarity экипированной руны как optional read-model поле, чтобы compact combat clarity мог различать первый знак школы и более поздние school payoff стадии без отдельной persistence-системы.
 
 ### 7. Адаптивная сложность
 

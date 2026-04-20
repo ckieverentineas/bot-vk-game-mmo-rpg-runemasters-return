@@ -102,6 +102,8 @@ describe('buildBattleClarityView', () => {
         runeLoadout: {
           ...createBattle().player.runeLoadout!,
           runeName: 'Руна Бури',
+          runeRarity: 'UNUSUAL',
+          schoolProgressStage: 'FIRST_SIGN',
           archetypeCode: 'gale',
           archetypeName: 'Налётчик',
           schoolCode: 'gale',
@@ -117,7 +119,8 @@ describe('buildBattleClarityView', () => {
       },
     }));
 
-    expect(clarity.schoolHintLine).toContain('Шаг шквала');
+    expect(clarity.schoolHintLine).toContain('Первый знак Бури');
+    expect(clarity.schoolHintLine).toContain('Шагом шквала');
   });
 
   it('builds an echo-specific hint around revealed intent', () => {

@@ -39,6 +39,7 @@ Runemasters Return — VK MMO RPG на TypeScript с модульным игро
 - первая aligned `unusual` руна школы теперь подаётся как завершение `первого испытания школы`, а не как безымянный дроп: battle result и ключевые экраны закрепляют статус игрока как уже признанного ученика Пламени/Тверди;
 - если первый знак школы уже получен, но ещё не надет, school-aware next-goal теперь ведёт не в абстрактный гринд, а прямо в `🔮 Руны`, чтобы игрок закрепил признание школы в реальной сборке;
 - evidence layer теперь также ловит осмысленные follow-up шаги после school trial: открытие рун, установку первого знака школы и старт следующего боя после признания школы;
+- после установки первого знака школы rune hub теперь даёт короткий payoff recap: что изменилось в стиле боя и что стоит попробовать уже в следующем бою;
 - после установки первого знака школы `dark-forest` теперь может подбросить school-aligned miniboss continuation: Пепельную матрону для Пламени и Гранитного стража для Тверди, с первым targeted `RARE` payoff этой школы;
 - после первого school miniboss rare-награда больше не выглядит как просто ещё один дроп: recognition/read-model слой поднимает её в `печать школы`, а next-goal ведёт либо к её экипировке, либо дальше в mastery path;
 - `Прорицание` получило свой первый узкий school-first proof без нового движка: novice elite `Слепой авгур`, первая `UNUSUAL` руна школы и guidance loop вокруг чтения раскрытой угрозы;
@@ -47,6 +48,7 @@ Runemasters Return — VK MMO RPG на TypeScript с модульным игро
 - versioned platform contracts для боевой рунной сборки и reward claims: `LoadoutSnapshot`, `RewardIntent`, `RewardLedger`;
 - player-state hydration теперь тоже проходит через compatibility-safe слой с current / legacy / future fixtures, так что persisted player state меньше зависит от ad-hoc fallback'ов при реэнтри и rollback-сценариях;
 - active battle теперь даёт короткий `combat clarity` блок: компактное состояние боя и school-aware tactical hint, чтобы игрок понимал не только цифры, но и следующий осмысленный ответ прямо на своём ходу;
+- если в основе уже стоит первый знак школы, battle clarity сильнее подсказывает именно первый school payoff: что нажать и какой tactical ask проверить в ближайшем бою;
 - exact-once reward ledger и canonical battle finalization защищают победную награду от replay/reroll по повторным входящим событиям;
 - battle mutation revision защищает активный бой от stale overwrite при спаме и transport retry;
 - versioned `BattleSnapshot` и checked-in compatibility fixtures страхуют save/load battle state перед будущими миграциями;
