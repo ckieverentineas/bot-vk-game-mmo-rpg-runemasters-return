@@ -85,7 +85,7 @@ describe('pickEncounterTemplate', () => {
       createTemplate({ code: 'stonehorn-ram', name: 'Камнерогий таран', kind: 'boar', isElite: true }),
     ];
 
-    const picked = pickEncounterTemplate(templates, 4, 'ember', {
+    const picked = pickEncounterTemplate(templates, 4, { schoolCode: 'ember' }, {
       rollPercentage: (chance) => chance > 0,
       pickOne: (items) => items[0]!,
     });
@@ -100,12 +100,27 @@ describe('pickEncounterTemplate', () => {
       createTemplate({ code: 'stonehorn-ram', name: 'Камнерогий таран', kind: 'boar', isElite: true }),
     ];
 
-    const picked = pickEncounterTemplate(templates, 4, 'stone', {
+    const picked = pickEncounterTemplate(templates, 4, { schoolCode: 'stone' }, {
       rollPercentage: (chance) => chance > 0,
       pickOne: (items) => items[0]!,
     });
 
     expect(picked.code).toBe('stonehorn-ram');
+  });
+
+  it('prefers the ember school miniboss once the first sign is already equipped', () => {
+    const templates = [
+      createTemplate(),
+      createTemplate({ code: 'ash-matron', name: 'Пепельная матрона', kind: 'mage', isElite: true, isBoss: true }),
+      createTemplate({ code: 'granite-warden', name: 'Гранитный страж', kind: 'knight', isElite: true, isBoss: true }),
+    ];
+
+    const picked = pickEncounterTemplate(templates, 6, { schoolCode: 'ember', preferMiniboss: true }, {
+      rollPercentage: (chance) => chance > 0,
+      pickOne: (items) => items[0]!,
+    });
+
+    expect(picked.code).toBe('ash-matron');
   });
 });
 
@@ -126,5 +141,16 @@ describe('describeEncounter', () => {
 
     expect(description).toContain('Камнерогий таран');
     expect(description).toContain('тяжёлый удар');
+  });
+
+  it('adds a school-specific hint for the ember miniboss', () => {
+    const description = describeEncounter(
+      createBiome(),
+      createEnemy({ code: 'ash-matron', name: 'Пепельная матрона', isBoss: true }),
+      'ember',
+    );
+
+    expect(description).toContain('Пепельная матрона');
+    expect(description).toContain('большой бой Пламени');
   });
 });

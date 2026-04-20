@@ -242,4 +242,120 @@ describe('resolveVictoryRewardOptions', () => {
 
     expect(result.forcedRune).toBeUndefined();
   });
+
+  it('forces a rare ember rune from the ash matron when the first unusual ember sign is already equipped', () => {
+    const result = resolveVictoryRewardOptions(
+      createPlayer({
+        runes: [
+          {
+            id: 'rune-ember-1',
+            runeCode: 'rune-ember-1',
+            archetypeCode: 'ember',
+            passiveAbilityCodes: ['ember_heart'],
+            activeAbilityCodes: ['ember_pulse'],
+            name: 'Необычная руна Пламени',
+            rarity: 'UNUSUAL',
+            isEquipped: true,
+            equippedSlot: 0,
+            health: 2,
+            attack: 3,
+            defence: 0,
+            magicDefence: 0,
+            dexterity: 0,
+            intelligence: 0,
+            createdAt: '2026-04-12T00:00:00.000Z',
+          },
+        ],
+      }),
+      createBattle({
+        locationLevel: 6,
+        enemy: {
+          ...createBattle().enemy,
+          code: 'ash-matron',
+          name: 'Пепельная матрона',
+          kind: 'mage',
+          isBoss: true,
+          isElite: true,
+          attack: 16,
+          intelligence: 12,
+          maxHealth: 84,
+          experienceReward: 96,
+          goldReward: 34,
+          runeDropChance: 76,
+          attackText: 'заливает поле пепельным пламенем',
+        },
+      }),
+      createRandom(),
+    );
+
+    expect(result.forcedRune?.archetypeCode).toBe('ember');
+    expect(result.forcedRune?.rarity).toBe('RARE');
+  });
+
+  it('forces a rare stone rune from the granite warden when the first unusual stone sign is already equipped', () => {
+    const result = resolveVictoryRewardOptions(
+      createPlayer({
+        runes: [
+          {
+            id: 'rune-stone-1',
+            runeCode: 'rune-stone-1',
+            archetypeCode: 'stone',
+            passiveAbilityCodes: ['stone_guard'],
+            activeAbilityCodes: ['stone_bastion'],
+            name: 'Необычная руна Тверди',
+            rarity: 'UNUSUAL',
+            isEquipped: true,
+            equippedSlot: 0,
+            health: 2,
+            attack: 2,
+            defence: 2,
+            magicDefence: 1,
+            dexterity: 0,
+            intelligence: 0,
+            createdAt: '2026-04-12T00:00:00.000Z',
+          },
+        ],
+      }),
+      createBattle({
+        locationLevel: 6,
+        enemy: {
+          ...createBattle().enemy,
+          code: 'granite-warden',
+          name: 'Гранитный страж',
+          kind: 'knight',
+          isBoss: true,
+          isElite: true,
+          attack: 17,
+          defence: 8,
+          maxHealth: 94,
+          experienceReward: 102,
+          goldReward: 36,
+          runeDropChance: 78,
+          attackText: 'обрушивает гранитный молот',
+        },
+        player: {
+          ...createBattle().player,
+          runeLoadout: {
+            ...createBattle().player.runeLoadout!,
+            runeName: 'Необычная руна Тверди',
+            archetypeCode: 'stone',
+            archetypeName: 'Страж',
+            schoolCode: 'stone',
+            passiveAbilityCodes: ['stone_guard'],
+            activeAbility: {
+              code: 'stone_bastion',
+              name: 'Каменный отпор',
+              manaCost: 2,
+              cooldownTurns: 2,
+              currentCooldown: 0,
+            },
+          },
+        },
+      }),
+      createRandom(),
+    );
+
+    expect(result.forcedRune?.archetypeCode).toBe('stone');
+    expect(result.forcedRune?.rarity).toBe('RARE');
+  });
 });

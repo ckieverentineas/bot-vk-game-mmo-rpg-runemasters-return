@@ -31,15 +31,18 @@ export const resolveVictoryRewardOptions = (
     const currentSchoolCode = battle.player.runeLoadout?.schoolCode
       ?? getSchoolDefinitionForArchetype(battle.player.runeLoadout?.archetypeCode)?.code
       ?? null;
+    const requiredRarity = battle.enemy.code === novicePath.minibossEnemyCode
+      ? novicePath.minibossRewardRarity
+      : novicePath.rewardRarity;
 
     if (
       currentSchoolCode === novicePath.schoolCode
-      && !hasRuneOfSchoolAtLeastRarity(player, novicePath.schoolCode, novicePath.rewardRarity)
+      && !hasRuneOfSchoolAtLeastRarity(player, novicePath.schoolCode, requiredRarity)
     ) {
       return {
         forcedRune: RuneFactory.create(
           Math.max(gameBalance.world.minAdventureLocationLevel, battle.locationLevel),
-          novicePath.rewardRarity,
+          requiredRarity,
           novicePath.forcedArchetypeCode,
           random,
         ),

@@ -5,7 +5,12 @@ import { BattleEngine } from '../../../combat/domain/battle-engine';
 import { buildBattlePlayerSnapshot } from '../../../combat/domain/build-battle-player-snapshot';
 import { buildPlayerNextGoalView } from '../../../player/application/read-models/next-goal';
 import { buildPlayerSchoolRecognitionView } from '../../../player/application/read-models/school-recognition';
-import { getSchoolNovicePathDefinitionForEnemy, hasRuneOfSchoolAtLeastRarity } from '../../../player/domain/school-novice-path';
+import {
+  getSchoolNovicePathDefinition,
+  getSchoolNovicePathDefinitionForEnemy,
+  hasEquippedRuneOfSchoolAtLeastRarity,
+  hasRuneOfSchoolAtLeastRarity,
+} from '../../../player/domain/school-novice-path';
 import { derivePlayerStats, getEquippedRune, resolveEncounterLocationLevel } from '../../../player/domain/player-stats';
 import { getSchoolDefinitionForArchetype } from '../../../runes/domain/rune-schools';
 import { resolveCommandIntent, type CommandIntentSource } from '../../../shared/application/command-intent';
@@ -113,7 +118,16 @@ export class ExploreLocation {
     }
 
     const templates = await this.repository.listMobTemplatesForBiome(biome.code);
-    const template = pickEncounterTemplate(templates, locationLevel, currentSchoolCode, this.random);
+    const novicePath = getSchoolNovicePathDefinition(currentSchoolCode);
+    const preferMiniboss = !!(
+      novicePath
+      && hasEquippedRuneOfSchoolAtLeastRarity(currentPlayer, novicePath.schoolCode, novicePath.rewardRarity)
+      && !hasRuneOfSchoolAtLeastRarity(currentPlayer, novicePath.schoolCode, novicePath.minibossRewardRarity)
+    );
+    const template = pickEncounterTemplate(templates, locationLevel, {
+      schoolCode: currentSchoolCode,
+      preferMiniboss,
+    }, this.random);
     const playerStats = derivePlayerStats(currentPlayer);
     const enemy = buildEnemySnapshot(template, locationLevel);
     const turnOwner = resolveInitialTurnOwner(playerStats.dexterity, enemy.dexterity);

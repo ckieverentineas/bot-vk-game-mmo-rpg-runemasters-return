@@ -156,15 +156,15 @@ describe('next goal read-model', () => {
       runes: [
         {
           ...createPlayer().runes[0]!,
-          name: 'Необычная руна Пламени',
-          rarity: 'UNUSUAL',
+          name: 'Редкая руна Пламени',
+          rarity: 'RARE',
         },
         {
           ...createPlayer().runes[0]!,
           id: 'rune-2',
           runeCode: 'rune-2',
-          name: 'Запасная необычная руна Пламени',
-          rarity: 'UNUSUAL',
+          name: 'Запасная редкая руна Пламени',
+          rarity: 'RARE',
           isEquipped: false,
           equippedSlot: null,
           createdAt: '2026-04-13T00:00:00.000Z',
@@ -202,6 +202,26 @@ describe('next goal read-model', () => {
     expect(goal.milestoneProgressText).toContain('«Необычная руна Пламени»');
   });
 
+  it('guides the player to the school miniboss once the first sign is already equipped', () => {
+    const goal = buildPlayerNextGoalView(createPlayer({
+      victories: 4,
+      runes: [
+        {
+          ...createPlayer().runes[0]!,
+          name: 'Необычная руна Пламени',
+          rarity: 'UNUSUAL',
+          isEquipped: true,
+          equippedSlot: 0,
+        },
+      ],
+    }));
+
+    expect(goal.goalType).toBe('challenge_school_miniboss');
+    expect(goal.objectiveText).toContain('разыщите Пепельную матрону');
+    expect(goal.milestoneProgressText).toBe('Тёмный лес · Пепельная матрона');
+    expect(goal.milestoneBenefitText).toContain('первую редкую руну школы Пламени');
+  });
+
   it('switches to support-slot goal once the mastery unlock is reached', () => {
     const goal = buildPlayerNextGoalView(createPlayer({
       victories: 4,
@@ -210,8 +230,8 @@ describe('next goal read-model', () => {
       runes: [
         {
           ...createPlayer().runes[0]!,
-          name: 'Необычная руна Пламени',
-          rarity: 'UNUSUAL',
+          name: 'Редкая руна Пламени',
+          rarity: 'RARE',
         },
       ],
     }));
@@ -235,15 +255,15 @@ describe('next goal read-model', () => {
       runes: [
         {
           ...createPlayer().runes[0]!,
-          name: 'Необычная руна Пламени',
-          rarity: 'UNUSUAL',
+          name: 'Редкая руна Пламени',
+          rarity: 'RARE',
         },
         {
           ...createPlayer().runes[0]!,
           id: 'rune-2',
           runeCode: 'rune-2',
-          name: 'Запасная необычная руна Пламени',
-          rarity: 'UNUSUAL',
+          name: 'Запасная редкая руна Пламени',
+          rarity: 'RARE',
           isEquipped: false,
           equippedSlot: null,
           createdAt: '2026-04-13T00:00:00.000Z',

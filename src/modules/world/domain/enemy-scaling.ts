@@ -6,6 +6,11 @@ interface EncounterRandomSource {
   pickOne<T>(items: readonly T[]): T;
 }
 
+interface PreferredSchoolEncounterOptions {
+  readonly schoolCode: string | null;
+  readonly preferMiniboss?: boolean;
+}
+
 const randomInt = (min: number, max: number): number => Math.floor(Math.random() * (max - min + 1)) + min;
 
 const randomItem = <T>(items: readonly T[]): T => items[randomInt(0, items.length - 1)];
@@ -21,6 +26,11 @@ const preferredSchoolEliteCodes: Partial<Record<string, string>> = {
   stone: 'stonehorn-ram',
 };
 
+const preferredSchoolBossCodes: Partial<Record<string, string>> = {
+  ember: 'ash-matron',
+  stone: 'granite-warden',
+};
+
 const encounterHintByEnemyCode: Partial<Record<string, { schoolCode: string; genericHint: string; schoolHint: string }>> = {
   'ash-seer': {
     schoolCode: 'ember',
@@ -32,6 +42,16 @@ const encounterHintByEnemyCode: Partial<Record<string, { schoolCode: string; gen
     genericHint: 'Подсказка: этот элитный враг позже готовит тяжёлый удар, так что защита и ответный ход здесь особенно ценны.',
     schoolHint: 'Подсказка: это первое испытание школы Тверди — защита и каменный ответ помогают пережить его разгон и наказать в окно после удара.',
   },
+  'ash-matron': {
+    schoolCode: 'ember',
+    genericHint: 'Подсказка: этот босс ломает защиту и затягивает бой под своё давление, так что его лучше дожимать без лишней пассивности.',
+    schoolHint: 'Подсказка: это большой бой Пламени — здесь особенно важно давить, добивать и не отдавать матроне темп.',
+  },
+  'granite-warden': {
+    schoolCode: 'stone',
+    genericHint: 'Подсказка: этот босс проверяет выдержку тяжёлым ударом и ответом в окно после разгона.',
+    schoolHint: 'Подсказка: это большой бой Тверди — здесь особенно важно пережить тяжёлый удар и наказать врага каменным ответом.',
+  },
 };
 
 const scaleStat = (base: number, scale: number, locationLevel: number): number => {
@@ -42,7 +62,7 @@ const scaleStat = (base: number, scale: number, locationLevel: number): number =
 export const pickEncounterTemplate = (
   templates: readonly MobTemplateView[],
   locationLevel: number,
-  preferredSchoolCode: string | null = null,
+  preferredSchool: PreferredSchoolEncounterOptions = { schoolCode: null },
   random: EncounterRandomSource = defaultEncounterRandom,
 ): MobTemplateView => {
   if (templates.length === 0) {
@@ -59,11 +79,20 @@ export const pickEncounterTemplate = (
   const eliteChance = locationLevel >= 5
     ? Math.min(35, 12 + Math.floor(locationLevel / 15) * 3)
     : 0;
-  const preferredEliteCode = preferredSchoolCode ? preferredSchoolEliteCodes[preferredSchoolCode] ?? null : null;
+  const preferredEliteCode = preferredSchool.schoolCode ? preferredSchoolEliteCodes[preferredSchool.schoolCode] ?? null : null;
   const preferredElite = preferredEliteCode
     ? elites.find((template) => template.code === preferredEliteCode) ?? null
     : null;
+  const preferredBossCode = preferredSchool.schoolCode ? preferredSchoolBossCodes[preferredSchool.schoolCode] ?? null : null;
+  const preferredBoss = preferredBossCode
+    ? bosses.find((template) => template.code === preferredBossCode) ?? null
+    : null;
   const preferredEliteChance = locationLevel >= 3 ? 50 : 0;
+  const preferredBossChance = locationLevel >= 5 ? 45 : 0;
+
+  if (preferredSchool.preferMiniboss && preferredBoss && preferredBossChance > 0 && random.rollPercentage(preferredBossChance)) {
+    return preferredBoss;
+  }
 
   if (bosses.length > 0 && random.rollPercentage(bossChance)) {
     return random.pickOne(bosses);

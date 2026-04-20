@@ -9,6 +9,10 @@ export interface SchoolNovicePathDefinition {
   readonly biomeName: string;
   readonly rewardRarity: RuneRarity;
   readonly forcedArchetypeCode: string;
+  readonly minibossEnemyCode: string;
+  readonly minibossEnemyName: string;
+  readonly minibossEnemyNameAccusative: string;
+  readonly minibossRewardRarity: RuneRarity;
 }
 
 const novicePathDefinitions: readonly SchoolNovicePathDefinition[] = [
@@ -20,6 +24,10 @@ const novicePathDefinitions: readonly SchoolNovicePathDefinition[] = [
     biomeName: 'Тёмный лес',
     rewardRarity: 'UNUSUAL',
     forcedArchetypeCode: 'ember',
+    minibossEnemyCode: 'ash-matron',
+    minibossEnemyName: 'Пепельная матрона',
+    minibossEnemyNameAccusative: 'Пепельную матрону',
+    minibossRewardRarity: 'RARE',
   },
   {
     schoolCode: 'stone',
@@ -29,6 +37,10 @@ const novicePathDefinitions: readonly SchoolNovicePathDefinition[] = [
     biomeName: 'Тёмный лес',
     rewardRarity: 'UNUSUAL',
     forcedArchetypeCode: 'stone',
+    minibossEnemyCode: 'granite-warden',
+    minibossEnemyName: 'Гранитный страж',
+    minibossEnemyNameAccusative: 'Гранитного стража',
+    minibossRewardRarity: 'RARE',
   },
 ];
 
@@ -41,7 +53,15 @@ export const getSchoolNovicePathDefinition = (schoolCode: string | null | undefi
 );
 
 export const getSchoolNovicePathDefinitionForEnemy = (enemyCode: string | null | undefined): SchoolNovicePathDefinition | null => (
-  novicePathDefinitions.find((entry) => entry.enemyCode === enemyCode) ?? null
+  novicePathDefinitions.find((entry) => entry.enemyCode === enemyCode || entry.minibossEnemyCode === enemyCode) ?? null
+);
+
+export const isSchoolNoviceTrialEnemy = (enemyCode: string | null | undefined): boolean => (
+  novicePathDefinitions.some((entry) => entry.enemyCode === enemyCode)
+);
+
+export const isSchoolMinibossEnemy = (enemyCode: string | null | undefined): boolean => (
+  novicePathDefinitions.some((entry) => entry.minibossEnemyCode === enemyCode)
 );
 
 export const hasRuneOfSchoolAtLeastRarity = (
@@ -81,3 +101,13 @@ export const findBestRuneOfSchoolAtLeastRarity = (
         - Number(left.attack + left.health + left.defence + left.magicDefence + left.dexterity + left.intelligence);
     })[0] ?? null;
 };
+
+export const hasEquippedRuneOfSchoolAtLeastRarity = (
+  player: Pick<PlayerState, 'runes'>,
+  schoolCode: string,
+  minimumRarity: RuneRarity,
+): boolean => player.runes.some((rune) => {
+  const runeSchoolCode = getSchoolDefinitionForArchetype(rune.archetypeCode)?.code ?? null;
+  const runeRarityIndex = resolveRarityIndex(rune.rarity);
+  return rune.isEquipped && runeSchoolCode === schoolCode && runeRarityIndex >= resolveRarityIndex(minimumRarity);
+});

@@ -380,7 +380,7 @@ export const renderRuneScreen = (player: PlayerState, acquisitionSummary?: Acqui
     })() : []),
     ...(recognition ? [`⭐ ${recognition.title}: ${withSentencePeriod(recognition.statusLine)}`] : []),
     ...renderAcquisitionSummary(acquisitionSummary),
-    ...(['hunt_school_elite', 'equip_school_sign', 'reach_next_school_mastery', 'fill_support_slot'].includes(nextGoal.goalType)
+    ...(['hunt_school_elite', 'equip_school_sign', 'challenge_school_miniboss', 'reach_next_school_mastery', 'fill_support_slot'].includes(nextGoal.goalType)
       ? [
           `🎯 Ближайшая веха: ${withSentencePeriod(nextGoal.milestoneProgressText ?? nextGoal.objectiveText)}`,
           ...(nextGoal.milestoneBenefitText ? [`🜂 Что даст: ${withSentencePeriod(nextGoal.milestoneBenefitText)}`] : []),

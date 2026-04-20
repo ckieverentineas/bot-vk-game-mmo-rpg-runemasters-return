@@ -20,6 +20,7 @@ export type NextGoalType =
   | 'use_active_rune_skill'
   | 'hunt_school_elite'
   | 'equip_school_sign'
+  | 'challenge_school_miniboss'
   | 'reach_next_school_mastery'
   | 'fill_support_slot'
   | 'push_higher_threat'
@@ -184,6 +185,26 @@ export const buildPlayerNextGoalView = (player: PlayerState): NextGoalView => {
           milestoneTitle: `Первый знак школы ${schoolDefinition.nameGenitive}`,
           milestoneProgressText: `«${bestSchoolSign.name}» уже ждёт в коллекции рун.`,
           milestoneBenefitText: `Наденьте «${bestSchoolSign.name}», чтобы следующий бой уже шёл через новый знак школы.`,
+        },
+      );
+    }
+
+    if (
+      bestSchoolSign
+      && bestSchoolSign.id === equippedRune.id
+      && !hasRuneOfSchoolAtLeastRarity(player, novicePath.schoolCode, novicePath.minibossRewardRarity)
+    ) {
+      return createGoalView(
+        'challenge_school_miniboss',
+        'explore',
+        `разыщите ${novicePath.minibossEnemyNameAccusative} в ${novicePath.biomeName} и пройдите большой бой школы ${schoolDefinition.nameGenitive}`,
+        {
+          schoolCode: novicePath.schoolCode,
+          schoolName: equippedSchool?.name ?? schoolDefinition.name,
+          whyText: `Этот бой проверяет, стал ли первый знак школы ${schoolDefinition.nameGenitive} реальной боевой сборкой, а не просто редкой наградой.`,
+          milestoneTitle: `Большой бой школы ${schoolDefinition.nameGenitive}`,
+          milestoneProgressText: `${novicePath.biomeName} · ${novicePath.minibossEnemyName}`,
+          milestoneBenefitText: `Победа может принести первую ${novicePath.minibossRewardRarity === 'RARE' ? 'редкую' : 'новую'} руну школы ${schoolDefinition.nameGenitive}.`,
         },
       );
     }
