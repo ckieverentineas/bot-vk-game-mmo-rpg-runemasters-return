@@ -18,6 +18,7 @@
     "release:status": "tsx src/tooling/release/release-status.ts",
     "release:summary": "tsx src/tooling/release/release-summary.ts",
     "release:school-evidence": "tsx src/tooling/release/school-path-evidence.ts",
+    "release:evidence": "tsx src/tooling/release/release-evidence.ts",
     "release:preflight": "tsx src/tooling/release/release-preflight.ts",
     "lint": "tsc --noEmit -p tsconfig.json",
     "test": "vitest run --passWithNoTests"

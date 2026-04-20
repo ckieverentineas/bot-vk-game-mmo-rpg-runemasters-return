@@ -29,6 +29,7 @@
 - `Буря` теперь имеет первый полный ранний school path: `Шквальная рысь` как novice elite, `Владыка шквала` как school miniboss и targeted `RARE` payoff без новой tempo-системы;
 - `Прорицание` теперь имеет первый полный ранний school path: `Слепой авгур` как novice elite, `Хранитель предзнамений` как school miniboss и targeted `RARE` payoff на уже существующих intent rails;
 - tooling slice `release:school-evidence` теперь умеет собирать единый markdown-отчёт по school-first telemetry funnel из `GameLog`, чтобы baseline по 4 школам можно было оценивать не вручную по сырым логам;
+- tooling slice `release:evidence` теперь собирает unified markdown-отчёт по runtime evidence: onboarding coverage, school payoff, next-goal/return clarity и QA/exploit guardrails в одном release review артефакте;
 - player-state hydration теперь проходит через compatibility-safe helper с current / legacy / future fixtures и repository hydration tests, чтобы persisted player state безопаснее переживал missing/unknown fields и rollback-сценарии;
 - `content:validate` теперь содержит hard completeness gate для shipped school packages, чтобы 4 стартовые школы не уходили в релиз с тихим drift между identity, encounter hooks и reward/chase wiring;
 - active battle теперь показывает compact combat clarity block с текущим состоянием боя и school-aware tactical hint, чтобы игроку было проще читать следующий meaningful ход без перегруза интерфейса;

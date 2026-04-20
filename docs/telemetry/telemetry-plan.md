@@ -142,6 +142,12 @@ Healthy signal:
 - `equip_dropped_rune`;
 - `review_runes_after_defeat`.
 
+## Release evidence artifact
+
+- `npm run release:evidence` собирает `docs/testing/release-evidence-report.md` из текущего `GameLog` baseline без отдельной analytics-platform; по умолчанию это окно последних 7 дней, которое можно сузить/расширить через `--since`, `--until` или `--days`; date-only `--since/--until` считаются как UTC-границы календарного дня;
+- этот отчёт специально остаётся узким: onboarding coverage, school payoff funnel, post-session guidance, return recap proxy и QA/exploit guardrails;
+- отчёт не заменяет manual playtest, а даёт единый markdown-срез для release review поверх уже shipped telemetry events.
+
 ### Economy and exploit health
 
 - source/sink summary by `economy_transaction_committed`

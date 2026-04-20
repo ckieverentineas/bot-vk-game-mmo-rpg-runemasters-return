@@ -9,3 +9,6 @@ coverage/
 *.log
 .DS_Store
 .kilo
+tsconfig.tsbuildinfo
+docs/testing/release-evidence-report.md
+docs/testing/school-path-evidence-report.md

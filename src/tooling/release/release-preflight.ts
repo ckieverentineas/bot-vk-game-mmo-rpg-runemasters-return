@@ -53,7 +53,8 @@ console.log(
     '1. npm run check',
     '2. npm run release:status',
     '3. npm run release:summary',
-    '4. Синхронизировать README.md, CHANGELOG.md, PLAN.md, RELEASE_CHECKLIST.md и ARCHITECTURE.md, если менялось пользовательское поведение или архитектурные границы.',
+    '4. npm run release:evidence',
+    '5. Синхронизировать README.md, CHANGELOG.md, PLAN.md, RELEASE_CHECKLIST.md и ARCHITECTURE.md, если менялось пользовательское поведение или архитектурные границы.',
   ].join('\n'),
 );
 

@@ -218,6 +218,7 @@ src/
 - `npm run content:validate` валидирует контент и баланс до сборки;
 - `npm run release:status` показывает текущее состояние версии;
 - `npm run release:summary` собирает пользовательское release summary из недокументированных коммитов;
+- `npm run release:evidence` собирает unified markdown-отчёт по runtime evidence для onboarding coverage, school payoff, next-goal/return clarity и QA/exploit guardrails за ограниченное временное окно (последние 7 дней по умолчанию);
 - `npm run release:preflight` проверяет, что релизные документы в корне проекта существуют и не пустые;
 - `RELEASE_CHECKLIST.md` задаёт единый локальный релизный процесс;
 - `.github/workflows/ci.yml` повторяет тот же минимальный пайплайн в CI.
@@ -242,6 +243,7 @@ Shipped telemetry v1 не вводит отдельную analytics-platform и 
 - application-owned события вроде `loadout_changed` и `onboarding_started` пишутся после committed mutation/use-case transition;
 - transport-owned shown-screen события вроде `return_recap_shown` и `post_session_next_goal_shown` пишутся только после реально отправленного экрана;
 - screen telemetry использует тот же canonical `next-goal` read-model, что и player-facing copy, чтобы telemetry и UX не расходились по смыслу.
+- release evidence для текущего vertical slice собирается отдельным tooling-командой [`npm run release:evidence`](README.md), которая читает только ограниченный набор stable telemetry events и не превращает preflight в live-analytics зависимость.
 
 ### 9. Smoke verification
 

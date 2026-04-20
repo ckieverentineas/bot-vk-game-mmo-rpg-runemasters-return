@@ -82,14 +82,16 @@ Runemasters Return — VK MMO RPG на TypeScript с модульным игро
 - `docs/reviews/support-rune-slot-v1.md` — первый runtime slice с support-slot: слот 2 открывается через mastery milestone и даёт только bounded pre-battle breadth;
 - `docs/reviews/support-rune-slot-v2.md` — следующий support-slot slice: поддержка начинает влиять на бой пассивно, но future multi-skill остаётся отдельным budget decision;
 - `docs/telemetry/telemetry-plan.md` — минимальный telemetry v1 план для onboarding clarity, school readability, return UX, economy health и exploit review;
+- `docs/testing/release-evidence-report.md` — локально сгенерированный markdown-отчёт для release evidence pass по onboarding coverage, school payoff, next-goal/return clarity и QA/exploit signals;
 - `src/modules/player/application/read-models/next-goal.ts` — canonical read-model ближайшей school-вехи и next-step guidance для `main menu`, `return recap`, `rune hub` и `battle result`;
 - `src/modules/shared/infrastructure/telemetry/RepositoryGameTelemetry.ts` — typed telemetry adapter над `GameLog` для `onboarding_started`, `loadout_changed`, `school_novice_elite_encounter_started`, `school_novice_follow_up_action_taken`, `return_recap_shown`, `post_session_next_goal_shown`;
 - `src/modules/shared/infrastructure/prisma/player-state-hydration.ts` — compatibility-safe hydration layer для persisted player state с current / legacy / future fixtures;
 - `docs/content/content-pipeline-plan.md`, `docs/content/validator-scope.md`, `docs/content/templates/school-package-template.md` — source-of-truth по content packages, validator tiers и school package completeness;
 - `docs/testing/school-path-playtest-v1.md` — ручной playtest/evidence pass для school-first vertical slice по Пламени, Тверди, Бури и Прорицанию;
-- `npm run release:school-evidence` — сводный markdown-отчёт по school-first telemetry funnel из `GameLog`, чтобы playtest и runtime evidence смотрелись в одном формате;
+- `npm run release:school-evidence` — узкий markdown-отчёт по school-first telemetry funnel из `GameLog` для ручного school-path pass;
+- `npm run release:evidence` — unified release evidence report из `GameLog` за последние 7 дней по умолчанию; собирает school payoff, onboarding coverage, next-goal/return clarity и QA/exploit signals в одном markdown-срезе и пишет локальный `docs/testing/release-evidence-report.md`;
 - `src/modules/runes/domain/rune-collection.ts` — paging helper'ы рунной коллекции поверх существующего `currentRuneIndex` без новой persistence-схемы;
-- `src/tooling/release` — правила версионирования, content validation, preflight-проверка и скрипты `npm run content:validate` / `npm run release:status` / `npm run release:preflight`;
+- `src/tooling/release` — правила версионирования, content validation, unified evidence/preflight-проверка и скрипты `npm run content:validate` / `npm run release:status` / `npm run release:evidence` / `npm run release:preflight`;
 - `src/vk/handlers/gameHandler.smoke.test.ts` — smoke-проверки пользовательских сценариев через transport orchestration без реального VK API;
 - `src/modules/shared/infrastructure/prisma/PrismaGameRepository.test.ts` — регрессионные тесты на idempotency, underflow-защиту инвентаря и защиту от дублирования боевых/рунных мутаций;
 - `src/modules/combat/domain/battle-engine.test.ts`, `src/modules/world/domain/enemy-scaling.test.ts`, `src/modules/runes/domain/rune-collection.test.ts`, `src/modules/runes/domain/rune-factory.test.ts` — тесты на боевые рельсы, инициативу, paging рун и rarity caps;
@@ -191,6 +193,7 @@ npm run test
 npm run check
 npm run release:status
 npm run release:summary
+npm run release:evidence
 npm run release:preflight
 npm run db:generate
 npm run db:push
@@ -249,7 +252,8 @@ npm run db:studio
 4. Подключите use-case в `src/modules/*/application` и протащите его в `src/app/composition-root.ts`.
 5. Обновите `README.md`, `CHANGELOG.md`, `PLAN.md`, `RELEASE_CHECKLIST.md` и при необходимости `ARCHITECTURE.md`.
 6. Перед коммитом прогоните `npm run check`.
-7. Перед быстрой выкладкой прогоните `npm run release:preflight`.
+7. Для release evidence pass прогоните `npm run release:evidence` и приложите отчёт к manual review.
+8. Перед быстрой выкладкой прогоните `npm run release:preflight`.
 
 ## Обучение и динамическая сложность
 
@@ -289,6 +293,7 @@ npm run db:studio
 - `npm run content:validate` проверяет сиды мира, рунный контент и базовый баланс до сборки и релиза;
 - текущий статус можно посмотреть через `npm run release:status`;
 - `npm run release:summary` собирает краткое release summary из git-истории относительно последней changelog-записи;
+- `npm run release:evidence` собирает единый markdown-отчёт по runtime evidence для onboarding coverage, school payoff, return recap, next-goal и QA/exploit rails; по умолчанию берёт окно последних 7 дней и при необходимости поддерживает `--since`, `--until`, `--days`, `--output`; date-only `--since/--until` трактуются как UTC-границы календарного дня;
 - перед выкладкой изменений стоит прогонять `npm run release:preflight`, чтобы проверить документацию, релизные рельсы и остановить релиз при пропущенных или пустых обязательных файлах;
 - `.github/workflows/ci.yml` повторяет минимальный релизный пайплайн в CI;
 - локальный и CI-процесс зафиксирован в `RELEASE_CHECKLIST.md`;

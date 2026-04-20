@@ -36,8 +36,9 @@
 После ручного прогона дополнительно запустить:
 
 - `npm run release:school-evidence`
+- `npm run release:evidence` (по умолчанию за последние 7 дней; при необходимости уточнить окно через `--since` / `--until`; date-only значения считаются как UTC-границы дня)
 
-И приложить сгенерированный markdown-отчёт как часть evidence pass.
+И приложить оба markdown-отчёта как часть evidence pass: узкий school-path funnel и общий release evidence с return/next-goal/QA контекстом.
 
 ---
 

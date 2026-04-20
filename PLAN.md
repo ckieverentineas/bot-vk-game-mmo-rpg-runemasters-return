@@ -112,7 +112,8 @@
 - [x] Покрыть transport smoke и critical repository regressions.
 - [x] Логировать `onboarding_started`, `loadout_changed`, `return_recap_shown`, `post_session_next_goal_shown`.
 - [~] Использовать telemetry и playtests как evidence для ship / iterate / cut решений.
-- [ ] Собирать регулярный обзор по onboarding clarity, school readability и loadout engagement.
+- [~] Собирать регулярный обзор по onboarding clarity, school readability и loadout engagement.
+  - [x] Добавить `npm run release:evidence` с единым markdown-срезом по onboarding coverage, school payoff, next-goal/return clarity и QA/exploit guardrails поверх текущего `GameLog` rail.
 - [ ] Не тащить новые product promises без evidence из runtime и playtests.
 
 ### 5. Vertical Slice proof
