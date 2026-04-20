@@ -428,6 +428,24 @@ describe('messages school-first onboarding framing', () => {
     expect(message).toContain('🜂 Что даст: Победа может принести первую необычную руну школы Пламени.');
   });
 
+  it('shows an echo novice path milestone once the player reaches Прорицание without an unusual rune yet', () => {
+    const message = renderRuneScreen(createPlayer({
+      tutorialState: 'SKIPPED',
+      victories: 1,
+      schoolMasteries: [{ schoolCode: 'echo', experience: 1, rank: 0 }],
+      runes: [{
+        ...createEquippedRune(),
+        archetypeCode: 'echo',
+        passiveAbilityCodes: ['echo_mind'],
+        activeAbilityCodes: [],
+        name: 'Руна Прорицания',
+      }],
+    }));
+
+    expect(message).toContain('🎯 Ближайшая веха: Тёмный лес · Слепой авгур.');
+    expect(message).toContain('🜂 Что даст: Победа может принести первую необычную руну школы Прорицания.');
+  });
+
   it('shows an impact recap block in the rune hub when a new rune changes the build', () => {
     const message = renderRuneScreen(createPlayer({
       tutorialState: 'SKIPPED',

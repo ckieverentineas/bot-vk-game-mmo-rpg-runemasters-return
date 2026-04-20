@@ -174,7 +174,7 @@ export const buildPlayerNextGoalView = (player: PlayerState): NextGoalView => {
   if (novicePath && schoolDefinition) {
     const bestSchoolSign = findBestRuneOfSchoolAtLeastRarity(player, novicePath.schoolCode, novicePath.rewardRarity);
     if (bestSchoolSign && bestSchoolSign.id !== equippedRune.id) {
-      const signNameLabel = bestSchoolSign.rarity === novicePath.minibossRewardRarity
+      const signNameLabel = novicePath.minibossRewardRarity && bestSchoolSign.rarity === novicePath.minibossRewardRarity
         ? 'печать школы'
         : 'первый знак школы';
       return createGoalView(
@@ -184,10 +184,10 @@ export const buildPlayerNextGoalView = (player: PlayerState): NextGoalView => {
         {
           schoolCode: novicePath.schoolCode,
           schoolName: equippedSchool?.name ?? schoolDefinition.name,
-          whyText: bestSchoolSign.rarity === novicePath.minibossRewardRarity
+          whyText: novicePath.minibossRewardRarity && bestSchoolSign.rarity === novicePath.minibossRewardRarity
             ? `Так большой бой школы ${schoolDefinition.nameGenitive} перейдёт из редкой награды в реальную боевую сборку.`
             : `Так первое признание школы ${schoolDefinition.nameGenitive} перейдёт из награды в реальную боевую сборку.`,
-          milestoneTitle: bestSchoolSign.rarity === novicePath.minibossRewardRarity
+          milestoneTitle: novicePath.minibossRewardRarity && bestSchoolSign.rarity === novicePath.minibossRewardRarity
             ? `Печать школы ${schoolDefinition.nameGenitive}`
             : `Первый знак школы ${schoolDefinition.nameGenitive}`,
           milestoneProgressText: `«${bestSchoolSign.name}» уже ждёт в коллекции рун.`,
@@ -198,6 +198,9 @@ export const buildPlayerNextGoalView = (player: PlayerState): NextGoalView => {
 
     if (
       bestSchoolSign
+      && novicePath.minibossEnemyName
+      && novicePath.minibossEnemyNameAccusative
+      && novicePath.minibossRewardRarity
       && bestSchoolSign.id === equippedRune.id
       && !hasRuneOfSchoolAtLeastRarity(player, novicePath.schoolCode, novicePath.minibossRewardRarity)
     ) {

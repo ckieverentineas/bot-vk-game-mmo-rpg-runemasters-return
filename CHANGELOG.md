@@ -25,6 +25,7 @@
 - early school evidence теперь ловит и follow-up шаги после novice payoff: открыл ли игрок руны, надел ли знак школы и начал ли следующий бой после признания школы;
 - после установки первого знака школы `Пламя` и `Твердь` теперь получают первый school-aligned miniboss continuation с targeted `RARE` reward hook и school-specific battle framing;
 - первая targeted `RARE` руна после school miniboss теперь подаётся как `печать школы`, а recognition/next-goal слой ведёт игрока к её установке вместо немого возврата в общий гринд;
+- `Прорицание` получило первый узкий school-first proof: `Слепой авгур` как novice elite, forced `UNUSUAL` reward и guidance loop вокруг чтения раскрытой угрозы на уже существующих intent rails;
 - типобезопасный telemetry adapter [`RepositoryGameTelemetry`](src/modules/shared/infrastructure/telemetry/RepositoryGameTelemetry.ts) поверх существующего `GameLog` rail для semantic-событий UX и loadout flow;
 - тесты на canonical next-goal read-model в [`src/modules/player/application/read-models/next-goal.test.ts`](src/modules/player/application/read-models/next-goal.test.ts).
 

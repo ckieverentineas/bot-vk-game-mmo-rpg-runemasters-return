@@ -108,6 +108,21 @@ describe('pickEncounterTemplate', () => {
     expect(picked.code).toBe('stonehorn-ram');
   });
 
+  it('prefers the echo school elite early when the player already fights as Прорицание', () => {
+    const templates = [
+      createTemplate(),
+      createTemplate({ code: 'blind-augur', name: 'Слепой авгур', kind: 'spirit', isElite: true }),
+      createTemplate({ code: 'ash-seer', name: 'Пепельная ведунья', kind: 'mage', isElite: true }),
+    ];
+
+    const picked = pickEncounterTemplate(templates, 4, { schoolCode: 'echo' }, {
+      rollPercentage: (chance) => chance > 0,
+      pickOne: (items) => items[0]!,
+    });
+
+    expect(picked.code).toBe('blind-augur');
+  });
+
   it('prefers the ember school miniboss once the first sign is already equipped', () => {
     const templates = [
       createTemplate(),
@@ -152,5 +167,16 @@ describe('describeEncounter', () => {
 
     expect(description).toContain('Пепельная матрона');
     expect(description).toContain('большой бой Пламени');
+  });
+
+  it('adds a school-specific hint for the echo novice elite', () => {
+    const description = describeEncounter(
+      createBiome(),
+      createEnemy({ code: 'blind-augur', name: 'Слепой авгур', kind: 'spirit' }),
+      'echo',
+    );
+
+    expect(description).toContain('Слепой авгур');
+    expect(description).toContain('первое испытание школы Прорицания');
   });
 });

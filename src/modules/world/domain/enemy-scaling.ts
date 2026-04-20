@@ -24,6 +24,7 @@ const defaultEncounterRandom: EncounterRandomSource = {
 const preferredSchoolEliteCodes: Partial<Record<string, string>> = {
   ember: 'ash-seer',
   stone: 'stonehorn-ram',
+  echo: 'blind-augur',
 };
 
 const preferredSchoolBossCodes: Partial<Record<string, string>> = {
@@ -41,6 +42,11 @@ const encounterHintByEnemyCode: Partial<Record<string, { schoolCode: string; gen
     schoolCode: 'stone',
     genericHint: 'Подсказка: этот элитный враг позже готовит тяжёлый удар, так что защита и ответный ход здесь особенно ценны.',
     schoolHint: 'Подсказка: это первое испытание школы Тверди — защита и каменный ответ помогают пережить его разгон и наказать в окно после удара.',
+  },
+  'blind-augur': {
+    schoolCode: 'echo',
+    genericHint: 'Подсказка: этот элитный враг заранее раскрывает опасный ход, так что его полезнее читать и наказывать в окно телеграфа.',
+    schoolHint: 'Подсказка: это первое испытание школы Прорицания — читайте раскрытую угрозу и отвечайте в правильный ход, а не давите вслепую.',
   },
   'ash-matron': {
     schoolCode: 'ember',

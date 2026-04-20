@@ -64,6 +64,7 @@
     - [x] Начать логировать meaningful follow-up шаги после school trial: `open_runes`, `equip_school_sign`, `start_next_battle`.
     - [x] Добавить первый school-aligned miniboss continuation для Пламени и Тверди после установки знака школы.
     - [x] Поднять first `RARE` school payoff в `печать школы` и довести игрока от этой награды до её реальной установки в сборку.
+    - [x] Добавить узкий novice proof для Прорицания на существующих telegraph/intention rails без полного school-v1 package.
   - [x] Ясно показывать, что именно игрок получил от новой редкости, новой руны или нового unlock'а.
   - [ ] Доказать через playtests и telemetry, что первый school payoff приходит быстро и читаемо.
   - [ ] Не расширять scope в social / PvP / live-ops, пока этот slice не доказан.

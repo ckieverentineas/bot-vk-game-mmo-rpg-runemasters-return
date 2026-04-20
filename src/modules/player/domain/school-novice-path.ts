@@ -9,10 +9,10 @@ export interface SchoolNovicePathDefinition {
   readonly biomeName: string;
   readonly rewardRarity: RuneRarity;
   readonly forcedArchetypeCode: string;
-  readonly minibossEnemyCode: string;
-  readonly minibossEnemyName: string;
-  readonly minibossEnemyNameAccusative: string;
-  readonly minibossRewardRarity: RuneRarity;
+  readonly minibossEnemyCode?: string;
+  readonly minibossEnemyName?: string;
+  readonly minibossEnemyNameAccusative?: string;
+  readonly minibossRewardRarity?: RuneRarity;
 }
 
 const novicePathDefinitions: readonly SchoolNovicePathDefinition[] = [
@@ -42,6 +42,15 @@ const novicePathDefinitions: readonly SchoolNovicePathDefinition[] = [
     minibossEnemyNameAccusative: 'Гранитного стража',
     minibossRewardRarity: 'RARE',
   },
+  {
+    schoolCode: 'echo',
+    enemyCode: 'blind-augur',
+    enemyName: 'Слепой авгур',
+    enemyNameAccusative: 'Слепого авгура',
+    biomeName: 'Тёмный лес',
+    rewardRarity: 'UNUSUAL',
+    forcedArchetypeCode: 'echo',
+  },
 ];
 
 const rarityOrder: readonly RuneRarity[] = ['USUAL', 'UNUSUAL', 'RARE', 'EPIC', 'LEGENDARY', 'MYTHICAL'];
@@ -61,7 +70,7 @@ export const isSchoolNoviceTrialEnemy = (enemyCode: string | null | undefined): 
 );
 
 export const isSchoolMinibossEnemy = (enemyCode: string | null | undefined): boolean => (
-  novicePathDefinitions.some((entry) => entry.minibossEnemyCode === enemyCode)
+  novicePathDefinitions.some((entry) => entry.minibossEnemyCode != null && entry.minibossEnemyCode === enemyCode)
 );
 
 export const hasRuneOfSchoolAtLeastRarity = (

@@ -115,4 +115,23 @@ describe('school recognition read-model', () => {
     expect(recognition?.signEquipped).toBe(true);
     expect(recognition?.statusLine).toContain('большой бой Пламени');
   });
+
+  it('shows an echo-specific recognition message once the first sign is already equipped', () => {
+    const recognition = buildPlayerSchoolRecognitionView(createPlayer({
+      schoolMasteries: [{ schoolCode: 'echo', experience: 1, rank: 0 }],
+      runes: [
+        {
+          ...createPlayer().runes[0]!,
+          archetypeCode: 'echo',
+          passiveAbilityCodes: ['echo_mind'],
+          activeAbilityCodes: [],
+          name: 'Необычная руна Прорицания',
+          rarity: 'UNUSUAL',
+        },
+      ],
+    }));
+
+    expect(recognition?.title).toBe('Первый знак Прорицания');
+    expect(recognition?.statusLine).toContain('читать раскрытую угрозу');
+  });
 });

@@ -25,7 +25,7 @@ export const buildPlayerSchoolRecognitionView = (player: PlayerState): SchoolRec
 
   const bestSchoolSign = findBestRuneOfSchoolAtLeastRarity(player, novicePath.schoolCode, novicePath.rewardRarity);
   const signEquipped = bestSchoolSign?.id === equippedRune?.id;
-  const hasSchoolSeal = !!bestSchoolSign && bestSchoolSign.rarity === novicePath.minibossRewardRarity;
+  const hasSchoolSeal = !!bestSchoolSign && !!novicePath.minibossRewardRarity && bestSchoolSign.rarity === novicePath.minibossRewardRarity;
 
   if (hasSchoolSeal) {
     switch (novicePath.schoolCode) {
@@ -76,6 +76,15 @@ export const buildPlayerSchoolRecognitionView = (player: PlayerState): SchoolRec
         statusLine: signEquipped
           ? 'Вы уже прошли первое испытание Тверди: школа признала вашу стойкость и теперь строится вокруг выдержки и ответного хода.'
           : 'Вы уже прошли первое испытание Тверди. Первый знак школы ждёт в рунах — наденьте его, чтобы закрепить выдержку и ответный ход.',
+        signEquipped,
+      };
+    case 'echo':
+      return {
+        schoolCode: novicePath.schoolCode,
+        title: 'Первый знак Прорицания',
+        statusLine: signEquipped
+          ? 'Вы уже прошли первое испытание Прорицания: школа признала, что вы умеете читать раскрытую угрозу и отвечать в правильный момент.'
+          : 'Вы уже прошли первое испытание Прорицания. Первый знак школы ждёт в рунах — наденьте его, чтобы закрепить чтение угрозы в сборке.',
         signEquipped,
       };
     default:

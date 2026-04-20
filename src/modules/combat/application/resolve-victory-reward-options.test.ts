@@ -243,6 +243,47 @@ describe('resolveVictoryRewardOptions', () => {
     expect(result.forcedRune).toBeUndefined();
   });
 
+  it('forces an unusual echo rune from the blind augur when echo is the current school and no better echo rune exists', () => {
+    const result = resolveVictoryRewardOptions(
+      createPlayer(),
+      createBattle({
+        enemy: {
+          ...createBattle().enemy,
+          code: 'blind-augur',
+          name: 'Слепой авгур',
+          kind: 'spirit',
+          isElite: true,
+          isBoss: false,
+          attack: 6,
+          magicDefence: 5,
+          dexterity: 6,
+          intelligence: 9,
+          maxHealth: 22,
+          experienceReward: 24,
+          goldReward: 9,
+          runeDropChance: 28,
+          attackText: 'срывает покров будущего ударом духа',
+        },
+        player: {
+          ...createBattle().player,
+          runeLoadout: {
+            ...createBattle().player.runeLoadout!,
+            runeName: 'Руна Прорицания',
+            archetypeCode: 'echo',
+            archetypeName: 'Провидец',
+            schoolCode: 'echo',
+            passiveAbilityCodes: ['echo_mind'],
+            activeAbility: null,
+          },
+        },
+      }),
+      createRandom(),
+    );
+
+    expect(result.forcedRune?.archetypeCode).toBe('echo');
+    expect(result.forcedRune?.rarity).toBe('UNUSUAL');
+  });
+
   it('forces a rare ember rune from the ash matron when the first unusual ember sign is already equipped', () => {
     const result = resolveVictoryRewardOptions(
       createPlayer({

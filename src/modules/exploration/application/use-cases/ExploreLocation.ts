@@ -121,6 +121,7 @@ export class ExploreLocation {
     const novicePath = getSchoolNovicePathDefinition(currentSchoolCode);
     const preferMiniboss = !!(
       novicePath
+      && novicePath.minibossRewardRarity
       && hasEquippedRuneOfSchoolAtLeastRarity(currentPlayer, novicePath.schoolCode, novicePath.rewardRarity)
       && !hasRuneOfSchoolAtLeastRarity(currentPlayer, novicePath.schoolCode, novicePath.minibossRewardRarity)
     );

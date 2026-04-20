@@ -150,6 +150,26 @@ describe('next goal read-model', () => {
     expect(goal.objectiveText).toContain('примените активное действие');
   });
 
+  it('builds an echo novice path goal even without an active rune skill', () => {
+    const goal = buildPlayerNextGoalView(createPlayer({
+      victories: 1,
+      runes: [
+        {
+          ...createPlayer().runes[0]!,
+          archetypeCode: 'echo',
+          passiveAbilityCodes: ['echo_mind'],
+          activeAbilityCodes: [],
+          name: 'Руна Прорицания',
+        },
+      ],
+      schoolMasteries: [{ schoolCode: 'echo', experience: 1, rank: 0 }],
+    }));
+
+    expect(goal.goalType).toBe('hunt_school_elite');
+    expect(goal.objectiveText).toContain('разыщите Слепого авгура');
+    expect(goal.milestoneProgressText).toBe('Тёмный лес · Слепой авгур');
+  });
+
   it('builds a school-specific mastery goal with progress and payoff', () => {
     const goal = buildPlayerNextGoalView(createPlayer({
       victories: 3,

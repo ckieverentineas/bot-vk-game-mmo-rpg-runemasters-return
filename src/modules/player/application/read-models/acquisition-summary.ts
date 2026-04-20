@@ -184,6 +184,13 @@ const buildSchoolTrialCompletedSummary = (
         'Твердь признала вашу стойкость. Теперь школа отвечает вам не только защитой, но и настоящим стилем боя через первую необычную руну.',
         'Откройте «🔮 Руны», наденьте первый знак школы и проверьте новый ответ на тяжёлый удар.',
       );
+    case 'echo':
+      return createSummary(
+        'school_trial_completed',
+        'Испытание школы пройдено',
+        'Прорицание признало, что вы умеете читать раскрытую угрозу. Теперь школа отвечает вам не только подсказкой, но и настоящим стилем боя через первую необычную руну.',
+        'Откройте «🔮 Руны», наденьте первый знак школы и проверьте его на следующем телеграфе врага.',
+      );
     default:
       return createSummary(
         'school_trial_completed',
@@ -250,6 +257,7 @@ export const buildBattleAcquisitionSummary = (
     if (
       novicePath
       && addedRuneSchool?.code === novicePath.schoolCode
+      && novicePath.minibossRewardRarity
       && addedRune.rarity === novicePath.minibossRewardRarity
       && !hasRuneOfSchoolAtLeastRarity(before, novicePath.schoolCode, novicePath.minibossRewardRarity)
     ) {

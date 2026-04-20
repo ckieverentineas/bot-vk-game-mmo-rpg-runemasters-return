@@ -31,7 +31,7 @@ export const resolveVictoryRewardOptions = (
     const currentSchoolCode = battle.player.runeLoadout?.schoolCode
       ?? getSchoolDefinitionForArchetype(battle.player.runeLoadout?.archetypeCode)?.code
       ?? null;
-    const requiredRarity = battle.enemy.code === novicePath.minibossEnemyCode
+    const requiredRarity = novicePath.minibossEnemyCode && novicePath.minibossRewardRarity && battle.enemy.code === novicePath.minibossEnemyCode
       ? novicePath.minibossRewardRarity
       : novicePath.rewardRarity;
 

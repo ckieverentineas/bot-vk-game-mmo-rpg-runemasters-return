@@ -320,6 +320,77 @@ describe('ExploreLocation', () => {
     });
   });
 
+  it('adds an echo-specific novice elite hook once the player fights as Прорицание', async () => {
+    const player = createPlayer({
+      victories: 1,
+      schoolMasteries: [{ schoolCode: 'echo', experience: 1, rank: 0 }],
+      runes: [
+        {
+          id: 'rune-echo-1',
+          runeCode: 'rune-echo-1',
+          archetypeCode: 'echo',
+          passiveAbilityCodes: ['echo_mind'],
+          activeAbilityCodes: [],
+          name: 'Руна Прорицания',
+          rarity: 'USUAL',
+          isEquipped: true,
+          equippedSlot: 0,
+          health: 1,
+          attack: 1,
+          defence: 0,
+          magicDefence: 1,
+          dexterity: 0,
+          intelligence: 2,
+          createdAt: '2026-04-12T00:00:00.000Z',
+        },
+      ],
+    });
+    const repository = {
+      findPlayerByVkId: vi.fn().mockResolvedValue(player),
+      getCommandIntentResult: vi.fn().mockResolvedValue(null),
+      getActiveBattle: vi.fn().mockResolvedValue(null),
+      findBiomeForLocationLevel: vi.fn().mockResolvedValue({ ...createBiome(), code: 'dark-forest', name: 'Тёмный лес' }),
+      listMobTemplatesForBiome: vi.fn().mockResolvedValue([
+        {
+          ...createMobTemplate(),
+          code: 'blind-augur',
+          biomeCode: 'dark-forest',
+          name: 'Слепой авгур',
+          kind: 'spirit',
+          isElite: true,
+          baseExperience: 24,
+          baseGold: 9,
+          runeDropChance: 28,
+          attackText: 'срывает покров будущего ударом духа',
+        },
+      ]),
+      createBattle: vi.fn().mockImplementation(async (_playerId: number, battle: Omit<BattleView, 'id' | 'playerId' | 'createdAt' | 'updatedAt'>) => ({
+        id: 'battle-echo-hook',
+        playerId: player.playerId,
+        createdAt: '2026-04-12T00:00:00.000Z',
+        updatedAt: '2026-04-12T00:00:00.000Z',
+        ...battle,
+      })),
+    } as unknown as GameRepository;
+    const random: GameRandom = {
+      nextInt: vi.fn().mockReturnValue(1),
+      rollPercentage: vi.fn().mockReturnValue(true),
+      pickOne: vi.fn((items: readonly MobTemplateView[]) => items[0]),
+    };
+    const telemetry = createTelemetry();
+    const useCase = new ExploreLocation(repository, random, telemetry);
+
+    const battle = await useCase.execute(player.vkId, 'intent-explore-echo-1', buildExploreLocationIntentStateKey(player), 'payload');
+
+    expect(battle.enemy.code).toBe('blind-augur');
+    expect(battle.log[0]).toContain('первое испытание школы Прорицания');
+    expect(telemetry.schoolNoviceEliteEncounterStarted).toHaveBeenCalledWith(player.userId, expect.objectContaining({
+      battleId: 'battle-echo-hook',
+      schoolCode: 'echo',
+      enemyCode: 'blind-augur',
+    }));
+  });
+
   it('logs the next battle as a school follow-up once the first school sign is already equipped', async () => {
     const player = createPlayer({
       victories: 3,

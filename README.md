@@ -41,6 +41,7 @@ Runemasters Return — VK MMO RPG на TypeScript с модульным игро
 - evidence layer теперь также ловит осмысленные follow-up шаги после school trial: открытие рун, установку первого знака школы и старт следующего боя после признания школы;
 - после установки первого знака школы `dark-forest` теперь может подбросить school-aligned miniboss continuation: Пепельную матрону для Пламени и Гранитного стража для Тверди, с первым targeted `RARE` payoff этой школы;
 - после первого school miniboss rare-награда больше не выглядит как просто ещё один дроп: recognition/read-model слой поднимает её в `печать школы`, а next-goal ведёт либо к её экипировке, либо дальше в mastery path;
+- `Прорицание` получило свой первый узкий school-first proof без нового движка: novice elite `Слепой авгур`, первая `UNUSUAL` руна школы и guidance loop вокруг чтения раскрытой угрозы;
 - versioned platform contracts для боевой рунной сборки и reward claims: `LoadoutSnapshot`, `RewardIntent`, `RewardLedger`;
 - exact-once reward ledger и canonical battle finalization защищают победную награду от replay/reroll по повторным входящим событиям;
 - battle mutation revision защищает активный бой от stale overwrite при спаме и transport retry;
@@ -80,6 +81,7 @@ Runemasters Return — VK MMO RPG на TypeScript с модульным игро
 - `src/modules/player/application/read-models/next-goal.ts` — canonical read-model ближайшей school-вехи и next-step guidance для `main menu`, `return recap`, `rune hub` и `battle result`;
 - `src/modules/shared/infrastructure/telemetry/RepositoryGameTelemetry.ts` — typed telemetry adapter над `GameLog` для `onboarding_started`, `loadout_changed`, `school_novice_elite_encounter_started`, `school_novice_follow_up_action_taken`, `return_recap_shown`, `post_session_next_goal_shown`;
 - `docs/content/content-pipeline-plan.md`, `docs/content/validator-scope.md`, `docs/content/templates/school-package-template.md` — source-of-truth по content packages, validator tiers и school package completeness;
+- `docs/testing/school-path-playtest-v1.md` — ручной playtest/evidence pass для school-first vertical slice по Пламени и Тверди;
 - `src/modules/runes/domain/rune-collection.ts` — paging helper'ы рунной коллекции поверх существующего `currentRuneIndex` без новой persistence-схемы;
 - `src/tooling/release` — правила версионирования, content validation, preflight-проверка и скрипты `npm run content:validate` / `npm run release:status` / `npm run release:preflight`;
 - `src/vk/handlers/gameHandler.smoke.test.ts` — smoke-проверки пользовательских сценариев через transport orchestration без реального VK API;
