@@ -603,6 +603,85 @@ describe('ExploreLocation', () => {
     }));
   });
 
+  it('prefers the gale school miniboss once the first gale sign is already equipped and rare rune is still missing', async () => {
+    const player = createPlayer({
+      victories: 4,
+      locationLevel: 6,
+      schoolMasteries: [{ schoolCode: 'gale', experience: 1, rank: 0 }],
+      runes: [
+        {
+          id: 'rune-gale-1',
+          runeCode: 'rune-gale-1',
+          archetypeCode: 'gale',
+          passiveAbilityCodes: [],
+          activeAbilityCodes: ['gale_step'],
+          name: 'Необычная руна Бури',
+          rarity: 'UNUSUAL',
+          isEquipped: true,
+          equippedSlot: 0,
+          health: 1,
+          attack: 2,
+          defence: 0,
+          magicDefence: 0,
+          dexterity: 2,
+          intelligence: 0,
+          createdAt: '2026-04-12T00:00:00.000Z',
+        },
+      ],
+    });
+    const repository = {
+      findPlayerByVkId: vi.fn().mockResolvedValue(player),
+      getCommandIntentResult: vi.fn().mockResolvedValue(null),
+      getActiveBattle: vi.fn().mockResolvedValue(null),
+      findBiomeForLocationLevel: vi.fn().mockResolvedValue({ ...createBiome(), code: 'dark-forest', name: 'Тёмный лес' }),
+      listMobTemplatesForBiome: vi.fn().mockResolvedValue([
+        {
+          ...createMobTemplate(),
+          code: 'blue-slime',
+          biomeCode: 'dark-forest',
+        },
+        {
+          ...createMobTemplate(),
+          code: 'squall-lord',
+          biomeCode: 'dark-forest',
+          name: 'Владыка шквала',
+          kind: 'spirit',
+          isElite: true,
+          isBoss: true,
+          baseExperience: 98,
+          baseGold: 34,
+          runeDropChance: 76,
+          attackText: 'срывает строй шквальным ударом',
+        },
+      ]),
+      createBattle: vi.fn().mockImplementation(async (_playerId: number, battle: Omit<BattleView, 'id' | 'playerId' | 'createdAt' | 'updatedAt'>) => ({
+        id: 'battle-gale-miniboss-1',
+        playerId: player.playerId,
+        createdAt: '2026-04-12T00:00:00.000Z',
+        updatedAt: '2026-04-12T00:00:00.000Z',
+        ...battle,
+      })),
+    } as unknown as GameRepository;
+    const random: GameRandom = {
+      nextInt: vi.fn().mockReturnValue(1),
+      rollPercentage: vi.fn().mockReturnValue(true),
+      pickOne: vi.fn((items: readonly MobTemplateView[]) => items[0]),
+    };
+    const telemetry = createTelemetry();
+    const useCase = new ExploreLocation(repository, random, telemetry);
+
+    const battle = await useCase.execute(player.vkId, 'intent-explore-gale-miniboss-1', buildExploreLocationIntentStateKey(player), 'payload');
+
+    expect(battle.enemy.code).toBe('squall-lord');
+    expect(battle.log[0]).toContain('большой бой Бури');
+    expect(telemetry.schoolNoviceFollowUpActionTaken).toHaveBeenCalledWith(player.userId, expect.objectContaining({
+      actionType: 'start_next_battle',
+      battleId: 'battle-gale-miniboss-1',
+      enemyCode: 'squall-lord',
+      currentGoalType: 'challenge_school_miniboss',
+    }));
+  });
+
   it('resolves a stuck enemy-first battle before stale payload rejection when the same explore already created it', async () => {
     const activeBattle = createBattle({ turnOwner: 'ENEMY' });
     const recoveredBattle = createBattle({

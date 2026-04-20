@@ -134,4 +134,23 @@ describe('school recognition read-model', () => {
     expect(recognition?.title).toBe('Первый знак Прорицания');
     expect(recognition?.statusLine).toContain('читать раскрытую угрозу');
   });
+
+  it('shows a gale-specific seal message once the rare gale rune is already equipped', () => {
+    const recognition = buildPlayerSchoolRecognitionView(createPlayer({
+      schoolMasteries: [{ schoolCode: 'gale', experience: 1, rank: 0 }],
+      runes: [
+        {
+          ...createPlayer().runes[0]!,
+          archetypeCode: 'gale',
+          passiveAbilityCodes: [],
+          activeAbilityCodes: ['gale_step'],
+          name: 'Редкая руна Бури',
+          rarity: 'RARE',
+        },
+      ],
+    }));
+
+    expect(recognition?.title).toBe('Печать Бури');
+    expect(recognition?.statusLine).toContain('темпа и ответного хода');
+  });
 });

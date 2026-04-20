@@ -445,4 +445,72 @@ describe('resolveVictoryRewardOptions', () => {
     expect(result.forcedRune?.archetypeCode).toBe('stone');
     expect(result.forcedRune?.rarity).toBe('RARE');
   });
+
+  it('forces a rare gale rune from the squall lord when the first unusual gale sign is already equipped', () => {
+    const result = resolveVictoryRewardOptions(
+      createPlayer({
+        runes: [
+          {
+            id: 'rune-gale-1',
+            runeCode: 'rune-gale-1',
+            archetypeCode: 'gale',
+            passiveAbilityCodes: [],
+            activeAbilityCodes: ['gale_step'],
+            name: 'Необычная руна Бури',
+            rarity: 'UNUSUAL',
+            isEquipped: true,
+            equippedSlot: 0,
+            health: 1,
+            attack: 2,
+            defence: 0,
+            magicDefence: 0,
+            dexterity: 2,
+            intelligence: 0,
+            createdAt: '2026-04-12T00:00:00.000Z',
+          },
+        ],
+      }),
+      createBattle({
+        locationLevel: 6,
+        enemy: {
+          ...createBattle().enemy,
+          code: 'squall-lord',
+          name: 'Владыка шквала',
+          kind: 'spirit',
+          isBoss: true,
+          isElite: true,
+          attack: 16,
+          dexterity: 13,
+          intelligence: 8,
+          maxHealth: 80,
+          experienceReward: 98,
+          goldReward: 34,
+          runeDropChance: 76,
+          attackText: 'срывает строй шквальным ударом',
+        },
+        player: {
+          ...createBattle().player,
+          runeLoadout: {
+            ...createBattle().player.runeLoadout!,
+            runeName: 'Необычная руна Бури',
+            archetypeCode: 'gale',
+            archetypeName: 'Налётчик',
+            schoolCode: 'gale',
+            passiveAbilityCodes: [],
+            activeAbility: {
+              code: 'gale_step',
+              name: 'Шаг шквала',
+              manaCost: 2,
+              cooldownTurns: 2,
+              currentCooldown: 0,
+            },
+          },
+        },
+      }),
+      createRandom(),
+    );
+
+    expect(result.forcedRune?.archetypeCode).toBe('gale');
+    expect(result.forcedRune?.rarity).toBe('RARE');
+  });
 });

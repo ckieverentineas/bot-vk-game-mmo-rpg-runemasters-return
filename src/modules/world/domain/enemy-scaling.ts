@@ -31,6 +31,7 @@ const preferredSchoolEliteCodes: Partial<Record<string, string>> = {
 const preferredSchoolBossCodes: Partial<Record<string, string>> = {
   ember: 'ash-matron',
   stone: 'granite-warden',
+  gale: 'squall-lord',
 };
 
 const encounterHintByEnemyCode: Partial<Record<string, { schoolCode: string; genericHint: string; schoolHint: string }>> = {
@@ -63,6 +64,11 @@ const encounterHintByEnemyCode: Partial<Record<string, { schoolCode: string; gen
     schoolCode: 'stone',
     genericHint: 'Подсказка: этот босс проверяет выдержку тяжёлым ударом и ответом в окно после разгона.',
     schoolHint: 'Подсказка: это большой бой Тверди — здесь особенно важно пережить тяжёлый удар и наказать врага каменным ответом.',
+  },
+  'squall-lord': {
+    schoolCode: 'gale',
+    genericHint: 'Подсказка: этот босс срывает темп резкими выпадами, так что полезнее бить и сразу готовить ответ, а не ждать удобного момента слишком долго.',
+    schoolHint: 'Подсказка: это большой бой Бури — здесь особенно важно ударом удерживать темп и не отдавать врагу право на следующий разгон.',
   },
 };
 

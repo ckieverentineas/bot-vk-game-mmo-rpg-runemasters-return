@@ -152,6 +152,21 @@ describe('pickEncounterTemplate', () => {
 
     expect(picked.code).toBe('ash-matron');
   });
+
+  it('prefers the gale school miniboss once the first sign is already equipped', () => {
+    const templates = [
+      createTemplate(),
+      createTemplate({ code: 'squall-lord', name: 'Владыка шквала', kind: 'spirit', isElite: true, isBoss: true }),
+      createTemplate({ code: 'ash-matron', name: 'Пепельная матрона', kind: 'mage', isElite: true, isBoss: true }),
+    ];
+
+    const picked = pickEncounterTemplate(templates, 6, { schoolCode: 'gale', preferMiniboss: true }, {
+      rollPercentage: (chance) => chance > 0,
+      pickOne: (items) => items[0]!,
+    });
+
+    expect(picked.code).toBe('squall-lord');
+  });
 });
 
 describe('describeEncounter', () => {
@@ -182,6 +197,17 @@ describe('describeEncounter', () => {
 
     expect(description).toContain('Пепельная матрона');
     expect(description).toContain('большой бой Пламени');
+  });
+
+  it('adds a school-specific hint for the gale miniboss', () => {
+    const description = describeEncounter(
+      createBiome(),
+      createEnemy({ code: 'squall-lord', name: 'Владыка шквала', kind: 'spirit', isBoss: true }),
+      'gale',
+    );
+
+    expect(description).toContain('Владыка шквала');
+    expect(description).toContain('большой бой Бури');
   });
 
   it('adds a school-specific hint for the echo novice elite', () => {

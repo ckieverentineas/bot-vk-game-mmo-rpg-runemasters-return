@@ -47,6 +47,15 @@ export const buildPlayerSchoolRecognitionView = (player: PlayerState): SchoolRec
             : 'Вы уже пережили большой бой Тверди. Печать школы ждёт в рунах — наденьте её, чтобы закрепить следующий ранг стиля.',
           signEquipped,
         };
+      case 'gale':
+        return {
+          schoolCode: novicePath.schoolCode,
+          title: 'Печать Бури',
+          statusLine: signEquipped
+            ? 'Вы уже пережили большой бой Бури: школа доверила вам печать темпа и ответного хода, а не просто первый знак.'
+            : 'Вы уже пережили большой бой Бури. Печать школы ждёт в рунах — наденьте её, чтобы закрепить следующий ранг стиля.',
+          signEquipped,
+        };
       default:
         return {
           schoolCode: novicePath.schoolCode,

@@ -94,6 +94,15 @@ const createEquippedRareRune = () => ({
   rarity: 'RARE' as const,
 });
 
+const createEquippedRareGaleRune = () => ({
+  ...createEquippedRune(),
+  archetypeCode: 'gale',
+  passiveAbilityCodes: [],
+  activeAbilityCodes: ['gale_step'],
+  name: 'Редкая руна Бури',
+  rarity: 'RARE' as const,
+});
+
 const createCollectionRune = (name: string, equippedSlot: number | null = null) => ({
   id: `rune-${name}`,
   createdAt: '2026-04-12T00:00:00.000Z',
@@ -462,6 +471,17 @@ describe('messages school-first onboarding framing', () => {
 
     expect(message).toContain('🎯 Ближайшая веха: Тёмный лес · Шквальная рысь.');
     expect(message).toContain('🜂 Что даст: Победа может принести первую необычную руну школы Бури.');
+  });
+
+  it('shows gale seal recognition once the rare gale rune is already equipped', () => {
+    const message = renderRuneScreen(createPlayer({
+      tutorialState: 'SKIPPED',
+      victories: 5,
+      schoolMasteries: [{ schoolCode: 'gale', experience: 1, rank: 0 }],
+      runes: [createEquippedRareGaleRune()],
+    }));
+
+    expect(message).toContain('⭐ Печать Бури: Вы уже пережили большой бой Бури');
   });
 
   it('shows an impact recap block in the rune hub when a new rune changes the build', () => {

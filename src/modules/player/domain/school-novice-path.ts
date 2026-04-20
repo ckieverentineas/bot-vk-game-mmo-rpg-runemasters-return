@@ -50,6 +50,10 @@ const novicePathDefinitions: readonly SchoolNovicePathDefinition[] = [
     biomeName: 'Тёмный лес',
     rewardRarity: 'UNUSUAL',
     forcedArchetypeCode: 'gale',
+    minibossEnemyCode: 'squall-lord',
+    minibossEnemyName: 'Владыка шквала',
+    minibossEnemyNameAccusative: 'Владыку шквала',
+    minibossRewardRarity: 'RARE',
   },
   {
     schoolCode: 'echo',

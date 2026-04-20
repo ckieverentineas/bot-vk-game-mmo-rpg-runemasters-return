@@ -292,6 +292,30 @@ describe('next goal read-model', () => {
     expect(goal.milestoneBenefitText).toContain('первую редкую руну школы Пламени');
   });
 
+  it('guides gale to its school miniboss once the first sign is already equipped', () => {
+    const goal = buildPlayerNextGoalView(createPlayer({
+      victories: 4,
+      schoolMasteries: [{ schoolCode: 'gale', experience: 1, rank: 0 }],
+      runes: [
+        {
+          ...createPlayer().runes[0]!,
+          archetypeCode: 'gale',
+          passiveAbilityCodes: [],
+          activeAbilityCodes: ['gale_step'],
+          name: 'Необычная руна Бури',
+          rarity: 'UNUSUAL',
+          isEquipped: true,
+          equippedSlot: 0,
+        },
+      ],
+    }));
+
+    expect(goal.goalType).toBe('challenge_school_miniboss');
+    expect(goal.objectiveText).toContain('разыщите Владыку шквала');
+    expect(goal.milestoneProgressText).toBe('Тёмный лес · Владыка шквала');
+    expect(goal.milestoneBenefitText).toContain('первую редкую руну школы Бури');
+  });
+
   it('switches to support-slot goal once the mastery unlock is reached', () => {
     const goal = buildPlayerNextGoalView(createPlayer({
       victories: 4,
