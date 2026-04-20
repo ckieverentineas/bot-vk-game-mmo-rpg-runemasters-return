@@ -902,6 +902,102 @@ describe('PrismaGameRepository release hardening', () => {
     });
   });
 
+  it('marks school novice aligned reward claims in the reward telemetry payload', async () => {
+    const { repository, tx } = createPrismaMock();
+    const currentPlayer = createPlayerRecord();
+    const battleView = createBattleView({
+      locationLevel: 4,
+      biomeCode: 'dark-forest',
+      enemyCode: 'ash-seer',
+      player: {
+        ...createBattleView().player,
+        runeLoadout: {
+          runeId: 'rune-ember-1',
+          runeName: 'Руна Пламени',
+          archetypeCode: 'ember',
+          archetypeName: 'Штурм',
+          schoolCode: 'ember',
+          passiveAbilityCodes: ['ember_heart'],
+          activeAbility: {
+            code: 'ember_pulse',
+            name: 'Импульс углей',
+            manaCost: 3,
+            cooldownTurns: 2,
+            currentCooldown: 0,
+          },
+        },
+      },
+      enemy: {
+        ...createBattleView().enemy,
+        code: 'ash-seer',
+        name: 'Пепельная ведунья',
+        kind: 'mage',
+        isElite: true,
+        attack: 7,
+        magicDefence: 4,
+        dexterity: 5,
+        intelligence: 8,
+        maxHealth: 24,
+        experienceReward: 24,
+        goldReward: 9,
+        runeDropChance: 28,
+        attackText: 'выпускает пепельный прорыв',
+      },
+      rewards: {
+        experience: 24,
+        gold: 9,
+        shards: { USUAL: 2, UNUSUAL: 1 },
+        droppedRune: {
+          name: 'Необычная руна Пламени',
+          rarity: 'UNUSUAL',
+          isEquipped: false,
+          archetypeCode: 'ember',
+          activeAbilityCodes: ['ember_pulse'],
+          passiveAbilityCodes: ['ember_heart'],
+          health: 2,
+          attack: 3,
+          defence: 0,
+          magicDefence: 0,
+          dexterity: 0,
+          intelligence: 0,
+        },
+      },
+    });
+    const persistedBattle = createBattleRow({
+      status: 'COMPLETED',
+      result: 'VICTORY',
+      locationLevel: 4,
+      biomeCode: 'dark-forest',
+      enemyCode: 'ash-seer',
+      enemyName: 'Пепельная ведунья',
+      rewardsSnapshot: JSON.stringify(battleView.rewards),
+    });
+
+    tx.battleSession.updateMany.mockResolvedValue({ count: 1 });
+    tx.player.findUnique.mockResolvedValue(currentPlayer);
+    tx.player.update.mockResolvedValue({});
+    tx.playerProgress.update.mockResolvedValue({});
+    tx.playerInventory.update.mockResolvedValue({});
+    tx.rune.create.mockResolvedValue({});
+    tx.battleSession.findFirst.mockResolvedValue(persistedBattle);
+
+    await repository.finalizeBattle(1, battleView);
+
+    const gameLogCall = tx.gameLog.create.mock.calls.at(-1)?.[0];
+    expect(gameLogCall?.data.action).toBe('reward_claim_applied');
+    expect(JSON.parse(String(gameLogCall?.data.details))).toEqual(expect.objectContaining({
+      battleId: 'battle-1',
+      enemyCode: 'ash-seer',
+      battleSchoolCode: 'ember',
+      isSchoolNoviceAligned: true,
+      novicePathSchoolCode: 'ember',
+      noviceTargetRewardRarity: 'UNUSUAL',
+      hadTargetRarityBefore: false,
+      rewardRuneArchetypeCode: 'ember',
+      rewardRuneRarity: 'UNUSUAL',
+    }));
+  });
+
   it('levels up from battle rewards without touching any removed stat-point state', async () => {
     const { repository, tx } = createPrismaMock();
     const currentPlayer = createPlayerRecord();

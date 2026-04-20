@@ -19,6 +19,18 @@ export interface GameTelemetry {
       readonly afterRarity: RuneRarity | null;
     },
   ): Promise<void>;
+  schoolNoviceEliteEncounterStarted(
+    userId: number,
+    payload: {
+      readonly battleId: string;
+      readonly schoolCode: string;
+      readonly enemyCode: string;
+      readonly biomeCode: string;
+      readonly locationLevel: number;
+      readonly targetRewardRarity: RuneRarity;
+      readonly nextGoalType: 'hunt_school_elite';
+    },
+  ): Promise<void>;
   returnRecapShown(
     userId: number,
     payload: {
@@ -34,6 +46,9 @@ export interface GameTelemetry {
       readonly battleOutcome: 'VICTORY' | 'DEFEAT';
       readonly hadRuneDrop: boolean;
       readonly suggestedGoalType: NextGoalType;
+      readonly enemyCode: string;
+      readonly battleSchoolCode: string | null;
+      readonly isSchoolNoviceElite: boolean;
     },
   ): Promise<void>;
 }

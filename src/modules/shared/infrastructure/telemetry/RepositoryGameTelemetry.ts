@@ -18,6 +18,13 @@ export class RepositoryGameTelemetry implements GameTelemetry {
     await this.log(userId, 'loadout_changed', payload);
   }
 
+  public async schoolNoviceEliteEncounterStarted(
+    userId: number,
+    payload: Parameters<GameTelemetry['schoolNoviceEliteEncounterStarted']>[1],
+  ): Promise<void> {
+    await this.log(userId, 'school_novice_elite_encounter_started', payload);
+  }
+
   public async returnRecapShown(
     userId: number,
     payload: Parameters<GameTelemetry['returnRecapShown']>[1],

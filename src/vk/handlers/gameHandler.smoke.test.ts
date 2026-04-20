@@ -216,6 +216,7 @@ const createServices = (): AppServices => {
     telemetry: {
       onboardingStarted: vi.fn().mockResolvedValue(undefined),
       loadoutChanged: vi.fn().mockResolvedValue(undefined),
+      schoolNoviceEliteEncounterStarted: vi.fn().mockResolvedValue(undefined),
       returnRecapShown: vi.fn().mockResolvedValue(undefined),
       postSessionNextGoalShown: vi.fn().mockResolvedValue(undefined),
     } as unknown as GameTelemetry,
@@ -374,6 +375,8 @@ describe('GameHandler smoke', () => {
     expect(services.telemetry.postSessionNextGoalShown).toHaveBeenCalledWith(1, expect.objectContaining({
       battleOutcome: 'VICTORY',
       suggestedGoalType: 'hunt_school_elite',
+      enemyCode: 'training-wisp',
+      isSchoolNoviceElite: false,
     }));
   });
 

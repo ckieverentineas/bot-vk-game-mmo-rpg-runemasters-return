@@ -3,6 +3,7 @@ import type { Context } from 'vk-io';
 import type { AppServices } from '../../app/composition-root';
 import type { CraftRuneResultView } from '../../modules/runes/application/use-cases/CraftRune';
 import type { BattleActionResultView } from '../../modules/combat/application/use-cases/PerformBattleAction';
+import { getSchoolNovicePathDefinitionForEnemy } from '../../modules/player/domain/school-novice-path';
 import { buildBattleResultNextGoalView, buildPlayerNextGoalView } from '../../modules/player/application/read-models/next-goal';
 import { getEquippedRune } from '../../modules/player/domain/player-stats';
 import { getSchoolDefinitionForArchetype } from '../../modules/runes/domain/rune-schools';
@@ -526,12 +527,20 @@ export class GameHandler {
     }
 
     const battleOutcome = battle.result;
+    const battleSchoolCode = battle.player.runeLoadout?.schoolCode
+      ?? getSchoolDefinitionForArchetype(battle.player.runeLoadout?.archetypeCode)?.code
+      ?? null;
+    const novicePath = getSchoolNovicePathDefinitionForEnemy(battle.enemy.code);
+    const isSchoolNoviceElite = novicePath !== null && novicePath.schoolCode === battleSchoolCode;
 
     await this.safeTrack(async () => {
       await this.services.telemetry.postSessionNextGoalShown(player.userId, {
         battleOutcome,
         hadRuneDrop: battle.rewards?.droppedRune != null,
         suggestedGoalType: nextGoal.goalType,
+        enemyCode: battle.enemy.code,
+        battleSchoolCode,
+        isSchoolNoviceElite,
       });
     });
   }

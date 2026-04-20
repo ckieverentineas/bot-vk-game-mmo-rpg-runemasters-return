@@ -36,6 +36,8 @@ import {
   resolveBattleSchoolMasteryRewardGain,
   resolveUnlockedRuneSlotCountFromSchoolMasteries,
 } from '../../../player/domain/school-mastery';
+import { getSchoolNovicePathDefinitionForEnemy, hasRuneOfSchoolAtLeastRarity } from '../../../player/domain/school-novice-path';
+import { getSchoolDefinitionForArchetype } from '../../../runes/domain/rune-schools';
 import { buildLoadoutSnapshotFromBattle, isLoadoutSnapshot, projectBattleRuneLoadout, type LoadoutSnapshot } from '../../domain/contracts/loadout-snapshot';
 import { createAppliedRewardLedgerEntry } from '../../domain/contracts/reward-ledger';
 import { createBattleVictoryRewardIntent } from '../../domain/contracts/reward-intent';
@@ -1770,6 +1772,21 @@ export class PrismaGameRepository implements GameRepository {
       if (rewardIntent) {
         const appliedAt = new Date();
         const rewardLedger = createAppliedRewardLedgerEntry(rewardIntent, appliedAt.toISOString());
+        const novicePath = getSchoolNovicePathDefinitionForEnemy(battle.enemy.code);
+        const battleSchoolCode = battle.player.runeLoadout?.schoolCode
+          ?? getSchoolDefinitionForArchetype(battle.player.runeLoadout?.archetypeCode)?.code
+          ?? null;
+        const rewardRune = rewardIntent.payload.droppedRune;
+        const rewardRuneSchoolCode = getSchoolDefinitionForArchetype(rewardRune?.archetypeCode)?.code ?? null;
+        const hadTargetRarityBefore = novicePath
+          ? hasRuneOfSchoolAtLeastRarity(currentPlayer, novicePath.schoolCode, novicePath.rewardRarity)
+          : null;
+        const isSchoolNoviceAligned = novicePath !== null
+          && battleSchoolCode === novicePath.schoolCode
+          && rewardRune !== null
+          && rewardRuneSchoolCode === novicePath.schoolCode
+          && rewardRune.rarity === novicePath.rewardRarity
+          && hadTargetRarityBefore === false;
 
         await tx.rewardLedgerRecord.create({
           data: {
@@ -1791,6 +1808,15 @@ export class PrismaGameRepository implements GameRepository {
               ledgerKey: rewardLedger.ledgerKey,
               sourceType: rewardLedger.sourceType,
               sourceId: rewardLedger.sourceId,
+              battleId: battle.id,
+              enemyCode: battle.enemy.code,
+              battleSchoolCode,
+              isSchoolNoviceAligned,
+              novicePathSchoolCode: novicePath?.schoolCode ?? null,
+              noviceTargetRewardRarity: novicePath?.rewardRarity ?? null,
+              hadTargetRarityBefore,
+              rewardRuneArchetypeCode: rewardRune?.archetypeCode ?? null,
+              rewardRuneRarity: rewardRune?.rarity ?? null,
             }, '{}'),
           },
         });

@@ -58,6 +58,7 @@
     - [x] Добавить ранние school-specific elite encounter hooks для Пламени и Тверди в `dark-forest`.
     - [x] Добавить первый targeted same-school reward hook для этих элит, чтобы payoff был меньше похож на RNG-казино.
     - [x] Добавить school novice guidance loop к этим элитам и первой unusual rune школы без новой quest/persistence-системы.
+    - [x] Добавить минимальный telemetry/evidence слой для старта school novice loop и aligned reward claim.
   - [x] Ясно показывать, что именно игрок получил от новой редкости, новой руны или нового unlock'а.
   - [ ] Доказать через playtests и telemetry, что первый school payoff приходит быстро и читаемо.
   - [ ] Не расширять scope в social / PvP / live-ops, пока этот slice не доказан.

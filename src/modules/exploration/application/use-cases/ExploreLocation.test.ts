@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import type { BattleView, BiomeView, MobTemplateView, PlayerState } from '../../../../../shared/types/game';
+import type { GameTelemetry } from '../../../../shared/application/ports/GameTelemetry';
 import type { GameRandom } from '../../../../shared/application/ports/GameRandom';
 import type { GameRepository } from '../../../../shared/application/ports/GameRepository';
 import { resolveEncounterLocationLevel } from '../../../player/domain/player-stats';
@@ -153,6 +154,14 @@ const createRandom = (): GameRandom => ({
   pickOne: vi.fn((items: readonly string[]) => items[0]),
 });
 
+const createTelemetry = (): GameTelemetry => ({
+  onboardingStarted: vi.fn().mockResolvedValue(undefined),
+  loadoutChanged: vi.fn().mockResolvedValue(undefined),
+  schoolNoviceEliteEncounterStarted: vi.fn().mockResolvedValue(undefined),
+  returnRecapShown: vi.fn().mockResolvedValue(undefined),
+  postSessionNextGoalShown: vi.fn().mockResolvedValue(undefined),
+});
+
 describe('ExploreLocation', () => {
   it('passes guarded createBattle options when payload intent metadata is present', async () => {
     const player = createPlayer();
@@ -292,12 +301,22 @@ describe('ExploreLocation', () => {
       rollPercentage: vi.fn().mockReturnValue(true),
       pickOne: vi.fn((items: readonly MobTemplateView[]) => items[0]),
     };
-    const useCase = new ExploreLocation(repository, random);
+    const telemetry = createTelemetry();
+    const useCase = new ExploreLocation(repository, random, telemetry);
 
     const battle = await useCase.execute(player.vkId, 'intent-explore-school-1', buildExploreLocationIntentStateKey(player), 'payload');
 
     expect(battle.enemy.code).toBe('ash-seer');
     expect(battle.log[0]).toContain('первое испытание школы Пламени');
+    expect(telemetry.schoolNoviceEliteEncounterStarted).toHaveBeenCalledWith(player.userId, {
+      battleId: 'battle-school-hook',
+      schoolCode: 'ember',
+      enemyCode: 'ash-seer',
+      biomeCode: 'dark-forest',
+      locationLevel: resolveEncounterLocationLevel(player),
+      targetRewardRarity: 'UNUSUAL',
+      nextGoalType: 'hunt_school_elite',
+    });
   });
 
   it('resolves a stuck enemy-first battle before stale payload rejection when the same explore already created it', async () => {

@@ -19,6 +19,7 @@
 - два ранних school-specific elite encounter hooks в `dark-forest`: `Пепельная ведунья` для pressure/detonation path Пламени и `Камнерогий таран` для guard/counter path Тверди;
 - первый targeted same-school reward hook для этих элит: aligned победа теперь может гарантировать первую `необычную` руну нужной школы вместо полного упора в случайный drop;
 - school novice guidance loop для `Пламени` и `Тверди`: next-goal теперь может вести игрока к первому испытанию школы и первой unusual rune без отдельной quest-системы;
+- минимальный telemetry/evidence слой для early school loop: `school_novice_elite_encounter_started` и enriched `reward_claim_applied` payload теперь позволяют измерять старт и aligned payoff этого novice path;
 - типобезопасный telemetry adapter [`RepositoryGameTelemetry`](src/modules/shared/infrastructure/telemetry/RepositoryGameTelemetry.ts) поверх существующего `GameLog` rail для semantic-событий UX и loadout flow;
 - тесты на canonical next-goal read-model в [`src/modules/player/application/read-models/next-goal.test.ts`](src/modules/player/application/read-models/next-goal.test.ts).
 

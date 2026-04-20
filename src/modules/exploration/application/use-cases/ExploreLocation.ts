@@ -1,15 +1,19 @@
 import { AppError } from '../../../../shared/domain/AppError';
-import type { BattleView } from '../../../../shared/types/game';
+import type { BattleView, PlayerState } from '../../../../shared/types/game';
 import { finalizeRecoveredBattleIfNeeded } from '../../../combat/application/finalize-recovered-battle';
 import { BattleEngine } from '../../../combat/domain/battle-engine';
 import { buildBattlePlayerSnapshot } from '../../../combat/domain/build-battle-player-snapshot';
+import { buildPlayerNextGoalView } from '../../../player/application/read-models/next-goal';
+import { getSchoolNovicePathDefinitionForEnemy, hasRuneOfSchoolAtLeastRarity } from '../../../player/domain/school-novice-path';
 import { derivePlayerStats, getEquippedRune, resolveEncounterLocationLevel } from '../../../player/domain/player-stats';
 import { getSchoolDefinitionForArchetype } from '../../../runes/domain/rune-schools';
 import { resolveCommandIntent, type CommandIntentSource } from '../../../shared/application/command-intent';
+import type { GameTelemetry } from '../../../shared/application/ports/GameTelemetry';
 import { requirePlayerByVkId } from '../../../shared/application/require-player';
 import type { GameRandom } from '../../../shared/application/ports/GameRandom';
 import type { GameRepository } from '../../../shared/application/ports/GameRepository';
 import { buildEnemySnapshot, describeEncounter, pickEncounterTemplate, resolveInitialTurnOwner } from '../../../world/domain/enemy-scaling';
+import { Logger } from '../../../../utils/logger';
 
 import { buildExploreLocationIntentStateKey } from '../command-intent-state';
 
@@ -17,6 +21,7 @@ export class ExploreLocation {
   public constructor(
     private readonly repository: GameRepository,
     private readonly random: GameRandom,
+    private readonly telemetry?: GameTelemetry,
   ) {}
 
   public async execute(
@@ -126,6 +131,8 @@ export class ExploreLocation {
       rewards: null,
     }, turnOwner === 'PLAYER' ? commandOptions : undefined);
 
+    await this.trackSchoolNoviceEliteEncounterStarted(currentPlayer, battle, currentSchoolCode);
+
     if (battle.turnOwner === 'ENEMY') {
       const resolved = BattleEngine.resolveEnemyTurn(battle);
       if (resolved.status === 'COMPLETED') {
@@ -137,5 +144,39 @@ export class ExploreLocation {
     }
 
     return battle;
+  }
+
+  private async trackSchoolNoviceEliteEncounterStarted(
+    player: PlayerState,
+    battle: BattleView,
+    currentSchoolCode: string | null,
+  ): Promise<void> {
+    const novicePath = getSchoolNovicePathDefinitionForEnemy(battle.enemy.code);
+    const nextGoal = buildPlayerNextGoalView(player);
+
+    if (
+      !this.telemetry
+      || !novicePath
+      || !battle.enemy.isElite
+      || currentSchoolCode !== novicePath.schoolCode
+      || hasRuneOfSchoolAtLeastRarity(player, novicePath.schoolCode, novicePath.rewardRarity)
+      || nextGoal.goalType !== 'hunt_school_elite'
+    ) {
+      return;
+    }
+
+    try {
+      await this.telemetry.schoolNoviceEliteEncounterStarted(player.userId, {
+        battleId: battle.id,
+        schoolCode: novicePath.schoolCode,
+        enemyCode: battle.enemy.code,
+        biomeCode: battle.biomeCode,
+        locationLevel: battle.locationLevel,
+        targetRewardRarity: novicePath.rewardRarity,
+        nextGoalType: 'hunt_school_elite',
+      });
+    } catch (error) {
+      Logger.warn('Telemetry logging failed', error);
+    }
   }
 }

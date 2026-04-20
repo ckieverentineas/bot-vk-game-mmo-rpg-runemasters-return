@@ -55,7 +55,7 @@ export const createAppServices = (): AppServices => {
     enterTutorialMode: new EnterTutorialMode(repository),
     returnToAdventure: new ReturnToAdventure(repository),
     skipTutorial: new SkipTutorial(repository),
-    exploreLocation: new ExploreLocation(repository, random),
+    exploreLocation: new ExploreLocation(repository, random, telemetry),
     getActiveBattle: new GetActiveBattle(repository, random),
     performBattleAction: new PerformBattleAction(repository, random),
     getRuneCollection: new GetRuneCollection(repository),
