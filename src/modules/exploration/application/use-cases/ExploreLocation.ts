@@ -18,6 +18,7 @@ import type { GameTelemetry } from '../../../shared/application/ports/GameTeleme
 import { requirePlayerByVkId } from '../../../shared/application/require-player';
 import type { GameRandom } from '../../../shared/application/ports/GameRandom';
 import type { GameRepository } from '../../../shared/application/ports/GameRepository';
+import type { WorldCatalog } from '../../../world/application/ports/WorldCatalog';
 import { buildEnemySnapshot, describeEncounter, pickEncounterTemplate, resolveInitialTurnOwner } from '../../../world/domain/enemy-scaling';
 import { Logger } from '../../../../utils/logger';
 
@@ -31,6 +32,7 @@ export interface ExploreLocationReplayResult {
 export class ExploreLocation {
   public constructor(
     private readonly repository: GameRepository,
+    private readonly worldCatalog: WorldCatalog,
     private readonly random: GameRandom,
     private readonly telemetry?: GameTelemetry,
   ) {}
@@ -117,12 +119,12 @@ export class ExploreLocation {
 
     const locationLevel = resolveEncounterLocationLevel(currentPlayer);
     const currentSchoolCode = getSchoolDefinitionForArchetype(getEquippedRune(currentPlayer)?.archetypeCode)?.code ?? null;
-    const biome = await this.repository.findBiomeForLocationLevel(locationLevel);
+    const biome = this.worldCatalog.findBiomeForLocationLevel(locationLevel);
     if (!biome) {
       throw new AppError('biome_not_found', 'Для текущего уровня локации не найден биом.');
     }
 
-    const templates = await this.repository.listMobTemplatesForBiome(biome.code);
+    const templates = this.worldCatalog.listMobTemplatesForBiome(biome.code);
     const novicePath = getSchoolNovicePathDefinition(currentSchoolCode);
     const preferMiniboss = !!(
       novicePath

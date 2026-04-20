@@ -1,33 +1,15 @@
-export interface BiomeSeedDefinition {
-  code: string;
-  name: string;
-  description: string;
-  minLevel: number;
-  maxLevel: number;
-}
+import type { BiomeView, MobTemplateView, StatKey } from '../../shared/types/game';
 
-export interface MobTemplateSeedDefinition {
-  biomeCode: string;
-  code: string;
-  name: string;
-  kind: string;
-  isElite: boolean;
-  isBoss: boolean;
-  baseHealth: number;
-  baseAttack: number;
-  baseDefence: number;
-  baseMagicDefence: number;
-  baseDexterity: number;
-  baseIntelligence: number;
-  healthScale: number;
-  attackScale: number;
-  defenceScale: number;
-  magicDefenceScale: number;
-  dexterityScale: number;
-  intelligenceScale: number;
-  baseExperience: number;
-  baseGold: number;
-  runeDropChance: number;
-  lootTable: string;
-  attackText: string;
-}
+type SeedBaseStatField = {
+  [Key in StatKey as `base${Capitalize<Key>}`]: number;
+};
+
+type SeedScaleField = {
+  [Key in StatKey as `${Key}Scale`]: number;
+};
+
+export type BiomeSeedDefinition = Omit<BiomeView, 'id'>;
+
+export type MobTemplateSeedDefinition = Omit<MobTemplateView, 'baseStats' | 'scales'>
+  & SeedBaseStatField
+  & SeedScaleField;

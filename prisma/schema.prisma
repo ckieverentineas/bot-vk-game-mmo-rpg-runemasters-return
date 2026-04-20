@@ -185,47 +185,6 @@ model DeletePlayerReceipt {
   @@index([scopeVkId, status])
 }
 
-model Biome {
-  id           Int           @id @default(autoincrement())
-  code         String        @unique
-  name         String
-  description  String        @default("")
-  minLevel     Int
-  maxLevel     Int
-  mobTemplates MobTemplate[]
-}
-
-model MobTemplate {
-  id                 Int      @id @default(autoincrement())
-  biomeId            Int
-  code               String   @unique
-  rewardTableCode    String?
-  name               String
-  kind               String
-  isElite            Boolean  @default(false)
-  isBoss             Boolean  @default(false)
-  baseHealth         Int
-  baseAttack         Int
-  baseDefence        Int
-  baseMagicDefence   Int
-  baseDexterity      Int
-  baseIntelligence   Int
-  healthScale        Float    @default(1.15)
-  attackScale        Float    @default(1.10)
-  defenceScale       Float    @default(1.10)
-  magicDefenceScale  Float    @default(1.08)
-  dexterityScale     Float    @default(1.08)
-  intelligenceScale  Float    @default(1.08)
-  baseExperience     Int
-  baseGold           Int
-  runeDropChance     Int      @default(30)
-  lootTable          String   @default("{}")
-  attackText         String   @default("атакует")
-  biome              Biome    @relation(fields: [biomeId], references: [id], onDelete: Cascade)
-
-  @@index([biomeId])
-}
-
 model GameLog {
   id        Int      @id @default(autoincrement())
   userId    Int

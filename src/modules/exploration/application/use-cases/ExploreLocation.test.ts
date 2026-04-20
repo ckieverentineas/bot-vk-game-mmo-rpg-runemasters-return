@@ -4,6 +4,7 @@ import type { BattleView, BiomeView, MobTemplateView, PlayerState } from '../../
 import type { GameTelemetry } from '../../../../shared/application/ports/GameTelemetry';
 import type { GameRandom } from '../../../../shared/application/ports/GameRandom';
 import type { GameRepository } from '../../../../shared/application/ports/GameRepository';
+import type { WorldCatalog } from '../../../../world/application/ports/WorldCatalog';
 import { resolveEncounterLocationLevel } from '../../../player/domain/player-stats';
 
 import { buildExploreLocationIntentStateKey } from '../command-intent-state';
@@ -93,6 +94,12 @@ const createMobTemplate = (): MobTemplateView => ({
   attackText: 'касается искрой',
 });
 
+const createWorldCatalog = (overrides: Partial<WorldCatalog> = {}): WorldCatalog => ({
+  findBiomeForLocationLevel: vi.fn().mockReturnValue(createBiome()),
+  listMobTemplatesForBiome: vi.fn().mockReturnValue([createMobTemplate()]),
+  ...overrides,
+});
+
 const createBattle = (overrides: Partial<BattleView> = {}): BattleView => ({
   id: 'battle-1',
   playerId: 1,
@@ -174,12 +181,11 @@ describe('ExploreLocation', () => {
       findPlayerByVkId: vi.fn().mockResolvedValue(player),
       getCommandIntentResult: vi.fn().mockResolvedValue(null),
       getActiveBattle: vi.fn().mockResolvedValue(null),
-      findBiomeForLocationLevel: vi.fn().mockResolvedValue(createBiome()),
-      listMobTemplatesForBiome: vi.fn().mockResolvedValue([createMobTemplate()]),
       createBattle: vi.fn().mockResolvedValue(battle),
     } as unknown as GameRepository;
+    const worldCatalog = createWorldCatalog();
     const telemetry = createTelemetry();
-    const useCase = new ExploreLocation(repository, createRandom(), telemetry);
+    const useCase = new ExploreLocation(repository, worldCatalog, createRandom(), telemetry);
 
     await useCase.execute(player.vkId, 'intent-explore-tutorial-1', buildExploreLocationIntentStateKey(player), 'payload');
 
@@ -196,11 +202,10 @@ describe('ExploreLocation', () => {
       findPlayerByVkId: vi.fn().mockResolvedValue(player),
       getCommandIntentResult: vi.fn().mockResolvedValue(null),
       getActiveBattle: vi.fn().mockResolvedValue(null),
-      findBiomeForLocationLevel: vi.fn().mockResolvedValue(createBiome()),
-      listMobTemplatesForBiome: vi.fn().mockResolvedValue([createMobTemplate()]),
       createBattle: vi.fn().mockResolvedValue(createBattle()),
     } as unknown as GameRepository;
-    const useCase = new ExploreLocation(repository, createRandom());
+    const worldCatalog = createWorldCatalog();
+    const useCase = new ExploreLocation(repository, worldCatalog, createRandom());
     const stateKey = buildExploreLocationIntentStateKey(player);
 
     await useCase.execute(player.vkId, 'intent-explore-1', stateKey, 'payload');
@@ -231,11 +236,9 @@ describe('ExploreLocation', () => {
       findPlayerByVkId: vi.fn().mockResolvedValue(createPlayer({ activeBattleId: 'battle-2' })),
       getCommandIntentResult: vi.fn().mockResolvedValue({ status: 'APPLIED', result: replayedBattle }),
       getActiveBattle: vi.fn(),
-      findBiomeForLocationLevel: vi.fn(),
-      listMobTemplatesForBiome: vi.fn(),
       createBattle: vi.fn(),
     } as unknown as GameRepository;
-    const useCase = new ExploreLocation(repository, createRandom());
+    const useCase = new ExploreLocation(repository, createWorldCatalog(), createRandom());
 
     await expect(useCase.execute(1001, 'legacy-text:2000000001:1001:91:исследовать', undefined, 'legacy_text')).resolves.toEqual({ battle: replayedBattle, replayed: true });
 
@@ -249,11 +252,10 @@ describe('ExploreLocation', () => {
       findPlayerByVkId: vi.fn().mockResolvedValue(player),
       getCommandIntentResult: vi.fn().mockResolvedValue(null),
       getActiveBattle: vi.fn().mockResolvedValue(null),
-      findBiomeForLocationLevel: vi.fn().mockResolvedValue(createBiome()),
-      listMobTemplatesForBiome: vi.fn().mockResolvedValue([createMobTemplate()]),
       createBattle: vi.fn().mockResolvedValue(createBattle()),
     } as unknown as GameRepository;
-    const useCase = new ExploreLocation(repository, createRandom());
+    const worldCatalog = createWorldCatalog();
+    const useCase = new ExploreLocation(repository, worldCatalog, createRandom());
     const stateKey = buildExploreLocationIntentStateKey(player);
 
     await useCase.execute(1001, 'legacy-text:2000000001:1001:91:исследовать', undefined, 'legacy_text');
@@ -300,8 +302,17 @@ describe('ExploreLocation', () => {
       findPlayerByVkId: vi.fn().mockResolvedValue(player),
       getCommandIntentResult: vi.fn().mockResolvedValue(null),
       getActiveBattle: vi.fn().mockResolvedValue(null),
-      findBiomeForLocationLevel: vi.fn().mockResolvedValue({ ...createBiome(), code: 'dark-forest', name: 'Тёмный лес' }),
-      listMobTemplatesForBiome: vi.fn().mockResolvedValue([
+      createBattle: vi.fn().mockImplementation(async (_playerId: number, battle: Omit<BattleView, 'id' | 'playerId' | 'createdAt' | 'updatedAt'>) => ({
+        id: 'battle-school-hook',
+        playerId: player.playerId,
+        createdAt: '2026-04-12T00:00:00.000Z',
+        updatedAt: '2026-04-12T00:00:00.000Z',
+        ...battle,
+      })),
+    } as unknown as GameRepository;
+    const worldCatalog = createWorldCatalog({
+      findBiomeForLocationLevel: vi.fn().mockReturnValue({ ...createBiome(), code: 'dark-forest', name: 'Тёмный лес' }),
+      listMobTemplatesForBiome: vi.fn().mockReturnValue([
         {
           ...createMobTemplate(),
           code: 'ash-seer',
@@ -315,21 +326,14 @@ describe('ExploreLocation', () => {
           attackText: 'выпускает пепельный прорыв',
         },
       ]),
-      createBattle: vi.fn().mockImplementation(async (_playerId: number, battle: Omit<BattleView, 'id' | 'playerId' | 'createdAt' | 'updatedAt'>) => ({
-        id: 'battle-school-hook',
-        playerId: player.playerId,
-        createdAt: '2026-04-12T00:00:00.000Z',
-        updatedAt: '2026-04-12T00:00:00.000Z',
-        ...battle,
-      })),
-    } as unknown as GameRepository;
+    });
     const random: GameRandom = {
       nextInt: vi.fn().mockReturnValue(1),
       rollPercentage: vi.fn().mockReturnValue(true),
       pickOne: vi.fn((items: readonly MobTemplateView[]) => items[0]),
     };
     const telemetry = createTelemetry();
-    const useCase = new ExploreLocation(repository, random, telemetry);
+    const useCase = new ExploreLocation(repository, worldCatalog, random, telemetry);
 
     const battle = await useCase.execute(player.vkId, 'intent-explore-school-1', buildExploreLocationIntentStateKey(player), 'payload');
 
@@ -375,8 +379,17 @@ describe('ExploreLocation', () => {
       findPlayerByVkId: vi.fn().mockResolvedValue(player),
       getCommandIntentResult: vi.fn().mockResolvedValue(null),
       getActiveBattle: vi.fn().mockResolvedValue(null),
-      findBiomeForLocationLevel: vi.fn().mockResolvedValue({ ...createBiome(), code: 'dark-forest', name: 'Тёмный лес' }),
-      listMobTemplatesForBiome: vi.fn().mockResolvedValue([
+      createBattle: vi.fn().mockImplementation(async (_playerId: number, battle: Omit<BattleView, 'id' | 'playerId' | 'createdAt' | 'updatedAt'>) => ({
+        id: 'battle-echo-hook',
+        playerId: player.playerId,
+        createdAt: '2026-04-12T00:00:00.000Z',
+        updatedAt: '2026-04-12T00:00:00.000Z',
+        ...battle,
+      })),
+    } as unknown as GameRepository;
+    const worldCatalog = createWorldCatalog({
+      findBiomeForLocationLevel: vi.fn().mockReturnValue({ ...createBiome(), code: 'dark-forest', name: 'Тёмный лес' }),
+      listMobTemplatesForBiome: vi.fn().mockReturnValue([
         {
           ...createMobTemplate(),
           code: 'blind-augur',
@@ -390,21 +403,14 @@ describe('ExploreLocation', () => {
           attackText: 'срывает покров будущего ударом духа',
         },
       ]),
-      createBattle: vi.fn().mockImplementation(async (_playerId: number, battle: Omit<BattleView, 'id' | 'playerId' | 'createdAt' | 'updatedAt'>) => ({
-        id: 'battle-echo-hook',
-        playerId: player.playerId,
-        createdAt: '2026-04-12T00:00:00.000Z',
-        updatedAt: '2026-04-12T00:00:00.000Z',
-        ...battle,
-      })),
-    } as unknown as GameRepository;
+    });
     const random: GameRandom = {
       nextInt: vi.fn().mockReturnValue(1),
       rollPercentage: vi.fn().mockReturnValue(true),
       pickOne: vi.fn((items: readonly MobTemplateView[]) => items[0]),
     };
     const telemetry = createTelemetry();
-    const useCase = new ExploreLocation(repository, random, telemetry);
+    const useCase = new ExploreLocation(repository, worldCatalog, random, telemetry);
 
     const battle = await useCase.execute(player.vkId, 'intent-explore-echo-1', buildExploreLocationIntentStateKey(player), 'payload');
 
@@ -446,8 +452,17 @@ describe('ExploreLocation', () => {
       findPlayerByVkId: vi.fn().mockResolvedValue(player),
       getCommandIntentResult: vi.fn().mockResolvedValue(null),
       getActiveBattle: vi.fn().mockResolvedValue(null),
-      findBiomeForLocationLevel: vi.fn().mockResolvedValue({ ...createBiome(), code: 'dark-forest', name: 'Тёмный лес' }),
-      listMobTemplatesForBiome: vi.fn().mockResolvedValue([
+      createBattle: vi.fn().mockImplementation(async (_playerId: number, battle: Omit<BattleView, 'id' | 'playerId' | 'createdAt' | 'updatedAt'>) => ({
+        id: 'battle-gale-hook',
+        playerId: player.playerId,
+        createdAt: '2026-04-12T00:00:00.000Z',
+        updatedAt: '2026-04-12T00:00:00.000Z',
+        ...battle,
+      })),
+    } as unknown as GameRepository;
+    const worldCatalog = createWorldCatalog({
+      findBiomeForLocationLevel: vi.fn().mockReturnValue({ ...createBiome(), code: 'dark-forest', name: 'Тёмный лес' }),
+      listMobTemplatesForBiome: vi.fn().mockReturnValue([
         {
           ...createMobTemplate(),
           code: 'storm-lynx',
@@ -461,21 +476,14 @@ describe('ExploreLocation', () => {
           attackText: 'срывается шквальным выпадом',
         },
       ]),
-      createBattle: vi.fn().mockImplementation(async (_playerId: number, battle: Omit<BattleView, 'id' | 'playerId' | 'createdAt' | 'updatedAt'>) => ({
-        id: 'battle-gale-hook',
-        playerId: player.playerId,
-        createdAt: '2026-04-12T00:00:00.000Z',
-        updatedAt: '2026-04-12T00:00:00.000Z',
-        ...battle,
-      })),
-    } as unknown as GameRepository;
+    });
     const random: GameRandom = {
       nextInt: vi.fn().mockReturnValue(1),
       rollPercentage: vi.fn().mockReturnValue(true),
       pickOne: vi.fn((items: readonly MobTemplateView[]) => items[0]),
     };
     const telemetry = createTelemetry();
-    const useCase = new ExploreLocation(repository, random, telemetry);
+    const useCase = new ExploreLocation(repository, worldCatalog, random, telemetry);
 
     const battle = await useCase.execute(player.vkId, 'intent-explore-gale-1', buildExploreLocationIntentStateKey(player), 'payload');
 
@@ -517,14 +525,6 @@ describe('ExploreLocation', () => {
       findPlayerByVkId: vi.fn().mockResolvedValue(player),
       getCommandIntentResult: vi.fn().mockResolvedValue(null),
       getActiveBattle: vi.fn().mockResolvedValue(null),
-      findBiomeForLocationLevel: vi.fn().mockResolvedValue({ ...createBiome(), code: 'dark-forest', name: 'Тёмный лес' }),
-      listMobTemplatesForBiome: vi.fn().mockResolvedValue([
-        {
-          ...createMobTemplate(),
-          code: 'blue-slime',
-          biomeCode: 'dark-forest',
-        },
-      ]),
       createBattle: vi.fn().mockImplementation(async (_playerId: number, battle: Omit<BattleView, 'id' | 'playerId' | 'createdAt' | 'updatedAt'>) => ({
         id: 'battle-follow-up-1',
         playerId: player.playerId,
@@ -533,8 +533,18 @@ describe('ExploreLocation', () => {
         ...battle,
       })),
     } as unknown as GameRepository;
+    const worldCatalog = createWorldCatalog({
+      findBiomeForLocationLevel: vi.fn().mockReturnValue({ ...createBiome(), code: 'dark-forest', name: 'Тёмный лес' }),
+      listMobTemplatesForBiome: vi.fn().mockReturnValue([
+        {
+          ...createMobTemplate(),
+          code: 'blue-slime',
+          biomeCode: 'dark-forest',
+        },
+      ]),
+    });
     const telemetry = createTelemetry();
-    const useCase = new ExploreLocation(repository, createRandom(), telemetry);
+    const useCase = new ExploreLocation(repository, worldCatalog, createRandom(), telemetry);
 
     const battle = await useCase.execute(player.vkId, 'intent-explore-follow-up-1', buildExploreLocationIntentStateKey(player), 'payload');
 
@@ -581,8 +591,17 @@ describe('ExploreLocation', () => {
       findPlayerByVkId: vi.fn().mockResolvedValue(player),
       getCommandIntentResult: vi.fn().mockResolvedValue(null),
       getActiveBattle: vi.fn().mockResolvedValue(null),
-      findBiomeForLocationLevel: vi.fn().mockResolvedValue({ ...createBiome(), code: 'dark-forest', name: 'Тёмный лес' }),
-      listMobTemplatesForBiome: vi.fn().mockResolvedValue([
+      createBattle: vi.fn().mockImplementation(async (_playerId: number, battle: Omit<BattleView, 'id' | 'playerId' | 'createdAt' | 'updatedAt'>) => ({
+        id: 'battle-miniboss-1',
+        playerId: player.playerId,
+        createdAt: '2026-04-12T00:00:00.000Z',
+        updatedAt: '2026-04-12T00:00:00.000Z',
+        ...battle,
+      })),
+    } as unknown as GameRepository;
+    const worldCatalog = createWorldCatalog({
+      findBiomeForLocationLevel: vi.fn().mockReturnValue({ ...createBiome(), code: 'dark-forest', name: 'Тёмный лес' }),
+      listMobTemplatesForBiome: vi.fn().mockReturnValue([
         {
           ...createMobTemplate(),
           code: 'blue-slime',
@@ -602,21 +621,14 @@ describe('ExploreLocation', () => {
           attackText: 'заливает поле пепельным пламенем',
         },
       ]),
-      createBattle: vi.fn().mockImplementation(async (_playerId: number, battle: Omit<BattleView, 'id' | 'playerId' | 'createdAt' | 'updatedAt'>) => ({
-        id: 'battle-miniboss-1',
-        playerId: player.playerId,
-        createdAt: '2026-04-12T00:00:00.000Z',
-        updatedAt: '2026-04-12T00:00:00.000Z',
-        ...battle,
-      })),
-    } as unknown as GameRepository;
+    });
     const random: GameRandom = {
       nextInt: vi.fn().mockReturnValue(1),
       rollPercentage: vi.fn().mockReturnValue(true),
       pickOne: vi.fn((items: readonly MobTemplateView[]) => items[0]),
     };
     const telemetry = createTelemetry();
-    const useCase = new ExploreLocation(repository, random, telemetry);
+    const useCase = new ExploreLocation(repository, worldCatalog, random, telemetry);
 
     const battle = await useCase.execute(player.vkId, 'intent-explore-miniboss-1', buildExploreLocationIntentStateKey(player), 'payload');
 
@@ -659,8 +671,17 @@ describe('ExploreLocation', () => {
       findPlayerByVkId: vi.fn().mockResolvedValue(player),
       getCommandIntentResult: vi.fn().mockResolvedValue(null),
       getActiveBattle: vi.fn().mockResolvedValue(null),
-      findBiomeForLocationLevel: vi.fn().mockResolvedValue({ ...createBiome(), code: 'dark-forest', name: 'Тёмный лес' }),
-      listMobTemplatesForBiome: vi.fn().mockResolvedValue([
+      createBattle: vi.fn().mockImplementation(async (_playerId: number, battle: Omit<BattleView, 'id' | 'playerId' | 'createdAt' | 'updatedAt'>) => ({
+        id: 'battle-gale-miniboss-1',
+        playerId: player.playerId,
+        createdAt: '2026-04-12T00:00:00.000Z',
+        updatedAt: '2026-04-12T00:00:00.000Z',
+        ...battle,
+      })),
+    } as unknown as GameRepository;
+    const worldCatalog = createWorldCatalog({
+      findBiomeForLocationLevel: vi.fn().mockReturnValue({ ...createBiome(), code: 'dark-forest', name: 'Тёмный лес' }),
+      listMobTemplatesForBiome: vi.fn().mockReturnValue([
         {
           ...createMobTemplate(),
           code: 'blue-slime',
@@ -680,21 +701,14 @@ describe('ExploreLocation', () => {
           attackText: 'срывает строй шквальным ударом',
         },
       ]),
-      createBattle: vi.fn().mockImplementation(async (_playerId: number, battle: Omit<BattleView, 'id' | 'playerId' | 'createdAt' | 'updatedAt'>) => ({
-        id: 'battle-gale-miniboss-1',
-        playerId: player.playerId,
-        createdAt: '2026-04-12T00:00:00.000Z',
-        updatedAt: '2026-04-12T00:00:00.000Z',
-        ...battle,
-      })),
-    } as unknown as GameRepository;
+    });
     const random: GameRandom = {
       nextInt: vi.fn().mockReturnValue(1),
       rollPercentage: vi.fn().mockReturnValue(true),
       pickOne: vi.fn((items: readonly MobTemplateView[]) => items[0]),
     };
     const telemetry = createTelemetry();
-    const useCase = new ExploreLocation(repository, random, telemetry);
+    const useCase = new ExploreLocation(repository, worldCatalog, random, telemetry);
 
     const battle = await useCase.execute(player.vkId, 'intent-explore-gale-miniboss-1', buildExploreLocationIntentStateKey(player), 'payload');
 
@@ -738,8 +752,17 @@ describe('ExploreLocation', () => {
       findPlayerByVkId: vi.fn().mockResolvedValue(player),
       getCommandIntentResult: vi.fn().mockResolvedValue(null),
       getActiveBattle: vi.fn().mockResolvedValue(null),
-      findBiomeForLocationLevel: vi.fn().mockResolvedValue({ ...createBiome(), code: 'dark-forest', name: 'Тёмный лес' }),
-      listMobTemplatesForBiome: vi.fn().mockResolvedValue([
+      createBattle: vi.fn().mockImplementation(async (_playerId: number, battle: Omit<BattleView, 'id' | 'playerId' | 'createdAt' | 'updatedAt'>) => ({
+        id: 'battle-echo-miniboss-1',
+        playerId: player.playerId,
+        createdAt: '2026-04-12T00:00:00.000Z',
+        updatedAt: '2026-04-12T00:00:00.000Z',
+        ...battle,
+      })),
+    } as unknown as GameRepository;
+    const worldCatalog = createWorldCatalog({
+      findBiomeForLocationLevel: vi.fn().mockReturnValue({ ...createBiome(), code: 'dark-forest', name: 'Тёмный лес' }),
+      listMobTemplatesForBiome: vi.fn().mockReturnValue([
         {
           ...createMobTemplate(),
           code: 'blue-slime',
@@ -759,21 +782,14 @@ describe('ExploreLocation', () => {
           attackText: 'разрывает ход предсказанным ударом',
         },
       ]),
-      createBattle: vi.fn().mockImplementation(async (_playerId: number, battle: Omit<BattleView, 'id' | 'playerId' | 'createdAt' | 'updatedAt'>) => ({
-        id: 'battle-echo-miniboss-1',
-        playerId: player.playerId,
-        createdAt: '2026-04-12T00:00:00.000Z',
-        updatedAt: '2026-04-12T00:00:00.000Z',
-        ...battle,
-      })),
-    } as unknown as GameRepository;
+    });
     const random: GameRandom = {
       nextInt: vi.fn().mockReturnValue(1),
       rollPercentage: vi.fn().mockReturnValue(true),
       pickOne: vi.fn((items: readonly MobTemplateView[]) => items[0]),
     };
     const telemetry = createTelemetry();
-    const useCase = new ExploreLocation(repository, random, telemetry);
+    const useCase = new ExploreLocation(repository, worldCatalog, random, telemetry);
 
     const battle = await useCase.execute(player.vkId, 'intent-explore-echo-miniboss-1', buildExploreLocationIntentStateKey(player), 'payload');
 
@@ -802,11 +818,9 @@ describe('ExploreLocation', () => {
       getCommandIntentResult: vi.fn().mockResolvedValue(null),
       getActiveBattle: vi.fn().mockResolvedValue(activeBattle),
       saveBattle: vi.fn().mockResolvedValue(recoveredBattle),
-      findBiomeForLocationLevel: vi.fn(),
-      listMobTemplatesForBiome: vi.fn(),
       createBattle: vi.fn(),
     } as unknown as GameRepository;
-    const useCase = new ExploreLocation(repository, createRandom());
+    const useCase = new ExploreLocation(repository, createWorldCatalog(), createRandom());
 
     await expect(useCase.execute(1001, 'intent-explore-retry', 'stale-state', 'payload')).resolves.toEqual(recoveredBattle);
 
@@ -831,11 +845,9 @@ describe('ExploreLocation', () => {
         .mockResolvedValueOnce({ status: 'APPLIED', result: recoveredBattle }),
       getActiveBattle: vi.fn().mockResolvedValue(activeBattle),
       saveBattle: vi.fn().mockResolvedValue(recoveredBattle),
-      findBiomeForLocationLevel: vi.fn(),
-      listMobTemplatesForBiome: vi.fn(),
       createBattle: vi.fn(),
     } as unknown as GameRepository;
-    const useCase = new ExploreLocation(repository, createRandom());
+    const useCase = new ExploreLocation(repository, createWorldCatalog(), createRandom());
 
     await expect(useCase.execute(1001, 'intent-explore-replay', 'stale-state', 'payload')).resolves.toEqual(recoveredBattle);
     await expect(useCase.execute(1001, 'intent-explore-replay', 'stale-state', 'payload')).resolves.toEqual({ battle: recoveredBattle, replayed: true });
@@ -850,11 +862,9 @@ describe('ExploreLocation', () => {
       findPlayerByVkId: vi.fn().mockResolvedValue(player),
       getCommandIntentResult: vi.fn().mockResolvedValue(null),
       getActiveBattle: vi.fn(),
-      findBiomeForLocationLevel: vi.fn(),
-      listMobTemplatesForBiome: vi.fn(),
       createBattle: vi.fn(),
     } as unknown as GameRepository;
-    const useCase = new ExploreLocation(repository, createRandom());
+    const useCase = new ExploreLocation(repository, createWorldCatalog(), createRandom());
 
     await expect(useCase.execute(player.vkId, 'intent-explore-2', 'stale-state', 'payload')).rejects.toMatchObject({
       code: 'stale_command_intent',
@@ -870,11 +880,9 @@ describe('ExploreLocation', () => {
       findPlayerByVkId: vi.fn().mockResolvedValue(player),
       getCommandIntentResult: vi.fn().mockResolvedValue({ status: 'PENDING' }),
       getActiveBattle: vi.fn(),
-      findBiomeForLocationLevel: vi.fn(),
-      listMobTemplatesForBiome: vi.fn(),
       createBattle: vi.fn(),
     } as unknown as GameRepository;
-    const useCase = new ExploreLocation(repository, createRandom());
+    const useCase = new ExploreLocation(repository, createWorldCatalog(), createRandom());
 
     await expect(useCase.execute(player.vkId, 'legacy-text:2000000001:1001:91:исследовать', undefined, 'legacy_text')).rejects.toMatchObject({
       code: 'command_retry_pending',

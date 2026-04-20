@@ -46,7 +46,8 @@
 - battle result теперь использует актуальный `PlayerState`, чтобы следующий шаг после боя не расходился с `return recap` и `main menu`;
 - battle result и крафт руны теперь могут объяснить, что именно дала новая награда или unlock, а не оставлять игрока наедине с названием предмета;
 - ранний encounter intro теперь может подсказывать, какая школа особенно хорошо отвечает на конкретный элитный pressure pattern, вместо немого появления врага без tactical framing;
-- `RegisterPlayer`, `EquipCurrentRune`, `UnequipCurrentRune` и `GameHandler` теперь пишут telemetry v1 события `onboarding_started`, `loadout_changed`, `return_recap_shown` и `post_session_next_goal_shown` после committed transition или реально показанного экрана.
+- `RegisterPlayer`, `EquipCurrentRune`, `UnequipCurrentRune` и `GameHandler` теперь пишут telemetry v1 события `onboarding_started`, `loadout_changed`, `return_recap_shown` и `post_session_next_goal_shown` после committed transition или реально показанного экрана;
+- runtime больше не читает биомы и шаблоны мобов из SQLite: world content стал file-first read-model'ю из `src/content/**`, а Prisma-схема очищена от таблиц статического контента.
 
 ## [0.01] - 2026-04-11
 

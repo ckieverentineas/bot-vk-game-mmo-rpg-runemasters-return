@@ -6,7 +6,7 @@ Runemasters Return — VK MMO RPG на TypeScript с модульным игро
 
 - модульный backend с разделением на `application`, `domain`, `infrastructure` и `transport`;
 - игровая петля: регистрация, интро-обучение, профиль, прокачка, исследование, бой, руны и алтарь;
-- Prisma-схема и сиды мира для SQLite;
+- Prisma-схема для изменяемого runtime state в SQLite, а статический world/rune content живёт в коде;
 - централизованный каталог VK-команд и единый builder клавиатур;
 - защита от дублирования наград, отрицательных остатков инвентаря и повторного создания активных боёв;
 - более ясные сообщения onboarding/боя с явным следующим шагом для игрока;
@@ -69,7 +69,7 @@ Runemasters Return — VK MMO RPG на TypeScript с модульным игро
 
 - `src/vk/commands/catalog.ts` — единый источник правды для команд, алиасов и динамических действий;
 - `src/vk/keyboards/index.ts` — общий builder клавиатур, который уменьшает копипасту и упрощает рост меню;
-- `src/content/validation/validate-game-content.ts` — автоматическая проверка биомов, мобов, рунного контента и игрового баланса перед быстрыми обновлениями;
+- `src/content/validation/validate-game-content.ts` — автоматическая проверка file-first биомов, мобов, рунного контента и игрового баланса перед быстрыми обновлениями;
 - `src/content/runes/schools.ts` — canonical school identity seed, из которого выводится player-facing school presentation;
 - `src/modules/shared/application/require-player.ts` — единая точка загрузки игрока и консистентных ошибок для use-case слоя;
 - `src/modules/shared/domain/contracts/*` — versioned контракты persistence-уровня для боевой сборки и reward claim flow;
@@ -161,6 +161,8 @@ npm run db:push
 npm run db:seed
 npm run check
 ```
+
+`npm run db:seed` больше не заливает мобов и биомы в SQLite: команда валидирует file-first контент и подтверждает, что база нужна только для изменяемого runtime state.
 
 Если в рабочей папке уже есть старая база и её нужно принудительно заменить:
 
@@ -293,7 +295,7 @@ npm run db:studio
 
 - публичная версия считается по commit-based правилу: каждые 100 коммитов дают новый релиз формата `M.nn`;
 - это значит, что `100` коммитов = версия `1.00`, `245` коммитов = версия `2.45`;
-- `npm run content:validate` проверяет сиды мира, рунный контент и базовый баланс до сборки и релиза;
+- `npm run content:validate` проверяет file-first мир, рунный контент и базовый баланс до сборки и релиза;
 - текущий статус можно посмотреть через `npm run release:status`;
 - `npm run release:summary` собирает краткое release summary из git-истории относительно последней changelog-записи;
 - `npm run release:evidence` собирает единый markdown-отчёт по runtime evidence для onboarding coverage, school payoff, return recap, next-goal и QA/exploit rails; по умолчанию берёт окно последних 7 дней и при необходимости поддерживает `--since`, `--until`, `--days`, `--output`; date-only `--since/--until` трактуются как UTC-границы календарного дня;

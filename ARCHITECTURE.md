@@ -47,6 +47,7 @@ src/
       application/
       infrastructure/
     world/
+      application/
       domain/
   shared/
     domain/
@@ -141,7 +142,9 @@ src/
 
 Текущее правило: `archetypeCode` остаётся внутренним content/storage key, а player-facing **школа** выводится через canonical `SchoolDefinition` read-model поверх этого key. Это позволяет развести fantasy-domain и combat-role без миграции базы на раннем этапе и не держать отдельную hand-written карту school presentation. Тот же read-model теперь используется в onboarding-presenter слое, чтобы welcome / tutorial / rune hub говорили об одной и той же school identity. Return recap и battle result больше не собирают next-step guidance локально в `transport`: ближайшая school-веха теперь выводится через общий application read-model [`src/modules/player/application/read-models/next-goal.ts`](src/modules/player/application/read-models/next-goal.ts) поверх текущего `PlayerState`. Rune hub теперь явно показывает `основу` и `поддержку`, но только `основа` остаётся источником активной боевой руны; support-slot живёт как bounded pre-battle breadth до отдельного multi-action review.
 
-Эта валидация запускается через `npm run content:validate`, входит в `npm run check`, включена в `npm run release:preflight` и вызывается перед [`seed()`](src/database/seed.ts:5), чтобы не заливать битый контент в базу.
+Эта валидация запускается через `npm run content:validate`, входит в `npm run check`, включена в `npm run release:preflight`, вызывается через [`seed()`](src/database/seed.ts:3) как fast validation hook и дополнительно исполняется на старте приложения перед сборкой runtime-каталога мира.
+
+Статический authored content теперь живёт в `src/content/**` и читается рантаймом напрямую через file-backed world catalog, а Prisma/SQLite остаются только для изменяемого состояния игрока, боёв, наград, intent'ов и telemetry.
 
 ### 5. Общие application guard'ы
 

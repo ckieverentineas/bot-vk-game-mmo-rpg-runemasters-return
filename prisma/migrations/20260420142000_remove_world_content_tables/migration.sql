@@ -1,0 +1,2 @@
+DROP TABLE IF EXISTS "MobTemplate";
+DROP TABLE IF EXISTS "Biome";

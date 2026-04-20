@@ -1,5 +1,9 @@
-import { runeArchetypeSeed, schoolSeed } from '../../../content/runes';
 import type { SchoolDefinition } from '../../../shared/types/game';
+import {
+  getRuneArchetypeByCode,
+  getSchoolDefinitionByCode,
+  listSchoolDefinitions as listSchoolDefinitionsFromRegistry,
+} from './rune-content-registry';
 
 export interface RuneSchoolPresentation {
   readonly name: string;
@@ -11,9 +15,6 @@ export interface RuneSchoolPresentation {
   readonly battleLine: string;
   readonly passiveLine: string;
 }
-
-const schoolMap = new Map<string, SchoolDefinition>(schoolSeed.map((entry) => [entry.code, entry]));
-const archetypeMap = new Map(runeArchetypeSeed.map((entry) => [entry.code, entry]));
 
 const toRuneSchoolPresentation = (
   school: SchoolDefinition,
@@ -29,14 +30,14 @@ const toRuneSchoolPresentation = (
   passiveLine: school.passiveLine,
 });
 
-export const listSchoolDefinitions = (): readonly SchoolDefinition[] => schoolSeed;
+export const listSchoolDefinitions = (): readonly SchoolDefinition[] => listSchoolDefinitionsFromRegistry();
 
 export const getSchoolDefinition = (code: string | null | undefined): SchoolDefinition | null => {
   if (!code) {
     return null;
   }
 
-  return schoolMap.get(code) ?? null;
+  return getSchoolDefinitionByCode(code);
 };
 
 export const getSchoolDefinitionForArchetype = (archetypeCode: string | null | undefined): SchoolDefinition | null => {
@@ -44,7 +45,7 @@ export const getSchoolDefinitionForArchetype = (archetypeCode: string | null | u
     return null;
   }
 
-  const archetype = archetypeMap.get(archetypeCode);
+  const archetype = getRuneArchetypeByCode(archetypeCode);
   if (!archetype) {
     return null;
   }
@@ -57,7 +58,7 @@ export const getRuneSchoolPresentation = (code: string | null | undefined): Rune
     return null;
   }
 
-  const archetype = archetypeMap.get(code);
+  const archetype = getRuneArchetypeByCode(code);
   const school = getSchoolDefinitionForArchetype(code);
 
   if (!archetype || !school) {

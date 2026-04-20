@@ -6,13 +6,16 @@ import { createGameContentValidationInput, validateGameContent } from './validat
 const cloneValidationInput = (): GameContentValidationInput => {
   const input = createGameContentValidationInput();
 
-  return {
-    ...input,
-    biomes: input.biomes.map((biome) => ({ ...biome })),
-    mobs: input.mobs.map((mob) => ({ ...mob })),
-    schools: input.schools.map((school) => ({ ...school })),
-    abilities: input.abilities.map((ability) => ({
-      ...ability,
+    return {
+      ...input,
+      biomes: input.biomes.map((biome) => ({ ...biome })),
+      mobs: input.mobs.map((mob) => ({
+        ...mob,
+        lootTable: { ...mob.lootTable },
+      })),
+      schools: input.schools.map((school) => ({ ...school })),
+      abilities: input.abilities.map((ability) => ({
+        ...ability,
       tags: [...ability.tags],
     })),
     runeArchetypes: input.runeArchetypes.map((runeArchetype) => ({

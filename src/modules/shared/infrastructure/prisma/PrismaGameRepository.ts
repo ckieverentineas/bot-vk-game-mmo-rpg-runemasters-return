@@ -6,11 +6,8 @@ import { AppError } from '../../../../shared/domain/AppError';
 import { parseJson, stringifyJson } from '../../../../shared/utils/json';
 import type {
   BattleView,
-  BiomeView,
   CreateBattleInput,
   InventoryDelta,
-  InventoryLoot,
-  MobTemplateView,
   PlayerState,
   RuneDraft,
   RuneRarity,
@@ -516,17 +513,6 @@ export class PrismaGameRepository implements GameRepository {
         }, '{}'),
       },
     });
-  }
-
-  private mapBiome(biome: { id: number; code: string; name: string; description: string; minLevel: number; maxLevel: number }): BiomeView {
-    return {
-      id: biome.id,
-      code: biome.code,
-      name: biome.name,
-      description: biome.description,
-      minLevel: biome.minLevel,
-      maxLevel: biome.maxLevel,
-    };
   }
 
   private async getDeletePlayerReceiptStatus(
@@ -1293,70 +1279,6 @@ export class PrismaGameRepository implements GameRepository {
     }
 
     return this.requirePlayer(playerId);
-  }
-
-  public async findBiomeForLocationLevel(locationLevel: number): Promise<BiomeView | null> {
-    const biome = await this.prisma.biome.findFirst({
-      where: {
-        minLevel: { lte: locationLevel },
-        maxLevel: { gte: locationLevel },
-      },
-      orderBy: { minLevel: 'asc' },
-    });
-
-    if (biome) {
-      return this.mapBiome(biome);
-    }
-
-    const fallbackBiome = await this.prisma.biome.findFirst({
-      orderBy: { minLevel: 'asc' },
-    });
-
-    return fallbackBiome ? this.mapBiome(fallbackBiome) : null;
-  }
-
-  public async listMobTemplatesForBiome(biomeCode: string): Promise<MobTemplateView[]> {
-    const templates = await this.prisma.mobTemplate.findMany({
-      where: {
-        biome: {
-          code: biomeCode,
-        },
-      },
-      include: {
-        biome: true,
-      },
-      orderBy: { id: 'asc' },
-    });
-
-    return templates.map((template) => ({
-      code: template.code,
-      biomeCode: template.biome.code,
-      name: template.name,
-      kind: template.kind,
-      isElite: template.isElite,
-      isBoss: template.isBoss,
-      baseStats: {
-        health: template.baseHealth,
-        attack: template.baseAttack,
-        defence: template.baseDefence,
-        magicDefence: template.baseMagicDefence,
-        dexterity: template.baseDexterity,
-        intelligence: template.baseIntelligence,
-      },
-      scales: {
-        health: template.healthScale,
-        attack: template.attackScale,
-        defence: template.defenceScale,
-        magicDefence: template.magicDefenceScale,
-        dexterity: template.dexterityScale,
-        intelligence: template.intelligenceScale,
-      },
-      baseExperience: template.baseExperience,
-      baseGold: template.baseGold,
-      runeDropChance: template.runeDropChance,
-      lootTable: parseJson<InventoryLoot>(template.lootTable, {}),
-      attackText: template.attackText,
-    }));
   }
 
   public async createBattle(playerId: number, battle: CreateBattleInput, options?: CreateBattleOptions): Promise<BattleView> {

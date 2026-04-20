@@ -147,6 +147,21 @@ describe('normalizeCommand', () => {
     expect(slotFive.intentSource).toBe('legacy_text');
   });
 
+  it('выводит server-owned intent для legacy text изменения стата руны', () => {
+    const rerollAttack = resolveCommandEnvelope({
+      text: '~атк',
+      senderId: 1001,
+      peerId: 2000000001,
+      conversationMessageId: 88,
+      id: 512,
+      messagePayload: null,
+    } as never);
+
+    expect(rerollAttack.command).toBe(gameCommands.rerollAttack);
+    expect(rerollAttack.intentId).toBe('legacy-text:2000000001:1001:88:~атк');
+    expect(rerollAttack.intentSource).toBe('legacy_text');
+  });
+
   it('выводит server-owned intent для tutorial navigation и алиаса возврата', () => {
     const skip = resolveCommandEnvelope({
       text: 'пропустить обучение',
@@ -285,6 +300,29 @@ describe('normalizeCommand', () => {
 
     expect(resolved.intentId).toBe('legacy-text:2000000001:1001:81:создать');
     expect(resolved.intentSource).toBe('legacy_text');
+  });
+
+  it.each([
+    {
+      title: 'intentId',
+      payload: { intentId: 'intent-1' },
+    },
+    {
+      title: 'stateKey',
+      payload: { stateKey: 'state-1' },
+    },
+  ])('сохраняет payload ownership даже если в payload есть только $title', ({ payload }) => {
+    const resolved = resolveCommandEnvelope({
+      text: 'создать',
+      senderId: 1001,
+      peerId: 2000000001,
+      conversationMessageId: 81,
+      id: 505,
+      messagePayload: payload,
+    } as never);
+
+    expect(resolved.command).toBe(gameCommands.craftRune);
+    expect(resolved.intentSource).toBe('payload');
   });
 
   it('fails closed when guarded legacy text command lacks message metadata', () => {

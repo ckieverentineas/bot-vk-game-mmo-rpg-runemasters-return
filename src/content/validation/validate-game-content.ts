@@ -1,9 +1,14 @@
 import { env } from '../../config/env';
 import { gameBalance } from '../../config/game-balance';
-import type { MaterialField, RuneRarity } from '../../shared/types/game';
+import type { InventoryLoot, MaterialField, RuneRarity } from '../../shared/types/game';
 import { listSchoolNovicePathDefinitions } from '../../modules/player/domain/school-novice-path';
-import { abilitySeed, runeArchetypeSeed, schoolSeed, type AbilitySeedDefinition, type RuneArchetypeSeedDefinition, type SchoolSeedDefinition } from '../runes';
-import { biomeSeed, mobSeed, type BiomeSeedDefinition, type MobTemplateSeedDefinition } from '../world';
+import { gameContent, type GameContent } from '../game-content';
+
+type AbilitySeedDefinition = GameContent['runes']['abilities'][number];
+type SchoolSeedDefinition = GameContent['runes']['schools'][number];
+type RuneArchetypeSeedDefinition = GameContent['runes']['archetypes'][number];
+type BiomeSeedDefinition = GameContent['world']['biomes'][number];
+type MobTemplateSeedDefinition = GameContent['world']['mobs'][number];
 
 export interface GameContentValidationIssue {
   readonly scope: string;
@@ -165,22 +170,13 @@ const validateBiomeSeed = (
   }
 };
 
-const validateLootTable = (issues: GameContentValidationIssue[], scope: string, lootTable: string): void => {
-  let parsedValue: unknown;
-
-  try {
-    parsedValue = JSON.parse(lootTable);
-  } catch {
-    pushIssue(issues, scope, 'Loot table должен быть валидным JSON-объектом.');
+const validateLootTable = (issues: GameContentValidationIssue[], scope: string, lootTable: InventoryLoot): void => {
+  if (!lootTable || typeof lootTable !== 'object' || Array.isArray(lootTable)) {
+    pushIssue(issues, scope, 'Loot table должен быть объектом с материалами и количествами.');
     return;
   }
 
-  if (!parsedValue || typeof parsedValue !== 'object' || Array.isArray(parsedValue)) {
-    pushIssue(issues, scope, 'Loot table должен сериализоваться в объект.');
-    return;
-  }
-
-  for (const [key, value] of Object.entries(parsedValue)) {
+  for (const [key, value] of Object.entries(lootTable)) {
     if (!materialFields.includes(key as MaterialField)) {
       pushIssue(issues, scope, `Loot table содержит неизвестный материал: ${key}.`);
       continue;
@@ -582,11 +578,11 @@ const validateStarterSchoolPackageCompleteness = (
 };
 
 export const createGameContentValidationInput = (): GameContentValidationInput => ({
-  biomes: biomeSeed,
-  mobs: mobSeed,
-  schools: schoolSeed,
-  abilities: abilitySeed,
-  runeArchetypes: runeArchetypeSeed,
+  biomes: gameContent.world.biomes,
+  mobs: gameContent.world.mobs,
+  schools: gameContent.runes.schools,
+  abilities: gameContent.runes.abilities,
+  runeArchetypes: gameContent.runes.archetypes,
   worldBalance: gameBalance.world,
   runeBalance: gameBalance.runes,
   envGameConfig: env.game,
@@ -613,7 +609,7 @@ export const validateGameContent = (
 
 export const formatGameContentValidationReport = (report: GameContentValidationReport): readonly string[] => {
   if (report.isValid) {
-    return ['✓ Контентные сиды и баланс валидны.'];
+    return ['✓ Игровой контент и баланс валидны.'];
   }
 
   return report.issues.map(({ scope, message }) => `✗ ${scope} — ${message}`);

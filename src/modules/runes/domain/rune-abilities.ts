@@ -1,6 +1,10 @@
-import { abilitySeed, runeArchetypeSeed } from '../../../content/runes';
 import { AppError } from '../../../shared/domain/AppError';
 import type { AbilityDefinition, RuneArchetypeDefinition, RuneDraft } from '../../../shared/types/game';
+import {
+  getAbilityByCode,
+  getRuneArchetypeByCode,
+  listRuneArchetypes as listRuneArchetypesFromRegistry,
+} from './rune-content-registry';
 
 type RuneAbilityCarrier = Pick<RuneDraft, 'archetypeCode' | 'activeAbilityCodes' | 'passiveAbilityCodes'>;
 
@@ -10,39 +14,32 @@ export interface RuneContentDescription {
   readonly activeAbilities: readonly AbilityDefinition[];
 }
 
-const archetypeMap = new Map<string, RuneArchetypeDefinition>(runeArchetypeSeed.map((entry) => [entry.code, entry]));
-const abilityMap = new Map<string, AbilityDefinition>(abilitySeed.map((entry) => [entry.code, entry]));
-
-const maybeGetRuneArchetype = (code: string | null | undefined): RuneArchetypeDefinition | null => {
-  if (!code) {
-    return null;
-  }
-
-  return archetypeMap.get(code) ?? null;
-};
+const maybeGetRuneArchetype = (code: string | null | undefined): RuneArchetypeDefinition | null => (
+  code ? getRuneArchetypeByCode(code) : null
+);
 
 const listAbilityDefinitions = (codes: readonly string[] | undefined): AbilityDefinition[] => (
   (codes ?? []).flatMap((code) => {
-    const ability = abilityMap.get(code);
+    const ability = getAbilityByCode(code);
     return ability ? [ability] : [];
   })
 );
 
-export const listRuneArchetypes = (): readonly RuneArchetypeDefinition[] => runeArchetypeSeed;
+export const listRuneArchetypes = (): readonly RuneArchetypeDefinition[] => listRuneArchetypesFromRegistry();
 
 export const getRuneArchetype = (code: string): RuneArchetypeDefinition => {
-  const archetype = archetypeMap.get(code);
+  const archetype = getRuneArchetypeByCode(code);
   if (!archetype) {
-    throw new AppError('rune_archetype_not_found', `Рунный архетип ${code} не найден.`);
+    throw new AppError('rune_archetype_not_found', `Архетип ${code} не найден.`);
   }
 
   return archetype;
 };
 
 export const getAbilityDefinition = (code: string): AbilityDefinition => {
-  const ability = abilityMap.get(code);
+  const ability = getAbilityByCode(code);
   if (!ability) {
-    throw new AppError('rune_ability_not_found', `Рунная способность ${code} не найдена.`);
+    throw new AppError('rune_ability_not_found', `Способность ${code} не найдена.`);
   }
 
   return ability;

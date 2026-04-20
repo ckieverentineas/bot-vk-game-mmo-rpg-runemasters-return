@@ -1,9 +1,7 @@
 import type {
   BattleView,
-  BiomeView,
   CreateBattleInput,
   InventoryDelta,
-  MobTemplateView,
   PlayerState,
   RuneDraft,
   RuneRarity,
@@ -106,8 +104,6 @@ export interface GameRepository {
   deleteRune(playerId: number, runeId: string): Promise<PlayerState>;
   destroyRune(playerId: number, runeId: string, refund: InventoryDelta, intentId?: string, intentStateKey?: string, currentStateKey?: string): Promise<PlayerState>;
   adjustInventory(playerId: number, delta: InventoryDelta): Promise<PlayerState>;
-  findBiomeForLocationLevel(locationLevel: number): Promise<BiomeView | null>;
-  listMobTemplatesForBiome(biomeCode: string): Promise<MobTemplateView[]>;
   createBattle(playerId: number, battle: CreateBattleInput, options?: CreateBattleOptions): Promise<BattleView>;
   getActiveBattle(playerId: number): Promise<BattleView | null>;
   saveBattle(battle: BattleView, options?: SaveBattleOptions): Promise<BattleView>;

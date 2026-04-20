@@ -1,4 +1,4 @@
-import type { Context } from 'vk-io';
+﻿import type { Context } from 'vk-io';
 
 import type { AppServices } from '../../app/composition-root';
 import type { CraftRuneResultView } from '../../modules/runes/application/use-cases/CraftRune';
@@ -17,12 +17,6 @@ import { getSchoolDefinitionForArchetype } from '../../modules/runes/domain/rune
 import { AppError, isAppError } from '../../shared/domain/AppError';
 import type { BattleActionType, BattleView, PlayerState } from '../../shared/types/game';
 import { Logger } from '../../utils/logger';
-import {
-  gameCommands,
-  resolveRuneCursorDeltaCommand,
-  resolveRunePageSlotCommand,
-  resolveRuneStatRerollCommand,
-} from '../commands/catalog';
 import {
   createBattleKeyboard,
   createBattleResultKeyboard,
@@ -46,25 +40,45 @@ import {
   renderWelcome,
 } from '../presenters/messages';
 import { resolveCommandEnvelope } from '../router/commandRouter';
+import {
+  config,
+  dynamicCommandConfig,
+  errorCodeKeyboardFactoryByCode,
+  GameCommandType,
+  recoverableCommandErrorCodes,
+  recoveryRules,
+  toRouteState,
+  type CommandIntentContext,
+  type StaticCommandHandler,
+} from './gameCommandRoutes';
 
 type ReplyKeyboard = ReturnType<typeof createMainMenuKeyboard>;
 type BattleReplyState = BattleView | BattleActionResultView | ExploreLocationReplayResult;
 type RuneHubReplyState = PlayerState | CraftRuneResultView;
 type TutorialRouteReplyState = PlayerState | SkipTutorialReplayResult | ReturnToAdventureReplayResult;
 
+type TutorialRouteExecutor = (
+  intentId?: string,
+  stateKey?: string,
+  intentSource?: ReturnType<typeof resolveCommandEnvelope>['intentSource'],
+) => Promise<TutorialRouteReplyState>;
+
+
+
+
 const formatRuneCountLabel = (count: number): string => {
   const remainder10 = count % 10;
   const remainder100 = count % 100;
 
   if (remainder10 === 1 && remainder100 !== 11) {
-    return 'руна';
+    return 'СЂСѓРЅР°';
   }
 
   if (remainder10 >= 2 && remainder10 <= 4 && (remainder100 < 12 || remainder100 > 14)) {
-    return 'руны';
+    return 'СЂСѓРЅС‹';
   }
 
-  return 'рун';
+  return 'СЂСѓРЅ';
 };
 
 const normalizeBattleReplyState = (state: BattleReplyState): BattleActionResultView => (
@@ -108,133 +122,26 @@ export class GameHandler {
 
     const commandEnvelope = resolveCommandEnvelope(ctx);
     if (!commandEnvelope.command) {
-      await this.reply(ctx, 'Команда не распознана.', createMainMenuKeyboard());
+      await this.reply(ctx, 'РљРѕРјР°РЅРґР° РЅРµ СЂР°СЃРїРѕР·РЅР°РЅР°.', createMainMenuKeyboard());
       return;
     }
 
     const { command, intentId, stateKey, intentSource } = commandEnvelope;
+    const commandContext: CommandIntentContext = {
+      intentId,
+      stateKey,
+      intentSource,
+    };
 
     try {
-      if (command === gameCommands.start) {
-        const result = await this.services.registerPlayer.execute(vkId);
-        const keyboard = result.created || result.player.tutorialState === 'ACTIVE'
-          ? createTutorialKeyboard(result.player)
-          : createMainMenuKeyboard(result.player);
-        const message = renderWelcome(result.player, result.created);
-        await this.reply(
-          ctx,
-          message,
-          keyboard,
-        );
-
-        if (!result.created) {
-          await this.trackReturnRecapShown(result.player, 'start_existing');
-        }
-        return;
+      const commandHandler = config[command as GameCommandType];
+      const isHandled = commandHandler === undefined
+        ? await this.handleDynamicCommand(ctx, vkId, command, commandContext)
+        : await this.executeStaticCommand(commandHandler, ctx, vkId, commandContext);
+      if (!isHandled) {
+        throw new AppError('unknown_command', 'РќРµРёР·РІРµСЃС‚РЅР°СЏ РєРѕРјР°РЅРґР°. РСЃРїРѕР»СЊР·СѓР№С‚Рµ РєРЅРѕРїРєРё РјРµРЅСЋ РёР»Рё СЃС‚Р°СЂС‹Рµ С‚РµРєСЃС‚РѕРІС‹Рµ РєРѕРјР°РЅРґС‹.');
       }
 
-      switch (command) {
-        case gameCommands.backToMenu: {
-          await this.showMainMenu(ctx, vkId);
-          return;
-        }
-        case gameCommands.profile: {
-          await this.showProfile(ctx, vkId);
-          return;
-        }
-        case gameCommands.deletePlayer: {
-          await this.confirmDeletePlayer(ctx, vkId);
-          return;
-        }
-        case gameCommands.confirmDeletePlayer: {
-          await this.deletePlayer(ctx, vkId, intentId ?? undefined, stateKey ?? undefined, intentSource);
-          return;
-        }
-        case gameCommands.inventory: {
-          await this.showInventory(ctx, vkId);
-          return;
-        }
-        case gameCommands.location: {
-          await this.showLocation(ctx, vkId, intentId ?? undefined, stateKey ?? undefined, intentSource);
-          return;
-        }
-        case gameCommands.skipTutorial: {
-          const result = normalizeTutorialRouteReplyState(await this.services.skipTutorial.execute(vkId, intentId ?? undefined, stateKey ?? undefined, intentSource));
-          await this.reply(ctx, renderReturnRecap(result.player, '🧭 Возвращение в приключения'), createMainMenuKeyboard(result.player));
-          await this.trackReturnRecapShown(result.player, 'skip_tutorial');
-          return;
-        }
-        case gameCommands.returnToAdventure: {
-          const result = normalizeTutorialRouteReplyState(await this.services.returnToAdventure.execute(vkId, intentId ?? undefined, stateKey ?? undefined, intentSource));
-          await this.reply(ctx, renderReturnRecap(result.player, '🧭 Возвращение в приключения'), createMainMenuKeyboard(result.player));
-          await this.trackReturnRecapShown(result.player, 'return_to_adventure');
-          return;
-        }
-        case gameCommands.explore: {
-          const battle = await this.services.exploreLocation.execute(vkId, intentId ?? undefined, stateKey ?? undefined, intentSource);
-          await this.replyWithBattle(ctx, battle, vkId);
-          return;
-        }
-        case gameCommands.attack: {
-          await this.useBattleAction(ctx, vkId, 'ATTACK', intentId ?? undefined, stateKey ?? undefined, intentSource);
-          return;
-        }
-        case gameCommands.defend: {
-          await this.useBattleAction(ctx, vkId, 'DEFEND', intentId ?? undefined, stateKey ?? undefined, intentSource);
-          return;
-        }
-        case gameCommands.skills:
-        case gameCommands.spell: {
-          await this.useBattleAction(ctx, vkId, 'RUNE_SKILL', intentId ?? undefined, stateKey ?? undefined, intentSource);
-          return;
-        }
-        case gameCommands.runeCollection: {
-          const player = await this.services.getRuneCollection.execute(vkId);
-          await this.replyWithRuneHub(ctx, player);
-          await this.trackSchoolNoviceRuneHubOpen(player);
-          return;
-        }
-        case gameCommands.equipRune: {
-          const result = await this.services.equipCurrentRune.execute(vkId, 0, intentId ?? undefined, stateKey ?? undefined, intentSource);
-          await this.replyWithRuneHub(ctx, result);
-          return;
-        }
-        case gameCommands.equipSupportRune: {
-          const player = await this.services.equipCurrentRune.execute(vkId, 1, intentId ?? undefined, stateKey ?? undefined, intentSource);
-          await this.replyWithRuneHub(ctx, player);
-          return;
-        }
-        case gameCommands.unequipRune: {
-          const player = await this.services.unequipCurrentRune.execute(vkId, intentId ?? undefined, stateKey ?? undefined, intentSource);
-          await this.replyWithRuneHub(ctx, player);
-          return;
-        }
-        case gameCommands.altar: {
-          const player = await this.services.getRuneCollection.execute(vkId);
-          await this.replyWithRuneHub(ctx, player);
-          await this.trackSchoolNoviceRuneHubOpen(player);
-          return;
-        }
-        case gameCommands.craftRune: {
-          const result = await this.services.craftRune.execute(vkId, intentId ?? undefined, stateKey ?? undefined, intentSource);
-          await this.replyWithRuneHub(ctx, result);
-          return;
-        }
-        case gameCommands.rerollRuneMenu: {
-          const player = await this.services.getRuneCollection.execute(vkId);
-          await this.reply(ctx, renderAltar(player), createRuneRerollKeyboard(player));
-          return;
-        }
-        case gameCommands.destroyRune: {
-          const player = await this.services.destroyCurrentRune.execute(vkId, intentId ?? undefined, stateKey ?? undefined, intentSource);
-          await this.replyWithRuneHub(ctx, player);
-          return;
-        }
-        default: {
-          await this.handleDynamicCommand(ctx, vkId, command, intentId, stateKey, intentSource);
-          return;
-        }
-      }
     } catch (error) {
       if (isAppError(error)) {
         const recovered = await this.tryRecoverCommandContext(ctx, vkId, command, error);
@@ -247,7 +154,7 @@ export class GameHandler {
       }
 
       Logger.error('Unhandled command error:', error);
-      await this.reply(ctx, 'Внутренняя ошибка игрового движка.', createMainMenuKeyboard());
+      await this.reply(ctx, 'Р’РЅСѓС‚СЂРµРЅРЅСЏСЏ РѕС€РёР±РєР° РёРіСЂРѕРІРѕРіРѕ РґРІРёР¶РєР°.', createMainMenuKeyboard());
     }
   }
 
@@ -255,32 +162,29 @@ export class GameHandler {
     ctx: Context,
     vkId: number,
     command: string,
-    intentId: string | null,
-    stateKey: string | null,
-    intentSource: ReturnType<typeof resolveCommandEnvelope>['intentSource'],
-  ): Promise<void> {
-    const runeCursorDelta = resolveRuneCursorDeltaCommand(command);
-    if (runeCursorDelta !== null) {
-      const player = await this.services.moveRuneCursor.execute(vkId, runeCursorDelta, intentId ?? undefined, stateKey ?? undefined, intentSource);
-      await this.replyWithRuneHub(ctx, player);
-      return;
+    context: CommandIntentContext,
+  ): Promise<boolean> {
+    for (const route of dynamicCommandConfig) {
+      const resolvedValue = route.resolve(command);
+      if (resolvedValue === null) {
+        continue;
+      }
+
+      await route.handle(this, ctx, vkId, resolvedValue, context);
+      return true;
     }
 
-    const runePageSlot = resolveRunePageSlotCommand(command);
-    if (runePageSlot !== null) {
-      const player = await this.services.selectRunePageSlot.execute(vkId, runePageSlot, intentId ?? undefined, stateKey ?? undefined, intentSource);
-      await this.replyWithRuneHub(ctx, player);
-      return;
-    }
+    return false;
+  }
 
-    const rerollStat = resolveRuneStatRerollCommand(command);
-    if (rerollStat) {
-      const player = await this.services.rerollCurrentRuneStat.execute(vkId, rerollStat, intentId ?? undefined, stateKey ?? undefined, intentSource);
-      await this.reply(ctx, renderAltar(player), createRuneRerollKeyboard(player));
-      return;
-    }
-
-    throw new AppError('unknown_command', 'Неизвестная команда. Используйте кнопки меню или старые текстовые команды.');
+  private async executeStaticCommand(
+    handlerFunction: StaticCommandHandler,
+    ctx: Context,
+    vkId: number,
+    context: CommandIntentContext,
+  ): Promise<boolean> {
+    await handlerFunction(this, ctx, vkId, context);
+    return true;
   }
 
   private resolveVkId(ctx: Context): number | null {
@@ -299,99 +203,23 @@ export class GameHandler {
   }
 
   private async tryRecoverCommandContext(ctx: Context, vkId: number, command: string, error: AppError): Promise<boolean> {
-    if (!['stale_command_intent', 'command_retry_pending', 'battle_in_progress'].includes(error.code)) {
+    if (!recoverableCommandErrorCodes.has(error.code)) {
       return false;
     }
 
-    try {
-      if ([gameCommands.location, gameCommands.skipTutorial, gameCommands.returnToAdventure].includes(command as typeof gameCommands.location | typeof gameCommands.skipTutorial | typeof gameCommands.returnToAdventure) && error.code === 'battle_in_progress') {
-        const battle = await this.services.getActiveBattle.execute(vkId);
-        if (battle) {
-          await this.reply(ctx, [error.message, '', renderBattle(battle)].join('\n'), this.resolveBattleKeyboard(battle));
+    for (const { matches, handle } of recoveryRules) {
+      if (!matches(command, error)) {
+        continue;
+      }
+
+      try {
+        const isRecovered = await handle(this, ctx, vkId, command, error);
+        if (isRecovered) {
           return true;
         }
+      } catch {
+        return false;
       }
-
-      if (command === gameCommands.confirmDeletePlayer) {
-        try {
-          const player = await this.services.getPlayerProfile.execute(vkId);
-          await this.reply(
-            ctx,
-            [error.message, '', renderProfile(player)].join('\n'),
-            createProfileKeyboard(player),
-          );
-          return true;
-        } catch {
-          if (error.code === 'command_retry_pending') {
-            await this.reply(ctx, 'Персонаж удалён. Можно начать заново в любой момент.', createEntryKeyboard());
-            return true;
-          }
-
-          return false;
-        }
-      }
-
-      if (command === gameCommands.explore) {
-        const battle = await this.safeGetActiveBattle(vkId);
-        if (battle) {
-          await this.reply(
-            ctx,
-            [error.message, '', renderBattle(battle)].join('\n'),
-            this.resolveBattleKeyboard(battle),
-          );
-          return true;
-        }
-
-        const player = await this.services.getPlayerProfile.execute(vkId);
-        await this.reply(
-          ctx,
-          [error.message, '', renderLocation(player)].join('\n'),
-          createTutorialKeyboard(player),
-        );
-        return true;
-      }
-
-      if ([gameCommands.location, gameCommands.skipTutorial, gameCommands.returnToAdventure].includes(command as typeof gameCommands.location | typeof gameCommands.skipTutorial | typeof gameCommands.returnToAdventure)) {
-        const player = await this.services.getPlayerProfile.execute(vkId);
-        await this.reply(
-          ctx,
-          [error.message, '', renderLocation(player)].join('\n'),
-          createTutorialKeyboard(player),
-        );
-        return true;
-      }
-
-      if (resolveRuneCursorDeltaCommand(command) !== null || resolveRunePageSlotCommand(command) !== null) {
-        const player = await this.services.getRuneCollection.execute(vkId);
-        await this.reply(
-          ctx,
-          [error.message, '', renderRuneScreen(player)].join('\n'),
-          createRuneKeyboard(player),
-        );
-        return true;
-      }
-
-      if ([gameCommands.equipRune, gameCommands.equipSupportRune, gameCommands.unequipRune, gameCommands.craftRune, gameCommands.destroyRune].includes(command as typeof gameCommands.equipRune | typeof gameCommands.equipSupportRune | typeof gameCommands.destroyRune)) {
-        const player = await this.services.getRuneCollection.execute(vkId);
-        await this.reply(
-          ctx,
-          [error.message, '', renderRuneScreen(player)].join('\n'),
-          createRuneKeyboard(player),
-        );
-        return true;
-      }
-
-      if (command === gameCommands.rerollRuneMenu || resolveRuneStatRerollCommand(command)) {
-        const player = await this.services.getRuneCollection.execute(vkId);
-        await this.reply(
-          ctx,
-          [error.message, '', renderAltar(player)].join('\n'),
-          createRuneRerollKeyboard(player),
-        );
-        return true;
-      }
-    } catch {
-      return false;
     }
 
     return false;
@@ -402,11 +230,11 @@ export class GameHandler {
     await this.reply(
       ctx,
       [
-        '⚠️ Удаление персонажа',
+        'вљ пёЏ РЈРґР°Р»РµРЅРёРµ РїРµСЂСЃРѕРЅР°Р¶Р°',
         '',
-        `Будет удалён герой уровня ${player.level}${player.runes.length > 0 ? ` и ${player.runes.length} ${formatRuneCountLabel(player.runes.length)}` : ''}.`,
-        'Это действие необратимо: прогресс и сборка будут удалены.',
-        'Нажмите «🗑️ Да, удалить» только если действительно хотите начать заново.',
+        `Р‘СѓРґРµС‚ СѓРґР°Р»С‘РЅ РіРµСЂРѕР№ СѓСЂРѕРІРЅСЏ ${player.level}${player.runes.length > 0 ? ` Рё ${player.runes.length} ${formatRuneCountLabel(player.runes.length)}` : ''}.`,
+        'Р­С‚Рѕ РґРµР№СЃС‚РІРёРµ РЅРµРѕР±СЂР°С‚РёРјРѕ: РїСЂРѕРіСЂРµСЃСЃ Рё СЃР±РѕСЂРєР° Р±СѓРґСѓС‚ СѓРґР°Р»РµРЅС‹.',
+        'РќР°Р¶РјРёС‚Рµ В«рџ—‘пёЏ Р”Р°, СѓРґР°Р»РёС‚СЊВ» С‚РѕР»СЊРєРѕ РµСЃР»Рё РґРµР№СЃС‚РІРёС‚РµР»СЊРЅРѕ С…РѕС‚РёС‚Рµ РЅР°С‡Р°С‚СЊ Р·Р°РЅРѕРІРѕ.',
       ].join('\n'),
       createDeleteConfirmationKeyboard(player),
     );
@@ -420,7 +248,7 @@ export class GameHandler {
     intentSource: ReturnType<typeof resolveCommandEnvelope>['intentSource'] = null,
   ): Promise<void> {
     await this.services.deletePlayer.execute(vkId, intentId, intentStateKey, intentSource);
-    await this.reply(ctx, 'Персонаж удалён. Можно начать заново в любой момент.', createEntryKeyboard());
+    await this.reply(ctx, 'РџРµСЂСЃРѕРЅР°Р¶ СѓРґР°Р»С‘РЅ. РњРѕР¶РЅРѕ РЅР°С‡Р°С‚СЊ Р·Р°РЅРѕРІРѕ РІ Р»СЋР±РѕР№ РјРѕРјРµРЅС‚.', createEntryKeyboard());
   }
 
   private async showInventory(ctx: Context, vkId: number): Promise<void> {
@@ -428,7 +256,24 @@ export class GameHandler {
     await this.reply(ctx, renderInventory(player), createMainMenuKeyboard(player));
   }
 
-  private async showLocation(
+  private async startGame(ctx: Context, vkId: number): Promise<void> {
+    const result = await this.services.registerPlayer.execute(vkId);
+    const keyboard = result.created || result.player.tutorialState === 'ACTIVE'
+      ? createTutorialKeyboard(result.player)
+      : createMainMenuKeyboard(result.player);
+    const message = renderWelcome(result.player, result.created);
+    await this.reply(
+      ctx,
+      message,
+      keyboard,
+    );
+
+    if (!result.created) {
+      await this.trackReturnRecapShown(result.player, 'start_existing');
+    }
+  }
+
+  private async exploreLocationScreen(
     ctx: Context,
     vkId: number,
     intentId?: string,
@@ -437,6 +282,125 @@ export class GameHandler {
   ): Promise<void> {
     const player = await this.services.enterTutorialMode.execute(vkId, intentId, intentStateKey, intentSource);
     await this.replyWithLocation(ctx, player);
+  }
+
+  private async returnRecapRoute(
+    ctx: Context,
+    vkId: number,
+    executeRoute: TutorialRouteExecutor,
+    entrySurface: 'skip_tutorial' | 'return_to_adventure',
+    context: CommandIntentContext,
+  ): Promise<void> {
+    const routeState = toRouteState(context);
+    const result = normalizeTutorialRouteReplyState(await executeRoute(
+      routeState.intentId,
+      routeState.stateKey,
+      routeState.intentSource,
+    ));
+    await this.reply(ctx, renderReturnRecap(result.player, '🚀 Возврат в приключение'), createMainMenuKeyboard(result.player));
+    await this.trackReturnRecapShown(result.player, entrySurface);
+  }
+
+  private async exploreNewBattle(ctx: Context, vkId: number, context: CommandIntentContext): Promise<void> {
+    const routeState = toRouteState(context);
+    const battle = await this.services.exploreLocation.execute(vkId, routeState.intentId, routeState.stateKey, routeState.intentSource);
+    await this.replyWithBattle(ctx, battle, vkId);
+  }
+
+  private async executeBattleAction(
+    ctx: Context,
+    vkId: number,
+    action: BattleActionType,
+    context: CommandIntentContext,
+  ): Promise<void> {
+    try {
+      const routeState = toRouteState(context);
+      const result = await this.services.performBattleAction.execute(
+        vkId,
+        action,
+        routeState.intentId,
+        routeState.stateKey,
+        routeState.intentSource,
+      );
+      await this.replyWithBattle(ctx, result, vkId);
+    } catch (error) {
+      if (isAppError(error)) {
+        const activeBattle = await this.safeGetActiveBattle(vkId);
+        if (activeBattle) {
+          await this.reply(
+            ctx,
+            [error.message, '', renderBattle(activeBattle)].join('\n'),
+            this.resolveBattleKeyboard(activeBattle),
+          );
+          return;
+        }
+      }
+
+      throw error;
+    }
+  }
+
+  private async openRuneCollection(ctx: Context, vkId: number, trackSchoolNoviceOpen = false): Promise<void> {
+    const player = await this.services.getRuneCollection.execute(vkId);
+    await this.replyWithRuneHub(ctx, player);
+    if (trackSchoolNoviceOpen) {
+      await this.trackSchoolNoviceRuneHubOpen(player);
+    }
+  }
+
+  private async openRuneRerollMenu(ctx: Context, vkId: number): Promise<void> {
+    const player = await this.services.getRuneCollection.execute(vkId);
+    await this.reply(ctx, renderAltar(player), createRuneRerollKeyboard(player));
+  }
+
+  private async equipCurrentRuneSlot(
+    ctx: Context,
+    vkId: number,
+    slotIndex: 0 | 1,
+    context: CommandIntentContext,
+  ): Promise<void> {
+    const routeState = toRouteState(context);
+    const player = await this.services.equipCurrentRune.execute(
+      vkId,
+      slotIndex,
+      routeState.intentId,
+      routeState.stateKey,
+      routeState.intentSource,
+    );
+    await this.replyWithRuneHub(ctx, player);
+  }
+
+  private async unequipCurrentRuneSlot(ctx: Context, vkId: number, context: CommandIntentContext): Promise<void> {
+    const routeState = toRouteState(context);
+    const player = await this.services.unequipCurrentRune.execute(
+      vkId,
+      routeState.intentId,
+      routeState.stateKey,
+      routeState.intentSource,
+    );
+    await this.replyWithRuneHub(ctx, player);
+  }
+
+  private async craftRuneCommand(ctx: Context, vkId: number, context: CommandIntentContext): Promise<void> {
+    const routeState = toRouteState(context);
+    const result = await this.services.craftRune.execute(
+      vkId,
+      routeState.intentId,
+      routeState.stateKey,
+      routeState.intentSource,
+    );
+    await this.replyWithRuneHub(ctx, result);
+  }
+
+  private async destroyCurrentRuneCommand(ctx: Context, vkId: number, context: CommandIntentContext): Promise<void> {
+    const routeState = toRouteState(context);
+    const player = await this.services.destroyCurrentRune.execute(
+      vkId,
+      routeState.intentId,
+      routeState.stateKey,
+      routeState.intentSource,
+    );
+    await this.replyWithRuneHub(ctx, player);
   }
 
   private async replyWithProfile(ctx: Context, player: PlayerState): Promise<void> {
@@ -471,34 +435,6 @@ export class GameHandler {
     }
   }
 
-  private async useBattleAction(
-    ctx: Context,
-    vkId: number,
-    action: BattleActionType,
-    intentId?: string,
-    intentStateKey?: string,
-    intentSource: ReturnType<typeof resolveCommandEnvelope>['intentSource'] = null,
-  ): Promise<void> {
-    try {
-      const result = await this.services.performBattleAction.execute(vkId, action, intentId, intentStateKey, intentSource);
-      await this.replyWithBattle(ctx, result, vkId);
-    } catch (error) {
-      if (isAppError(error)) {
-        const activeBattle = await this.safeGetActiveBattle(vkId);
-        if (activeBattle) {
-          await this.reply(
-            ctx,
-            [error.message, '', renderBattle(activeBattle)].join('\n'),
-            this.resolveBattleKeyboard(activeBattle),
-          );
-          return;
-        }
-      }
-
-      throw error;
-    }
-  }
-
   private async safeGetActiveBattle(vkId: number): Promise<BattleView | null> {
     try {
       return await this.services.getActiveBattle.execute(vkId);
@@ -512,15 +448,7 @@ export class GameHandler {
   }
 
   private resolveErrorKeyboard(errorCode: string): ReplyKeyboard {
-    if (errorCode === 'player_not_found') {
-      return createEntryKeyboard();
-    }
-
-    if (['runes_not_found', 'rune_not_found', 'rune_slot_not_found'].includes(errorCode)) {
-      return createRuneKeyboard();
-    }
-
-    return createMainMenuKeyboard();
+    return errorCodeKeyboardFactoryByCode[errorCode]?.() ?? createMainMenuKeyboard();
   }
 
   private async reply(ctx: Context, message: string, keyboard: ReplyKeyboard): Promise<void> {
@@ -630,3 +558,6 @@ export class GameHandler {
     }
   }
 }
+
+
+

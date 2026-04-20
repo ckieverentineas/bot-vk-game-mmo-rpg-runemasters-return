@@ -1,3 +1,6 @@
+import { assertValidGameContent } from '../content/validation/validate-game-content';
+import { buildWorldCatalog } from '../content/world';
+import { gameContent } from '../content/game-content';
 import { PerformBattleAction } from '../modules/combat/application/use-cases/PerformBattleAction';
 import { GetActiveBattle } from '../modules/combat/application/use-cases/GetActiveBattle';
 import { ExploreLocation } from '../modules/exploration/application/use-cases/ExploreLocation';
@@ -43,7 +46,10 @@ export interface AppServices {
 }
 
 export const createAppServices = (): AppServices => {
+  assertValidGameContent();
+
   const repository = new PrismaGameRepository(prisma);
+  const worldCatalog = buildWorldCatalog(gameContent.world);
   const random = new SystemGameRandom();
   const telemetry = new RepositoryGameTelemetry(repository);
 
@@ -55,7 +61,7 @@ export const createAppServices = (): AppServices => {
     enterTutorialMode: new EnterTutorialMode(repository),
     returnToAdventure: new ReturnToAdventure(repository, telemetry),
     skipTutorial: new SkipTutorial(repository, telemetry),
-    exploreLocation: new ExploreLocation(repository, random, telemetry),
+    exploreLocation: new ExploreLocation(repository, worldCatalog, random, telemetry),
     getActiveBattle: new GetActiveBattle(repository, random),
     performBattleAction: new PerformBattleAction(repository, random),
     getRuneCollection: new GetRuneCollection(repository),

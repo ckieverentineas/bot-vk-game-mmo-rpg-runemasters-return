@@ -20,22 +20,32 @@ export const normalizeCommand = (value: string): string => {
   return commandAliases[normalized] ?? normalized;
 };
 
+type LegacyTextIntentMatcher = (command: string) => boolean;
+
+const legacyTextIntentCommands = new Set<string>([
+  gameCommands.craftRune,
+  gameCommands.destroyRune,
+  gameCommands.equipRune,
+  gameCommands.unequipRune,
+  gameCommands.location,
+  gameCommands.skipTutorial,
+  gameCommands.returnToAdventure,
+  gameCommands.explore,
+  gameCommands.attack,
+  gameCommands.defend,
+  gameCommands.skills,
+  gameCommands.spell,
+]);
+
+const legacyTextIntentMatchers: readonly LegacyTextIntentMatcher[] = [
+  (command) => legacyTextIntentCommands.has(command),
+  (command) => resolveRuneCursorDeltaCommand(command) !== null,
+  (command) => resolveRunePageSlotCommand(command) !== null,
+  (command) => resolveRuneStatRerollCommand(command) !== null,
+];
+
 const supportsLegacyTextIntent = (command: string): boolean => (
-  command === gameCommands.craftRune
-  || command === gameCommands.destroyRune
-  || command === gameCommands.equipRune
-  || command === gameCommands.unequipRune
-  || resolveRuneCursorDeltaCommand(command) !== null
-  || resolveRunePageSlotCommand(command) !== null
-  || command === gameCommands.location
-  || command === gameCommands.skipTutorial
-  || command === gameCommands.returnToAdventure
-  || command === gameCommands.explore
-  || command === gameCommands.attack
-  || command === gameCommands.defend
-  || command === gameCommands.skills
-  || command === gameCommands.spell
-  || resolveRuneStatRerollCommand(command) !== null
+  legacyTextIntentMatchers.some((matcher) => matcher(command))
 );
 
 const buildLegacyTextIntentId = (ctx: Context, command: string): string | null => {
