@@ -215,8 +215,11 @@ const createServices = (): AppServices => {
   return {
     telemetry: {
       onboardingStarted: vi.fn().mockResolvedValue(undefined),
+      tutorialPathChosen: vi.fn().mockResolvedValue(undefined),
       loadoutChanged: vi.fn().mockResolvedValue(undefined),
       schoolNoviceEliteEncounterStarted: vi.fn().mockResolvedValue(undefined),
+      firstSchoolPresented: vi.fn().mockResolvedValue(undefined),
+      firstSchoolCommitted: vi.fn().mockResolvedValue(undefined),
       schoolNoviceFollowUpActionTaken: vi.fn().mockResolvedValue(undefined),
       returnRecapShown: vi.fn().mockResolvedValue(undefined),
       postSessionNextGoalShown: vi.fn().mockResolvedValue(undefined),
@@ -660,6 +663,228 @@ describe('GameHandler smoke', () => {
 
     expect(getReplyCalls(ctx)[0]?.message).toContain('✨ Что изменилось: Открыт слот поддержки.');
     expect(getReplyCalls(ctx)[0]?.message).toContain('👉 Попробовать: Откройте «🔮 Руны» и поставьте руну поддержки.');
+  });
+
+  it('логирует первое school reveal после battle result с school trial completion', async () => {
+    const services = createServices();
+    vi.mocked(services.performBattleAction.execute).mockResolvedValueOnce({
+      battle: createBattle({
+        id: 'battle-school-reveal-1',
+        status: 'COMPLETED',
+        result: 'VICTORY',
+        rewards: {
+          experience: 8,
+          gold: 3,
+          shards: { UNUSUAL: 1 },
+          droppedRune: null,
+        },
+        enemy: {
+          ...createBattle().enemy,
+          code: 'ember_witch',
+          name: 'Пепельная ведунья',
+          isElite: true,
+          currentHealth: 0,
+        },
+      }),
+      player: createPlayer({
+        tutorialState: 'SKIPPED',
+        victories: 3,
+        schoolMasteries: [{ schoolCode: 'ember', experience: 1, rank: 0 }],
+        runes: [
+          {
+            id: 'rune-ember-usual',
+            runeCode: 'rune-ember-usual',
+            archetypeCode: 'ember',
+            passiveAbilityCodes: ['ember_heart'],
+            activeAbilityCodes: ['ember_pulse'],
+            name: 'Обычная руна Пламени',
+            rarity: 'USUAL',
+            isEquipped: true,
+            equippedSlot: 0,
+            health: 1,
+            attack: 2,
+            defence: 0,
+            magicDefence: 0,
+            dexterity: 0,
+            intelligence: 0,
+            createdAt: '2026-04-12T00:00:00.000Z',
+          },
+          {
+            id: 'rune-ember-unusual',
+            runeCode: 'rune-ember-unusual',
+            archetypeCode: 'ember',
+            passiveAbilityCodes: ['ember_heart'],
+            activeAbilityCodes: ['ember_pulse'],
+            name: 'Первый знак Пламени',
+            rarity: 'UNUSUAL',
+            isEquipped: false,
+            equippedSlot: null,
+            health: 2,
+            attack: 3,
+            defence: 0,
+            magicDefence: 0,
+            dexterity: 0,
+            intelligence: 0,
+            createdAt: '2026-04-12T00:00:00.000Z',
+          },
+        ],
+      }),
+      acquisitionSummary: {
+        kind: 'school_trial_completed',
+        title: 'Испытание школы пройдено',
+        changeLine: 'Пламя признало вашу решимость.',
+        nextStepLine: 'Откройте «🔮 Руны», наденьте первый знак школы и закрепите стиль в следующем бою.',
+      },
+    });
+    const handler = new GameHandler(services);
+    const ctx = createFakeContext({ command: 'атака', intentId: 'intent-school-reveal-1', stateKey: 'state-school-reveal-1' });
+
+    await handler.handle(ctx as never);
+
+    expect(services.telemetry.firstSchoolPresented).toHaveBeenCalledWith(1, {
+      schoolCode: 'ember',
+      presentationSurface: 'battle_result',
+      presentationReason: 'school_trial_completed',
+    });
+  });
+
+  it('логирует first school reveal и для tutorial reward с первой руной', async () => {
+    const services = createServices();
+    vi.mocked(services.performBattleAction.execute).mockResolvedValueOnce({
+      battle: createBattle({
+        id: 'battle-first-rune-1',
+        status: 'COMPLETED',
+        result: 'VICTORY',
+        locationLevel: 0,
+        rewards: {
+          experience: 6,
+          gold: 2,
+          shards: { USUAL: 1 },
+          droppedRune: null,
+        },
+      }),
+      player: createPlayer({
+        tutorialState: 'COMPLETED',
+        locationLevel: 1,
+        victories: 1,
+        runes: [
+          {
+            id: 'rune-first-1',
+            runeCode: 'rune-first-1',
+            archetypeCode: 'gale',
+            passiveAbilityCodes: ['gale_mark'],
+            activeAbilityCodes: ['gale_step'],
+            name: 'Искра Бури',
+            rarity: 'USUAL',
+            isEquipped: false,
+            equippedSlot: null,
+            health: 1,
+            attack: 2,
+            defence: 0,
+            magicDefence: 0,
+            dexterity: 2,
+            intelligence: 1,
+            createdAt: '2026-04-12T00:00:00.000Z',
+          },
+        ],
+      }),
+      acquisitionSummary: {
+        kind: 'new_rune',
+        title: 'Первая руна: Искра Бури',
+        changeLine: 'Она открывает школу Бури и новый стиль боя.',
+        nextStepLine: 'Откройте «🔮 Руны», экипируйте её и зайдите в бой.',
+      },
+    });
+    const handler = new GameHandler(services);
+    const ctx = createFakeContext({ command: 'атака', intentId: 'intent-first-rune-1', stateKey: 'state-first-rune-1' });
+
+    await handler.handle(ctx as never);
+
+    expect(services.telemetry.firstSchoolPresented).toHaveBeenCalledWith(1, {
+      schoolCode: 'gale',
+      presentationSurface: 'battle_result',
+      presentationReason: 'first_rune_reward',
+    });
+  });
+
+  it('логирует transport telemetry и для replayed battle result, если экран реально отправлен', async () => {
+    const services = createServices();
+    vi.mocked(services.performBattleAction.execute).mockResolvedValueOnce({
+      replayed: true,
+      battle: createBattle({
+        status: 'COMPLETED',
+        result: 'VICTORY',
+        enemy: {
+          ...createBattle().enemy,
+          code: 'ember_witch',
+          name: 'Пепельная ведунья',
+          isElite: true,
+          currentHealth: 0,
+        },
+      }),
+      player: createPlayer({
+        tutorialState: 'SKIPPED',
+        victories: 3,
+        schoolMasteries: [{ schoolCode: 'ember', experience: 1, rank: 0 }],
+        runes: [
+          {
+            id: 'rune-ember-usual',
+            runeCode: 'rune-ember-usual',
+            archetypeCode: 'ember',
+            passiveAbilityCodes: ['ember_heart'],
+            activeAbilityCodes: ['ember_pulse'],
+            name: 'Обычная руна Пламени',
+            rarity: 'USUAL',
+            isEquipped: true,
+            equippedSlot: 0,
+            health: 1,
+            attack: 2,
+            defence: 0,
+            magicDefence: 0,
+            dexterity: 0,
+            intelligence: 0,
+            createdAt: '2026-04-12T00:00:00.000Z',
+          },
+          {
+            id: 'rune-ember-unusual',
+            runeCode: 'rune-ember-unusual',
+            archetypeCode: 'ember',
+            passiveAbilityCodes: ['ember_heart'],
+            activeAbilityCodes: ['ember_pulse'],
+            name: 'Первый знак Пламени',
+            rarity: 'UNUSUAL',
+            isEquipped: false,
+            equippedSlot: null,
+            health: 2,
+            attack: 3,
+            defence: 0,
+            magicDefence: 0,
+            dexterity: 0,
+            intelligence: 0,
+            createdAt: '2026-04-12T00:00:00.000Z',
+          },
+        ],
+      }),
+      acquisitionSummary: {
+        kind: 'school_trial_completed',
+        title: 'Испытание школы пройдено',
+        changeLine: 'Пламя признало вашу решимость.',
+        nextStepLine: 'Откройте «🔮 Руны», наденьте первый знак школы и закрепите стиль в следующем бою.',
+      },
+    });
+    const handler = new GameHandler(services);
+    const ctx = createFakeContext({ command: 'атака', intentId: 'intent-school-reveal-replay-1', stateKey: 'state-school-reveal-replay-1' });
+
+    await handler.handle(ctx as never);
+
+    expect(services.telemetry.firstSchoolPresented).toHaveBeenCalledWith(1, {
+      schoolCode: 'ember',
+      presentationSurface: 'battle_result',
+      presentationReason: 'school_trial_completed',
+    });
+    expect(services.telemetry.postSessionNextGoalShown).toHaveBeenCalledWith(1, expect.objectContaining({
+      suggestedGoalType: 'equip_school_sign',
+    }));
   });
 
   it('выводит server-owned legacy intent для текстовой атаки в бою', async () => {
@@ -1262,6 +1487,23 @@ describe('GameHandler smoke', () => {
     expect(services.skipTutorial.execute).toHaveBeenCalledWith(1001, 'intent-skip-1', 'state-skip-1', 'payload');
     expect(getReplyCalls(ctx)[0]?.message).toContain('🧭 Возвращение в приключения');
     expect(getReplyCalls(ctx)[0]?.message).toContain('Исследовать');
+  });
+
+  it('логирует return recap telemetry и для replayed skip result, если экран реально отправлен', async () => {
+    const services = createServices();
+    vi.mocked(services.skipTutorial.execute).mockResolvedValueOnce({
+      player: createPlayer({ tutorialState: 'SKIPPED', locationLevel: 1 }),
+      replayed: true,
+    } as never);
+    const handler = new GameHandler(services);
+    const ctx = createFakeContext({ command: 'пропустить обучение', intentId: 'intent-skip-replay-1', stateKey: 'state-skip-replay-1' });
+
+    await handler.handle(ctx as never);
+
+    expect(getReplyCalls(ctx)[0]?.message).toContain('🧭 Возвращение в приключения');
+    expect(services.telemetry.returnRecapShown).toHaveBeenCalledWith(1, expect.objectContaining({
+      entrySurface: 'skip_tutorial',
+    }));
   });
 
   it('показывает return recap при возврате в приключения', async () => {

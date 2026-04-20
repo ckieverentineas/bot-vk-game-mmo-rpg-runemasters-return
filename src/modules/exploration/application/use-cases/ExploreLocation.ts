@@ -23,6 +23,11 @@ import { Logger } from '../../../../utils/logger';
 
 import { buildExploreLocationIntentStateKey } from '../command-intent-state';
 
+export interface ExploreLocationReplayResult {
+  readonly battle: BattleView;
+  readonly replayed: true;
+}
+
 export class ExploreLocation {
   public constructor(
     private readonly repository: GameRepository,
@@ -35,7 +40,7 @@ export class ExploreLocation {
     intentId?: string,
     intentStateKey?: string,
     intentSource: CommandIntentSource = null,
-  ): Promise<BattleView> {
+  ): Promise<BattleView | ExploreLocationReplayResult> {
     const player = await requirePlayerByVkId(this.repository, vkId);
     const commandKey = 'EXPLORE_LOCATION' as const;
     const scopedIntent = intentSource === 'legacy_text'
@@ -50,7 +55,7 @@ export class ExploreLocation {
         scopedIntent.intentStateKey,
       );
       if (replay?.status === 'APPLIED' && replay.result) {
-        return replay.result;
+        return { battle: replay.result, replayed: true };
       }
 
       if (replay?.status === 'PENDING') {
@@ -65,7 +70,7 @@ export class ExploreLocation {
         [commandKey],
       );
       if (replay?.status === 'APPLIED' && replay.result) {
-        return replay.result;
+        return { battle: replay.result, replayed: true };
       }
 
       if (replay?.status === 'PENDING') {
@@ -147,6 +152,7 @@ export class ExploreLocation {
       rewards: null,
     }, turnOwner === 'PLAYER' ? commandOptions : undefined);
 
+    await this.trackTutorialPathChosen(currentPlayer, battle);
     await this.trackSchoolNoviceEliteEncounterStarted(currentPlayer, battle, currentSchoolCode);
     await this.trackSchoolNoviceFollowUpBattleStart(currentPlayer, battle);
 
@@ -161,6 +167,22 @@ export class ExploreLocation {
     }
 
     return battle;
+  }
+
+  private async trackTutorialPathChosen(player: PlayerState, battle: BattleView): Promise<void> {
+    if (!this.telemetry || player.tutorialState !== 'ACTIVE' || battle.locationLevel !== 0) {
+      return;
+    }
+
+    try {
+      await this.telemetry.tutorialPathChosen(player.userId, {
+        entrySurface: 'location',
+        choice: 'continue_tutorial',
+        tutorialState: player.tutorialState,
+      });
+    } catch (error) {
+      Logger.warn('Telemetry logging failed', error);
+    }
   }
 
   private async trackSchoolNoviceEliteEncounterStarted(

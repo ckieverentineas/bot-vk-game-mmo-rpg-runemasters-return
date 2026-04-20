@@ -13,6 +13,12 @@ describe('summarizeReleaseEvidence', () => {
       },
       {
         userId: 11,
+        action: 'tutorial_path_chosen',
+        details: JSON.stringify({ choice: 'continue_tutorial' }),
+        createdAt: '2026-04-20T01:00:30.000Z',
+      },
+      {
+        userId: 11,
         action: 'school_novice_elite_encounter_started',
         details: JSON.stringify({ schoolCode: 'ember' }),
         createdAt: '2026-04-20T01:01:00.000Z',
@@ -29,6 +35,12 @@ describe('summarizeReleaseEvidence', () => {
           rewardRuneRarity: 'UNUSUAL',
         }),
         createdAt: '2026-04-20T01:02:00.000Z',
+      },
+      {
+        userId: 11,
+        action: 'first_school_presented',
+        details: JSON.stringify({ schoolCode: 'ember' }),
+        createdAt: '2026-04-20T01:02:30.000Z',
       },
       {
         userId: 11,
@@ -60,6 +72,12 @@ describe('summarizeReleaseEvidence', () => {
           signEquipped: true,
         }),
         createdAt: '2026-04-20T01:05:00.000Z',
+      },
+      {
+        userId: 11,
+        action: 'first_school_committed',
+        details: JSON.stringify({ schoolCode: 'ember' }),
+        createdAt: '2026-04-20T01:05:30.000Z',
       },
       {
         userId: 11,
@@ -134,6 +152,19 @@ describe('summarizeReleaseEvidence', () => {
       tutorialState: 'IN_PROGRESS',
       eventCount: 1,
       uniqueUsers: 1,
+    });
+    expect(report.tutorialPathRows).toEqual([
+      {
+        choice: 'continue_tutorial',
+        eventCount: 1,
+        uniqueUsers: 1,
+      },
+    ]);
+    expect(report.firstSchoolRows.find((row) => row.schoolCode === 'ember')).toEqual({
+      schoolCode: 'ember',
+      schoolName: 'Пламя',
+      presentedUsers: 1,
+      committedUsers: 1,
     });
 
     const emberLoadout = report.loadoutRows.find((row) => row.schoolCode === 'ember');
@@ -405,6 +436,276 @@ describe('summarizeReleaseEvidence', () => {
         followUpUsers: 1,
       },
     ]);
+  });
+
+  it('counts the earliest tutorial path choice per user in the onboarding split', () => {
+    const report = summarizeReleaseEvidence([
+      {
+        userId: 17,
+        action: 'onboarding_started',
+        details: JSON.stringify({ tutorialState: 'ACTIVE' }),
+        createdAt: '2026-04-20T01:00:00.000Z',
+      },
+      {
+        userId: 17,
+        action: 'tutorial_path_chosen',
+        details: JSON.stringify({ choice: 'continue_tutorial' }),
+        createdAt: '2026-04-20T01:01:00.000Z',
+      },
+      {
+        userId: 17,
+        action: 'tutorial_path_chosen',
+        details: JSON.stringify({ choice: 'skip_tutorial' }),
+        createdAt: '2026-04-20T01:02:00.000Z',
+      },
+      {
+        userId: 17,
+        action: 'school_novice_elite_encounter_started',
+        details: JSON.stringify({ schoolCode: 'stone' }),
+        createdAt: '2026-04-20T01:03:00.000Z',
+      },
+      {
+        userId: 17,
+        action: 'reward_claim_applied',
+        details: JSON.stringify({
+          ledgerKey: 'ledger-1',
+          battleId: 'battle-1',
+          isSchoolNoviceAligned: true,
+          novicePathSchoolCode: 'stone',
+          noviceTargetRewardRarity: 'UNUSUAL',
+          rewardRuneRarity: 'UNUSUAL',
+        }),
+        createdAt: '2026-04-20T01:04:00.000Z',
+      },
+      {
+        userId: 17,
+        action: 'first_school_presented',
+        details: JSON.stringify({ schoolCode: 'stone' }),
+        createdAt: '2026-04-20T01:05:00.000Z',
+      },
+      {
+        userId: 17,
+        action: 'first_school_committed',
+        details: JSON.stringify({ schoolCode: 'stone' }),
+        createdAt: '2026-04-20T01:06:00.000Z',
+      },
+      {
+        userId: 17,
+        action: 'post_session_next_goal_shown',
+        details: JSON.stringify({
+          suggestedGoalType: 'equip_school_sign',
+          isSchoolNoviceElite: true,
+        }),
+        createdAt: '2026-04-20T01:07:00.000Z',
+      },
+      {
+        userId: 17,
+        action: 'return_recap_shown',
+        details: JSON.stringify({
+          nextStepType: 'equip_school_sign',
+          hasEquippedRune: false,
+        }),
+        createdAt: '2026-04-20T01:08:00.000Z',
+      },
+      {
+        userId: 17,
+        action: 'school_novice_follow_up_action_taken',
+        details: JSON.stringify({
+          schoolCode: 'stone',
+          currentGoalType: 'equip_school_sign',
+          actionType: 'equip_school_sign',
+          signEquipped: true,
+        }),
+        createdAt: '2026-04-20T01:09:00.000Z',
+      },
+    ], '2026-04-20T03:00:00.000Z');
+
+    expect(report.tutorialPathRows).toEqual([
+      {
+        choice: 'continue_tutorial',
+        eventCount: 1,
+        uniqueUsers: 1,
+      },
+    ]);
+  });
+
+  it('warns when onboarding evidence only covers a fraction of started players', () => {
+    const report = summarizeReleaseEvidence([
+      {
+        userId: 1,
+        action: 'onboarding_started',
+        details: JSON.stringify({ tutorialState: 'ACTIVE' }),
+        createdAt: '2026-04-20T01:00:00.000Z',
+      },
+      {
+        userId: 2,
+        action: 'onboarding_started',
+        details: JSON.stringify({ tutorialState: 'ACTIVE' }),
+        createdAt: '2026-04-20T01:00:10.000Z',
+      },
+      {
+        userId: 1,
+        action: 'tutorial_path_chosen',
+        details: JSON.stringify({ choice: 'continue_tutorial' }),
+        createdAt: '2026-04-20T01:01:00.000Z',
+      },
+      {
+        userId: 1,
+        action: 'school_novice_elite_encounter_started',
+        details: JSON.stringify({ schoolCode: 'ember' }),
+        createdAt: '2026-04-20T01:02:00.000Z',
+      },
+      {
+        userId: 1,
+        action: 'reward_claim_applied',
+        details: JSON.stringify({
+          ledgerKey: 'ledger-1',
+          battleId: 'battle-1',
+          isSchoolNoviceAligned: true,
+          novicePathSchoolCode: 'ember',
+          noviceTargetRewardRarity: 'UNUSUAL',
+          rewardRuneRarity: 'UNUSUAL',
+        }),
+        createdAt: '2026-04-20T01:03:00.000Z',
+      },
+      {
+        userId: 1,
+        action: 'first_school_presented',
+        details: JSON.stringify({ schoolCode: 'ember' }),
+        createdAt: '2026-04-20T01:04:00.000Z',
+      },
+      {
+        userId: 1,
+        action: 'first_school_committed',
+        details: JSON.stringify({ schoolCode: 'ember' }),
+        createdAt: '2026-04-20T01:05:00.000Z',
+      },
+      {
+        userId: 1,
+        action: 'post_session_next_goal_shown',
+        details: JSON.stringify({
+          suggestedGoalType: 'equip_school_sign',
+          isSchoolNoviceElite: true,
+        }),
+        createdAt: '2026-04-20T01:06:00.000Z',
+      },
+      {
+        userId: 1,
+        action: 'return_recap_shown',
+        details: JSON.stringify({
+          nextStepType: 'equip_school_sign',
+          hasEquippedRune: false,
+        }),
+        createdAt: '2026-04-20T01:07:00.000Z',
+      },
+      {
+        userId: 1,
+        action: 'school_novice_follow_up_action_taken',
+        details: JSON.stringify({
+          schoolCode: 'ember',
+          currentGoalType: 'equip_school_sign',
+          actionType: 'equip_school_sign',
+          signEquipped: true,
+        }),
+        createdAt: '2026-04-20T01:08:00.000Z',
+      },
+    ], '2026-04-20T03:00:00.000Z');
+
+    expect(report.verdict).toBe('warn');
+    expect(report.verdictReasons.join(' ')).toContain('tutorial_path_chosen');
+  });
+
+  it('does not treat later second-school rewards as missing first-school telemetry coverage', () => {
+    const report = summarizeReleaseEvidence([
+      {
+        userId: 30,
+        action: 'onboarding_started',
+        details: JSON.stringify({ tutorialState: 'ACTIVE' }),
+        createdAt: '2026-04-20T01:00:00.000Z',
+      },
+      {
+        userId: 30,
+        action: 'tutorial_path_chosen',
+        details: JSON.stringify({ choice: 'continue_tutorial' }),
+        createdAt: '2026-04-20T01:01:00.000Z',
+      },
+      {
+        userId: 30,
+        action: 'school_novice_elite_encounter_started',
+        details: JSON.stringify({ schoolCode: 'ember' }),
+        createdAt: '2026-04-20T01:02:00.000Z',
+      },
+      {
+        userId: 30,
+        action: 'reward_claim_applied',
+        details: JSON.stringify({
+          ledgerKey: 'ledger-ember',
+          battleId: 'battle-ember',
+          isSchoolNoviceAligned: true,
+          novicePathSchoolCode: 'ember',
+          noviceTargetRewardRarity: 'UNUSUAL',
+          rewardRuneRarity: 'UNUSUAL',
+        }),
+        createdAt: '2026-04-20T01:03:00.000Z',
+      },
+      {
+        userId: 30,
+        action: 'first_school_presented',
+        details: JSON.stringify({ schoolCode: 'ember' }),
+        createdAt: '2026-04-20T01:04:00.000Z',
+      },
+      {
+        userId: 30,
+        action: 'first_school_committed',
+        details: JSON.stringify({ schoolCode: 'ember' }),
+        createdAt: '2026-04-20T01:05:00.000Z',
+      },
+      {
+        userId: 30,
+        action: 'post_session_next_goal_shown',
+        details: JSON.stringify({
+          suggestedGoalType: 'equip_school_sign',
+          isSchoolNoviceElite: true,
+        }),
+        createdAt: '2026-04-20T01:06:00.000Z',
+      },
+      {
+        userId: 30,
+        action: 'return_recap_shown',
+        details: JSON.stringify({
+          nextStepType: 'equip_school_sign',
+          hasEquippedRune: false,
+        }),
+        createdAt: '2026-04-20T01:07:00.000Z',
+      },
+      {
+        userId: 30,
+        action: 'school_novice_follow_up_action_taken',
+        details: JSON.stringify({
+          schoolCode: 'ember',
+          currentGoalType: 'equip_school_sign',
+          actionType: 'equip_school_sign',
+          signEquipped: true,
+        }),
+        createdAt: '2026-04-20T01:08:00.000Z',
+      },
+      {
+        userId: 30,
+        action: 'reward_claim_applied',
+        details: JSON.stringify({
+          ledgerKey: 'ledger-stone',
+          battleId: 'battle-stone',
+          isSchoolNoviceAligned: true,
+          novicePathSchoolCode: 'stone',
+          noviceTargetRewardRarity: 'UNUSUAL',
+          rewardRuneRarity: 'UNUSUAL',
+        }),
+        createdAt: '2026-04-20T01:09:00.000Z',
+      },
+    ], '2026-04-20T03:00:00.000Z');
+
+    expect(report.verdictReasons.join(' ')).not.toContain('first_school_presented');
+    expect(report.verdictReasons.join(' ')).not.toContain('first_school_committed');
   });
 });
 

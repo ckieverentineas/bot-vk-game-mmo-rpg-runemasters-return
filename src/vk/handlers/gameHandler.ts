@@ -3,7 +3,11 @@ import type { Context } from 'vk-io';
 import type { AppServices } from '../../app/composition-root';
 import type { CraftRuneResultView } from '../../modules/runes/application/use-cases/CraftRune';
 import type { BattleActionResultView } from '../../modules/combat/application/use-cases/PerformBattleAction';
+import type { ExploreLocationReplayResult } from '../../modules/exploration/application/use-cases/ExploreLocation';
 import { getSchoolNovicePathDefinitionForEnemy } from '../../modules/player/domain/school-novice-path';
+import type { ReturnToAdventureReplayResult } from '../../modules/exploration/application/use-cases/ReturnToAdventure';
+import type { SkipTutorialReplayResult } from '../../modules/exploration/application/use-cases/SkipTutorial';
+import type { AcquisitionSummaryView } from '../../modules/player/application/read-models/acquisition-summary';
 import { buildBattleResultNextGoalView, buildPlayerNextGoalView } from '../../modules/player/application/read-models/next-goal';
 import { buildPlayerSchoolRecognitionView } from '../../modules/player/application/read-models/school-recognition';
 import { getEquippedRune } from '../../modules/player/domain/player-stats';
@@ -42,8 +46,9 @@ import {
 import { resolveCommandEnvelope } from '../router/commandRouter';
 
 type ReplyKeyboard = ReturnType<typeof createMainMenuKeyboard>;
-type BattleReplyState = BattleView | BattleActionResultView;
+type BattleReplyState = BattleView | BattleActionResultView | ExploreLocationReplayResult;
 type RuneHubReplyState = PlayerState | CraftRuneResultView;
+type TutorialRouteReplyState = PlayerState | SkipTutorialReplayResult | ReturnToAdventureReplayResult;
 
 const formatRuneCountLabel = (count: number): string => {
   const remainder10 = count % 10;
@@ -62,12 +67,23 @@ const formatRuneCountLabel = (count: number): string => {
 
 const normalizeBattleReplyState = (state: BattleReplyState): BattleActionResultView => (
   'battle' in state
-    ? state
+    ? {
+      battle: state.battle,
+      player: 'player' in state ? state.player ?? null : null,
+      acquisitionSummary: 'acquisitionSummary' in state ? state.acquisitionSummary ?? null : null,
+      ...('replayed' in state && state.replayed === true ? { replayed: true as const } : {}),
+    }
     : {
         battle: state,
         player: null,
         acquisitionSummary: null,
       }
+);
+
+const normalizeTutorialRouteReplyState = (state: TutorialRouteReplyState): { player: PlayerState; replayed: boolean } => (
+  'player' in state
+    ? { player: state.player, replayed: 'replayed' in state && state.replayed === true }
+    : { player: state, replayed: false }
 );
 
 const normalizeRuneHubReplyState = (state: RuneHubReplyState): CraftRuneResultView => (
@@ -141,15 +157,15 @@ export class GameHandler {
           return;
         }
         case gameCommands.skipTutorial: {
-          const player = await this.services.skipTutorial.execute(vkId, intentId ?? undefined, stateKey ?? undefined, intentSource);
-          await this.reply(ctx, renderReturnRecap(player, '🧭 Возвращение в приключения'), createMainMenuKeyboard(player));
-          await this.trackReturnRecapShown(player, 'skip_tutorial');
+          const result = normalizeTutorialRouteReplyState(await this.services.skipTutorial.execute(vkId, intentId ?? undefined, stateKey ?? undefined, intentSource));
+          await this.reply(ctx, renderReturnRecap(result.player, '🧭 Возвращение в приключения'), createMainMenuKeyboard(result.player));
+          await this.trackReturnRecapShown(result.player, 'skip_tutorial');
           return;
         }
         case gameCommands.returnToAdventure: {
-          const player = await this.services.returnToAdventure.execute(vkId, intentId ?? undefined, stateKey ?? undefined, intentSource);
-          await this.reply(ctx, renderReturnRecap(player, '🧭 Возвращение в приключения'), createMainMenuKeyboard(player));
-          await this.trackReturnRecapShown(player, 'return_to_adventure');
+          const result = normalizeTutorialRouteReplyState(await this.services.returnToAdventure.execute(vkId, intentId ?? undefined, stateKey ?? undefined, intentSource));
+          await this.reply(ctx, renderReturnRecap(result.player, '🧭 Возвращение в приключения'), createMainMenuKeyboard(result.player));
+          await this.trackReturnRecapShown(result.player, 'return_to_adventure');
           return;
         }
         case gameCommands.explore: {
@@ -448,6 +464,7 @@ export class GameHandler {
     await this.reply(ctx, renderBattle(battle, player ?? undefined, result.acquisitionSummary), createBattleResultKeyboard(battle, player ?? undefined));
 
     if (player) {
+      await this.trackFirstSchoolPresented(player, result.acquisitionSummary);
       await this.trackPostSessionNextGoalShown(player, battle);
     }
   }
@@ -544,6 +561,40 @@ export class GameHandler {
         enemyCode: battle.enemy.code,
         battleSchoolCode,
         isSchoolNoviceElite,
+      });
+    });
+  }
+
+  private async trackFirstSchoolPresented(
+    player: PlayerState,
+    acquisitionSummary: AcquisitionSummaryView | null | undefined,
+  ): Promise<void> {
+    const recognition = buildPlayerSchoolRecognitionView(player);
+    const selectedRune = player.runes[player.currentRuneIndex] ?? player.runes[0] ?? null;
+    const firstRuneSchoolCode = getSchoolDefinitionForArchetype(selectedRune?.archetypeCode)?.code ?? null;
+
+    const schoolPresentation = acquisitionSummary?.kind === 'school_trial_completed'
+      ? {
+        schoolCode: recognition?.schoolCode ?? null,
+        presentationReason: 'school_trial_completed' as const,
+      }
+      : acquisitionSummary?.kind === 'new_rune' && player.runes.length === 1
+        ? {
+          schoolCode: firstRuneSchoolCode,
+          presentationReason: 'first_rune_reward' as const,
+        }
+        : null;
+
+    const schoolCode = schoolPresentation?.schoolCode;
+    if (!schoolPresentation || !schoolCode) {
+      return;
+    }
+
+    await this.safeTrack(async () => {
+      await this.services.telemetry.firstSchoolPresented(player.userId, {
+        schoolCode,
+        presentationSurface: 'battle_result',
+        presentationReason: schoolPresentation.presentationReason,
       });
     });
   }

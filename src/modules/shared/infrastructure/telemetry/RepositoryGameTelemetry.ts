@@ -11,6 +11,13 @@ export class RepositoryGameTelemetry implements GameTelemetry {
     await this.log(userId, 'onboarding_started', payload);
   }
 
+  public async tutorialPathChosen(
+    userId: number,
+    payload: Parameters<GameTelemetry['tutorialPathChosen']>[1],
+  ): Promise<void> {
+    await this.log(userId, 'tutorial_path_chosen', payload);
+  }
+
   public async loadoutChanged(
     userId: number,
     payload: Parameters<GameTelemetry['loadoutChanged']>[1],
@@ -23,6 +30,20 @@ export class RepositoryGameTelemetry implements GameTelemetry {
     payload: Parameters<GameTelemetry['schoolNoviceEliteEncounterStarted']>[1],
   ): Promise<void> {
     await this.log(userId, 'school_novice_elite_encounter_started', payload);
+  }
+
+  public async firstSchoolPresented(
+    userId: number,
+    payload: Parameters<GameTelemetry['firstSchoolPresented']>[1],
+  ): Promise<void> {
+    await this.log(userId, 'first_school_presented', payload);
+  }
+
+  public async firstSchoolCommitted(
+    userId: number,
+    payload: Parameters<GameTelemetry['firstSchoolCommitted']>[1],
+  ): Promise<void> {
+    await this.log(userId, 'first_school_committed', payload);
   }
 
   public async schoolNoviceFollowUpActionTaken(

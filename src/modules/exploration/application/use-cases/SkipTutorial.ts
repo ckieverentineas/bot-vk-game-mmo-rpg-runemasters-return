@@ -2,26 +2,36 @@ import type { PlayerState } from '../../../../shared/types/game';
 import { resolveAdaptiveAdventureLocationLevel } from '../../../player/domain/player-stats';
 
 import { AppError } from '../../../../shared/domain/AppError';
+import { Logger } from '../../../../utils/logger';
 import { resolveCommandIntent, type CommandIntentSource } from '../../../shared/application/command-intent';
+import type { GameTelemetry } from '../../../shared/application/ports/GameTelemetry';
 import { requirePlayerByVkId } from '../../../shared/application/require-player';
 import type { GameRepository } from '../../../shared/application/ports/GameRepository';
 import { buildSkipTutorialIntentStateKey } from '../command-intent-state';
 
+export interface SkipTutorialReplayResult {
+  readonly player: PlayerState;
+  readonly replayed: true;
+}
+
 export class SkipTutorial {
-  public constructor(private readonly repository: GameRepository) {}
+  public constructor(
+    private readonly repository: GameRepository,
+    private readonly telemetry: GameTelemetry,
+  ) {}
 
   public async execute(
     vkId: number,
     intentId?: string,
     intentStateKey?: string,
     intentSource: CommandIntentSource = null,
-  ): Promise<PlayerState> {
+  ): Promise<PlayerState | SkipTutorialReplayResult> {
     const player = await requirePlayerByVkId(this.repository, vkId);
 
     if (intentId) {
       const replay = await this.repository.getCommandIntentResult(player.playerId, intentId);
       if (replay?.status === 'APPLIED' && replay.result) {
-        return replay.result;
+        return { player: replay.result, replayed: true };
       }
 
       if (replay?.status === 'PENDING') {
@@ -39,7 +49,7 @@ export class SkipTutorial {
       throw new AppError('stale_command_intent', 'Эта кнопка уже устарела. Обновите экран перед повтором команды.');
     }
 
-    return this.repository.saveExplorationState(player.playerId, {
+    const updatedPlayer = await this.repository.saveExplorationState(player.playerId, {
       locationLevel: resolveAdaptiveAdventureLocationLevel(player),
       highestLocationLevel: player.highestLocationLevel,
       tutorialState: player.tutorialState === 'ACTIVE' ? 'SKIPPED' : player.tutorialState,
@@ -56,5 +66,19 @@ export class SkipTutorial {
       expectedDefeatStreak: player.defeatStreak,
       expectedTutorialState: player.tutorialState,
     });
+
+    if (player.tutorialState === 'ACTIVE') {
+      try {
+        await this.telemetry.tutorialPathChosen(updatedPlayer.userId, {
+          entrySurface: 'skip_tutorial',
+          choice: 'skip_tutorial',
+          tutorialState: player.tutorialState,
+        });
+      } catch (error) {
+        Logger.warn('Telemetry logging failed', error);
+      }
+    }
+
+    return updatedPlayer;
   }
 }

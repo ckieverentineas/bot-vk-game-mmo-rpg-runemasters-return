@@ -240,8 +240,8 @@ src/
 
 Shipped telemetry v1 не вводит отдельную analytics-platform и опирается на существующий `GameLog` rail через typed adapter [`RepositoryGameTelemetry`](src/modules/shared/infrastructure/telemetry/RepositoryGameTelemetry.ts:1).
 
-- application-owned события вроде `loadout_changed` и `onboarding_started` пишутся после committed mutation/use-case transition;
-- transport-owned shown-screen события вроде `return_recap_shown` и `post_session_next_goal_shown` пишутся только после реально отправленного экрана;
+- application-owned события вроде `onboarding_started`, `tutorial_path_chosen`, `first_school_committed` и `loadout_changed` пишутся после committed mutation/use-case transition;
+- transport-owned shown-screen события вроде `first_school_presented`, `return_recap_shown` и `post_session_next_goal_shown` пишутся только после реально отправленного экрана;
 - screen telemetry использует тот же canonical `next-goal` read-model, что и player-facing copy, чтобы telemetry и UX не расходились по смыслу.
 - release evidence для текущего vertical slice собирается отдельным tooling-командой [`npm run release:evidence`](README.md), которая читает только ограниченный набор stable telemetry events и не превращает preflight в live-analytics зависимость.
 

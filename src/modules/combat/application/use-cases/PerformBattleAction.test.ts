@@ -111,6 +111,7 @@ describe('PerformBattleAction', () => {
       battle: replayedBattle,
       player: null,
       acquisitionSummary: null,
+      replayed: true,
     });
 
     expect(repository.getActiveBattle).not.toHaveBeenCalled();
@@ -130,6 +131,7 @@ describe('PerformBattleAction', () => {
       battle: replayedBattle,
       player: null,
       acquisitionSummary: null,
+      replayed: true,
     });
 
     expect(repository.getActiveBattle).not.toHaveBeenCalled();
@@ -155,7 +157,10 @@ describe('PerformBattleAction', () => {
     } as unknown as GameRepository;
     const useCase = new PerformBattleAction(repository, createRandom());
 
-    await expect(useCase.execute(1001, 'ATTACK', 'intent-battle-keep-summary', 'state-battle-keep-summary', 'payload')).resolves.toEqual(replayedResult);
+    await expect(useCase.execute(1001, 'ATTACK', 'intent-battle-keep-summary', 'state-battle-keep-summary', 'payload')).resolves.toEqual({
+      ...replayedResult,
+      replayed: true,
+    });
 
     expect(repository.getActiveBattle).not.toHaveBeenCalled();
   });

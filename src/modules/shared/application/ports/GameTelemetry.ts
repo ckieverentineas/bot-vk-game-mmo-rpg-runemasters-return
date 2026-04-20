@@ -9,6 +9,14 @@ export interface GameTelemetry {
       readonly tutorialState: TutorialState;
     },
   ): Promise<void>;
+  tutorialPathChosen(
+    userId: number,
+    payload: {
+      readonly entrySurface: 'location' | 'skip_tutorial' | 'return_to_adventure';
+      readonly choice: 'continue_tutorial' | 'skip_tutorial';
+      readonly tutorialState: TutorialState;
+    },
+  ): Promise<void>;
   loadoutChanged(
     userId: number,
     payload: {
@@ -29,6 +37,23 @@ export interface GameTelemetry {
       readonly locationLevel: number;
       readonly targetRewardRarity: RuneRarity;
       readonly nextGoalType: 'hunt_school_elite';
+    },
+  ): Promise<void>;
+  firstSchoolPresented(
+    userId: number,
+    payload: {
+      readonly schoolCode: string;
+      readonly presentationSurface: 'battle_result';
+      readonly presentationReason: 'first_rune_reward' | 'school_trial_completed';
+    },
+  ): Promise<void>;
+  firstSchoolCommitted(
+    userId: number,
+    payload: {
+      readonly schoolCode: string;
+      readonly runeId: string;
+      readonly runeRarity: RuneRarity;
+      readonly commitSource: 'equip_current_rune';
     },
   ): Promise<void>;
   schoolNoviceFollowUpActionTaken(

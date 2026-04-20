@@ -16,6 +16,7 @@ export interface BattleActionResultView {
   readonly battle: BattleView;
   readonly player: PlayerState | null;
   readonly acquisitionSummary: AcquisitionSummaryView | null;
+  readonly replayed?: true;
 }
 
 export class PerformBattleAction {
@@ -57,7 +58,7 @@ export class PerformBattleAction {
         scopedIntent.intentStateKey,
       );
       if (replay?.status === 'APPLIED' && replay.result) {
-        return this.normalizeBattleResult(replay.result);
+        return this.normalizeBattleResult(replay.result, true);
       }
 
       if (replay?.status === 'PENDING') {
@@ -72,7 +73,7 @@ export class PerformBattleAction {
         [commandKey],
       );
       if (replay?.status === 'APPLIED' && replay.result) {
-        return this.normalizeBattleResult(replay.result);
+        return this.normalizeBattleResult(replay.result, true);
       }
 
       if (replay?.status === 'PENDING') {
@@ -138,16 +139,21 @@ export class PerformBattleAction {
     return result;
   }
 
-  private wrapBattleResult(battle: BattleView): BattleActionResultView {
+  private wrapBattleResult(battle: BattleView, replayed = false): BattleActionResultView {
     return {
       battle,
       player: null,
       acquisitionSummary: null,
+      ...(replayed ? { replayed: true as const } : {}),
     };
   }
 
-  private normalizeBattleResult(result: BattleActionResultView | BattleView): BattleActionResultView {
-    return 'battle' in result ? result : this.wrapBattleResult(result);
+  private normalizeBattleResult(result: BattleActionResultView | BattleView, replayed = false): BattleActionResultView {
+    if ('battle' in result) {
+      return replayed ? { ...result, replayed: true } : result;
+    }
+
+    return this.wrapBattleResult(result, replayed);
   }
 
   private async persistReplayResult(playerId: number, intentId: string | undefined, result: BattleActionResultView): Promise<void> {

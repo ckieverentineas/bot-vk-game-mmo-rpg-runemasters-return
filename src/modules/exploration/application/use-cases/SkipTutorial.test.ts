@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import type { PlayerState } from '../../../../shared/types/game';
+import type { GameTelemetry } from '../../../shared/application/ports/GameTelemetry';
 import type { GameRepository } from '../../../shared/application/ports/GameRepository';
 import { resolveAdaptiveAdventureLocationLevel } from '../../../player/domain/player-stats';
 import { buildSkipTutorialIntentStateKey } from '../command-intent-state';
@@ -51,6 +52,18 @@ const createPlayer = (overrides: Partial<PlayerState> = {}): PlayerState => ({
   ...overrides,
 });
 
+const createTelemetry = (): GameTelemetry => ({
+  onboardingStarted: vi.fn().mockResolvedValue(undefined),
+  tutorialPathChosen: vi.fn().mockResolvedValue(undefined),
+  loadoutChanged: vi.fn().mockResolvedValue(undefined),
+  schoolNoviceEliteEncounterStarted: vi.fn().mockResolvedValue(undefined),
+  firstSchoolPresented: vi.fn().mockResolvedValue(undefined),
+  firstSchoolCommitted: vi.fn().mockResolvedValue(undefined),
+  schoolNoviceFollowUpActionTaken: vi.fn().mockResolvedValue(undefined),
+  returnRecapShown: vi.fn().mockResolvedValue(undefined),
+  postSessionNextGoalShown: vi.fn().mockResolvedValue(undefined),
+});
+
 describe('SkipTutorial', () => {
   it('moves active tutorial players onto the adventure path and marks onboarding skipped', async () => {
     const player = createPlayer({ tutorialState: 'ACTIVE', locationLevel: 0 });
@@ -59,7 +72,8 @@ describe('SkipTutorial', () => {
       getCommandIntentResult: vi.fn(),
       saveExplorationState: vi.fn().mockResolvedValue(player),
     } as unknown as GameRepository;
-    const useCase = new SkipTutorial(repository);
+    const telemetry = createTelemetry();
+    const useCase = new SkipTutorial(repository, telemetry);
 
     await useCase.execute(player.vkId);
 
@@ -74,6 +88,11 @@ describe('SkipTutorial', () => {
         expectedTutorialState: 'ACTIVE',
       }),
     );
+    expect(telemetry.tutorialPathChosen).toHaveBeenCalledWith(player.userId, {
+      entrySurface: 'skip_tutorial',
+      choice: 'skip_tutorial',
+      tutorialState: 'ACTIVE',
+    });
   });
 
   it('keeps completed tutorial state unchanged on repeated skip command', async () => {
@@ -83,7 +102,8 @@ describe('SkipTutorial', () => {
       getCommandIntentResult: vi.fn(),
       saveExplorationState: vi.fn().mockResolvedValue(player),
     } as unknown as GameRepository;
-    const useCase = new SkipTutorial(repository);
+    const telemetry = createTelemetry();
+    const useCase = new SkipTutorial(repository, telemetry);
 
     await useCase.execute(player.vkId);
 
@@ -97,6 +117,7 @@ describe('SkipTutorial', () => {
         expectedTutorialState: 'COMPLETED',
       }),
     );
+    expect(telemetry.tutorialPathChosen).not.toHaveBeenCalled();
   });
 
   it('passes guarded exploration options when intent metadata is present', async () => {
@@ -106,7 +127,7 @@ describe('SkipTutorial', () => {
       getCommandIntentResult: vi.fn(),
       saveExplorationState: vi.fn().mockResolvedValue(player),
     } as unknown as GameRepository;
-    const useCase = new SkipTutorial(repository);
+    const useCase = new SkipTutorial(repository, createTelemetry());
     const stateKey = buildSkipTutorialIntentStateKey(player);
 
     await useCase.execute(player.vkId, 'intent-skip-1', stateKey, 'payload');
@@ -134,9 +155,9 @@ describe('SkipTutorial', () => {
       getCommandIntentResult: vi.fn().mockResolvedValue({ status: 'APPLIED', result: replayed }),
       saveExplorationState: vi.fn(),
     } as unknown as GameRepository;
-    const useCase = new SkipTutorial(repository);
+    const useCase = new SkipTutorial(repository, createTelemetry());
 
-    await expect(useCase.execute(1001, 'legacy-text:2000000001:1001:85:пропустить обучение', undefined, 'legacy_text')).resolves.toEqual(replayed);
+    await expect(useCase.execute(1001, 'legacy-text:2000000001:1001:85:пропустить обучение', undefined, 'legacy_text')).resolves.toEqual({ player: replayed, replayed: true });
 
     expect(repository.saveExplorationState).not.toHaveBeenCalled();
   });
@@ -148,9 +169,9 @@ describe('SkipTutorial', () => {
       getCommandIntentResult: vi.fn().mockResolvedValue({ status: 'APPLIED', result: replayed }),
       saveExplorationState: vi.fn(),
     } as unknown as GameRepository;
-    const useCase = new SkipTutorial(repository);
+    const useCase = new SkipTutorial(repository, createTelemetry());
 
-    await expect(useCase.execute(1001, 'legacy-text:2000000001:1001:85:пропустить обучение', undefined, 'legacy_text')).resolves.toEqual(replayed);
+    await expect(useCase.execute(1001, 'legacy-text:2000000001:1001:85:пропустить обучение', undefined, 'legacy_text')).resolves.toEqual({ player: replayed, replayed: true });
 
     expect(repository.saveExplorationState).not.toHaveBeenCalled();
   });
@@ -162,9 +183,9 @@ describe('SkipTutorial', () => {
       getCommandIntentResult: vi.fn().mockResolvedValue({ status: 'APPLIED', result: replayed }),
       saveExplorationState: vi.fn(),
     } as unknown as GameRepository;
-    const useCase = new SkipTutorial(repository);
+    const useCase = new SkipTutorial(repository, createTelemetry());
 
-    await expect(useCase.execute(1001, 'intent-skip-1', 'state-skip-1', 'payload')).resolves.toEqual(replayed);
+    await expect(useCase.execute(1001, 'intent-skip-1', 'state-skip-1', 'payload')).resolves.toEqual({ player: replayed, replayed: true });
 
     expect(repository.saveExplorationState).not.toHaveBeenCalled();
   });
@@ -176,7 +197,7 @@ describe('SkipTutorial', () => {
       getCommandIntentResult: vi.fn(),
       saveExplorationState: vi.fn(),
     } as unknown as GameRepository;
-    const useCase = new SkipTutorial(repository);
+    const useCase = new SkipTutorial(repository, createTelemetry());
 
     await expect(useCase.execute(player.vkId, 'intent-skip-1', 'stale-state', 'payload')).rejects.toMatchObject({ code: 'stale_command_intent' });
     await expect(useCase.execute(player.vkId, undefined, undefined, 'legacy_text')).rejects.toMatchObject({ code: 'stale_command_intent' });
@@ -191,7 +212,7 @@ describe('SkipTutorial', () => {
       getCommandIntentResult: vi.fn(),
       saveExplorationState: vi.fn(),
     } as unknown as GameRepository;
-    const useCase = new SkipTutorial(repository);
+    const useCase = new SkipTutorial(repository, createTelemetry());
 
     await expect(useCase.execute(player.vkId)).rejects.toMatchObject({ code: 'battle_in_progress' });
 
@@ -205,10 +226,26 @@ describe('SkipTutorial', () => {
       getCommandIntentResult: vi.fn().mockResolvedValue({ status: 'PENDING' }),
       saveExplorationState: vi.fn(),
     } as unknown as GameRepository;
-    const useCase = new SkipTutorial(repository);
+    const useCase = new SkipTutorial(repository, createTelemetry());
 
     await expect(useCase.execute(player.vkId, 'legacy-text:2000000001:1001:85:пропустить обучение', undefined, 'legacy_text')).rejects.toMatchObject({ code: 'command_retry_pending' });
 
     expect(repository.saveExplorationState).not.toHaveBeenCalled();
+  });
+
+  it('does not fail the skip flow if telemetry logging throws after persistence', async () => {
+    const player = createPlayer({ tutorialState: 'ACTIVE', locationLevel: 0 });
+    const updatedPlayer = createPlayer({ tutorialState: 'SKIPPED', locationLevel: 1 });
+    const repository = {
+      findPlayerByVkId: vi.fn().mockResolvedValue(player),
+      getCommandIntentResult: vi.fn(),
+      saveExplorationState: vi.fn().mockResolvedValue(updatedPlayer),
+    } as unknown as GameRepository;
+    const telemetry = createTelemetry();
+    vi.mocked(telemetry.tutorialPathChosen).mockRejectedValueOnce(new Error('telemetry offline'));
+    const useCase = new SkipTutorial(repository, telemetry);
+
+    await expect(useCase.execute(player.vkId)).resolves.toEqual(updatedPlayer);
+    expect(repository.saveExplorationState).toHaveBeenCalled();
   });
 });

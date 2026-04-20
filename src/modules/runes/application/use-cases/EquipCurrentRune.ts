@@ -1,5 +1,6 @@
 import { AppError } from '../../../../shared/domain/AppError';
 import type { PlayerState } from '../../../../shared/types/game';
+import { Logger } from '../../../../utils/logger';
 import { buildPlayerNextGoalView } from '../../../player/application/read-models/next-goal';
 import { buildPlayerSchoolRecognitionView } from '../../../player/application/read-models/school-recognition';
 import type { GameTelemetry } from '../../../shared/application/ports/GameTelemetry';
@@ -96,33 +97,44 @@ export class EquipCurrentRune {
     });
 
     const nextRune = getEquippedRune(updatedPlayer, targetSlot);
-    if ((previousRune?.id ?? null) !== (nextRune?.id ?? null)) {
-      await this.telemetry.loadoutChanged(updatedPlayer.userId, {
-        changeType: targetSlot === 0 ? 'equip_primary' : 'equip_support',
-        beforeSchoolCode: getSchoolDefinitionForArchetype(previousRune?.archetypeCode)?.code ?? null,
-        afterSchoolCode: getSchoolDefinitionForArchetype(nextRune?.archetypeCode)?.code ?? null,
-        beforeRarity: previousRune?.rarity ?? null,
-        afterRarity: nextRune?.rarity ?? null,
-      });
-    }
-
     const recognitionAfter = buildPlayerSchoolRecognitionView(updatedPlayer);
-    if (
-      targetSlot === 0
-      && recognitionBefore
-      && !recognitionBefore.signEquipped
-      && recognitionAfter?.signEquipped
-      && nextGoalBefore.goalType === 'equip_school_sign'
-    ) {
-      await this.telemetry.schoolNoviceFollowUpActionTaken(updatedPlayer.userId, {
-        schoolCode: recognitionAfter.schoolCode,
-        currentGoalType: nextGoalBefore.goalType,
-        actionType: 'equip_school_sign',
-        signEquipped: recognitionAfter.signEquipped,
-        usedSchoolSign: true,
-        battleId: null,
-        enemyCode: null,
-      });
+
+    try {
+      if ((previousRune?.id ?? null) !== (nextRune?.id ?? null)) {
+        await this.telemetry.loadoutChanged(updatedPlayer.userId, {
+          changeType: targetSlot === 0 ? 'equip_primary' : 'equip_support',
+          beforeSchoolCode: getSchoolDefinitionForArchetype(previousRune?.archetypeCode)?.code ?? null,
+          afterSchoolCode: getSchoolDefinitionForArchetype(nextRune?.archetypeCode)?.code ?? null,
+          beforeRarity: previousRune?.rarity ?? null,
+          afterRarity: nextRune?.rarity ?? null,
+        });
+      }
+
+      if (
+        targetSlot === 0
+        && recognitionBefore?.signEquipped !== true
+        && recognitionAfter?.signEquipped
+        && ['equip_first_rune', 'equip_school_sign'].includes(nextGoalBefore.goalType)
+      ) {
+        await this.telemetry.firstSchoolCommitted(updatedPlayer.userId, {
+          schoolCode: recognitionAfter.schoolCode,
+          runeId: nextRune?.id ?? rune.id,
+          runeRarity: nextRune?.rarity ?? rune.rarity,
+          commitSource: 'equip_current_rune',
+        });
+
+        await this.telemetry.schoolNoviceFollowUpActionTaken(updatedPlayer.userId, {
+          schoolCode: recognitionAfter.schoolCode,
+          currentGoalType: nextGoalBefore.goalType,
+          actionType: 'equip_school_sign',
+          signEquipped: recognitionAfter.signEquipped,
+          usedSchoolSign: true,
+          battleId: null,
+          enemyCode: null,
+        });
+      }
+    } catch (error) {
+      Logger.warn('Telemetry logging failed', error);
     }
 
     return updatedPlayer;

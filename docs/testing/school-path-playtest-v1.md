@@ -151,23 +151,23 @@
 Проверить наличие и порядок:
 
 1. `school_novice_elite_encounter_started`
-2. `post_session_next_goal_shown` с `suggested_goal_type = hunt_school_elite`
+2. `post_session_next_goal_shown` с `suggestedGoalType = hunt_school_elite`
 3. `reward_claim_applied` с:
-   - `is_school_novice_aligned = true`
-   - `novice_target_reward_rarity = UNUSUAL`
-4. `school_novice_follow_up_action_taken` с `action_type = open_runes` или `equip_school_sign`
+   - `isSchoolNoviceAligned = true`
+   - `noviceTargetRewardRarity = UNUSUAL`
+4. `school_novice_follow_up_action_taken` с `actionType = open_runes` или `equip_school_sign`
 5. `loadout_changed` для установки first sign
 
 ### Continuation к miniboss
 
 Проверить наличие и порядок:
 
-1. `school_novice_follow_up_action_taken` с `action_type = start_next_battle`
-2. `post_session_next_goal_shown` с `suggested_goal_type = challenge_school_miniboss`
+1. `school_novice_follow_up_action_taken` с `actionType = start_next_battle`
+2. `post_session_next_goal_shown` с `suggestedGoalType = challenge_school_miniboss`
 3. `reward_claim_applied` для rare-награды с:
-   - `battle_id`
-   - `battle_school_code`
-   - `reward_rune_rarity = RARE`
+   - `battleId`
+   - `battleSchoolCode`
+   - `rewardRuneRarity = RARE`
 4. при необходимости следующий `school_novice_follow_up_action_taken` / `loadout_changed`, если игрок надел rare seal
 
 ### На что смотреть отдельно

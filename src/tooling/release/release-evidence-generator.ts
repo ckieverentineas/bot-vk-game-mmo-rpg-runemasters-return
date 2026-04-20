@@ -9,7 +9,10 @@ const trackedSchoolCodes = new Set(['ember', 'stone', 'gale', 'echo']);
 
 export const releaseEvidenceTrackedActions = [
   'onboarding_started',
+  'tutorial_path_chosen',
   'loadout_changed',
+  'first_school_presented',
+  'first_school_committed',
   'school_novice_elite_encounter_started',
   'school_novice_follow_up_action_taken',
   'return_recap_shown',
@@ -26,6 +29,11 @@ interface CounterAccumulator {
   readonly users: Set<number>;
 }
 
+interface FirstSchoolAccumulator {
+  readonly presentedUsers: Set<number>;
+  readonly committedUsers: Set<number>;
+}
+
 interface SchoolLoadoutAccumulator {
   readonly alignedRewardUsers: Set<number>;
   readonly openRunesAfterRewardUsers: Set<number>;
@@ -36,15 +44,15 @@ interface SchoolLoadoutAccumulator {
 }
 
 interface PostSessionAccumulator {
-  shownCount: number;
-  noviceEliteShownCount: number;
+  readonly shownUsers: Set<number>;
+  readonly noviceEliteShownUsers: Set<number>;
   readonly followUpUsers: Set<number>;
 }
 
 interface ReturnRecapAccumulator {
-  shownCount: number;
-  withoutEquippedRuneShownCount: number;
-  withEquippedRuneShownCount: number;
+  readonly shownUsers: Set<number>;
+  readonly withoutEquippedRuneShownUsers: Set<number>;
+  readonly withEquippedRuneShownUsers: Set<number>;
   readonly followUpUsers: Set<number>;
 }
 
@@ -64,6 +72,19 @@ export interface OnboardingCoverageRow {
   readonly tutorialState: string;
   readonly eventCount: number;
   readonly uniqueUsers: number;
+}
+
+export interface TutorialPathChoiceRow {
+  readonly choice: string;
+  readonly eventCount: number;
+  readonly uniqueUsers: number;
+}
+
+export interface FirstSchoolFunnelRow {
+  readonly schoolCode: string;
+  readonly schoolName: string;
+  readonly presentedUsers: number;
+  readonly committedUsers: number;
 }
 
 export interface ReleaseEvidenceLoadoutRow {
@@ -111,6 +132,8 @@ export interface ReleaseEvidenceReport {
   readonly verdictReasons: readonly string[];
   readonly actionRows: readonly ReleaseEvidenceActionRow[];
   readonly onboardingRows: readonly OnboardingCoverageRow[];
+  readonly tutorialPathRows: readonly TutorialPathChoiceRow[];
+  readonly firstSchoolRows: readonly FirstSchoolFunnelRow[];
   readonly schoolPathRows: readonly SchoolPathEvidenceRow[];
   readonly loadoutRows: readonly ReleaseEvidenceLoadoutRow[];
   readonly nextGoalRows: readonly ReleaseEvidenceNextGoalRow[];
@@ -121,7 +144,10 @@ export interface ReleaseEvidenceReport {
 
 const actionLabels: Readonly<Record<ReleaseEvidenceTrackedAction, string>> = {
   onboarding_started: '`onboarding_started`',
+  tutorial_path_chosen: '`tutorial_path_chosen`',
   loadout_changed: '`loadout_changed`',
+  first_school_presented: '`first_school_presented`',
+  first_school_committed: '`first_school_committed`',
   school_novice_elite_encounter_started: '`school_novice_elite_encounter_started`',
   school_novice_follow_up_action_taken: '`school_novice_follow_up_action_taken`',
   return_recap_shown: '`return_recap_shown`',
@@ -137,6 +163,11 @@ const createCounterAccumulator = (): CounterAccumulator => ({
   users: new Set<number>(),
 });
 
+const createFirstSchoolAccumulator = (): FirstSchoolAccumulator => ({
+  presentedUsers: new Set<number>(),
+  committedUsers: new Set<number>(),
+});
+
 const createSchoolLoadoutAccumulator = (): SchoolLoadoutAccumulator => ({
   alignedRewardUsers: new Set<number>(),
   openRunesAfterRewardUsers: new Set<number>(),
@@ -147,15 +178,15 @@ const createSchoolLoadoutAccumulator = (): SchoolLoadoutAccumulator => ({
 });
 
 const createPostSessionAccumulator = (): PostSessionAccumulator => ({
-  shownCount: 0,
-  noviceEliteShownCount: 0,
+  shownUsers: new Set<number>(),
+  noviceEliteShownUsers: new Set<number>(),
   followUpUsers: new Set<number>(),
 });
 
 const createReturnRecapAccumulator = (): ReturnRecapAccumulator => ({
-  shownCount: 0,
-  withoutEquippedRuneShownCount: 0,
-  withEquippedRuneShownCount: 0,
+  shownUsers: new Set<number>(),
+  withoutEquippedRuneShownUsers: new Set<number>(),
+  withEquippedRuneShownUsers: new Set<number>(),
   followUpUsers: new Set<number>(),
 });
 
@@ -202,6 +233,10 @@ const isNonUsualRarity = (value: unknown): boolean => (
 const schoolDefinitions = listSchoolDefinitions().filter((school) => trackedSchoolCodes.has(school.code));
 
 const resolveEvidenceVerdict = (
+  actionRows: readonly ReleaseEvidenceActionRow[],
+  tutorialPathRows: readonly TutorialPathChoiceRow[],
+  firstSchoolRows: readonly FirstSchoolFunnelRow[],
+  alignedRewardUserCount: number,
   schoolPathRows: readonly SchoolPathEvidenceRow[],
   loadoutRows: readonly ReleaseEvidenceLoadoutRow[],
   nextGoalRows: readonly ReleaseEvidenceNextGoalRow[],
@@ -209,7 +244,10 @@ const resolveEvidenceVerdict = (
   exploitSummary: ReleaseEvidenceExploitSummary,
 ): { verdict: ReleaseEvidenceVerdict; reasons: readonly string[] } => {
   const totalNoviceEliteUsers = schoolPathRows.reduce((sum, row) => sum + row.noviceEliteUsers, 0);
-  const totalAlignedRewardUsers = loadoutRows.reduce((sum, row) => sum + row.alignedRewardUsers, 0);
+  const onboardingStartedCount = actionRows.find((row) => row.action === 'onboarding_started')?.uniqueUsers ?? 0;
+  const tutorialPathChosenCount = tutorialPathRows.reduce((sum, row) => sum + row.uniqueUsers, 0);
+  const firstSchoolPresentedCount = firstSchoolRows.reduce((sum, row) => sum + row.presentedUsers, 0);
+  const firstSchoolCommittedCount = firstSchoolRows.reduce((sum, row) => sum + row.committedUsers, 0);
   const reasons: string[] = [];
 
   if (totalNoviceEliteUsers === 0) {
@@ -219,11 +257,29 @@ const resolveEvidenceVerdict = (
     };
   }
 
-  if (totalAlignedRewardUsers === 0) {
+  if (alignedRewardUserCount === 0) {
     return {
       verdict: 'insufficient_evidence',
       reasons: ['В логах нет aligned `UNUSUAL` reward для school novice path, поэтому первый school payoff пока не подтверждён.'],
     };
+  }
+
+  if (onboardingStartedCount > 0 && tutorialPathChosenCount === 0) {
+    reasons.push('Есть `onboarding_started`, но нет `tutorial_path_chosen`, поэтому выбор onboarding path пока не подтверждён.');
+  } else if (onboardingStartedCount > tutorialPathChosenCount) {
+    reasons.push('`tutorial_path_chosen` покрывает не всех игроков из `onboarding_started`, поэтому split tutorial vs skip ещё неполный.');
+  }
+
+  if (alignedRewardUserCount > 0 && firstSchoolPresentedCount === 0) {
+    reasons.push('Есть school payoff, но нет `first_school_presented`, поэтому первый player-facing school reveal пока не подтверждён.');
+  } else if (alignedRewardUserCount > firstSchoolPresentedCount) {
+    reasons.push('`first_school_presented` покрывает не все school payoff случаи, поэтому первое school reveal ещё видно не для каждого пути.');
+  }
+
+  if (firstSchoolPresentedCount > 0 && firstSchoolCommittedCount === 0) {
+    reasons.push('Есть `first_school_presented`, но нет `first_school_committed`, поэтому переход от reveal к реальной сборке пока не подтверждён.');
+  } else if (firstSchoolPresentedCount > firstSchoolCommittedCount) {
+    reasons.push('`first_school_committed` покрывает не все first-school reveal случаи, поэтому onboarding commit funnel ещё неполный.');
   }
 
   const missingAlignedRewardSchools = schoolPathRows.filter((row) => row.noviceEliteUsers > 0 && row.noviceRewardUsers === 0);
@@ -293,6 +349,8 @@ export const summarizeReleaseEvidence = (
     releaseEvidenceTrackedActions.map((action) => [action, createCounterAccumulator()]),
   );
   const onboardingAccumulators = new Map<string, CounterAccumulator>();
+  const tutorialPathAccumulators = new Map<string, CounterAccumulator>();
+  const firstSchoolAccumulators = new Map(schoolDefinitions.map((school) => [school.code, createFirstSchoolAccumulator()]));
   const schoolLoadoutAccumulators = new Map(schoolDefinitions.map((school) => [school.code, createSchoolLoadoutAccumulator()]));
   const postSessionAccumulators = new Map<string, PostSessionAccumulator>();
   const returnRecapAccumulators = new Map<string, ReturnRecapAccumulator>();
@@ -303,6 +361,10 @@ export const summarizeReleaseEvidence = (
   const duplicateRewardBattleIdCounts = new Map<string, number>();
   const staleActionRejectedUsers = new Set<number>();
   const staleActionRejectedBattles = new Set<string>();
+  const tutorialPathByUser = new Map<number, string>();
+  const alignedRewardUsers = new Set<number>();
+  const firstSchoolPresentedUsers = new Set<number>();
+  const firstSchoolCommittedUsers = new Set<number>();
   const uniqueUsers = new Set<number>();
   let windowStart: string | null = null;
   let windowEnd: string | null = null;
@@ -408,6 +470,35 @@ export const summarizeReleaseEvidence = (
       continue;
     }
 
+    if (entry.action === 'tutorial_path_chosen') {
+      if (!tutorialPathByUser.has(entry.userId)) {
+        tutorialPathByUser.set(entry.userId, normalizeTextField(details.choice) ?? 'unknown');
+      }
+      continue;
+    }
+
+    if (entry.action === 'first_school_presented') {
+      if (!firstSchoolPresentedUsers.has(entry.userId)) {
+        const schoolCode = normalizeSchoolCode(details.schoolCode);
+        if (schoolCode) {
+          firstSchoolAccumulators.get(schoolCode)!.presentedUsers.add(entry.userId);
+          firstSchoolPresentedUsers.add(entry.userId);
+        }
+      }
+      continue;
+    }
+
+    if (entry.action === 'first_school_committed') {
+      if (!firstSchoolCommittedUsers.has(entry.userId)) {
+        const schoolCode = normalizeSchoolCode(details.schoolCode);
+        if (schoolCode) {
+          firstSchoolAccumulators.get(schoolCode)!.committedUsers.add(entry.userId);
+          firstSchoolCommittedUsers.add(entry.userId);
+        }
+      }
+      continue;
+    }
+
     if (entry.action === 'reward_claim_applied') {
       const ledgerKey = normalizeTextField(details.ledgerKey);
       if (ledgerKey) {
@@ -423,6 +514,7 @@ export const summarizeReleaseEvidence = (
       if (details.isSchoolNoviceAligned === true && noviceSchoolCode && details.noviceTargetRewardRarity === 'UNUSUAL') {
         const accumulator = schoolLoadoutAccumulators.get(noviceSchoolCode)!;
         accumulator.alignedRewardUsers.add(entry.userId);
+        alignedRewardUsers.add(entry.userId);
         rewardUnlockedByUserSchool.add(createUserSchoolKey(entry.userId, noviceSchoolCode));
       }
 
@@ -484,9 +576,9 @@ export const summarizeReleaseEvidence = (
     if (entry.action === 'post_session_next_goal_shown') {
       const goalType = normalizeTextField(details.suggestedGoalType) ?? 'unknown';
       const accumulator = postSessionAccumulators.get(goalType) ?? createPostSessionAccumulator();
-      accumulator.shownCount += 1;
+      accumulator.shownUsers.add(entry.userId);
       if (details.isSchoolNoviceElite === true) {
-        accumulator.noviceEliteShownCount += 1;
+        accumulator.noviceEliteShownUsers.add(entry.userId);
       }
       postSessionAccumulators.set(goalType, accumulator);
 
@@ -499,11 +591,11 @@ export const summarizeReleaseEvidence = (
     if (entry.action === 'return_recap_shown') {
       const nextStepType = normalizeTextField(details.nextStepType) ?? 'unknown';
       const accumulator = returnRecapAccumulators.get(nextStepType) ?? createReturnRecapAccumulator();
-      accumulator.shownCount += 1;
+      accumulator.shownUsers.add(entry.userId);
       if (details.hasEquippedRune === true) {
-        accumulator.withEquippedRuneShownCount += 1;
+        accumulator.withEquippedRuneShownUsers.add(entry.userId);
       } else {
-        accumulator.withoutEquippedRuneShownCount += 1;
+        accumulator.withoutEquippedRuneShownUsers.add(entry.userId);
       }
       returnRecapAccumulators.set(nextStepType, accumulator);
 
@@ -547,6 +639,37 @@ export const summarizeReleaseEvidence = (
       return left.tutorialState.localeCompare(right.tutorialState);
     });
 
+  for (const [userId, choice] of tutorialPathByUser.entries()) {
+    const accumulator = tutorialPathAccumulators.get(choice) ?? createCounterAccumulator();
+    accumulator.eventCount += 1;
+    accumulator.users.add(userId);
+    tutorialPathAccumulators.set(choice, accumulator);
+  }
+
+  const tutorialPathRows = [...tutorialPathAccumulators.entries()]
+    .map(([choice, accumulator]) => ({
+      choice,
+      eventCount: accumulator.eventCount,
+      uniqueUsers: accumulator.users.size,
+    } satisfies TutorialPathChoiceRow))
+    .sort((left, right) => {
+      if (right.eventCount !== left.eventCount) {
+        return right.eventCount - left.eventCount;
+      }
+
+      return left.choice.localeCompare(right.choice);
+    });
+
+  const firstSchoolRows = schoolDefinitions.map((school) => {
+    const accumulator = firstSchoolAccumulators.get(school.code)!;
+    return {
+      schoolCode: school.code,
+      schoolName: school.name,
+      presentedUsers: accumulator.presentedUsers.size,
+      committedUsers: accumulator.committedUsers.size,
+    } satisfies FirstSchoolFunnelRow;
+  });
+
   const schoolPathRows = summarizeSchoolPathEvidence(sortedEntries);
   const loadoutRows = schoolDefinitions.map((school) => {
     const accumulator = schoolLoadoutAccumulators.get(school.code)!;
@@ -565,8 +688,8 @@ export const summarizeReleaseEvidence = (
   const nextGoalRows = [...postSessionAccumulators.entries()]
     .map(([goalType, accumulator]) => ({
       goalType,
-      shownCount: accumulator.shownCount,
-      noviceEliteShownCount: accumulator.noviceEliteShownCount,
+      shownCount: accumulator.shownUsers.size,
+      noviceEliteShownCount: accumulator.noviceEliteShownUsers.size,
       followUpUsers: accumulator.followUpUsers.size,
     } satisfies ReleaseEvidenceNextGoalRow))
     .sort((left, right) => {
@@ -580,9 +703,9 @@ export const summarizeReleaseEvidence = (
   const returnRecapRows = [...returnRecapAccumulators.entries()]
     .map(([nextStepType, accumulator]) => ({
       nextStepType,
-      shownCount: accumulator.shownCount,
-      withoutEquippedRuneShownCount: accumulator.withoutEquippedRuneShownCount,
-      withEquippedRuneShownCount: accumulator.withEquippedRuneShownCount,
+      shownCount: accumulator.shownUsers.size,
+      withoutEquippedRuneShownCount: accumulator.withoutEquippedRuneShownUsers.size,
+      withEquippedRuneShownCount: accumulator.withEquippedRuneShownUsers.size,
       followUpUsers: accumulator.followUpUsers.size,
     } satisfies ReleaseEvidenceReturnRecapRow))
     .sort((left, right) => {
@@ -607,15 +730,27 @@ export const summarizeReleaseEvidence = (
     staleActionRejectedBattles: staleActionRejectedBattles.size,
   } satisfies ReleaseEvidenceExploitSummary;
 
-  const verdictResult = resolveEvidenceVerdict(schoolPathRows, loadoutRows, nextGoalRows, returnRecapRows, exploitSummary);
+  const verdictResult = resolveEvidenceVerdict(actionRows, tutorialPathRows, firstSchoolRows, alignedRewardUsers.size, schoolPathRows, loadoutRows, nextGoalRows, returnRecapRows, exploitSummary);
   const onboardingStartedRow = actionRows.find((row) => row.action === 'onboarding_started');
+  const tutorialPathChosenRow = actionRows.find((row) => row.action === 'tutorial_path_chosen');
+  const firstSchoolPresentedRow = actionRows.find((row) => row.action === 'first_school_presented');
+  const firstSchoolCommittedRow = actionRows.find((row) => row.action === 'first_school_committed');
   const totalNoviceEliteUsers = schoolPathRows.reduce((sum, row) => sum + row.noviceEliteUsers, 0);
   const confidenceNotes = [
-    'Onboarding funnel остаётся частичным: в runtime ещё нет `first_school_presented`, `first_school_committed` и `tutorial_path_chosen`.',
+    'Onboarding funnel всё ещё читается как lightweight evidence layer: путь обучения, первое school reveal и первый commit считаются по earliest-per-user событию без session-level stitching.',
     'Return recap follow-up считается только по явно сопоставленному `school_novice_follow_up_action_taken`, а не по полноценному session-link.',
     'Экономика не попадает в этот отчёт, потому что `economy_transaction_committed` ещё не входит в текущий shipped telemetry baseline.',
     ...(onboardingStartedRow && onboardingStartedRow.eventCount === 0
       ? ['В текущем окне нет `onboarding_started`, поэтому onboarding clarity можно читать только как coverage-gap, а не как полноценный funnel.']
+      : []),
+    ...(tutorialPathChosenRow && tutorialPathChosenRow.eventCount === 0
+      ? ['В текущем окне нет `tutorial_path_chosen`, поэтому split between continue/skip path пока не виден.']
+      : []),
+    ...(firstSchoolPresentedRow && firstSchoolPresentedRow.eventCount === 0
+      ? ['В текущем окне нет `first_school_presented`, поэтому первый player-facing school reveal пока не подтверждён telemetry baseline.']
+      : []),
+    ...(firstSchoolCommittedRow && firstSchoolCommittedRow.eventCount === 0
+      ? ['В текущем окне нет `first_school_committed`, поэтому переход от reveal к реальной build identity пока не подтверждён telemetry baseline.']
       : []),
     ...(totalNoviceEliteUsers < schoolDefinitions.length
       ? ['По school-first funnel пока меньше одного полного прогона на каждую стартовую школу, поэтому итог нужно читать как предварительный evidence pass.']
@@ -633,6 +768,8 @@ export const summarizeReleaseEvidence = (
     verdictReasons: verdictResult.reasons,
     actionRows,
     onboardingRows,
+    tutorialPathRows,
+    firstSchoolRows,
     schoolPathRows,
     loadoutRows,
     nextGoalRows,
@@ -686,7 +823,17 @@ export const buildReleaseEvidenceMarkdown = (report: ReleaseEvidenceReport): str
       report.onboardingRows.map((row) => [row.tutorialState, row.eventCount, row.uniqueUsers]),
     ),
     '',
-    '- Этот блок пока показывает только coverage по `onboarding_started`; полноценный onboarding funnel ещё не закрыт текущей instrumentation baseline.',
+    ...buildTable(
+      ['Path choice', 'Событий', 'Уникальных игроков'],
+      report.tutorialPathRows.map((row) => [row.choice, row.eventCount, row.uniqueUsers]),
+    ),
+    '',
+    ...buildTable(
+      ['Школа', 'First presented', 'First committed'],
+      report.firstSchoolRows.map((row) => [row.schoolName, row.presentedUsers, row.committedUsers]),
+    ),
+    '',
+    '- Этот блок собирает onboarding funnel как lightweight evidence layer: старт, выбор пути, первый school reveal и первый commit в сборку.',
     '',
     '## School payoff funnel',
     '',

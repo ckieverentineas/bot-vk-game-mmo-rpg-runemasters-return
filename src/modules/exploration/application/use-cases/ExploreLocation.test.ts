@@ -156,14 +156,40 @@ const createRandom = (): GameRandom => ({
 
 const createTelemetry = (): GameTelemetry => ({
   onboardingStarted: vi.fn().mockResolvedValue(undefined),
+  tutorialPathChosen: vi.fn().mockResolvedValue(undefined),
   loadoutChanged: vi.fn().mockResolvedValue(undefined),
   schoolNoviceEliteEncounterStarted: vi.fn().mockResolvedValue(undefined),
+  firstSchoolPresented: vi.fn().mockResolvedValue(undefined),
+  firstSchoolCommitted: vi.fn().mockResolvedValue(undefined),
   schoolNoviceFollowUpActionTaken: vi.fn().mockResolvedValue(undefined),
   returnRecapShown: vi.fn().mockResolvedValue(undefined),
   postSessionNextGoalShown: vi.fn().mockResolvedValue(undefined),
 });
 
 describe('ExploreLocation', () => {
+  it('logs continue_tutorial when the player starts the intro battle', async () => {
+    const player = createPlayer({ tutorialState: 'ACTIVE', locationLevel: 0, highestLocationLevel: 0, victories: 0, victoryStreak: 0 });
+    const battle = createBattle({ locationLevel: 0, biomeCode: 'initium' });
+    const repository = {
+      findPlayerByVkId: vi.fn().mockResolvedValue(player),
+      getCommandIntentResult: vi.fn().mockResolvedValue(null),
+      getActiveBattle: vi.fn().mockResolvedValue(null),
+      findBiomeForLocationLevel: vi.fn().mockResolvedValue(createBiome()),
+      listMobTemplatesForBiome: vi.fn().mockResolvedValue([createMobTemplate()]),
+      createBattle: vi.fn().mockResolvedValue(battle),
+    } as unknown as GameRepository;
+    const telemetry = createTelemetry();
+    const useCase = new ExploreLocation(repository, createRandom(), telemetry);
+
+    await useCase.execute(player.vkId, 'intent-explore-tutorial-1', buildExploreLocationIntentStateKey(player), 'payload');
+
+    expect(telemetry.tutorialPathChosen).toHaveBeenCalledWith(player.userId, {
+      entrySurface: 'location',
+      choice: 'continue_tutorial',
+      tutorialState: 'ACTIVE',
+    });
+  });
+
   it('passes guarded createBattle options when payload intent metadata is present', async () => {
     const player = createPlayer();
     const repository = {
@@ -211,7 +237,7 @@ describe('ExploreLocation', () => {
     } as unknown as GameRepository;
     const useCase = new ExploreLocation(repository, createRandom());
 
-    await expect(useCase.execute(1001, 'legacy-text:2000000001:1001:91:исследовать', undefined, 'legacy_text')).resolves.toEqual(replayedBattle);
+    await expect(useCase.execute(1001, 'legacy-text:2000000001:1001:91:исследовать', undefined, 'legacy_text')).resolves.toEqual({ battle: replayedBattle, replayed: true });
 
     expect(repository.getActiveBattle).not.toHaveBeenCalled();
     expect(repository.createBattle).not.toHaveBeenCalled();
@@ -812,7 +838,7 @@ describe('ExploreLocation', () => {
     const useCase = new ExploreLocation(repository, createRandom());
 
     await expect(useCase.execute(1001, 'intent-explore-replay', 'stale-state', 'payload')).resolves.toEqual(recoveredBattle);
-    await expect(useCase.execute(1001, 'intent-explore-replay', 'stale-state', 'payload')).resolves.toEqual(recoveredBattle);
+    await expect(useCase.execute(1001, 'intent-explore-replay', 'stale-state', 'payload')).resolves.toEqual({ battle: recoveredBattle, replayed: true });
 
     expect(repository.saveBattle).toHaveBeenCalledTimes(1);
     expect(repository.getActiveBattle).toHaveBeenCalledTimes(1);
