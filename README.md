@@ -46,6 +46,7 @@ Runemasters Return — VK MMO RPG на TypeScript с модульным игро
 - `Прорицание` теперь тоже доведено до полного раннего пути: `Слепой авгур -> первый знак школы -> Хранитель предзнамений -> первая rare-печать`, без новой боевой системы поверх уже существующих enemy intent rails;
 - versioned platform contracts для боевой рунной сборки и reward claims: `LoadoutSnapshot`, `RewardIntent`, `RewardLedger`;
 - player-state hydration теперь тоже проходит через compatibility-safe слой с current / legacy / future fixtures, так что persisted player state меньше зависит от ad-hoc fallback'ов при реэнтри и rollback-сценариях;
+- active battle теперь даёт короткий `combat clarity` блок: компактное состояние боя и school-aware tactical hint, чтобы игрок понимал не только цифры, но и следующий осмысленный ответ прямо на своём ходу;
 - exact-once reward ledger и canonical battle finalization защищают победную награду от replay/reroll по повторным входящим событиям;
 - battle mutation revision защищает активный бой от stale overwrite при спаме и transport retry;
 - versioned `BattleSnapshot` и checked-in compatibility fixtures страхуют save/load battle state перед будущими миграциями;

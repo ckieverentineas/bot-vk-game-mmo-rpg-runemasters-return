@@ -69,6 +69,7 @@
     - [x] Довести Прорицание до первого полного раннего school path по уже доказанному шаблону без нового combat runtime.
     - [x] Добавить tooling-отчёт по school-first evidence funnel, чтобы playtest baseline по 4 школам собирался в одном markdown-срезе.
   - [x] Ясно показывать, что именно игрок получил от новой редкости, новой руны или нового unlock'а.
+  - [x] Дать compact combat clarity block на активном ходу: текущее состояние боя + school-aware hint без новой боевой системы.
   - [ ] Доказать через playtests и telemetry, что первый school payoff приходит быстро и читаемо.
   - [ ] Не расширять scope в social / PvP / live-ops, пока этот slice не доказан.
 

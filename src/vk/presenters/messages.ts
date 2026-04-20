@@ -14,6 +14,7 @@ import {
   resolveNextSchoolMasteryThreshold,
 } from '../../modules/player/domain/school-mastery';
 import { type AcquisitionSummaryView } from '../../modules/player/application/read-models/acquisition-summary';
+import { buildBattleClarityView } from '../../modules/combat/application/read-models/battle-clarity';
 import {
   buildBattleResultNextGoalView,
   buildPlayerNextGoalView,
@@ -557,6 +558,7 @@ const renderBattleNextGoal = (battle: BattleView, player?: PlayerState): string[
 
 export const renderBattle = (battle: BattleView, player?: PlayerState, acquisitionSummary?: AcquisitionSummaryView | null): string => {
   const log = [...battle.log].slice(-3).reverse().join('\n');
+  const clarity = buildBattleClarityView(battle);
   const activeAbility = battle.player.runeLoadout?.activeAbility ?? null;
   const enemyIntentLine = renderBattleEnemyIntent(battle);
   const runeSkillReady = !!activeAbility
@@ -604,6 +606,8 @@ export const renderBattle = (battle: BattleView, player?: PlayerState, acquisiti
     battleStateLine,
     ...(nextStepLine ? [nextStepLine.trim()] : []),
     ...(enemyIntentLine ? [enemyIntentLine] : []),
+    ...(battle.status === 'ACTIVE' ? [clarity.stateLine] : []),
+    ...(battle.status === 'ACTIVE' && clarity.schoolHintLine ? [clarity.schoolHintLine] : []),
     renderBattleRuneState(battle),
     '',
     ...(battle.status === 'ACTIVE' && battle.turnOwner === 'PLAYER' ? [renderBattleActionState(battle), ''] : []),

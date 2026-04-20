@@ -559,6 +559,79 @@ describe('messages school-first onboarding framing', () => {
     expect(message).toContain('пока не даёт вторую боевую кнопку');
   });
 
+  it('shows a compact combat clarity state line during the active player turn', () => {
+    const message = renderBattle(createBattle({
+      status: 'ACTIVE',
+      result: null,
+      rewards: null,
+      enemy: {
+        ...createBattle().enemy,
+        currentHealth: 3,
+        intent: {
+          code: 'HEAVY_STRIKE',
+          title: 'Тяжёлый удар',
+          description: 'Следующий удар будет сильнее.',
+          bonusAttack: 2,
+        },
+      },
+      player: {
+        ...createBattle().player,
+        currentHealth: 6,
+        guardPoints: 3,
+        runeLoadout: {
+          runeId: 'rune-1',
+          runeName: 'Руна Пламени',
+          archetypeCode: 'ember',
+          archetypeName: 'Штурм',
+          schoolCode: 'ember',
+          passiveAbilityCodes: ['ember_heart'],
+          activeAbility: {
+            code: 'ember_pulse',
+            name: 'Импульс углей',
+            manaCost: 3,
+            cooldownTurns: 2,
+            currentCooldown: 1,
+          },
+        },
+      },
+    }));
+
+    expect(message).toContain('📌 Сейчас: вы 6/8 HP · 4/4 маны · guard 3 | враг 3/6 HP · враг готовит тяжёлый удар.');
+    expect(message).toContain('🔥 Пламя: враг уже просел');
+  });
+
+  it('shows an echo-specific combat clarity hint around revealed intent', () => {
+    const message = renderBattle(createBattle({
+      status: 'ACTIVE',
+      result: null,
+      rewards: null,
+      enemy: {
+        ...createBattle().enemy,
+        intent: {
+          code: 'GUARD_BREAK',
+          title: 'Guard-break',
+          description: 'Следующий удар хуже проходит через защиту.',
+          bonusAttack: 1,
+          shattersGuard: true,
+        },
+      },
+      player: {
+        ...createBattle().player,
+        runeLoadout: {
+          runeId: 'rune-1',
+          runeName: 'Руна Прорицания',
+          archetypeCode: 'echo',
+          archetypeName: 'Провидец',
+          schoolCode: 'echo',
+          passiveAbilityCodes: ['echo_mind'],
+          activeAbility: null,
+        },
+      },
+    }));
+
+    expect(message).toContain('🧠 Прорицание: раскрытая угроза даёт лучшее окно для точного ответа');
+  });
+
   it('shows an impact recap block in battle result when a reward changes the build', () => {
     const message = renderBattle(createBattle(), createPlayer({
       tutorialState: 'SKIPPED',
