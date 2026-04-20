@@ -46,6 +46,12 @@
 - school ↔ archetype wiring valid;
 - player-facing copy fields non-empty;
 - starter school package can be referenced by onboarding / rune / return presenters.
+- shipped 4-school baseline must also have:
+  - novice path definition;
+  - novice enemy hook;
+  - school miniboss continuation;
+  - starter payoff resolvable through ability package;
+  - reward/chase hook that survives validation without fallback assumptions.
 
 ### Enemies
 
@@ -95,5 +101,5 @@
 
 ## Next step after v1
 
-- add package completeness validators for school packages first;
+- expand completeness validators beyond school packages only after the 4-school baseline is stable;
 - only expand to encounter/quest/season rules when those systems have runtime contracts.

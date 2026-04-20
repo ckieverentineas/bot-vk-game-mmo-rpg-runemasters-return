@@ -70,6 +70,8 @@ const novicePathDefinitions: readonly SchoolNovicePathDefinition[] = [
   },
 ];
 
+export const listSchoolNovicePathDefinitions = (): readonly SchoolNovicePathDefinition[] => novicePathDefinitions;
+
 const rarityOrder: readonly RuneRarity[] = ['USUAL', 'UNUSUAL', 'RARE', 'EPIC', 'LEGENDARY', 'MYTHICAL'];
 
 const resolveRarityIndex = (rarity: RuneRarity): number => rarityOrder.indexOf(rarity);

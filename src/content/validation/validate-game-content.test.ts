@@ -188,4 +188,46 @@ describe('validateGameContent', () => {
       )),
     ).toBe(true);
   });
+
+  it('ломает validation, если shipped school package теряет school miniboss continuation', () => {
+    const input = cloneValidationInput();
+
+    const report = validateGameContent({
+      ...input,
+      mobs: input.mobs.filter((mob) => mob.code !== 'squall-lord'),
+    });
+
+    expect(report.isValid).toBe(false);
+    expect(
+      report.issues.some(({ scope, message }) => (
+        scope === 'school-package:gale'
+        && message.includes('miniboss enemy squall-lord')
+      )),
+    ).toBe(true);
+  });
+
+  it('ломает validation, если starter archetype не даёт school payoff через ability package', () => {
+    const input = cloneValidationInput();
+
+    const report = validateGameContent({
+      ...input,
+      runeArchetypes: input.runeArchetypes.map((archetype) => (
+        archetype.code === 'echo'
+          ? {
+              ...archetype,
+              passiveAbilityCodes: [],
+              activeAbilityCodes: [],
+            }
+          : archetype
+      )),
+    });
+
+    expect(report.isValid).toBe(false);
+    expect(
+      report.issues.some(({ scope, message }) => (
+        scope === 'school-package:echo'
+        && message.includes('ability package')
+      )),
+    ).toBe(true);
+  });
 });

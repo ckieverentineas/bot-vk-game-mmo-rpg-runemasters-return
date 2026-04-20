@@ -1,6 +1,7 @@
 import { env } from '../../config/env';
 import { gameBalance } from '../../config/game-balance';
 import type { MaterialField, RuneRarity } from '../../shared/types/game';
+import { listSchoolNovicePathDefinitions } from '../../modules/player/domain/school-novice-path';
 import { abilitySeed, runeArchetypeSeed, schoolSeed, type AbilitySeedDefinition, type RuneArchetypeSeedDefinition, type SchoolSeedDefinition } from '../runes';
 import { biomeSeed, mobSeed, type BiomeSeedDefinition, type MobTemplateSeedDefinition } from '../world';
 
@@ -502,6 +503,84 @@ const validateRuneContent = (
   });
 };
 
+const validateStarterSchoolPackageCompleteness = (
+  issues: GameContentValidationIssue[],
+  schools: readonly SchoolSeedDefinition[],
+  abilities: readonly AbilitySeedDefinition[],
+  runeArchetypes: readonly RuneArchetypeSeedDefinition[],
+  mobs: readonly MobTemplateSeedDefinition[],
+): void => {
+  const novicePaths = new Map(listSchoolNovicePathDefinitions().map((entry) => [entry.schoolCode, entry]));
+  const archetypesByCode = new Map(runeArchetypes.map((entry) => [entry.code, entry]));
+  const abilitiesByCode = new Map(abilities.map((entry) => [entry.code, entry]));
+  const mobsByCode = new Map(mobs.map((entry) => [entry.code, entry]));
+
+  schools.forEach((school) => {
+    const scope = `school-package:${school.code}`;
+    const novicePath = novicePaths.get(school.code) ?? null;
+    const starterArchetype = archetypesByCode.get(school.starterArchetypeCode) ?? null;
+
+    if (!novicePath) {
+      pushIssue(issues, scope, 'Для стартовой школы не найден school novice path.');
+      return;
+    }
+
+    if (novicePath.forcedArchetypeCode !== school.starterArchetypeCode) {
+      pushIssue(issues, scope, 'forcedArchetypeCode novice path должен совпадать со starter archetype школы.');
+    }
+
+    if (novicePath.rewardRarity !== 'UNUSUAL') {
+      pushIssue(issues, scope, 'Первый school payoff должен вести к UNUSUAL руне.');
+    }
+
+    if (novicePath.minibossRewardRarity !== 'RARE') {
+      pushIssue(issues, scope, 'Первый school miniboss payoff должен вести к RARE руне.');
+    }
+
+    const noviceEnemy = mobsByCode.get(novicePath.enemyCode) ?? null;
+    if (!noviceEnemy) {
+      pushIssue(issues, scope, `Для школы не найден novice enemy ${novicePath.enemyCode}.`);
+    } else {
+      if (!noviceEnemy.isElite || noviceEnemy.isBoss) {
+        pushIssue(issues, scope, 'Novice enemy должен быть elite, но не boss.');
+      }
+
+      if (noviceEnemy.biomeCode !== 'dark-forest') {
+        pushIssue(issues, scope, 'Novice school path должен начинаться в dark-forest для текущего release baseline.');
+      }
+    }
+
+    if (!novicePath.minibossEnemyCode) {
+      pushIssue(issues, scope, 'Для стартовой школы не найден school miniboss continuation.');
+      return;
+    }
+
+    const minibossEnemy = mobsByCode.get(novicePath.minibossEnemyCode) ?? null;
+    if (!minibossEnemy) {
+      pushIssue(issues, scope, `Для школы не найден miniboss enemy ${novicePath.minibossEnemyCode}.`);
+    } else {
+      if (!minibossEnemy.isElite || !minibossEnemy.isBoss) {
+        pushIssue(issues, scope, 'School miniboss должен быть одновременно elite и boss.');
+      }
+
+      if (noviceEnemy && minibossEnemy.biomeCode !== noviceEnemy.biomeCode) {
+        pushIssue(issues, scope, 'Novice enemy и school miniboss должны жить в одном baseline биоме для current release slice.');
+      }
+    }
+
+    if (!starterArchetype) {
+      pushIssue(issues, scope, 'Стартовый archetype отсутствует для completeness-проверки.');
+      return;
+    }
+
+    const hasStarterPayoff = starterArchetype.activeAbilityCodes.some((code) => abilitiesByCode.has(code))
+      || starterArchetype.passiveAbilityCodes.some((code) => abilitiesByCode.has(code));
+    if (!hasStarterPayoff) {
+      pushIssue(issues, scope, 'Стартовый archetype не имеет резолвящегося school payoff через ability package.');
+    }
+  });
+};
+
 export const createGameContentValidationInput = (): GameContentValidationInput => ({
   biomes: biomeSeed,
   mobs: mobSeed,
@@ -524,6 +603,7 @@ export const validateGameContent = (
   validateRuneBalance(issues, input.runeBalance);
   validateEnvironmentGameConfig(issues, input.envGameConfig);
   validateRuneContent(issues, input.schools, input.abilities, input.runeArchetypes);
+  validateStarterSchoolPackageCompleteness(issues, input.schools, input.abilities, input.runeArchetypes, input.mobs);
 
   return {
     isValid: issues.length === 0,

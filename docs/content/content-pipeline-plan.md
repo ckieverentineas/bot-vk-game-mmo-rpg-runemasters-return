@@ -118,15 +118,15 @@ Quest package пока документируется как consumer school/ene
 
 ## School package completeness checklist v1
 
-- [ ] `SchoolDefinition` exists and is current.
-- [ ] starter archetype exists and matches school identity.
-- [ ] ability package supports the promised style.
-- [ ] at least one enemy pressure pattern calls for this school to answer cleanly.
-- [ ] at least one encounter ask is described.
-- [ ] reward/chase hook is documented.
-- [ ] onboarding / return / next-goal copy can mention the school without fallback text.
-- [ ] telemetry touchpoints exist in `docs/telemetry/telemetry-plan.md`.
-- [ ] validator scope covers both correctness and minimum completeness.
+- [x] `SchoolDefinition` exists and is current.
+- [x] starter archetype exists and matches school identity.
+- [x] ability package supports the promised style.
+- [x] at least one enemy pressure pattern calls for this school to answer cleanly.
+- [x] at least one encounter ask is described.
+- [x] reward/chase hook is documented.
+- [x] onboarding / return / next-goal copy can mention the school without fallback text.
+- [x] telemetry touchpoints exist in `docs/telemetry/telemetry-plan.md`.
+- [x] validator scope covers both correctness and minimum completeness.
 
 ## Worked example — school package `Твердь`
 
@@ -195,6 +195,6 @@ Quest package пока документируется как consumer school/ene
 
 ## Next step after v1
 
-- convert school package checklist into package-level completeness validators;
+- school package checklist теперь зеркалится package-level completeness validator'ом в `content:validate` для shipped 4-school baseline;
 - add one concrete encounter package example;
 - only then decide whether runtime folders or authoring templates need migration.
