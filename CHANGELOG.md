@@ -17,6 +17,7 @@
 - единый school-aware next-goal read-model в [`src/modules/player/application/read-models/next-goal.ts`](src/modules/player/application/read-models/next-goal.ts), чтобы `main menu`, `return recap`, `rune hub` и `battle result` опирались на одну и ту же ближайшую school-веху;
 - read-model [`src/modules/player/application/read-models/acquisition-summary.ts`](src/modules/player/application/read-models/acquisition-summary.ts) для короткого player-facing recap'а “что изменилось?” после новой руны, новой редкости или unlock'а сборки;
 - два ранних school-specific elite encounter hooks в `dark-forest`: `Пепельная ведунья` для pressure/detonation path Пламени и `Камнерогий таран` для guard/counter path Тверди;
+- первый targeted same-school reward hook для этих элит: aligned победа теперь может гарантировать первую `необычную` руну нужной школы вместо полного упора в случайный drop;
 - типобезопасный telemetry adapter [`RepositoryGameTelemetry`](src/modules/shared/infrastructure/telemetry/RepositoryGameTelemetry.ts) поверх существующего `GameLog` rail для semantic-событий UX и loadout flow;
 - тесты на canonical next-goal read-model в [`src/modules/player/application/read-models/next-goal.test.ts`](src/modules/player/application/read-models/next-goal.test.ts).
 

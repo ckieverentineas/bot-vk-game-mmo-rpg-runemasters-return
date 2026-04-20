@@ -56,6 +56,7 @@
   - [~] Зафиксировать стартовые school packages и их читаемые payoffs.
   - [~] Дать минимум 2 по-настоящему сильные school-first PvE ветки с разными врагами, ритмом и payoff.
     - [x] Добавить ранние school-specific elite encounter hooks для Пламени и Тверди в `dark-forest`.
+    - [x] Добавить первый targeted same-school reward hook для этих элит, чтобы payoff был меньше похож на RNG-казино.
   - [x] Ясно показывать, что именно игрок получил от новой редкости, новой руны или нового unlock'а.
   - [ ] Доказать через playtests и telemetry, что первый school payoff приходит быстро и читаемо.
   - [ ] Не расширять scope в social / PvP / live-ops, пока этот slice не доказан.
