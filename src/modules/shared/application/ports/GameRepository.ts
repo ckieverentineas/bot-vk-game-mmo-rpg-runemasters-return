@@ -91,6 +91,7 @@ export interface GameRepository {
     expectedCommandKeys?: readonly string[],
     expectedStateKey?: string,
   ): Promise<CommandIntentReplayResult<TResult> | null>;
+  storeCommandIntentResult<TResult>(playerId: number, intentId: string, result: TResult): Promise<void>;
   saveExplorationState(
     playerId: number,
     state: Pick<PlayerState, 'locationLevel' | 'highestLocationLevel' | 'victoryStreak' | 'defeatStreak' | 'tutorialState'>,

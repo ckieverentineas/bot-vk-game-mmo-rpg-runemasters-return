@@ -102,11 +102,16 @@ describe('PerformBattleAction', () => {
     const repository = {
       findPlayerByVkId: vi.fn().mockResolvedValue(createPlayer()),
       getCommandIntentResult: vi.fn().mockResolvedValue({ status: 'APPLIED', result: replayedBattle }),
+      storeCommandIntentResult: vi.fn().mockResolvedValue(undefined),
       getActiveBattle: vi.fn(),
     } as unknown as GameRepository;
     const useCase = new PerformBattleAction(repository, createRandom());
 
-    await expect(useCase.execute(1001, 'ATTACK', 'intent-battle-1', 'state-battle-1', 'payload')).resolves.toEqual(replayedBattle);
+    await expect(useCase.execute(1001, 'ATTACK', 'intent-battle-1', 'state-battle-1', 'payload')).resolves.toEqual({
+      battle: replayedBattle,
+      player: null,
+      acquisitionSummary: null,
+    });
 
     expect(repository.getActiveBattle).not.toHaveBeenCalled();
   });
@@ -116,11 +121,41 @@ describe('PerformBattleAction', () => {
     const repository = {
       findPlayerByVkId: vi.fn().mockResolvedValue(createPlayer()),
       getCommandIntentResult: vi.fn().mockResolvedValue({ status: 'APPLIED', result: replayedBattle }),
+      storeCommandIntentResult: vi.fn().mockResolvedValue(undefined),
       getActiveBattle: vi.fn(),
     } as unknown as GameRepository;
     const useCase = new PerformBattleAction(repository, createRandom());
 
-    await expect(useCase.execute(1001, 'ATTACK', 'legacy-text:2000000001:1001:86:атака', undefined, 'legacy_text')).resolves.toEqual(replayedBattle);
+    await expect(useCase.execute(1001, 'ATTACK', 'legacy-text:2000000001:1001:86:атака', undefined, 'legacy_text')).resolves.toEqual({
+      battle: replayedBattle,
+      player: null,
+      acquisitionSummary: null,
+    });
+
+    expect(repository.getActiveBattle).not.toHaveBeenCalled();
+  });
+
+  it('preserves an already stored impact recap on replay', async () => {
+    const replayedBattle = createBattle({ status: 'COMPLETED', result: 'VICTORY', rewards: { experience: 4, gold: 2, shards: { USUAL: 1 }, droppedRune: null } });
+    const replayedResult = {
+      battle: replayedBattle,
+      player: createPlayer(),
+      acquisitionSummary: {
+        kind: 'new_rune' as const,
+        title: 'Новая руна: Руна Пламени',
+        changeLine: 'Даёт школе Пламени новый боевой ход.',
+        nextStepLine: 'Откройте «🔮 Руны» и примерьте её в сборке.',
+      },
+    };
+    const repository = {
+      findPlayerByVkId: vi.fn().mockResolvedValue(createPlayer()),
+      getCommandIntentResult: vi.fn().mockResolvedValue({ status: 'APPLIED', result: replayedResult }),
+      storeCommandIntentResult: vi.fn().mockResolvedValue(undefined),
+      getActiveBattle: vi.fn(),
+    } as unknown as GameRepository;
+    const useCase = new PerformBattleAction(repository, createRandom());
+
+    await expect(useCase.execute(1001, 'ATTACK', 'intent-battle-keep-summary', 'state-battle-keep-summary', 'payload')).resolves.toEqual(replayedResult);
 
     expect(repository.getActiveBattle).not.toHaveBeenCalled();
   });
@@ -130,6 +165,7 @@ describe('PerformBattleAction', () => {
     const repository = {
       findPlayerByVkId: vi.fn().mockResolvedValue(createPlayer()),
       getCommandIntentResult: vi.fn(),
+      storeCommandIntentResult: vi.fn().mockResolvedValue(undefined),
       getActiveBattle: vi.fn().mockResolvedValue(activeBattle),
     } as unknown as GameRepository;
     const useCase = new PerformBattleAction(repository, createRandom());
@@ -145,6 +181,7 @@ describe('PerformBattleAction', () => {
     const repository = {
       findPlayerByVkId: vi.fn().mockResolvedValue(createPlayer()),
       getCommandIntentResult: vi.fn().mockRejectedValue(new AppError('stale_command_intent', 'Эта кнопка уже устарела. Обновите экран перед повтором команды.')),
+      storeCommandIntentResult: vi.fn().mockResolvedValue(undefined),
       getActiveBattle: vi.fn(),
     } as unknown as GameRepository;
     const useCase = new PerformBattleAction(repository, createRandom());
@@ -168,6 +205,7 @@ describe('PerformBattleAction', () => {
     const repository = {
       findPlayerByVkId: vi.fn().mockResolvedValue(player),
       getCommandIntentResult: vi.fn().mockResolvedValue(null),
+      storeCommandIntentResult: vi.fn().mockResolvedValue(undefined),
       getActiveBattle: vi.fn().mockResolvedValue(activeBattle),
       finalizeBattle: vi.fn(),
       saveBattle: vi.fn().mockResolvedValue(createBattle({ turnOwner: 'ENEMY', actionRevision: 1 })),
@@ -186,6 +224,14 @@ describe('PerformBattleAction', () => {
         currentStateKey: stateKey,
       }),
     );
+    expect(repository.storeCommandIntentResult).toHaveBeenCalledWith(
+      player.playerId,
+      'intent-battle-2',
+      expect.objectContaining({
+        battle: expect.objectContaining({ id: activeBattle.id }),
+        acquisitionSummary: null,
+      }),
+    );
     expect(repository.finalizeBattle).not.toHaveBeenCalled();
   });
 
@@ -195,6 +241,7 @@ describe('PerformBattleAction', () => {
     const repository = {
       findPlayerByVkId: vi.fn().mockResolvedValue(player),
       getCommandIntentResult: vi.fn().mockResolvedValue(null),
+      storeCommandIntentResult: vi.fn().mockResolvedValue(undefined),
       getActiveBattle: vi.fn().mockResolvedValue(activeBattle),
       saveBattle: vi.fn(),
       finalizeBattle: vi.fn(),

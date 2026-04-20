@@ -15,6 +15,7 @@
 ### Added
 
 - единый school-aware next-goal read-model в [`src/modules/player/application/read-models/next-goal.ts`](src/modules/player/application/read-models/next-goal.ts), чтобы `main menu`, `return recap`, `rune hub` и `battle result` опирались на одну и ту же ближайшую school-веху;
+- read-model [`src/modules/player/application/read-models/acquisition-summary.ts`](src/modules/player/application/read-models/acquisition-summary.ts) для короткого player-facing recap'а “что изменилось?” после новой руны, новой редкости или unlock'а сборки;
 - типобезопасный telemetry adapter [`RepositoryGameTelemetry`](src/modules/shared/infrastructure/telemetry/RepositoryGameTelemetry.ts) поверх существующего `GameLog` rail для semantic-событий UX и loadout flow;
 - тесты на canonical next-goal read-model в [`src/modules/player/application/read-models/next-goal.test.ts`](src/modules/player/application/read-models/next-goal.test.ts).
 
@@ -23,6 +24,7 @@
 - `return recap`, главное меню, rune hub и завершённый бой теперь показывают не абстрактный следующий шаг, а ближайшую school-веху или ближайший loadout payoff без guilt/FOMO тона;
 - rune hub теперь явно показывает ближайшую mastery-веху и её payoff, если игрок уже идёт к unlock'у школы или открыл слот поддержки;
 - battle result теперь использует актуальный `PlayerState`, чтобы следующий шаг после боя не расходился с `return recap` и `main menu`;
+- battle result и крафт руны теперь могут объяснить, что именно дала новая награда или unlock, а не оставлять игрока наедине с названием предмета;
 - `RegisterPlayer`, `EquipCurrentRune`, `UnequipCurrentRune` и `GameHandler` теперь пишут telemetry v1 события `onboarding_started`, `loadout_changed`, `return_recap_shown` и `post_session_next_goal_shown` после committed transition или реально показанного экрана.
 
 ## [0.01] - 2026-04-11

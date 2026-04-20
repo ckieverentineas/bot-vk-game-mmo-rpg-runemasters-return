@@ -63,6 +63,7 @@ describe('CraftRune', () => {
     const repository = {
       findPlayerByVkId: vi.fn().mockResolvedValue(player),
       getCommandIntentResult: vi.fn().mockResolvedValue(null),
+      storeCommandIntentResult: vi.fn().mockResolvedValue(undefined),
       craftRune: vi.fn().mockResolvedValue(player),
     } as unknown as GameRepository;
     const useCase = new CraftRune(repository, createRandom());
@@ -84,6 +85,7 @@ describe('CraftRune', () => {
     const repository = {
       findPlayerByVkId: vi.fn().mockResolvedValue(player),
       getCommandIntentResult: vi.fn(),
+      storeCommandIntentResult: vi.fn().mockResolvedValue(undefined),
       craftRune: vi.fn(),
     } as unknown as GameRepository;
     const useCase = new CraftRune(repository, createRandom());
@@ -100,6 +102,33 @@ describe('CraftRune', () => {
     const repository = {
       findPlayerByVkId: vi.fn().mockResolvedValue(createPlayer({ inventory: { ...createPlayer().inventory, usualShards: 0 } })),
       getCommandIntentResult: vi.fn().mockResolvedValue({ status: 'APPLIED', result: replayed }),
+      storeCommandIntentResult: vi.fn().mockResolvedValue(undefined),
+      craftRune: vi.fn(),
+    } as unknown as GameRepository;
+    const useCase = new CraftRune(repository, createRandom());
+
+    await expect(useCase.execute(1001, 'legacy-text:2000000001:1001:77:создать', undefined, 'legacy_text')).resolves.toEqual({
+      player: replayed,
+      acquisitionSummary: null,
+    });
+
+    expect(repository.craftRune).not.toHaveBeenCalled();
+  });
+
+  it('preserves an already stored acquisition recap on replay', async () => {
+    const replayed = {
+      player: createPlayer({ inventory: { ...createPlayer().inventory, usualShards: 0 } }),
+      acquisitionSummary: {
+        kind: 'new_rune' as const,
+        title: 'Новая руна: Руна Пламени',
+        changeLine: 'Даёт школе Пламени новый боевой ход.',
+        nextStepLine: 'Откройте «🔮 Руны» и примерьте её в сборке.',
+      },
+    };
+    const repository = {
+      findPlayerByVkId: vi.fn().mockResolvedValue(createPlayer({ inventory: { ...createPlayer().inventory, usualShards: 0 } })),
+      getCommandIntentResult: vi.fn().mockResolvedValue({ status: 'APPLIED', result: replayed }),
+      storeCommandIntentResult: vi.fn().mockResolvedValue(undefined),
       craftRune: vi.fn(),
     } as unknown as GameRepository;
     const useCase = new CraftRune(repository, createRandom());
@@ -114,6 +143,7 @@ describe('CraftRune', () => {
     const repository = {
       findPlayerByVkId: vi.fn().mockResolvedValue(player),
       getCommandIntentResult: vi.fn().mockResolvedValue(null),
+      storeCommandIntentResult: vi.fn().mockResolvedValue(undefined),
       craftRune: vi.fn().mockResolvedValue(player),
     } as unknown as GameRepository;
     const useCaseRandom = createScalingRandom();
@@ -129,6 +159,13 @@ describe('CraftRune', () => {
       'legacy-text:2000000001:1001:77:создать',
       'legacy-text:2000000001:1001:77:создать',
       undefined,
+    );
+    expect(repository.storeCommandIntentResult).toHaveBeenCalledWith(
+      player.playerId,
+      'legacy-text:2000000001:1001:77:создать',
+      expect.objectContaining({
+        player: expect.any(Object),
+      }),
     );
   });
 });

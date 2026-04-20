@@ -596,6 +596,21 @@ export class PrismaGameRepository implements GameRepository {
     return player ? this.mapPlayer(player) : null;
   }
 
+  public async storeCommandIntentResult<TResult>(playerId: number, intentId: string, result: TResult): Promise<void> {
+    await this.prisma.commandIntentRecord.update({
+      where: {
+        playerId_intentId: {
+          playerId,
+          intentId,
+        },
+      },
+      data: {
+        status: 'APPLIED',
+        resultSnapshot: stringifyJson(result, '{}'),
+      },
+    });
+  }
+
   public async deletePlayerByVkId(vkId: number, expectedUpdatedAt?: string): Promise<void> {
     await this.prisma.$transaction(async (tx) => {
       if (expectedUpdatedAt) {

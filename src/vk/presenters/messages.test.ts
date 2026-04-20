@@ -348,6 +348,22 @@ describe('messages school-first onboarding framing', () => {
     expect(message).toContain('🜂 Что даст: После «Импульса углей»');
   });
 
+  it('shows an impact recap block in the rune hub when a new rune changes the build', () => {
+    const message = renderRuneScreen(createPlayer({
+      tutorialState: 'SKIPPED',
+      runes: [createEquippedRune()],
+    }), {
+      kind: 'new_rune',
+      title: 'Новая руна: Искра Бури',
+      changeLine: 'Даёт школе Бури новый темповый ответ после базовой атаки.',
+      nextStepLine: 'Откройте «🔮 Руны» и примерьте её в сборке.',
+    });
+
+    expect(message).toContain('✨ Что изменилось: Новая руна: Искра Бури.');
+    expect(message).toContain('🜂 Теперь: Даёт школе Бури новый темповый ответ после базовой атаки.');
+    expect(message).toContain('👉 Попробовать: Откройте «🔮 Руны» и примерьте её в сборке.');
+  });
+
   it('shows support rune contribution in battle text without adding a second active skill promise', () => {
     const message = renderBattle(createBattle({
       status: 'ACTIVE',
@@ -387,5 +403,21 @@ describe('messages school-first onboarding framing', () => {
     expect(message).toContain('🧩 Поддержка: Искра поддержки');
     expect(message).toContain('усиливает давление базовой атаки');
     expect(message).toContain('пока не даёт вторую боевую кнопку');
+  });
+
+  it('shows an impact recap block in battle result when a reward changes the build', () => {
+    const message = renderBattle(createBattle(), createPlayer({
+      tutorialState: 'SKIPPED',
+      runes: [createEquippedRune()],
+    }), {
+      kind: 'slot_unlock',
+      title: 'Открыт слот поддержки',
+      changeLine: 'Сборка стала шире: теперь можно усилить школу второй руной поддержки без второй боевой кнопки.',
+      nextStepLine: 'Откройте «🔮 Руны» и поставьте руну поддержки.',
+    });
+
+    expect(message).toContain('✨ Что изменилось: Открыт слот поддержки.');
+    expect(message).toContain('🜂 Теперь: Сборка стала шире: теперь можно усилить школу второй руной поддержки без второй боевой кнопки.');
+    expect(message).toContain('👉 Попробовать: Откройте «🔮 Руны» и поставьте руну поддержки.');
   });
 });

@@ -13,6 +13,7 @@ import {
   getSchoolMasteryDefinition,
   resolveNextSchoolMasteryThreshold,
 } from '../../modules/player/domain/school-mastery';
+import { type AcquisitionSummaryView } from '../../modules/player/application/read-models/acquisition-summary';
 import {
   buildBattleResultNextGoalView,
   buildPlayerNextGoalView,
@@ -72,6 +73,19 @@ const renderStarterSchoolLine = (): string => {
 };
 
 const withSentencePeriod = (text: string): string => /[.!?]$/.test(text) ? text : `${text}.`;
+
+const renderAcquisitionSummary = (summary: AcquisitionSummaryView | null | undefined): string[] => {
+  if (!summary) {
+    return [];
+  }
+
+  return [
+    '',
+    `✨ Что изменилось: ${withSentencePeriod(summary.title)}`,
+    `🜂 Теперь: ${withSentencePeriod(summary.changeLine)}`,
+    ...(summary.nextStepLine ? [`👉 Попробовать: ${withSentencePeriod(summary.nextStepLine)}`] : []),
+  ];
+};
 
 const renderSchoolFirstLoopLine = (): string => 'Путь первого входа: базовая атака → первая боевая руна → школа рун → новый стиль боя.';
 const renderSchoolFirstRarityLine = (): string => 'Сначала первая руна открывает школу рун, а новая редкость позже расширяет сборку.';
@@ -326,7 +340,7 @@ export const renderLocation = (player: PlayerState): string => [
       : 'нажмите «⚔️ Исследовать».'}`,
 ].join('\n');
 
-export const renderRuneScreen = (player: PlayerState): string => {
+export const renderRuneScreen = (player: PlayerState, acquisitionSummary?: AcquisitionSummaryView | null): string => {
   const selectedRune = getSelectedRune(player);
   const equippedRune = getEquippedRune(player);
   const page = buildRuneCollectionPage(player);
@@ -358,6 +372,7 @@ export const renderRuneScreen = (player: PlayerState): string => {
       const school = getRuneSchoolPresentation(equippedRune.archetypeCode);
       return school ? [`Текущий стиль: ${school.schoolLine} · роль ${school.roleName.toLowerCase()}.`] : [];
     })() : []),
+    ...renderAcquisitionSummary(acquisitionSummary),
     ...(['reach_next_school_mastery', 'fill_support_slot'].includes(nextGoal.goalType)
       ? [
           `🎯 Ближайшая веха: ${withSentencePeriod(nextGoal.milestoneProgressText ?? nextGoal.objectiveText)}`,
@@ -383,7 +398,7 @@ export const renderRuneScreen = (player: PlayerState): string => {
   ].join('\n');
 };
 
-export const renderAltar = (player: PlayerState): string => renderRuneScreen(player);
+export const renderAltar = (player: PlayerState, acquisitionSummary?: AcquisitionSummaryView | null): string => renderRuneScreen(player, acquisitionSummary);
 
 const renderBar = (current: number, max: number, filled: string, empty: string, width = 10): string => {
   if (max <= 0) {
@@ -533,7 +548,7 @@ const renderBattleNextGoal = (battle: BattleView, player?: PlayerState): string[
   ];
 };
 
-export const renderBattle = (battle: BattleView, player?: PlayerState): string => {
+export const renderBattle = (battle: BattleView, player?: PlayerState, acquisitionSummary?: AcquisitionSummaryView | null): string => {
   const log = [...battle.log].slice(-3).reverse().join('\n');
   const activeAbility = battle.player.runeLoadout?.activeAbility ?? null;
   const enemyIntentLine = renderBattleEnemyIntent(battle);
@@ -592,6 +607,7 @@ export const renderBattle = (battle: BattleView, player?: PlayerState): string =
     'Что произошло:',
     log || 'Пока без событий.',
     ...rewardLines,
+    ...renderAcquisitionSummary(acquisitionSummary),
     ...postSessionLines,
   ].join('\n');
 };

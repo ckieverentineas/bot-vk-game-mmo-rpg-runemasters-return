@@ -1,5 +1,6 @@
 import { AppError } from '../../../../shared/domain/AppError';
-import type { BattleActionType, BattleView } from '../../../../shared/types/game';
+import type { BattleActionType, BattleView, PlayerState } from '../../../../shared/types/game';
+import { buildBattleAcquisitionSummary, type AcquisitionSummaryView } from '../../../player/application/read-models/acquisition-summary';
 import { resolveCommandIntent, type CommandIntentSource } from '../../../shared/application/command-intent';
 import { requirePlayerByVkId } from '../../../shared/application/require-player';
 import type { GameRandom } from '../../../shared/application/ports/GameRandom';
@@ -10,6 +11,12 @@ import { buildBattleActionIntentStateKey } from '../command-intent-state';
 import { finalizeRecoveredBattleIfNeeded } from '../finalize-recovered-battle';
 import { RewardEngine } from '../../domain/reward-engine';
 import { resolveVictoryRewardOptions } from '../resolve-victory-reward-options';
+
+export interface BattleActionResultView {
+  readonly battle: BattleView;
+  readonly player: PlayerState | null;
+  readonly acquisitionSummary: AcquisitionSummaryView | null;
+}
 
 export class PerformBattleAction {
   public constructor(
@@ -35,7 +42,7 @@ export class PerformBattleAction {
     intentId?: string,
     intentStateKey?: string,
     intentSource: CommandIntentSource = null,
-  ): Promise<BattleView> {
+  ): Promise<BattleActionResultView> {
     const player = await requirePlayerByVkId(this.repository, vkId);
     const commandKey = this.resolveCommandKey(action);
     const scopedIntent = intentSource === 'legacy_text'
@@ -43,14 +50,14 @@ export class PerformBattleAction {
       : resolveCommandIntent(intentId, intentStateKey, intentSource, intentSource === null);
 
     if (scopedIntent?.intentId) {
-      const replay = await this.repository.getCommandIntentResult<BattleView>(
+      const replay = await this.repository.getCommandIntentResult<BattleActionResultView | BattleView>(
         player.playerId,
         scopedIntent.intentId,
         [commandKey],
         scopedIntent.intentStateKey,
       );
       if (replay?.status === 'APPLIED' && replay.result) {
-        return replay.result;
+        return this.normalizeBattleResult(replay.result);
       }
 
       if (replay?.status === 'PENDING') {
@@ -59,13 +66,13 @@ export class PerformBattleAction {
     }
 
     if (intentSource === 'legacy_text' && intentId) {
-      const replay = await this.repository.getCommandIntentResult<BattleView>(
+      const replay = await this.repository.getCommandIntentResult<BattleActionResultView | BattleView>(
         player.playerId,
         intentId,
         [commandKey],
       );
       if (replay?.status === 'APPLIED' && replay.result) {
-        return replay.result;
+        return this.normalizeBattleResult(replay.result);
       }
 
       if (replay?.status === 'PENDING') {
@@ -96,7 +103,13 @@ export class PerformBattleAction {
 
     const recoveredBattle = await finalizeRecoveredBattleIfNeeded(this.repository, player, activeBattle, this.random, commandOptions);
     if (recoveredBattle.recovered) {
-      return recoveredBattle.battle;
+      const result = {
+        battle: recoveredBattle.battle,
+        player: recoveredBattle.player,
+        acquisitionSummary: recoveredBattle.acquisitionSummary,
+      };
+      await this.persistReplayResult(player.playerId, intent?.intentId, result);
+      return result;
     }
 
     let battle = BattleEngine.performPlayerAction(recoveredBattle.battle, action);
@@ -111,9 +124,37 @@ export class PerformBattleAction {
         : { battle, droppedRune: null };
 
       const finalized = await this.repository.finalizeBattle(player.playerId, rewarded.battle, commandOptions);
-      return finalized.battle;
+      const result = {
+        battle: finalized.battle,
+        player: finalized.player,
+        acquisitionSummary: buildBattleAcquisitionSummary(player, finalized.player, finalized.battle),
+      };
+      await this.persistReplayResult(player.playerId, intent?.intentId, result);
+      return result;
     }
 
-    return this.repository.saveBattle(battle, commandOptions);
+    const result = this.wrapBattleResult(await this.repository.saveBattle(battle, commandOptions));
+    await this.persistReplayResult(player.playerId, intent?.intentId, result);
+    return result;
+  }
+
+  private wrapBattleResult(battle: BattleView): BattleActionResultView {
+    return {
+      battle,
+      player: null,
+      acquisitionSummary: null,
+    };
+  }
+
+  private normalizeBattleResult(result: BattleActionResultView | BattleView): BattleActionResultView {
+    return 'battle' in result ? result : this.wrapBattleResult(result);
+  }
+
+  private async persistReplayResult(playerId: number, intentId: string | undefined, result: BattleActionResultView): Promise<void> {
+    if (!intentId) {
+      return;
+    }
+
+    await this.repository.storeCommandIntentResult(playerId, intentId, result);
   }
 }

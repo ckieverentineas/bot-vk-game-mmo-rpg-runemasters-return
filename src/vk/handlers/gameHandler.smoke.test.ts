@@ -247,7 +247,11 @@ const createServices = (): AppServices => {
       execute: vi.fn().mockResolvedValue(createBattle()),
     } as unknown as AppServices['getActiveBattle'],
     performBattleAction: {
-      execute: vi.fn().mockResolvedValue(completedBattle),
+      execute: vi.fn().mockResolvedValue({
+        battle: completedBattle,
+        player: null,
+        acquisitionSummary: null,
+      }),
     } as unknown as AppServices['performBattleAction'],
     getRuneCollection: {
       execute: vi.fn().mockResolvedValue(runePlayer),
@@ -265,7 +269,10 @@ const createServices = (): AppServices => {
       execute: vi.fn().mockResolvedValue(runePlayer),
     } as unknown as AppServices['unequipCurrentRune'],
     craftRune: {
-      execute: vi.fn().mockResolvedValue(runePlayer),
+      execute: vi.fn().mockResolvedValue({
+        player: runePlayer,
+        acquisitionSummary: null,
+      }),
     } as unknown as AppServices['craftRune'],
     rerollCurrentRuneStat: {
       execute: vi.fn().mockResolvedValue(runePlayer),
@@ -534,6 +541,62 @@ describe('GameHandler smoke', () => {
     expect(getReplyCalls(ctx)[0]?.message).toContain('🎯 Следующая цель: одержите ещё 2 победы школой Пламени');
   });
 
+  it('показывает impact recap в результате боя, если награда реально меняет сборку', async () => {
+    const services = createServices();
+    vi.mocked(services.performBattleAction.execute).mockResolvedValueOnce({
+      battle: createBattle({
+        status: 'COMPLETED',
+        result: 'VICTORY',
+        rewards: {
+          experience: 6,
+          gold: 2,
+          shards: { USUAL: 2 },
+          droppedRune: null,
+        },
+        enemy: {
+          ...createBattle().enemy,
+          currentHealth: 0,
+        },
+      }),
+      player: createPlayer({
+        tutorialState: 'SKIPPED',
+        runes: [
+          {
+            id: 'rune-1',
+            runeCode: 'rune-1',
+            archetypeCode: 'ember',
+            passiveAbilityCodes: ['ember_heart'],
+            activeAbilityCodes: ['ember_pulse'],
+            name: 'Руна Пламени',
+            rarity: 'USUAL',
+            isEquipped: true,
+            equippedSlot: 0,
+            health: 1,
+            attack: 2,
+            defence: 0,
+            magicDefence: 0,
+            dexterity: 0,
+            intelligence: 0,
+            createdAt: '2026-04-12T00:00:00.000Z',
+          },
+        ],
+      }),
+      acquisitionSummary: {
+        kind: 'slot_unlock',
+        title: 'Открыт слот поддержки',
+        changeLine: 'Сборка стала шире: теперь можно усилить школу второй руной поддержки без второй боевой кнопки.',
+        nextStepLine: 'Откройте «🔮 Руны» и поставьте руну поддержки.',
+      },
+    });
+    const handler = new GameHandler(services);
+    const ctx = createFakeContext({ command: 'атака', intentId: 'intent-battle-impact-1', stateKey: 'state-battle-impact-1' });
+
+    await handler.handle(ctx as never);
+
+    expect(getReplyCalls(ctx)[0]?.message).toContain('✨ Что изменилось: Открыт слот поддержки.');
+    expect(getReplyCalls(ctx)[0]?.message).toContain('👉 Попробовать: Откройте «🔮 Руны» и поставьте руну поддержки.');
+  });
+
   it('выводит server-owned legacy intent для текстовой атаки в бою', async () => {
     const services = createServices();
     const handler = new GameHandler(services);
@@ -664,6 +727,48 @@ describe('GameHandler smoke', () => {
     expect(services.craftRune.execute).toHaveBeenCalledWith(1001, 'intent-craft-1', 'state-craft-1', 'payload');
   });
 
+  it('показывает impact recap после создания руны', async () => {
+    const services = createServices();
+    vi.mocked(services.craftRune.execute).mockResolvedValueOnce({
+      player: createPlayer({
+        tutorialState: 'SKIPPED',
+        locationLevel: 1,
+        runes: [
+          {
+            id: 'rune-new-1',
+            runeCode: 'rune-new-1',
+            archetypeCode: 'gale',
+            passiveAbilityCodes: ['gale_mark'],
+            activeAbilityCodes: ['gale_step'],
+            name: 'Искра Бури',
+            rarity: 'RARE',
+            isEquipped: false,
+            health: 1,
+            attack: 2,
+            defence: 0,
+            magicDefence: 0,
+            dexterity: 2,
+            intelligence: 1,
+            createdAt: '2026-04-12T00:00:00.000Z',
+          },
+        ],
+      }),
+      acquisitionSummary: {
+        kind: 'new_rune',
+        title: 'Новая руна: Искра Бури',
+        changeLine: 'Даёт школе Бури новый темповый ответ после базовой атаки.',
+        nextStepLine: 'Откройте «🔮 Руны» и примерьте её в сборке.',
+      },
+    });
+    const handler = new GameHandler(services);
+    const ctx = createFakeContext({ command: 'создать', intentId: 'intent-craft-impact-1', stateKey: 'state-craft-impact-1' });
+
+    await handler.handle(ctx as never);
+
+    expect(getReplyCalls(ctx)[0]?.message).toContain('✨ Что изменилось: Новая руна: Искра Бури.');
+    expect(getReplyCalls(ctx)[0]?.message).toContain('👉 Попробовать: Откройте «🔮 Руны» и примерьте её в сборке.');
+  });
+
   it('пробрасывает intentId для перековки руны через transport payload', async () => {
     const services = createServices();
     const handler = new GameHandler(services);
@@ -786,7 +891,11 @@ describe('GameHandler smoke', () => {
       },
       log: ['🌀 Импульс углей прожигает Учебный огонёк на 5 урона.'],
     });
-    vi.mocked(services.performBattleAction.execute).mockResolvedValueOnce(runeSkillBattle);
+    vi.mocked(services.performBattleAction.execute).mockResolvedValueOnce({
+      battle: runeSkillBattle,
+      player: null,
+      acquisitionSummary: null,
+    });
     const handler = new GameHandler(services);
     const ctx = createFakeContext({ command: 'навыки', intentId: 'intent-battle-skill-1', stateKey: 'state-battle-skill-1' });
 
@@ -807,7 +916,11 @@ describe('GameHandler smoke', () => {
       log: ['🛡️ Вы занимаете защитную стойку и готовите защиту на 2 урона.'],
       turnOwner: 'ENEMY',
     });
-    vi.mocked(services.performBattleAction.execute).mockResolvedValueOnce(defendBattle);
+    vi.mocked(services.performBattleAction.execute).mockResolvedValueOnce({
+      battle: defendBattle,
+      player: null,
+      acquisitionSummary: null,
+    });
     const handler = new GameHandler(services);
     const ctx = createFakeContext({ command: 'защита', intentId: 'intent-battle-defend-1', stateKey: 'state-battle-defend-1' });
 

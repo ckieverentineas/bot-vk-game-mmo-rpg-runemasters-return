@@ -1,6 +1,8 @@
 import type { Context } from 'vk-io';
 
 import type { AppServices } from '../../app/composition-root';
+import type { CraftRuneResultView } from '../../modules/runes/application/use-cases/CraftRune';
+import type { BattleActionResultView } from '../../modules/combat/application/use-cases/PerformBattleAction';
 import { buildBattleResultNextGoalView, buildPlayerNextGoalView } from '../../modules/player/application/read-models/next-goal';
 import { getEquippedRune } from '../../modules/player/domain/player-stats';
 import { getSchoolDefinitionForArchetype } from '../../modules/runes/domain/rune-schools';
@@ -38,6 +40,8 @@ import {
 import { resolveCommandEnvelope } from '../router/commandRouter';
 
 type ReplyKeyboard = ReturnType<typeof createMainMenuKeyboard>;
+type BattleReplyState = BattleView | BattleActionResultView;
+type RuneHubReplyState = PlayerState | CraftRuneResultView;
 
 const formatRuneCountLabel = (count: number): string => {
   const remainder10 = count % 10;
@@ -53,6 +57,25 @@ const formatRuneCountLabel = (count: number): string => {
 
   return 'рун';
 };
+
+const normalizeBattleReplyState = (state: BattleReplyState): BattleActionResultView => (
+  'battle' in state
+    ? state
+    : {
+        battle: state,
+        player: null,
+        acquisitionSummary: null,
+      }
+);
+
+const normalizeRuneHubReplyState = (state: RuneHubReplyState): CraftRuneResultView => (
+  'player' in state && 'acquisitionSummary' in state
+    ? state
+    : {
+        player: state,
+        acquisitionSummary: null,
+      }
+);
 
 export class GameHandler {
   public constructor(private readonly services: AppServices) {}
@@ -171,8 +194,8 @@ export class GameHandler {
           return;
         }
         case gameCommands.craftRune: {
-          const player = await this.services.craftRune.execute(vkId, intentId ?? undefined, stateKey ?? undefined, intentSource);
-          await this.replyWithRuneHub(ctx, player);
+          const result = await this.services.craftRune.execute(vkId, intentId ?? undefined, stateKey ?? undefined, intentSource);
+          await this.replyWithRuneHub(ctx, result);
           return;
         }
         case gameCommands.rerollRuneMenu: {
@@ -402,20 +425,23 @@ export class GameHandler {
     await this.reply(ctx, renderLocation(player), createTutorialKeyboard(player));
   }
 
-  private async replyWithRuneHub(ctx: Context, player: PlayerState): Promise<void> {
-    await this.reply(ctx, renderRuneScreen(player), createRuneKeyboard(player));
+  private async replyWithRuneHub(ctx: Context, state: RuneHubReplyState): Promise<void> {
+    const result = normalizeRuneHubReplyState(state);
+    await this.reply(ctx, renderRuneScreen(result.player, result.acquisitionSummary), createRuneKeyboard(result.player));
   }
 
-  private async replyWithBattle(ctx: Context, battle: BattleView, vkId?: number): Promise<void> {
+  private async replyWithBattle(ctx: Context, state: BattleReplyState, vkId?: number): Promise<void> {
+    const result = normalizeBattleReplyState(state);
+    const battle = result.battle;
     if (battle.status === 'ACTIVE') {
       await this.reply(ctx, renderBattle(battle), this.resolveBattleKeyboard(battle));
       return;
     }
 
-    const player = vkId === undefined
-      ? undefined
-      : await this.services.getPlayerProfile.execute(vkId);
-    await this.reply(ctx, renderBattle(battle, player), createBattleResultKeyboard(battle, player));
+    const player = result.player ?? (vkId === undefined
+      ? null
+      : await this.services.getPlayerProfile.execute(vkId));
+    await this.reply(ctx, renderBattle(battle, player ?? undefined, result.acquisitionSummary), createBattleResultKeyboard(battle, player ?? undefined));
 
     if (player) {
       await this.trackPostSessionNextGoalShown(player, battle);
@@ -431,8 +457,8 @@ export class GameHandler {
     intentSource: ReturnType<typeof resolveCommandEnvelope>['intentSource'] = null,
   ): Promise<void> {
     try {
-      const battle = await this.services.performBattleAction.execute(vkId, action, intentId, intentStateKey, intentSource);
-      await this.replyWithBattle(ctx, battle, vkId);
+      const result = await this.services.performBattleAction.execute(vkId, action, intentId, intentStateKey, intentSource);
+      await this.replyWithBattle(ctx, result, vkId);
     } catch (error) {
       if (isAppError(error)) {
         const activeBattle = await this.safeGetActiveBattle(vkId);

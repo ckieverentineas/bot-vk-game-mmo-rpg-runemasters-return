@@ -1,5 +1,6 @@
 import type { BattleView, PlayerState } from '../../../shared/types/game';
 import type { GameRandom } from '../../shared/application/ports/GameRandom';
+import { buildBattleAcquisitionSummary, type AcquisitionSummaryView } from '../../player/application/read-models/acquisition-summary';
 
 import type { GameRepository, SaveBattleOptions } from '../../shared/application/ports/GameRepository';
 import { BattleEngine } from '../domain/battle-engine';
@@ -9,12 +10,14 @@ import { resolveVictoryRewardOptions } from './resolve-victory-reward-options';
 
 interface RecoveredBattleFinalization {
   readonly battle: BattleView;
+  readonly player: PlayerState | null;
+  readonly acquisitionSummary: AcquisitionSummaryView | null;
   readonly recovered: boolean;
 }
 
 export const finalizeRecoveredBattleIfNeeded = async (
   repository: GameRepository,
-  player: Pick<PlayerState, 'playerId' | 'tutorialState' | 'runes'>,
+  player: PlayerState,
   battle: BattleView,
   random: GameRandom,
   options?: SaveBattleOptions,
@@ -30,6 +33,8 @@ export const finalizeRecoveredBattleIfNeeded = async (
 
         return {
           battle: finalized.battle,
+          player: finalized.player,
+          acquisitionSummary: null,
           recovered: true,
         };
       }
@@ -38,12 +43,16 @@ export const finalizeRecoveredBattleIfNeeded = async (
 
       return {
         battle: savedBattle,
+        player: null,
+        acquisitionSummary: null,
         recovered: true,
       };
     }
 
     return {
       battle,
+      player: null,
+      acquisitionSummary: null,
       recovered: false,
     };
   }
@@ -56,6 +65,8 @@ export const finalizeRecoveredBattleIfNeeded = async (
 
   return {
     battle: finalized.battle,
+    player: finalized.player,
+    acquisitionSummary: buildBattleAcquisitionSummary(player, finalized.player, finalized.battle),
     recovered: true,
   };
 };
