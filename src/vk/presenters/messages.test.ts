@@ -82,6 +82,12 @@ const createUnusualReserveRune = () => ({
   equippedSlot: null,
 });
 
+const createEquippedUnusualRune = () => ({
+  ...createEquippedRune(),
+  name: 'Необычная руна Пламени',
+  rarity: 'UNUSUAL' as const,
+});
+
 const createCollectionRune = (name: string, equippedSlot: number | null = null) => ({
   id: `rune-${name}`,
   createdAt: '2026-04-12T00:00:00.000Z',
@@ -269,10 +275,10 @@ describe('messages school-first onboarding framing', () => {
 
     expect(message).toContain('🧭 Возвращение');
     expect(message).toContain('Стиль: Школа Пламени · роль штурм.');
-    expect(message).toContain('Статус школы: Вы уже прошли первое испытание Пламени');
-    expect(message).toContain('Фокус: одержите ещё 2 победы школой Пламени');
-    expect(message).toContain('Почему это важно: После «Импульса углей»');
-    expect(message).toContain('Дальше: нажмите «⚔️ Исследовать».');
+    expect(message).toContain('Статус школы: Вы уже прошли первое испытание Пламени. Первый знак школы ждёт в рунах');
+    expect(message).toContain('Фокус: откройте «🔮 Руны» и наденьте первый знак школы Пламени');
+    expect(message).toContain('Почему это важно: Так первое признание школы Пламени перейдёт из награды в реальную боевую сборку.');
+    expect(message).toContain('Дальше: нажмите «🔮 Руны».');
   });
 
   it('shows school mastery progress in the main menu once a rune is equipped', () => {
@@ -329,7 +335,7 @@ describe('messages school-first onboarding framing', () => {
       tutorialState: 'SKIPPED',
       victories: 3,
       schoolMasteries: [{ schoolCode: 'ember', experience: 1, rank: 0 }],
-      runes: [createEquippedRune(), createUnusualReserveRune()],
+      runes: [createEquippedUnusualRune(), createUnusualReserveRune()],
     }));
 
     expect(message).toContain('🎯 Следующая цель: одержите ещё 2 победы школой Пламени');
@@ -352,12 +358,25 @@ describe('messages school-first onboarding framing', () => {
       tutorialState: 'SKIPPED',
       victories: 3,
       schoolMasteries: [{ schoolCode: 'ember', experience: 1, rank: 0 }],
-      runes: [createEquippedRune(), createUnusualReserveRune()],
+      runes: [createEquippedUnusualRune(), createUnusualReserveRune()],
     }));
 
     expect(message).toContain('🎯 Ближайшая веха: 1/3 до «Разогрев дожима»');
     expect(message).toContain('🜂 Что даст: После «Импульса углей»');
     expect(message).toContain('⭐ Первый знак Пламени: Вы уже прошли первое испытание Пламени');
+  });
+
+  it('shows school sign equip guidance after recognition if the unusual rune is still not equipped', () => {
+    const message = renderRuneScreen(createPlayer({
+      tutorialState: 'SKIPPED',
+      victories: 3,
+      schoolMasteries: [{ schoolCode: 'ember', experience: 1, rank: 0 }],
+      runes: [createEquippedRune(), createUnusualReserveRune()],
+    }));
+
+    expect(message).toContain('⭐ Первый знак Пламени: Вы уже прошли первое испытание Пламени. Первый знак школы ждёт в рунах');
+    expect(message).toContain('🎯 Ближайшая веха: «Необычная руна Пламени» уже ждёт в коллекции рун.');
+    expect(message).toContain('🜂 Что даст: Наденьте «Необычная руна Пламени», чтобы следующий бой уже шёл через новый знак школы.');
   });
 
   it('shows a school novice path milestone before the first unusual school rune is earned', () => {

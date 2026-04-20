@@ -21,6 +21,7 @@
 - school novice guidance loop для `Пламени` и `Тверди`: next-goal теперь может вести игрока к первому испытанию школы и первой unusual rune без отдельной quest-системы;
 - минимальный telemetry/evidence слой для early school loop: `school_novice_elite_encounter_started` и enriched `reward_claim_applied` payload теперь позволяют измерять старт и aligned payoff этого novice path;
 - первая aligned unusual rune для `Пламени` и `Тверди` теперь закрепляется как `испытание школы пройдено`, а main menu / return recap / rune hub перестают вести себя так, будто игрок всё ещё просто ищет первую meaningful school-веху;
+- после school trial recognition игра теперь умеет вести игрока к установке первого знака школы, если unusual руна уже получена, но ещё не надета;
 - типобезопасный telemetry adapter [`RepositoryGameTelemetry`](src/modules/shared/infrastructure/telemetry/RepositoryGameTelemetry.ts) поверх существующего `GameLog` rail для semantic-событий UX и loadout flow;
 - тесты на canonical next-goal read-model в [`src/modules/player/application/read-models/next-goal.test.ts`](src/modules/player/application/read-models/next-goal.test.ts).
 

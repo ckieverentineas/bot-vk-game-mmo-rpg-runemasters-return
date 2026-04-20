@@ -132,6 +132,7 @@ Healthy signal:
 - `equip_first_rune`;
 - `use_active_rune_skill`;
 - `hunt_school_elite`;
+- `equip_school_sign`;
 - `reach_next_school_mastery`;
 - `fill_support_slot`;
 - `push_higher_threat`;

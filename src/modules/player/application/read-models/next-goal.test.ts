@@ -154,12 +154,16 @@ describe('next goal read-model', () => {
     const goal = buildPlayerNextGoalView(createPlayer({
       victories: 3,
       runes: [
-        createPlayer().runes[0]!,
+        {
+          ...createPlayer().runes[0]!,
+          name: 'Необычная руна Пламени',
+          rarity: 'UNUSUAL',
+        },
         {
           ...createPlayer().runes[0]!,
           id: 'rune-2',
           runeCode: 'rune-2',
-          name: 'Необычная руна Пламени',
+          name: 'Запасная необычная руна Пламени',
           rarity: 'UNUSUAL',
           isEquipped: false,
           equippedSlot: null,
@@ -174,11 +178,42 @@ describe('next goal read-model', () => {
     expect(goal.whyText).toContain('базовая атака ещё сильнее добивает');
   });
 
+  it('guides the player to equip the first school sign after novice completion if it is still in reserve', () => {
+    const goal = buildPlayerNextGoalView(createPlayer({
+      victories: 3,
+      runes: [
+        createPlayer().runes[0]!,
+        {
+          ...createPlayer().runes[0]!,
+          id: 'rune-2',
+          runeCode: 'rune-2',
+          name: 'Необычная руна Пламени',
+          rarity: 'UNUSUAL',
+          isEquipped: false,
+          equippedSlot: null,
+          createdAt: '2026-04-13T00:00:00.000Z',
+        },
+      ],
+    }));
+
+    expect(goal.goalType).toBe('equip_school_sign');
+    expect(goal.primaryActionLabel).toBe('🔮 Руны');
+    expect(goal.objectiveText).toContain('наденьте первый знак школы Пламени');
+    expect(goal.milestoneProgressText).toContain('«Необычная руна Пламени»');
+  });
+
   it('switches to support-slot goal once the mastery unlock is reached', () => {
     const goal = buildPlayerNextGoalView(createPlayer({
       victories: 4,
       schoolMasteries: [{ schoolCode: 'ember', experience: 3, rank: 1 }],
       unlockedRuneSlotCount: 2,
+      runes: [
+        {
+          ...createPlayer().runes[0]!,
+          name: 'Необычная руна Пламени',
+          rarity: 'UNUSUAL',
+        },
+      ],
     }));
 
     expect(goal.goalType).toBe('fill_support_slot');
@@ -198,12 +233,16 @@ describe('next goal read-model', () => {
     const goal = buildBattleResultNextGoalView(createBattle(), createPlayer({
       victories: 3,
       runes: [
-        createPlayer().runes[0]!,
+        {
+          ...createPlayer().runes[0]!,
+          name: 'Необычная руна Пламени',
+          rarity: 'UNUSUAL',
+        },
         {
           ...createPlayer().runes[0]!,
           id: 'rune-2',
           runeCode: 'rune-2',
-          name: 'Необычная руна Пламени',
+          name: 'Запасная необычная руна Пламени',
           rarity: 'UNUSUAL',
           isEquipped: false,
           equippedSlot: null,

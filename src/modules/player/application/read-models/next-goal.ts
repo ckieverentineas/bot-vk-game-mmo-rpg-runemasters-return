@@ -1,5 +1,9 @@
 import type { BattleView, PlayerState } from '../../../../shared/types/game';
-import { getSchoolNovicePathDefinition, hasRuneOfSchoolAtLeastRarity } from '../../domain/school-novice-path';
+import {
+  findBestRuneOfSchoolAtLeastRarity,
+  getSchoolNovicePathDefinition,
+  hasRuneOfSchoolAtLeastRarity,
+} from '../../domain/school-novice-path';
 import { describeRuneContent } from '../../../runes/domain/rune-abilities';
 import { getRuneSchoolPresentation, getSchoolDefinitionForArchetype } from '../../../runes/domain/rune-schools';
 import { getEquippedRune, getSelectedRune, getUnlockedRuneSlotCount } from '../../domain/player-stats';
@@ -15,6 +19,7 @@ export type NextGoalType =
   | 'equip_first_rune'
   | 'use_active_rune_skill'
   | 'hunt_school_elite'
+  | 'equip_school_sign'
   | 'reach_next_school_mastery'
   | 'fill_support_slot'
   | 'push_higher_threat'
@@ -163,6 +168,25 @@ export const buildPlayerNextGoalView = (player: PlayerState): NextGoalView => {
         milestoneBenefitText: `Победа может принести первую ${novicePath.rewardRarity === 'UNUSUAL' ? 'необычную' : 'новую'} руну школы ${schoolDefinition.nameGenitive}.`,
       },
     );
+  }
+
+  if (novicePath && schoolDefinition) {
+    const bestSchoolSign = findBestRuneOfSchoolAtLeastRarity(player, novicePath.schoolCode, novicePath.rewardRarity);
+    if (bestSchoolSign && bestSchoolSign.id !== equippedRune.id) {
+      return createGoalView(
+        'equip_school_sign',
+        'open_runes',
+        `откройте «🔮 Руны» и наденьте первый знак школы ${schoolDefinition.nameGenitive}`,
+        {
+          schoolCode: novicePath.schoolCode,
+          schoolName: equippedSchool?.name ?? schoolDefinition.name,
+          whyText: `Так первое признание школы ${schoolDefinition.nameGenitive} перейдёт из награды в реальную боевую сборку.`,
+          milestoneTitle: `Первый знак школы ${schoolDefinition.nameGenitive}`,
+          milestoneProgressText: `«${bestSchoolSign.name}» уже ждёт в коллекции рун.`,
+          milestoneBenefitText: `Наденьте «${bestSchoolSign.name}», чтобы следующий бой уже шёл через новый знак школы.`,
+        },
+      );
+    }
   }
 
   const mastery = getPlayerSchoolMasteryForArchetype(player, equippedRune.archetypeCode);

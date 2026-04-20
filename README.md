@@ -37,6 +37,7 @@ Runemasters Return — VK MMO RPG на TypeScript с модульным игро
 - school-aware next-goal теперь умеет вести новичка по короткому `school novice path`: сначала к первому испытанию школы в `dark-forest`, затем к первой `необычной` руне своей школы;
 - evidence layer для early school loop начал собираться прямо в runtime: логируется старт school novice elite encounter, а `reward_claim_applied` теперь различает aligned novice reward вместо безликого общего reward event;
 - первая aligned `unusual` руна школы теперь подаётся как завершение `первого испытания школы`, а не как безымянный дроп: battle result и ключевые экраны закрепляют статус игрока как уже признанного ученика Пламени/Тверди;
+- если первый знак школы уже получен, но ещё не надет, school-aware next-goal теперь ведёт не в абстрактный гринд, а прямо в `🔮 Руны`, чтобы игрок закрепил признание школы в реальной сборке;
 - versioned platform contracts для боевой рунной сборки и reward claims: `LoadoutSnapshot`, `RewardIntent`, `RewardLedger`;
 - exact-once reward ledger и canonical battle finalization защищают победную награду от replay/reroll по повторным входящим событиям;
 - battle mutation revision защищает активный бой от stale overwrite при спаме и transport retry;
