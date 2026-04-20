@@ -74,11 +74,11 @@ const createGoalView = (
   goalType: NextGoalType,
   primaryAction: NextGoalPrimaryAction,
   objectiveText: string,
-  options: Partial<Omit<NextGoalView, 'goalType' | 'primaryAction' | 'primaryActionLabel' | 'objectiveText'>> = {},
+  options: Partial<Omit<NextGoalView, 'goalType' | 'primaryAction' | 'objectiveText'>> = {},
 ): NextGoalView => ({
   goalType,
   primaryAction,
-  primaryActionLabel: resolvePrimaryActionLabel(primaryAction),
+  primaryActionLabel: options.primaryActionLabel ?? resolvePrimaryActionLabel(primaryAction),
   objectiveText,
   whyText: options.whyText ?? null,
   schoolCode: options.schoolCode ?? null,
@@ -204,14 +204,15 @@ export const buildPlayerNextGoalView = (player: PlayerState): NextGoalView => {
       && bestSchoolSign.id === equippedRune.id
       && !hasRuneOfSchoolAtLeastRarity(player, novicePath.schoolCode, novicePath.minibossRewardRarity)
     ) {
-      return createGoalView(
-        'challenge_school_miniboss',
-        'explore',
-        `разыщите ${novicePath.minibossEnemyNameAccusative} в ${novicePath.biomeName} и пройдите большой бой школы ${schoolDefinition.nameGenitive}`,
-        {
-          schoolCode: novicePath.schoolCode,
-          schoolName: equippedSchool?.name ?? schoolDefinition.name,
-          whyText: `Этот бой проверяет, стал ли первый знак школы ${schoolDefinition.nameGenitive} реальной боевой сборкой, а не просто редкой наградой.`,
+    return createGoalView(
+      'challenge_school_miniboss',
+      'explore',
+      `разыщите ${novicePath.minibossEnemyNameAccusative} в ${novicePath.biomeName} и пройдите большой бой школы ${schoolDefinition.nameGenitive}`,
+      {
+        primaryActionLabel: '⚔️ Проверить школу',
+        schoolCode: novicePath.schoolCode,
+        schoolName: equippedSchool?.name ?? schoolDefinition.name,
+        whyText: `Этот бой проверяет, стал ли первый знак школы ${schoolDefinition.nameGenitive} реальной боевой сборкой, а не просто редкой наградой.`,
           milestoneTitle: `Большой бой школы ${schoolDefinition.nameGenitive}`,
           milestoneProgressText: `${novicePath.biomeName} · ${novicePath.minibossEnemyName}`,
           milestoneBenefitText: `Победа может принести первую ${novicePath.minibossRewardRarity === 'RARE' ? 'редкую' : 'новую'} руну школы ${schoolDefinition.nameGenitive}.`,
@@ -313,11 +314,13 @@ export const buildBattleResultNextGoalView = (
   }
 
   const nextGoal = buildPlayerNextGoalView(player);
+  const keepsCustomExploreLabel = nextGoal.primaryAction === 'explore'
+    && nextGoal.primaryActionLabel !== resolvePrimaryActionLabel('explore');
   return {
     ...nextGoal,
     primaryAction: nextGoal.primaryAction === 'explore' ? 'new_battle' : nextGoal.primaryAction,
     primaryActionLabel: nextGoal.primaryAction === 'explore'
-      ? resolvePrimaryActionLabel('new_battle')
+      ? keepsCustomExploreLabel ? nextGoal.primaryActionLabel : resolvePrimaryActionLabel('new_battle')
       : nextGoal.primaryActionLabel,
   };
 };

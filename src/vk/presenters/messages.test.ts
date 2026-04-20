@@ -220,16 +220,15 @@ describe('messages school-first onboarding framing', () => {
       ],
     }));
 
-    expect(message).toContain('Быстрый выбор 1-5');
+    expect(message).toContain('Руны: 6 · стр. 1/2');
     expect(message).toContain('🧩 Слоты рун: 1/2 открыто сейчас.');
     expect(message).toContain('🛡️ Основа: Руна A');
     expect(message).toContain('🧩 Поддержка: 🔒 откроется на mastery-вехе');
-    expect(message).toContain('🎯 Выбрана: Руна B');
-    expect(message).toContain('⚔️ Активная руна в бою: Руна A');
+    expect(message).toContain('🎯 Выбрано: Руна B');
     expect(message).toContain('1. 🛡️ Основа · Руна A');
     expect(message).toContain('2. 🎯 Выбрана · Руна B');
     expect(message).toContain('5. ▫️ В запасе · Руна E');
-    expect(message).toContain('«🧩 В поддержку» даёт половину статов');
+    expect(message).not.toContain('Выберите слот 1-5');
   });
 
   it('shows unlocked support slot when school mastery opens the second slot', () => {
@@ -342,7 +341,7 @@ describe('messages school-first onboarding framing', () => {
     }));
 
     expect(message).toContain('🎯 Следующая цель: откройте «🔮 Руны» и наденьте новую руну.');
-    expect(message).toContain('усилите стиль боя');
+    expect(message).toContain('👉 Дальше: нажмите «🔮 Руны».');
   });
 
   it('adds a forward-looking next goal after victory without a rune drop', () => {
@@ -354,7 +353,7 @@ describe('messages school-first onboarding framing', () => {
     }));
 
     expect(message).toContain('🎯 Следующая цель: одержите ещё 2 победы школой Пламени');
-    expect(message).toContain('🜂 Что даст: После «Импульса углей»');
+    expect(message).toContain('👉 Дальше: нажмите «⚔️ Новый бой».');
   });
 
   it('keeps defeat follow-up supportive and without pressure wording', () => {
@@ -365,7 +364,7 @@ describe('messages school-first onboarding framing', () => {
     }), createPlayer({ tutorialState: 'SKIPPED', runes: [createEquippedRune()] }));
 
     expect(message).toContain('🎯 Следующая цель: проверьте «🔮 Руны» и текущую школу или начните новый бой снова.');
-    expect(message).toContain('🜂 Что даст: Так вы спокойнее подготовитесь');
+    expect(message).toContain('👉 Дальше: нажмите «🔮 Руны».');
   });
 
   it('shows the nearest school milestone in the rune hub once mastery progress exists', () => {
@@ -377,8 +376,8 @@ describe('messages school-first onboarding framing', () => {
     }));
 
     expect(message).toContain('🎯 Ближайшая веха: 1/3 до «Разогрев дожима»');
-    expect(message).toContain('🜂 Что даст: После «Импульса углей»');
-    expect(message).toContain('⭐ Печать Пламени: Вы уже пережили большой бой Пламени');
+    expect(message).toContain('⭐ Печать Пламени: активен.');
+    expect(message).toContain('👉 Сделать шаг: нажмите «⚔️ Исследовать».');
   });
 
   it('shows school sign equip guidance after recognition if the unusual rune is still not equipped', () => {
@@ -389,9 +388,23 @@ describe('messages school-first onboarding framing', () => {
       runes: [createEquippedRune(), createUnusualReserveRune()],
     }));
 
-    expect(message).toContain('⭐ Первый знак Пламени: Вы уже прошли первое испытание Пламени. Первый знак школы ждёт в рунах');
+    expect(message).toContain('⭐ Первый знак Пламени: ждёт в рунах.');
     expect(message).toContain('🎯 Ближайшая веха: «Необычная руна Пламени» уже ждёт в коллекции рун.');
-    expect(message).toContain('🜂 Что даст: Наденьте «Необычная руна Пламени», чтобы следующий бой уже шёл через новый знак школы.');
+    expect(message).toContain('👉 Сделать шаг: нажмите «🔮 Руны».');
+  });
+
+  it('surfaces a direct school-test CTA after the first sign is equipped', () => {
+    const player = createPlayer({
+      tutorialState: 'SKIPPED',
+      victories: 3,
+      schoolMasteries: [{ schoolCode: 'ember', experience: 1, rank: 0 }],
+      runes: [createEquippedUnusualRune()],
+    });
+
+    expect(renderReturnRecap(player)).toContain('🧭 Дальше: нажмите «⚔️ Проверить школу».');
+    expect(renderMainMenu(player)).toContain('👉 Сделать шаг: нажмите «⚔️ Проверить школу».');
+    expect(renderRuneScreen(player)).toContain('👉 Сделать шаг: нажмите «⚔️ Проверить школу».');
+    expect(renderBattle(createBattle(), player)).toContain('👉 Дальше: нажмите «⚔️ Проверить школу».');
   });
 
   it('guides the player to equip the school seal after the miniboss reward if the rare rune is still in reserve', () => {
@@ -408,9 +421,9 @@ describe('messages school-first onboarding framing', () => {
       }],
     }));
 
-    expect(message).toContain('⭐ Печать Пламени: Вы уже пережили большой бой Пламени. Печать школы ждёт в рунах');
+    expect(message).toContain('⭐ Печать Пламени: ждёт в рунах.');
     expect(message).toContain('🎯 Ближайшая веха: «Редкая руна Пламени» уже ждёт в коллекции рун.');
-    expect(message).toContain('🜂 Что даст: Наденьте «Редкая руна Пламени», чтобы следующий бой уже шёл через новый знак школы.');
+    expect(message).toContain('👉 Сделать шаг: нажмите «🔮 Руны».');
   });
 
   it('shows the school miniboss milestone once the first sign is already equipped', () => {
@@ -422,7 +435,7 @@ describe('messages school-first onboarding framing', () => {
     }));
 
     expect(message).toContain('🎯 Ближайшая веха: Тёмный лес · Пепельная матрона.');
-    expect(message).toContain('🜂 Что даст: Победа может принести первую редкую руну школы Пламени.');
+    expect(message).toContain('👉 Сделать шаг: нажмите «⚔️ Проверить школу».');
   });
 
   it('shows a school novice path milestone before the first unusual school rune is earned', () => {
@@ -434,7 +447,7 @@ describe('messages school-first onboarding framing', () => {
     }));
 
     expect(message).toContain('🎯 Ближайшая веха: Тёмный лес · Пепельная ведунья.');
-    expect(message).toContain('🜂 Что даст: Победа может принести первую необычную руну школы Пламени.');
+    expect(message).toContain('👉 Сделать шаг: нажмите «⚔️ Исследовать».');
   });
 
   it('shows an echo novice path milestone once the player reaches Прорицание without an unusual rune yet', () => {
@@ -452,7 +465,7 @@ describe('messages school-first onboarding framing', () => {
     }));
 
     expect(message).toContain('🎯 Ближайшая веха: Тёмный лес · Слепой авгур.');
-    expect(message).toContain('🜂 Что даст: Победа может принести первую необычную руну школы Прорицания.');
+    expect(message).toContain('👉 Сделать шаг: нажмите «⚔️ Исследовать».');
   });
 
   it('shows a gale novice path milestone once the player reaches Буря without an unusual rune yet', () => {
@@ -470,7 +483,7 @@ describe('messages school-first onboarding framing', () => {
     }));
 
     expect(message).toContain('🎯 Ближайшая веха: Тёмный лес · Шквальная рысь.');
-    expect(message).toContain('🜂 Что даст: Победа может принести первую необычную руну школы Бури.');
+    expect(message).toContain('👉 Сделать шаг: нажмите «⚔️ Исследовать».');
   });
 
   it('shows gale seal recognition once the rare gale rune is already equipped', () => {
@@ -481,7 +494,7 @@ describe('messages school-first onboarding framing', () => {
       runes: [createEquippedRareGaleRune()],
     }));
 
-    expect(message).toContain('⭐ Печать Бури: Вы уже пережили большой бой Бури');
+    expect(message).toContain('⭐ Печать Бури: активен.');
   });
 
   it('shows echo seal recognition once the rare echo rune is already equipped', () => {
@@ -499,7 +512,7 @@ describe('messages school-first onboarding framing', () => {
       }],
     }));
 
-    expect(message).toContain('⭐ Печать Прорицания: Вы уже пережили большой бой Прорицания');
+    expect(message).toContain('⭐ Печать Прорицания: активен.');
   });
 
   it('shows an impact recap block in the rune hub when a new rune changes the build', () => {
@@ -514,8 +527,7 @@ describe('messages school-first onboarding framing', () => {
     });
 
     expect(message).toContain('✨ Что изменилось: Новая руна: Искра Бури.');
-    expect(message).toContain('🜂 Теперь: Даёт школе Бури новый темповый ответ после базовой атаки.');
-    expect(message).toContain('👉 Попробовать: Откройте «🔮 Руны» и примерьте её в сборке.');
+    expect(message).toContain('👉 Дальше: Откройте «🔮 Руны» и примерьте её в сборке.');
   });
 
   it('shows support rune contribution in battle text without adding a second active skill promise', () => {
@@ -554,9 +566,9 @@ describe('messages school-first onboarding framing', () => {
       },
     }));
 
-    expect(message).toContain('🧩 Поддержка: Искра поддержки');
-    expect(message).toContain('усиливает давление базовой атаки');
-    expect(message).toContain('пока не даёт вторую боевую кнопку');
+    expect(message).toContain('🌀 Импульс углей — готово');
+    expect(message).toContain('Действия: ⚔️ Атака · 🛡️ Защита (+2 guard) · 🌀 Импульс углей');
+    expect(message).not.toContain('Искра поддержки');
   });
 
   it('shows a compact combat clarity state line during the active player turn', () => {
@@ -596,7 +608,8 @@ describe('messages school-first onboarding framing', () => {
       },
     }));
 
-    expect(message).toContain('📌 Сейчас: вы 6/8 HP · 4/4 маны · guard 3 | враг 3/6 HP · враг готовит тяжёлый удар.');
+    expect(message).toContain('Вы: Рунный мастер #1001 · 6/8 HP · 4/4 маны · guard 3');
+    expect(message).toContain('Враг: Учебный огонёк · 3/6 HP');
     expect(message).toContain('🔥 Пламя: враг уже просел');
   });
 
@@ -644,8 +657,7 @@ describe('messages school-first onboarding framing', () => {
     });
 
     expect(message).toContain('✨ Что изменилось: Открыт слот поддержки.');
-    expect(message).toContain('🜂 Теперь: Сборка стала шире: теперь можно усилить школу второй руной поддержки без второй боевой кнопки.');
-    expect(message).toContain('👉 Попробовать: Откройте «🔮 Руны» и поставьте руну поддержки.');
+    expect(message).toContain('👉 Дальше: Откройте «🔮 Руны» и поставьте руну поддержки.');
   });
 
   it('celebrates the first aligned school trial completion in battle result', () => {
@@ -668,7 +680,6 @@ describe('messages school-first onboarding framing', () => {
     });
 
     expect(message).toContain('✨ Что изменилось: Испытание школы пройдено.');
-    expect(message).toContain('Пламя признало вашу решимость');
-    expect(message).toContain('👉 Попробовать: Откройте «🔮 Руны», наденьте первый знак школы');
+    expect(message).toContain('👉 Дальше: Откройте «🔮 Руны», наденьте первый знак школы');
   });
 });

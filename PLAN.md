@@ -116,6 +116,7 @@
   - [x] Добавить `npm run release:evidence` с единым markdown-срезом по onboarding coverage, school payoff, next-goal/return clarity и QA/exploit guardrails поверх текущего `GameLog` rail.
   - [x] Дозакрыть onboarding evidence gap через `tutorial_path_chosen`, `first_school_presented` и `first_school_committed`.
   - [x] Добавить compact payoff confirmation после установки первого знака школы и battle hint для следующего school-first боя.
+  - [x] После первого знака школы поднять один dominant CTA `⚔️ Проверить школу`, чтобы следующий meaningful бой был очевиден в VK flow.
 - [ ] Не тащить новые product promises без evidence из runtime и playtests.
 
 ### 5. Vertical Slice proof

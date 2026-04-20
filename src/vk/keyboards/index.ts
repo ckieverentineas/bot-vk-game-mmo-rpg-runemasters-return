@@ -10,6 +10,8 @@ import {
   buildReturnToAdventureIntentStateKey,
   buildSkipTutorialIntentStateKey,
 } from '../../modules/exploration/application/command-intent-state';
+import { buildPlayerNextGoalView } from '../../modules/player/application/read-models/next-goal';
+import { buildBattleResultNextGoalView } from '../../modules/player/application/read-models/next-goal';
 import { getEquippedRune, getRuneEquippedSlot, getSelectedRune, getUnlockedRuneSlotCount, isPlayerInTutorial } from '../../modules/player/domain/player-stats';
 import {
   buildCraftIntentStateKey,
@@ -64,9 +66,21 @@ const buildKeyboard = (layout: KeyboardLayout): KeyboardBuilder => {
   return keyboard.oneTime(false).inline(false);
 };
 
+const resolveSchoolContinuationLabel = (player: PlayerState | undefined, fallbackLabel: string): string => {
+  if (!player) {
+    return fallbackLabel;
+  }
+
+  const nextGoal = buildPlayerNextGoalView(player);
+  return nextGoal.goalType === 'challenge_school_miniboss'
+    ? nextGoal.primaryActionLabel
+    : fallbackLabel;
+};
+
 const createMainMenuLayout = (player?: PlayerState): KeyboardLayout => {
   const locationStateKey = player ? buildEnterTutorialModeIntentStateKey(player) : undefined;
   const exploreStateKey = player ? buildExploreLocationIntentStateKey(player) : undefined;
+  const exploreLabel = resolveSchoolContinuationLabel(player, '⚔️ Исследовать');
 
   return [
     [
@@ -75,7 +89,7 @@ const createMainMenuLayout = (player?: PlayerState): KeyboardLayout => {
     ],
     [
       { label: '📘 Обучение', command: gameCommands.location, color: Keyboard.PRIMARY_COLOR, intentScoped: Boolean(player), stateKey: locationStateKey },
-      { label: '⚔️ Исследовать', command: gameCommands.explore, color: Keyboard.POSITIVE_COLOR, intentScoped: Boolean(player), stateKey: exploreStateKey },
+      { label: exploreLabel, command: gameCommands.explore, color: Keyboard.POSITIVE_COLOR, intentScoped: Boolean(player), stateKey: exploreStateKey },
     ],
     [
       { label: '🔮 Руны', command: gameCommands.runeCollection, color: Keyboard.POSITIVE_COLOR },
@@ -119,14 +133,18 @@ const createBattleSkillButton = (battle: BattleView): KeyboardButtonDefinition =
 
 const createBattleResultLayout = (battle: BattleView, player?: PlayerState): KeyboardLayout => {
   const exploreStateKey = player ? buildExploreLocationIntentStateKey(player) : undefined;
+  const nextGoal = player ? buildBattleResultNextGoalView(battle, player) : null;
+  const exploreLabel = nextGoal?.primaryAction === 'new_battle'
+    ? nextGoal.primaryActionLabel
+    : '⚔️ Новый бой';
 
   return [
-  battle.rewards?.droppedRune
+  battle.rewards?.droppedRune || nextGoal?.primaryAction === 'open_runes'
     ? [
-        { label: '🔮 Руны', command: gameCommands.runeCollection, color: Keyboard.PRIMARY_COLOR },
-        { label: '⚔️ Новый бой', command: gameCommands.explore, color: Keyboard.POSITIVE_COLOR, intentScoped: Boolean(player), stateKey: exploreStateKey },
+        { label: nextGoal?.primaryActionLabel ?? '🔮 Руны', command: gameCommands.runeCollection, color: Keyboard.PRIMARY_COLOR },
+        { label: exploreLabel, command: gameCommands.explore, color: Keyboard.POSITIVE_COLOR, intentScoped: Boolean(player), stateKey: exploreStateKey },
       ]
-    : [{ label: '⚔️ Новый бой', command: gameCommands.explore, color: Keyboard.POSITIVE_COLOR, intentScoped: Boolean(player), stateKey: exploreStateKey }],
+    : [{ label: exploreLabel, command: gameCommands.explore, color: Keyboard.POSITIVE_COLOR, intentScoped: Boolean(player), stateKey: exploreStateKey }],
   [
     { label: '👤 Профиль', command: gameCommands.profile, color: Keyboard.PRIMARY_COLOR },
     { label: '◀ Главное меню', command: gameCommands.backToMenu, color: Keyboard.SECONDARY_COLOR },
@@ -136,6 +154,7 @@ const createBattleResultLayout = (battle: BattleView, player?: PlayerState): Key
 
 const createRuneLayout = (player?: PlayerState): KeyboardLayout => {
   const selectedRune = player ? getSelectedRune(player) : null;
+  const nextGoal = player ? buildPlayerNextGoalView(player) : null;
   const primaryRune = player ? getEquippedRune(player, 0) : null;
   const unlockedRuneSlotCount = player ? getUnlockedRuneSlotCount(player) : 1;
   const supportRune = player && unlockedRuneSlotCount > 1 ? getEquippedRune(player, 1) : null;
@@ -146,6 +165,7 @@ const createRuneLayout = (player?: PlayerState): KeyboardLayout => {
   const unequipStateKey = player ? buildUnequipIntentStateKey(player, selectedEquippedSlot ?? 0) : undefined;
   const previousPageStateKey = player ? buildMoveRuneCursorIntentStateKey(player, -runeCollectionPageSize) : undefined;
   const nextPageStateKey = player ? buildMoveRuneCursorIntentStateKey(player, runeCollectionPageSize) : undefined;
+  const exploreStateKey = player ? buildExploreLocationIntentStateKey(player) : undefined;
   const destroyStateKey = player && selectedRune
     ? buildDestroyIntentStateKey(player, selectedRune.id, gameBalance.runes.profiles[selectedRune.rarity].shardField)
     : undefined;
@@ -181,7 +201,12 @@ const createRuneLayout = (player?: PlayerState): KeyboardLayout => {
           : '❌ Снять поддержку';
   const canUnequipVisible = !supportRune || selectedEquippedSlot === 1 || (!primaryRune && !supportRune);
 
-    return [
+     return [
+      ...(nextGoal?.goalType === 'challenge_school_miniboss'
+        ? [[
+            { label: nextGoal.primaryActionLabel, command: gameCommands.explore, color: Keyboard.POSITIVE_COLOR, intentScoped: Boolean(player), stateKey: exploreStateKey },
+          ] as const]
+        : []),
       [
       { label: '1', command: gameCommands.selectRuneSlot1, color: Keyboard.PRIMARY_COLOR, intentScoped: Boolean(player), stateKey: player ? buildSelectRunePageSlotIntentStateKey(player, 0) : undefined },
       { label: '2', command: gameCommands.selectRuneSlot2, color: Keyboard.PRIMARY_COLOR, intentScoped: Boolean(player), stateKey: player ? buildSelectRunePageSlotIntentStateKey(player, 1) : undefined },

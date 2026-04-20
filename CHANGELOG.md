@@ -32,6 +32,7 @@
 - tooling slice `release:evidence` теперь собирает unified markdown-отчёт по runtime evidence: onboarding coverage, school payoff, next-goal/return clarity и QA/exploit guardrails в одном release review артефакте;
 - telemetry baseline теперь закрывает и ранний onboarding funnel: `tutorial_path_chosen`, `first_school_presented` и `first_school_committed` дают evidence между `onboarding_started` и первым school payoff;
 - установка первого знака школы теперь сразу даёт compact payoff recap в rune hub, а следующий бой сильнее подсказывает, как именно проверить новый стиль этой школы на практике;
+- VK UX после первого знака школы теперь поднимает один dominant CTA `⚔️ Проверить школу` в меню, rune hub и battle-result follow-up, чтобы следующий meaningful бой был очевиден без лишней навигации;
 - player-state hydration теперь проходит через compatibility-safe helper с current / legacy / future fixtures и repository hydration tests, чтобы persisted player state безопаснее переживал missing/unknown fields и rollback-сценарии;
 - `content:validate` теперь содержит hard completeness gate для shipped school packages, чтобы 4 стартовые школы не уходили в релиз с тихим drift между identity, encounter hooks и reward/chase wiring;
 - active battle теперь показывает compact combat clarity block с текущим состоянием боя и school-aware tactical hint, чтобы игроку было проще читать следующий meaningful ход без перегруза интерфейса;

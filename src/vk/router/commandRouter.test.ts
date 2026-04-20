@@ -11,6 +11,7 @@ describe('normalizeCommand', () => {
   it('нормализует алиасы обучения и возврата в мир', () => {
     expect(normalizeCommand('обучение')).toBe(gameCommands.location);
     expect(normalizeCommand('в мир')).toBe(gameCommands.returnToAdventure);
+    expect(normalizeCommand('проверить школу')).toBe(gameCommands.explore);
     expect(normalizeCommand('блок')).toBe(gameCommands.defend);
   });
 
@@ -210,6 +211,21 @@ describe('normalizeCommand', () => {
 
     expect(explore.command).toBe(gameCommands.explore);
     expect(explore.intentId).toBe('legacy-text:2000000001:1001:86:исследовать');
+    expect(explore.intentSource).toBe('legacy_text');
+  });
+
+  it('нормализует school-test alias в обычное исследование с legacy intent', () => {
+    const explore = resolveCommandEnvelope({
+      text: 'проверить школу',
+      senderId: 1001,
+      peerId: 2000000001,
+      conversationMessageId: 92,
+      id: 516,
+      messagePayload: null,
+    } as never);
+
+    expect(explore.command).toBe(gameCommands.explore);
+    expect(explore.intentId).toBe('legacy-text:2000000001:1001:92:исследовать');
     expect(explore.intentSource).toBe('legacy_text');
   });
 

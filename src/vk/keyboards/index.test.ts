@@ -174,7 +174,10 @@ const collectPayloads = (
 };
 
 const collectLabels = (
-  keyboard: ReturnType<typeof createRuneKeyboard>,
+  keyboard:
+    | ReturnType<typeof createBattleResultKeyboard>
+    | ReturnType<typeof createMainMenuKeyboard>
+    | ReturnType<typeof createRuneKeyboard>,
 ): string[] => {
   const serialized = JSON.parse(JSON.stringify(keyboard)) as {
     rows: Array<Array<SerializedButton>>;
@@ -270,6 +273,55 @@ describe('profile keyboard', () => {
     expect(lockedLabels).not.toContain('🧩 В поддержку');
     expect(unlockedLabels).toContain('🧩 В поддержку');
     expect(unlockedPayloads.find((payload) => payload.command === 'надеть в поддержку')?.intentId).toEqual(expect.any(String));
+  });
+
+  it('adds a dominant school-test CTA when the first sign is already equipped', () => {
+    const player = createPlayer({
+      victories: 3,
+      schoolMasteries: [{ schoolCode: 'ember', experience: 1, rank: 0 }],
+      runes: [
+        {
+          ...createPlayer().runes[0],
+          rarity: 'UNUSUAL',
+          name: 'Первый знак Пламени',
+          isEquipped: true,
+          equippedSlot: 0,
+        },
+      ],
+    });
+
+    const mainMenuLabels = collectLabels(createMainMenuKeyboard(player));
+    const runeLabels = collectLabels(createRuneKeyboard(player));
+    const battleResultLabels = collectLabels(createBattleResultKeyboard(createBattle({ status: 'COMPLETED', result: 'VICTORY', rewards: { experience: 6, gold: 2, shards: { USUAL: 1 }, droppedRune: null } }), player));
+
+    expect(mainMenuLabels).toContain('⚔️ Проверить школу');
+    expect(runeLabels).toContain('⚔️ Проверить школу');
+    expect(battleResultLabels).toContain('⚔️ Проверить школу');
+  });
+
+  it('keeps defeat battle-result CTA aligned with rune review instead of school-test retry', () => {
+    const player = createPlayer({
+      victories: 3,
+      schoolMasteries: [{ schoolCode: 'ember', experience: 1, rank: 0 }],
+      runes: [
+        {
+          ...createPlayer().runes[0],
+          rarity: 'UNUSUAL',
+          name: 'Первый знак Пламени',
+          isEquipped: true,
+          equippedSlot: 0,
+        },
+      ],
+    });
+
+    const battleResultLabels = collectLabels(createBattleResultKeyboard(createBattle({
+      status: 'COMPLETED',
+      result: 'DEFEAT',
+      rewards: null,
+    }), player));
+
+    expect(battleResultLabels).toContain('🔮 Руны');
+    expect(battleResultLabels).not.toContain('⚔️ Проверить школу');
   });
 
   it('does not promise support equip or primary unequip when the selected rune is the only primary anchor', () => {

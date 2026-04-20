@@ -97,6 +97,8 @@ export const commandAliases: Readonly<Record<string, GameCommand>> = {
   'удалить перса': gameCommands.deletePlayer,
   'обучение': gameCommands.location,
   'в мир': gameCommands.returnToAdventure,
+  'проверить школу': gameCommands.explore,
+  'испытать знак': gameCommands.explore,
   'блок': gameCommands.defend,
   '++руна': gameCommands.nextRune,
   '--руна': gameCommands.previousRune,
