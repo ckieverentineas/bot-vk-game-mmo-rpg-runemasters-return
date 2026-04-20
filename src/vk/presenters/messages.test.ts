@@ -269,6 +269,7 @@ describe('messages school-first onboarding framing', () => {
 
     expect(message).toContain('🧭 Возвращение');
     expect(message).toContain('Стиль: Школа Пламени · роль штурм.');
+    expect(message).toContain('Статус школы: Вы уже прошли первое испытание Пламени');
     expect(message).toContain('Фокус: одержите ещё 2 победы школой Пламени');
     expect(message).toContain('Почему это важно: После «Импульса углей»');
     expect(message).toContain('Дальше: нажмите «⚔️ Исследовать».');
@@ -356,6 +357,7 @@ describe('messages school-first onboarding framing', () => {
 
     expect(message).toContain('🎯 Ближайшая веха: 1/3 до «Разогрев дожима»');
     expect(message).toContain('🜂 Что даст: После «Импульса углей»');
+    expect(message).toContain('⭐ Первый знак Пламени: Вы уже прошли первое испытание Пламени');
   });
 
   it('shows a school novice path milestone before the first unusual school rune is earned', () => {
@@ -441,5 +443,29 @@ describe('messages school-first onboarding framing', () => {
     expect(message).toContain('✨ Что изменилось: Открыт слот поддержки.');
     expect(message).toContain('🜂 Теперь: Сборка стала шире: теперь можно усилить школу второй руной поддержки без второй боевой кнопки.');
     expect(message).toContain('👉 Попробовать: Откройте «🔮 Руны» и поставьте руну поддержки.');
+  });
+
+  it('celebrates the first aligned school trial completion in battle result', () => {
+    const message = renderBattle(createBattle({
+      enemy: {
+        ...createBattle().enemy,
+        code: 'ash-seer',
+        name: 'Пепельная ведунья',
+        kind: 'mage',
+        isElite: true,
+      },
+    }), createPlayer({
+      tutorialState: 'SKIPPED',
+      runes: [createEquippedRune()],
+    }), {
+      kind: 'school_trial_completed',
+      title: 'Испытание школы пройдено',
+      changeLine: 'Пламя признало вашу решимость. Теперь школа отвечает вам не только давлением, но и настоящим стилем боя через первую необычную руну.',
+      nextStepLine: 'Откройте «🔮 Руны», наденьте первый знак школы и закрепите стиль в следующем бою.',
+    });
+
+    expect(message).toContain('✨ Что изменилось: Испытание школы пройдено.');
+    expect(message).toContain('Пламя признало вашу решимость');
+    expect(message).toContain('👉 Попробовать: Откройте «🔮 Руны», наденьте первый знак школы');
   });
 });

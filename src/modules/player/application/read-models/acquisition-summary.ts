@@ -2,9 +2,10 @@ import type { BattleView, PlayerState, RuneRarity, RuneView } from '../../../../
 import { describeRuneContent } from '../../../runes/domain/rune-abilities';
 import { getSchoolDefinition, getSchoolDefinitionForArchetype, getRuneSchoolPresentation } from '../../../runes/domain/rune-schools';
 import { getUnlockedRuneSlotCount } from '../../domain/player-stats';
+import { getSchoolNovicePathDefinitionForEnemy, hasRuneOfSchoolAtLeastRarity } from '../../domain/school-novice-path';
 import { getSchoolMasteryDefinition } from '../../domain/school-mastery';
 
-export type AcquisitionSummaryKind = 'new_rune' | 'new_rarity' | 'mastery_unlock' | 'slot_unlock';
+export type AcquisitionSummaryKind = 'new_rune' | 'new_rarity' | 'mastery_unlock' | 'slot_unlock' | 'school_trial_completed';
 
 export interface AcquisitionSummaryView {
   readonly kind: AcquisitionSummaryKind;
@@ -163,6 +164,36 @@ const buildSlotUnlockSummary = (
   );
 };
 
+const buildSchoolTrialCompletedSummary = (
+  schoolCode: string,
+  schoolName: string,
+  schoolNameGenitive: string,
+): AcquisitionSummaryView => {
+  switch (schoolCode) {
+    case 'ember':
+      return createSummary(
+        'school_trial_completed',
+        'Испытание школы пройдено',
+        'Пламя признало вашу решимость. Теперь школа отвечает вам не только давлением, но и настоящим стилем боя через первую необычную руну.',
+        'Откройте «🔮 Руны», наденьте первый знак школы и закрепите стиль в следующем бою.',
+      );
+    case 'stone':
+      return createSummary(
+        'school_trial_completed',
+        'Испытание школы пройдено',
+        'Твердь признала вашу стойкость. Теперь школа отвечает вам не только защитой, но и настоящим стилем боя через первую необычную руну.',
+        'Откройте «🔮 Руны», наденьте первый знак школы и проверьте новый ответ на тяжёлый удар.',
+      );
+    default:
+      return createSummary(
+        'school_trial_completed',
+        'Испытание школы пройдено',
+        `${schoolName} признала ваш первый настоящий шаг. Теперь путь школы ${schoolNameGenitive} закреплён первой необычной руной.`,
+        'Откройте «🔮 Руны» и закрепите новый знак школы в сборке.',
+      );
+  }
+};
+
 export const buildBattleAcquisitionSummary = (
   before: PlayerState,
   after: PlayerState,
@@ -184,6 +215,21 @@ export const buildBattleAcquisitionSummary = (
   const addedRune = resolveAddedRune(before, after);
   const newRarity = resolveNewRarity(before, after);
   if (addedRune) {
+    const novicePath = getSchoolNovicePathDefinitionForEnemy(battle.enemy.code);
+    const addedRuneSchool = getSchoolDefinitionForArchetype(addedRune.archetypeCode);
+    if (
+      novicePath
+      && addedRuneSchool?.code === novicePath.schoolCode
+      && addedRune.rarity === novicePath.rewardRarity
+      && !hasRuneOfSchoolAtLeastRarity(before, novicePath.schoolCode, novicePath.rewardRarity)
+    ) {
+      return buildSchoolTrialCompletedSummary(
+        novicePath.schoolCode,
+        addedRuneSchool.name,
+        addedRuneSchool.nameGenitive,
+      );
+    }
+
     return buildNewRuneSummary(addedRune, before, newRarity);
   }
 

@@ -185,6 +185,41 @@ describe('acquisition summary read-model', () => {
     expect(summary?.changeLine).toContain('Пламя');
   });
 
+  it('turns the first aligned unusual novice reward into a school trial completion summary', () => {
+    const before = createPlayer({
+      runes: [createRune({ isEquipped: true, equippedSlot: 0 })],
+      schoolMasteries: [{ schoolCode: 'ember', experience: 1, rank: 0 }],
+      unlockedRuneSlotCount: 1,
+    });
+    const after = createPlayer({
+      runes: [
+        createRune({ isEquipped: true, equippedSlot: 0 }),
+        createRune({
+          id: 'rune-2',
+          runeCode: 'rune-2',
+          rarity: 'UNUSUAL',
+          name: 'Необычная руна Пламени',
+        }),
+      ],
+      schoolMasteries: [{ schoolCode: 'ember', experience: 1, rank: 0 }],
+      unlockedRuneSlotCount: 1,
+    });
+
+    const summary = buildBattleAcquisitionSummary(before, after, createBattle({
+      enemy: {
+        ...createBattle().enemy,
+        code: 'ash-seer',
+        name: 'Пепельная ведунья',
+        kind: 'mage',
+        isElite: true,
+      },
+    }));
+
+    expect(summary?.kind).toBe('school_trial_completed');
+    expect(summary?.title).toBe('Испытание школы пройдено');
+    expect(summary?.changeLine).toContain('Пламя признало вашу решимость');
+  });
+
   it('prioritizes support slot unlock when mastery opens build breadth', () => {
     const before = createPlayer({
       runes: [createRune({ isEquipped: true, equippedSlot: 0 })],

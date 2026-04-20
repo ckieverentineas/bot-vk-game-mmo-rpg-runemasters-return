@@ -18,6 +18,7 @@ import {
   buildBattleResultNextGoalView,
   buildPlayerNextGoalView,
 } from '../../modules/player/application/read-models/next-goal';
+import { buildPlayerSchoolRecognitionView } from '../../modules/player/application/read-models/school-recognition';
 import { resolveDefendGuardGain } from '../../modules/combat/domain/battle-tactics';
 import { describeRuneContent } from '../../modules/runes/domain/rune-abilities';
 import { buildRuneCollectionPage } from '../../modules/runes/domain/rune-collection';
@@ -148,12 +149,14 @@ const resolveReturnStyleLine = (player: PlayerState): string => {
 
 export const renderReturnRecap = (player: PlayerState, title = '🧭 Возвращение'): string => {
   const nextGoal = buildPlayerNextGoalView(player);
+  const recognition = buildPlayerSchoolRecognitionView(player);
 
   return [
     title,
     '',
     resolveReturnStateLine(player),
     resolveReturnStyleLine(player),
+    ...(recognition ? [`Статус школы: ${withSentencePeriod(recognition.statusLine)}`] : []),
     `Фокус: ${withSentencePeriod(nextGoal.objectiveText)}`,
     ...(nextGoal.whyText ? [`Почему это важно: ${withSentencePeriod(nextGoal.whyText)}`] : []),
     `Дальше: нажмите «${nextGoal.primaryActionLabel}».`,
@@ -252,6 +255,7 @@ export const renderMainMenu = (player: PlayerState): string => {
   const inTutorial = isPlayerInTutorial(player);
   const equippedSchool = getRuneSchoolPresentation(equippedRune?.archetypeCode);
   const nextGoal = buildPlayerNextGoalView(player);
+  const recognition = buildPlayerSchoolRecognitionView(player);
 
   return [
     '🏰 Главное меню Runemasters Return',
@@ -270,6 +274,7 @@ export const renderMainMenu = (player: PlayerState): string => {
     player.defeatStreak > 0
       ? `🛡️ Поражений подряд: ${player.defeatStreak}. Сложность уже смягчена.`
       : `🔥 Побед подряд: ${player.victoryStreak}`,
+    ...(recognition ? [`⭐ ${recognition.title}: ${withSentencePeriod(recognition.statusLine)}`] : []),
     `🎯 Следующая цель: ${withSentencePeriod(nextGoal.objectiveText)}`,
     ...(nextGoal.whyText ? [`🜂 Зачем: ${withSentencePeriod(nextGoal.whyText)}`] : []),
     '',
@@ -345,6 +350,7 @@ export const renderRuneScreen = (player: PlayerState, acquisitionSummary?: Acqui
   const equippedRune = getEquippedRune(player);
   const page = buildRuneCollectionPage(player);
   const nextGoal = buildPlayerNextGoalView(player);
+  const recognition = buildPlayerSchoolRecognitionView(player);
 
   if (player.runes.length === 0) {
     return [
@@ -372,6 +378,7 @@ export const renderRuneScreen = (player: PlayerState, acquisitionSummary?: Acqui
       const school = getRuneSchoolPresentation(equippedRune.archetypeCode);
       return school ? [`Текущий стиль: ${school.schoolLine} · роль ${school.roleName.toLowerCase()}.`] : [];
     })() : []),
+    ...(recognition ? [`⭐ ${recognition.title}: ${withSentencePeriod(recognition.statusLine)}`] : []),
     ...renderAcquisitionSummary(acquisitionSummary),
     ...(['hunt_school_elite', 'reach_next_school_mastery', 'fill_support_slot'].includes(nextGoal.goalType)
       ? [
