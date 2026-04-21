@@ -36,7 +36,10 @@ const createRuneDraft = (name = 'Обычная руна Пламени'): RuneD
   intelligence: 0,
 });
 
-const createBattleInput = (playerId: number): CreateBattleInput => ({
+const createBattleInput = (
+  playerId: number,
+  enemyOverrides: Partial<CreateBattleInput['enemy']> = {},
+): CreateBattleInput => ({
   status: 'ACTIVE',
   battleType: 'PVE',
   actionRevision: 0,
@@ -80,6 +83,7 @@ const createBattleInput = (playerId: number): CreateBattleInput => ({
     attackText: 'бьёт',
     intent: null,
     hasUsedSignatureMove: false,
+    ...enemyOverrides,
   },
   log: ['Враг найден.'],
   result: null,
@@ -484,6 +488,64 @@ describe.sequential('PrismaGameRepository concurrency rails', () => {
         rank: 0,
       }),
     ]);
+  });
+
+  it('collects claim-all trophy materials from the persisted reward snapshot', async () => {
+    const player = await createPlayer(20033);
+    const activeBattle = await repository.createBattle(player.playerId, createBattleInput(player.playerId, {
+      lootTable: {
+        herb: 2,
+        essence: 1,
+        leather: 1,
+      },
+    }));
+    const completedBattle = toCompletedVictoryBattle(activeBattle, createRuneDraft('Claim All Reward Rune'));
+
+    await repository.finalizeBattle(player.playerId, completedBattle);
+
+    const pendingLedger = await prisma.rewardLedgerRecord.findFirstOrThrow({
+      where: {
+        playerId: player.playerId,
+      },
+    });
+    const pendingLedgerSnapshot = JSON.parse(pendingLedger.entrySnapshot) as {
+      pendingRewardSnapshot?: {
+        trophyActions?: Array<{
+          code?: string;
+          reward?: {
+            inventoryDelta?: Record<string, number>;
+          };
+        }>;
+      };
+    };
+
+    expect(pendingLedgerSnapshot.pendingRewardSnapshot?.trophyActions?.find((action) => action.code === 'claim_all')?.reward?.inventoryDelta).toEqual({
+      herb: 2,
+      essence: 1,
+      leather: 1,
+    });
+
+    const result = await repository.collectPendingReward(player.playerId, pendingLedger.ledgerKey, 'claim_all');
+    const persistedPlayer = await repository.findPlayerById(player.playerId);
+    const persistedSkillCount = await prisma.playerSkill.count({
+      where: {
+        playerId: player.playerId,
+      },
+    });
+
+    expect(result.selectedActionCode).toBe('claim_all');
+    expect(result.appliedResult.inventoryDelta).toEqual({
+      herb: 2,
+      essence: 1,
+      leather: 1,
+    });
+    expect(result.appliedResult.skillUps).toEqual([]);
+    expect(persistedPlayer?.inventory).toMatchObject({
+      herb: 2,
+      essence: 1,
+      leather: 1,
+    });
+    expect(persistedSkillCount).toBe(0);
   });
 
   it('returns the same canonical drop when parallel finalize branches resolve different random outcomes', async () => {

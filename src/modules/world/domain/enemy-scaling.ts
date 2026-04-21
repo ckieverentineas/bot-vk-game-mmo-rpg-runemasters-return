@@ -159,6 +159,7 @@ export const buildEnemySnapshot = (template: MobTemplateView, locationLevel: num
     experienceReward: Math.max(template.baseExperience, Math.floor(template.baseExperience + locationLevel * 1.5)),
     goldReward: Math.max(template.baseGold, Math.floor(template.baseGold + locationLevel)),
     runeDropChance: template.runeDropChance,
+    lootTable: { ...template.lootTable },
     attackText: template.attackText,
     intent: null,
     hasUsedSignatureMove: false,

@@ -7,6 +7,8 @@ import type {
   BattleRewardView,
   BattleRuneLoadoutSnapshot,
   BattleView,
+  InventoryLoot,
+  MaterialField,
   RuneDraft,
   RuneRarity,
 } from '../../../../shared/types/game';
@@ -30,12 +32,19 @@ export type BattleSnapshot = BattleSnapshotV1;
 
 const battleEnemyIntentCodes: readonly BattleEnemyIntentCode[] = ['HEAVY_STRIKE', 'GUARD_BREAK'];
 const rewardRarities: readonly RuneRarity[] = ['USUAL', 'UNUSUAL', 'RARE', 'EPIC', 'LEGENDARY', 'MYTHICAL'];
+const materialFields: readonly MaterialField[] = ['leather', 'bone', 'herb', 'essence', 'metal', 'crystal'];
 
 const isString = (value: unknown): value is string => typeof value === 'string';
 const isNullableString = (value: unknown): value is string | null => value === null || isString(value);
 const isNumber = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value) && value >= 0;
 const isStringArray = (value: unknown): value is string[] => Array.isArray(value) && value.every(isString);
 const isRuneRarity = (value: unknown): value is RuneRarity => isString(value) && rewardRarities.includes(value as RuneRarity);
+const isMaterialField = (value: unknown): value is MaterialField => isString(value) && materialFields.includes(value as MaterialField);
+
+const isInventoryLoot = (value: unknown): value is InventoryLoot => (
+  isJsonRecord(value)
+  && Object.entries(value).every(([field, amount]) => isMaterialField(field) && isNumber(amount))
+);
 
 const isRuneDraft = (value: unknown): value is RuneDraft => (
   isJsonRecord(value)
@@ -122,6 +131,7 @@ const isBattleEnemySnapshot = (value: unknown): value is BattleEnemySnapshot => 
   && isNumber(value.experienceReward)
   && isNumber(value.goldReward)
   && isNumber(value.runeDropChance)
+  && (value.lootTable === undefined || isInventoryLoot(value.lootTable))
   && isString(value.attackText)
   && (value.intent === undefined || value.intent === null || isBattleEnemyIntentSnapshot(value.intent))
   && (value.hasUsedSignatureMove === undefined || typeof value.hasUsedSignatureMove === 'boolean')

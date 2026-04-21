@@ -2,6 +2,7 @@ import type {
   InventoryDelta,
   InventoryField,
   PlayerSkillCode,
+  PlayerSkillPointGain,
   StatKey,
 } from '../../../shared/types/game';
 
@@ -9,7 +10,7 @@ import { isPlayerSkillCode } from '../../player/domain/player-skills';
 import type { RewardIntent, RewardPayloadV1, RewardSourceType } from '../../shared/domain/contracts/reward-intent';
 import { isRewardPayload } from '../../shared/domain/contracts/reward-intent';
 import { hasSchemaVersion, isJsonRecord } from '../../shared/domain/contracts/versioned-contract';
-import type { TrophyActionCode, TrophyActionDefinition } from './trophy-actions';
+import type { TrophyActionCode, TrophyActionDefinition, TrophyActionReward } from './trophy-actions';
 
 export const PENDING_REWARD_SNAPSHOT_SCHEMA_VERSION = 1 as const;
 
@@ -20,6 +21,12 @@ export interface PendingRewardTrophyActionSnapshot {
   readonly label: string;
   readonly skillCodes: readonly PlayerSkillCode[];
   readonly visibleRewardFields: readonly InventoryField[];
+  readonly reward?: PendingRewardTrophyActionRewardSnapshot;
+}
+
+export interface PendingRewardTrophyActionRewardSnapshot {
+  readonly inventoryDelta: InventoryDelta;
+  readonly skillPoints: readonly PlayerSkillPointGain[];
 }
 
 export interface PendingRewardSkillUpSnapshot {
@@ -150,6 +157,21 @@ const isInventoryDelta = (value: unknown): value is InventoryDelta => (
   && Object.entries(value).every(([field, amount]) => isInventoryField(field) && isNumber(amount))
 );
 
+const isPlayerSkillPointGain = (value: unknown): value is PlayerSkillPointGain => (
+  isJsonRecord(value)
+  && isKnownPlayerSkillCode(value.skillCode)
+  && isNumber(value.points)
+);
+
+const isPendingRewardTrophyActionRewardSnapshot = (
+  value: unknown,
+): value is PendingRewardTrophyActionRewardSnapshot => (
+  isJsonRecord(value)
+  && isInventoryDelta(value.inventoryDelta)
+  && Array.isArray(value.skillPoints)
+  && value.skillPoints.every(isPlayerSkillPointGain)
+);
+
 const isPlayerSkillCodeArray = (value: unknown): value is readonly PlayerSkillCode[] => (
   Array.isArray(value) && value.every(isKnownPlayerSkillCode)
 );
@@ -164,6 +186,7 @@ const isPendingRewardTrophyActionSnapshot = (value: unknown): value is PendingRe
   && isString(value.label)
   && isPlayerSkillCodeArray(value.skillCodes)
   && isInventoryFieldArray(value.visibleRewardFields)
+  && (value.reward === undefined || isPendingRewardTrophyActionRewardSnapshot(value.reward))
 );
 
 const isPendingRewardSkillUpSnapshot = (value: unknown): value is PendingRewardSkillUpSnapshot => (
@@ -233,19 +256,45 @@ const cloneRewardPayload = (payload: RewardPayloadV1): RewardPayloadV1 => ({
     : null,
 });
 
+const cloneInventoryDelta = (delta: InventoryDelta): InventoryDelta => ({ ...delta });
+
+const createPendingRewardTrophyActionRewardSnapshot = (
+  action: TrophyActionDefinition,
+  actionRewards: readonly TrophyActionReward[],
+): Pick<PendingRewardTrophyActionSnapshot, 'reward'> => {
+  const reward = actionRewards.find((candidate) => candidate.actionCode === action.code);
+
+  if (!reward) {
+    return {};
+  }
+
+  return {
+    reward: {
+      inventoryDelta: cloneInventoryDelta(reward.inventoryDelta),
+      skillPoints: reward.skillPoints.map((skillPoint) => ({
+        skillCode: skillPoint.skillCode,
+        points: skillPoint.points,
+      })),
+    },
+  };
+};
+
 const createPendingRewardTrophyActionSnapshot = (
   action: TrophyActionDefinition,
+  actionRewards: readonly TrophyActionReward[],
 ): PendingRewardTrophyActionSnapshot => ({
   code: action.code,
   label: action.label,
   skillCodes: [...action.skillCodes],
   visibleRewardFields: [...action.visibleRewardFields],
+  ...createPendingRewardTrophyActionRewardSnapshot(action, actionRewards),
 });
 
 export const createPendingRewardSnapshot = (
   intent: RewardIntent,
   trophyActions: readonly TrophyActionDefinition[],
   createdAt: string,
+  trophyActionRewards: readonly TrophyActionReward[] = [],
 ): PendingRewardOpenSnapshotV1 => ({
   schemaVersion: PENDING_REWARD_SNAPSHOT_SCHEMA_VERSION,
   intentId: intent.intentId,
@@ -254,7 +303,7 @@ export const createPendingRewardSnapshot = (
   playerId: intent.playerId,
   status: 'PENDING',
   baseReward: cloneRewardPayload(intent.payload),
-  trophyActions: trophyActions.map(createPendingRewardTrophyActionSnapshot),
+  trophyActions: trophyActions.map((action) => createPendingRewardTrophyActionSnapshot(action, trophyActionRewards)),
   selectedActionCode: null,
   appliedResult: null,
   createdAt,

@@ -40,8 +40,8 @@ import {
   type PendingRewardSkillUpSnapshot,
   type PendingRewardTrophyActionSnapshot,
 } from '../../../rewards/domain/pending-reward-snapshot';
-import { resolveTrophyActions } from '../../../rewards/domain/trophy-actions';
-import type { TrophyActionCode } from '../../../rewards/domain/trophy-actions';
+import { resolveTrophyActionReward, resolveTrophyActions } from '../../../rewards/domain/trophy-actions';
+import type { TrophyActionCode, TrophyActionDefinition, TrophyActionReward } from '../../../rewards/domain/trophy-actions';
 import { getSchoolDefinitionForArchetype } from '../../../runes/domain/rune-schools';
 import { hydratePlayerStateFromPersistence } from './player-state-hydration';
 import { buildLoadoutSnapshotFromBattle, isLoadoutSnapshot, projectBattleRuneLoadout, type LoadoutSnapshot } from '../../domain/contracts/loadout-snapshot';
@@ -159,10 +159,43 @@ const findPendingRewardTrophyAction = (
 
 const buildPendingRewardSkillPointGains = (
   action: PendingRewardTrophyActionSnapshot,
-): readonly PlayerSkillPointGain[] => action.skillCodes.map((skillCode) => ({
-  skillCode,
-  points: 1,
-}));
+): readonly PlayerSkillPointGain[] => {
+  if (action.reward) {
+    return action.reward.skillPoints.map((skillPoint) => ({
+      skillCode: skillPoint.skillCode,
+      points: skillPoint.points,
+    }));
+  }
+
+  return action.skillCodes.map((skillCode) => ({
+    skillCode,
+    points: 1,
+  }));
+};
+
+const buildPendingRewardInventoryDelta = (
+  action: PendingRewardTrophyActionSnapshot,
+): InventoryDelta => (
+  action.reward ? { ...action.reward.inventoryDelta } : {}
+);
+
+const resolvePendingRewardTrophyActionRewards = (
+  enemy: BattleView['enemy'],
+  actions: readonly TrophyActionDefinition[],
+): readonly TrophyActionReward[] => {
+  const lootTable = enemy.lootTable;
+
+  if (!lootTable) {
+    return [];
+  }
+
+  return actions.map((action) => resolveTrophyActionReward({
+    kind: enemy.kind,
+    isElite: enemy.isElite,
+    isBoss: enemy.isBoss,
+    lootTable,
+  }, action));
+};
 
 const defaultBattlePlayerSnapshot = (playerId: number): BattleView['player'] => ({
   playerId,
@@ -919,6 +952,7 @@ export class PrismaGameRepository implements GameRepository {
       }
 
       const action = findPendingRewardTrophyAction(ledger, actionCode);
+      const inventoryDelta = buildPendingRewardInventoryDelta(action);
       const skillUps = await this.resolvePendingRewardSkillUps(
         tx,
         playerId,
@@ -927,7 +961,7 @@ export class PrismaGameRepository implements GameRepository {
       const appliedAt = new Date();
       const appliedResult: PendingRewardAppliedResultSnapshot = {
         baseRewardApplied: true,
-        inventoryDelta: {},
+        inventoryDelta,
         skillUps,
         statUps: [],
         schoolUps: [],
@@ -963,6 +997,7 @@ export class PrismaGameRepository implements GameRepository {
         throw new AppError('command_retry_pending', 'Награда уже обрабатывается. Обновите экран через мгновение.');
       }
 
+      await this.applyInventoryDelta(tx, playerId, inventoryDelta);
       await this.persistPendingRewardSkillUps(tx, playerId, skillUps);
 
       return {
@@ -2062,10 +2097,12 @@ export class PrismaGameRepository implements GameRepository {
 
       if (rewardIntent) {
         const createdAt = new Date();
+        const trophyActions = resolveTrophyActions(battle.enemy);
         const pendingRewardSnapshot = createPendingRewardSnapshot(
           rewardIntent,
-          resolveTrophyActions(battle.enemy),
+          trophyActions,
           createdAt.toISOString(),
+          resolvePendingRewardTrophyActionRewards(battle.enemy, trophyActions),
         );
         const rewardLedger = createPendingRewardLedgerEntry(pendingRewardSnapshot);
         const novicePath = getSchoolNovicePathDefinitionForEnemy(battle.enemy.code);

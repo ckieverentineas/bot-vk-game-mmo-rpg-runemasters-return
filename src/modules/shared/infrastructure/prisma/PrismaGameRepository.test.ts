@@ -344,6 +344,37 @@ const createPendingRewardLedgerRecord = () => {
   };
 };
 
+const createClaimAllRewardLedgerRecord = () => {
+  const pendingRecord = createPendingRewardLedgerRecord();
+  const ledger = JSON.parse(pendingRecord.entrySnapshot);
+  const pendingRewardSnapshot = ledger.pendingRewardSnapshot as {
+    trophyActions: Array<Record<string, unknown>>;
+  };
+
+  return {
+    ...pendingRecord,
+    entrySnapshot: JSON.stringify({
+      ...ledger,
+      pendingRewardSnapshot: {
+        ...pendingRewardSnapshot,
+        trophyActions: pendingRewardSnapshot.trophyActions.map((action) => action.code === 'claim_all'
+          ? {
+              ...action,
+              reward: {
+                inventoryDelta: {
+                  leather: 2,
+                  bone: 1,
+                  herb: 3,
+                },
+                skillPoints: [],
+              },
+            }
+          : action),
+      },
+    }),
+  };
+};
+
 const createPlayerStateSnapshot = (): PlayerState => ({
   userId: 10,
   vkId: 1001,
@@ -695,6 +726,68 @@ describe('PrismaGameRepository release hardening', () => {
         rank: 0,
       },
     ]);
+  });
+
+  it('collects the claim-all trophy action as material loot without skill progress', async () => {
+    const { repository, tx } = createPrismaMock();
+    const pendingRecord = createClaimAllRewardLedgerRecord();
+
+    tx.rewardLedgerRecord.findUnique.mockResolvedValue(pendingRecord);
+    tx.rewardLedgerRecord.updateMany.mockResolvedValue({ count: 1 });
+    tx.playerInventory.updateMany.mockResolvedValue({ count: 1 });
+    tx.player.findUnique.mockResolvedValue({
+      ...createPlayerRecord(),
+      inventory: {
+        ...createPlayerRecord().inventory,
+        leather: 2,
+        bone: 1,
+        herb: 3,
+      },
+    });
+
+    const result = await repository.collectPendingReward(1, 'battle-victory:battle-1', 'claim_all');
+
+    const updateData = tx.rewardLedgerRecord.updateMany.mock.calls[0]?.[0]?.data;
+    const ledgerSnapshot = JSON.parse(String(updateData?.entrySnapshot));
+
+    expect(ledgerSnapshot.pendingRewardSnapshot).toMatchObject({
+      status: 'APPLIED',
+      selectedActionCode: 'claim_all',
+      appliedResult: {
+        baseRewardApplied: true,
+        inventoryDelta: {
+          leather: 2,
+          bone: 1,
+          herb: 3,
+        },
+        skillUps: [],
+        statUps: [],
+        schoolUps: [],
+      },
+    });
+    expect(tx.playerInventory.updateMany).toHaveBeenCalledWith({
+      where: {
+        playerId: 1,
+      },
+      data: {
+        leather: { increment: 2 },
+        bone: { increment: 1 },
+        herb: { increment: 3 },
+      },
+    });
+    expect(tx.playerSkill.findMany).not.toHaveBeenCalled();
+    expect(tx.playerSkill.upsert).not.toHaveBeenCalled();
+    expect(result.selectedActionCode).toBe('claim_all');
+    expect(result.appliedResult.inventoryDelta).toEqual({
+      leather: 2,
+      bone: 1,
+      herb: 3,
+    });
+    expect(result.player.inventory).toMatchObject({
+      leather: 2,
+      bone: 1,
+      herb: 3,
+    });
   });
 
   it('replays an already applied pending reward without applying it again', async () => {

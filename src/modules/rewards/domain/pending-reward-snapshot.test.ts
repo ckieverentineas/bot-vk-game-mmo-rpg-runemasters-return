@@ -79,6 +79,47 @@ describe('pending reward snapshots', () => {
     expect(isPendingRewardSnapshot(snapshot)).toBe(true);
   });
 
+  it('captures resolved trophy action rewards in the pending snapshot', () => {
+    const snapshot = createPendingRewardSnapshot(
+      createRewardIntent(),
+      trophyActions,
+      '2026-04-22T00:00:00.000Z',
+      [
+        {
+          actionCode: 'claim_all',
+          inventoryDelta: {
+            leather: 2,
+            bone: 1,
+          },
+          skillPoints: [],
+        },
+      ],
+    );
+
+    expect(snapshot.trophyActions).toEqual([
+      {
+        code: 'skin_beast',
+        label: 'Skin beast',
+        skillCodes: ['gathering.skinning'],
+        visibleRewardFields: ['leather', 'bone'],
+      },
+      {
+        code: 'claim_all',
+        label: 'Claim all',
+        skillCodes: [],
+        visibleRewardFields: [],
+        reward: {
+          inventoryDelta: {
+            leather: 2,
+            bone: 1,
+          },
+          skillPoints: [],
+        },
+      },
+    ]);
+    expect(isPendingRewardSnapshot(snapshot)).toBe(true);
+  });
+
   it('accepts applied snapshots with the canonical selected action result', () => {
     const snapshot = {
       ...createPendingRewardSnapshot(createRewardIntent(), trophyActions, '2026-04-22T00:00:00.000Z'),

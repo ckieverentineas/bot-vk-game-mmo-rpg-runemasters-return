@@ -202,6 +202,7 @@ export interface BattleEnemySnapshot {
   experienceReward: number;
   goldReward: number;
   runeDropChance: number;
+  lootTable?: InventoryLoot;
   attackText: string;
   intent?: BattleEnemyIntentSnapshot | null;
   hasUsedSignatureMove?: boolean;
