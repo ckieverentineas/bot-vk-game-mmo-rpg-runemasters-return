@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
 import type { BattleEnemySnapshot, BiomeView } from '../../../shared/types/game';
-import { resolveGameMasterEncounterLine } from './game-master-director';
+import {
+  resolveGameMasterEncounterLine,
+  resolveGameMasterExplorationSceneLine,
+} from './game-master-director';
 
 const createBiome = (overrides: Partial<BiomeView> = {}): BiomeView => ({
   id: 1,
@@ -81,6 +84,45 @@ describe('resolveGameMasterEncounterLine', () => {
       enemy: createEnemy({ isElite: false, isBoss: false }),
       currentSchoolCode: null,
       locationLevel: 2,
+    });
+
+    expect(line).toBeNull();
+  });
+});
+
+describe('resolveGameMasterExplorationSceneLine', () => {
+  it('adds a neutral resource-find cue without turning it into a power reward', () => {
+    const line = resolveGameMasterExplorationSceneLine({
+      biome: createBiome(),
+      sceneKind: 'resource_find',
+      currentSchoolCode: null,
+      locationLevel: 2,
+    });
+
+    expect(line).toContain('Мастер снабжения');
+    expect(line).toContain('малый материал');
+    expect(line).toContain('не заменяет рост через бои, руны и школы');
+  });
+
+  it('uses the equipped school voice for school clue scenes', () => {
+    const line = resolveGameMasterExplorationSceneLine({
+      biome: createBiome(),
+      sceneKind: 'school_clue',
+      currentSchoolCode: 'echo',
+      locationLevel: 3,
+    });
+
+    expect(line).toContain('Мастер Прорицания');
+    expect(line).toContain('увидеть намерение врага');
+    expect(line).not.toContain('сегодня');
+  });
+
+  it('stays silent for tutorial exploration scenes', () => {
+    const line = resolveGameMasterExplorationSceneLine({
+      biome: createBiome({ code: 'initium', minLevel: 0, maxLevel: 0 }),
+      sceneKind: 'rest',
+      currentSchoolCode: null,
+      locationLevel: 0,
     });
 
     expect(line).toBeNull();

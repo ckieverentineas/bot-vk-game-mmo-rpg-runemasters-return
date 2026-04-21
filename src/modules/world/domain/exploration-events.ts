@@ -1,5 +1,6 @@
 import type { BiomeView, InventoryDelta } from '../../../shared/types/game';
 import type { GameRandom } from '../../shared/application/ports/GameRandom';
+import { resolveGameMasterExplorationSceneLine } from './game-master-director';
 
 export interface ExplorationEventContext {
   readonly biome: BiomeView;
@@ -34,13 +35,14 @@ export interface ExplorationSceneView {
   readonly kind: ExplorationSceneKind;
   readonly kindLabel: string;
   readonly title: string;
+  readonly directorLine: string | null;
   readonly description: string;
   readonly outcomeLine: string;
   readonly nextStepLine: string;
   readonly effect: ExplorationSceneEffect;
 }
 
-interface ExplorationSceneDefinition extends Omit<ExplorationSceneView, 'effect'> {
+interface ExplorationSceneDefinition extends Omit<ExplorationSceneView, 'directorLine' | 'effect'> {
   readonly minLocationLevel: number;
   readonly schoolCode?: string;
   readonly effect?: ExplorationSceneEffect;
@@ -112,7 +114,7 @@ const standaloneExplorationScenes: readonly ExplorationSceneDefinition[] = [
     minLocationLevel: 1,
     title: '🌿 Тихая передышка',
     description: 'Вы находите сухой уступ под корнями и на несколько минут уходите с линии угрозы.',
-    outcomeLine: 'Боя нет: экспедиция получает паузу без штрафов, таймеров и скрытого давления возвращаться быстрее.',
+    outcomeLine: 'Боя нет: экспедиция получает паузу без штрафов и скрытого давления на темп.',
     nextStepLine: 'Когда будете готовы, можно снова двинуться глубже.',
   },
   {
@@ -186,7 +188,7 @@ const standaloneExplorationScenes: readonly ExplorationSceneDefinition[] = [
     minLocationLevel: 2,
     title: '🎲 След Мастера испытаний',
     description: 'На старом указателе вы замечаете пометку Мастера испытаний: не приказ, а короткую подсказку к тому, какой вопрос задаёт эта местность.',
-    outcomeLine: 'Мастер не раздаёт силу, не ставит таймер и не требует зайти позже: это только честный PvE-framing будущей сцены.',
+    outcomeLine: 'Мастер не раздаёт силу и не меняет правила маршрута: это только честный PvE-framing будущей сцены.',
     nextStepLine: 'Продолжайте маршрут в своём темпе.',
   },
   {
@@ -245,11 +247,17 @@ const isSceneAvailable = (event: ExplorationSceneDefinition, context: Exploratio
   && (!event.schoolCode || event.schoolCode === context.currentSchoolCode)
 );
 
-const toSceneView = (event: ExplorationSceneDefinition): ExplorationSceneView => ({
+const toSceneView = (event: ExplorationSceneDefinition, context: ExplorationEventContext): ExplorationSceneView => ({
   code: event.code,
   kind: event.kind,
   kindLabel: event.kindLabel,
   title: event.title,
+  directorLine: resolveGameMasterExplorationSceneLine({
+    biome: context.biome,
+    sceneKind: event.kind,
+    currentSchoolCode: context.currentSchoolCode,
+    locationLevel: context.locationLevel,
+  }),
   description: event.description,
   outcomeLine: event.outcomeLine,
   nextStepLine: event.nextStepLine,
@@ -277,7 +285,7 @@ export const resolveStandaloneExplorationEvent = (
     return null;
   }
 
-  return toSceneView(random.pickOne(availableEvents));
+  return toSceneView(random.pickOne(availableEvents), context);
 };
 
 export const resolveExplorationEventLine = (

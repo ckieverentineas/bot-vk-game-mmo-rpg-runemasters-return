@@ -112,7 +112,9 @@ describe('resolveStandaloneExplorationEvent', () => {
       kindLabel: 'передышка',
       title: expect.stringContaining('Тихая передышка'),
     });
+    expect(event?.directorLine).toContain('Наставник Совета рун');
     expect(event?.outcomeLine).toContain('Боя нет');
+    expect(event?.outcomeLine).not.toContain('быстрее');
     expect(event?.effect.kind).toBe('none');
   });
 
@@ -126,6 +128,7 @@ describe('resolveStandaloneExplorationEvent', () => {
     });
     expect(getExplorationSceneInventoryDelta(event!)).toEqual({ herb: 1 });
     expect(getExplorationSceneEffectLine(event!)).toBe('Найдено: трава +1.');
+    expect(event?.directorLine).toContain('Мастер снабжения');
     expect(event?.outcomeLine).not.toContain('сегодня');
   });
 
@@ -179,6 +182,8 @@ describe('resolveStandaloneExplorationEvent', () => {
 
     expect(event?.title).toContain('предзнаменование');
     expect(event?.kind).toBe('school_clue');
+    expect(event?.directorLine).toContain('Мастер Прорицания');
+    expect(event?.directorLine).toContain('увидеть намерение врага');
     expect(`${event?.description} ${event?.outcomeLine}`).not.toContain('сегодня');
   });
 

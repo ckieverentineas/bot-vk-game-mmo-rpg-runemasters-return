@@ -213,6 +213,7 @@ describe('messages school-first onboarding framing', () => {
       kind: 'resource_find',
       kindLabel: 'находка',
       title: '🎒 Брошенный привал',
+      directorLine: '🎲 Мастер снабжения отмечает находку: малый материал полезен мастерской, но не заменяет рост через бои, руны и школы.',
       description: 'Под навесом из корней лежит малый запас трав.',
       outcomeLine: 'Боя нет: вы находите малый запас трав.',
       nextStepLine: 'Дальше можно снова исследовать маршрут.',
@@ -224,6 +225,7 @@ describe('messages school-first onboarding framing', () => {
     }, createPlayer({ tutorialState: 'SKIPPED', locationLevel: 1 }));
 
     expect(message).toContain('Тип: находка');
+    expect(message).toContain('Мастер снабжения');
     expect(message).toContain('Найдено: трава +1.');
     expect(message).not.toContain('Действия:');
   });

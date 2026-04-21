@@ -375,6 +375,7 @@ export const renderExplorationEvent = (event: ExplorationSceneView, player: Play
     '',
     event.title,
     ...(event.kindLabel ? [`Тип: ${event.kindLabel}`] : []),
+    ...(event.directorLine ? [event.directorLine] : []),
     event.description,
     '',
     event.outcomeLine,
