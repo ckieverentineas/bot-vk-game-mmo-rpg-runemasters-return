@@ -26,7 +26,7 @@ import { describeRuneContent } from '../../modules/runes/domain/rune-abilities';
 import { buildRuneCollectionPage } from '../../modules/runes/domain/rune-collection';
 import { getRuneSchoolPresentation, listSchoolDefinitions } from '../../modules/runes/domain/rune-schools';
 import type { ExplorationSceneView } from '../../modules/world/domain/exploration-events';
-import type { BattleView, PlayerState, RuneView, StatBlock } from '../../shared/types/game';
+import type { AbilityDefinition, BattleView, PlayerState, RuneView, StatBlock } from '../../shared/types/game';
 
 const formatStatBlock = (stats: StatBlock): string => [
   `❤️ Здоровье: ${stats.health}`,
@@ -73,6 +73,28 @@ const renderStarterSchoolLine = (): string => {
 };
 
 const withSentencePeriod = (text: string): string => /[.!?]$/.test(text) ? text : `${text}.`;
+
+const formatActiveAbilityCost = (ability: AbilityDefinition): string => [
+  `${ability.manaCost} маны`,
+  ability.cooldownTurns > 0 ? `КД ${ability.cooldownTurns}` : null,
+].filter((part): part is string => part !== null).join(' · ');
+
+const formatActiveAbilityDetails = (ability: AbilityDefinition): string => (
+  `🌀 ${ability.name} · ${formatActiveAbilityCost(ability)}\n${withSentencePeriod(ability.description)}`
+);
+
+const formatPassiveAbilityDetails = (ability: AbilityDefinition): string => (
+  `🛡️ ${ability.name}\n${withSentencePeriod(ability.description)}`
+);
+
+const formatRuneAbilityDetails = (runeContent: ReturnType<typeof describeRuneContent>): string[] => [
+  ...(runeContent.activeAbilities.length > 0
+    ? ['Активный навык:', ...runeContent.activeAbilities.map(formatActiveAbilityDetails)]
+    : []),
+  ...(runeContent.passiveAbilities.length > 0
+    ? ['Пассивные эффекты:', ...runeContent.passiveAbilities.map(formatPassiveAbilityDetails)]
+    : []),
+];
 
 const renderAcquisitionSummary = (summary: AcquisitionSummaryView | null | undefined): string[] => {
   if (!summary) {
@@ -184,16 +206,6 @@ const formatRune = (rune: RuneView | null): string => {
 
   const runeContent = describeRuneContent(rune);
   const school = getRuneSchoolPresentation(rune.archetypeCode);
-  const passiveLine = runeContent.passiveAbilities.length > 0
-    ? `🛡️ ${runeContent.passiveAbilities.map((ability) => ability.name).join(' · ')}`
-    : null;
-  const activeLine = runeContent.activeAbilities.length > 0
-    ? `🌀 ${runeContent.activeAbilities.map((ability) => [
-        ability.name,
-        `${ability.manaCost} маны`,
-        ability.cooldownTurns > 0 ? `КД ${ability.cooldownTurns}` : null,
-      ].filter((part) => part).join(' · ')).join(' · ')}`
-    : null;
 
   return [
     `${(() => {
@@ -213,8 +225,7 @@ const formatRune = (rune: RuneView | null): string => {
       dexterity: rune.dexterity,
       intelligence: rune.intelligence,
     }, 4)}`,
-    ...(passiveLine ? [passiveLine] : []),
-    ...(activeLine ? [activeLine] : []),
+    ...formatRuneAbilityDetails(runeContent),
   ].join('\n');
 };
 

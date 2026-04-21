@@ -224,6 +224,12 @@ describe('messages school-first onboarding framing', () => {
     expect(message).toContain('🧩 Слоты рун: 2 открыто сейчас.');
     expect(message).toContain('Надето: 1. Руна A · 2. пусто');
     expect(message).toContain('🎯 Выбрана: Руна B');
+    expect(message).toContain('Активный навык:');
+    expect(message).toContain('🌀 Импульс углей · 3 маны · КД 2');
+    expect(message).toContain('Базовый активный рунный навык архетипа огня.');
+    expect(message).toContain('Пассивные эффекты:');
+    expect(message).toContain('🛡️ Сердце углей');
+    expect(message).toContain('Пассивно усиливает атакующее давление владельца руны.');
     expect(message).toContain('1. ✅ Надета 1 · Руна A');
     expect(message).toContain('2. 🎯 Выбрана · Руна B');
     expect(message).toContain('5. ▫️ В коллекции · Руна E');
