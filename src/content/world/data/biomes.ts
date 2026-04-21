@@ -1,4 +1,4 @@
-import type { BiomeSeedDefinition } from './types';
+import type { BiomeSeedDefinition } from '../types';
 
 export const biomeSeed = [
   {

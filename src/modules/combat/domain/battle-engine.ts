@@ -33,6 +33,35 @@ import {
   resolveSupportStoneGuardGainBonus,
 } from './battle-rune-passives';
 
+interface GuardDamageResult {
+  readonly blockedDamage: number;
+  readonly dealtDamage: number;
+}
+
+interface DefendOutcome {
+  readonly guardGain: number;
+  readonly guardCap: number;
+  readonly supportStoneGuardGainBonus: number;
+  readonly stoneMasteryGuardGainBonus: number;
+}
+
+interface BasicAttackOutcome {
+  readonly totalDamage: number;
+  readonly emberBonus: number;
+  readonly supportEmberBonus: number;
+  readonly emberExecutionBonus: number;
+  readonly emberComboBonus: number;
+  readonly echoBonus: number;
+  readonly echoMasteryBonus: number;
+  readonly galeGuardGain: number;
+}
+
+const sum = (values: readonly number[]): number => values.reduce((total, value) => total + value, 0);
+
+const messageWhen = (condition: boolean, message: string): readonly string[] => (
+  condition ? [message] : []
+);
+
 const finalizeBattle = (battle: BattleView, result: BattleResult): BattleView => {
   battle.status = 'COMPLETED';
   battle.result = result;
@@ -56,6 +85,14 @@ const finalizeBattle = (battle: BattleView, result: BattleResult): BattleView =>
 
 const getGuardPoints = (player: BattlePlayerSnapshot): number => player.guardPoints ?? 0;
 
+const resolveGuardCapWithBonuses = (battle: BattleView, bonuses: readonly number[] = []): number => (
+  resolveGuardCap(battle.player) + sum(bonuses)
+);
+
+const addGuardPoints = (player: BattlePlayerSnapshot, guardGain: number, guardCap: number): void => {
+  player.guardPoints = Math.min(guardCap, getGuardPoints(player) + guardGain);
+};
+
 const getActiveRuneAction = (battle: BattleView): BattleRuneActionSnapshot | null => (
   battle.player.runeLoadout?.activeAbility ?? null
 );
@@ -77,7 +114,7 @@ const spendRuneManaAndSetCooldown = (battle: BattleView, ability: BattleRuneActi
 const consumeGuardAgainstDamage = (
   player: BattlePlayerSnapshot,
   rawDamage: number,
-): { blockedDamage: number; dealtDamage: number } => {
+): GuardDamageResult => {
   const guardPoints = getGuardPoints(player);
   const blockedDamage = Math.min(guardPoints, rawDamage);
   const dealtDamage = rawDamage - blockedDamage;
@@ -116,6 +153,85 @@ const resolveEnemyAttack = (
   battle.player.currentHealth = Math.max(0, battle.player.currentHealth - dealtDamage);
 };
 
+const applyDamageToEnemy = (battle: BattleView, damage: number): void => {
+  battle.enemy.currentHealth = Math.max(0, battle.enemy.currentHealth - damage);
+};
+
+const finishPlayerAction = (battle: BattleView): BattleView => {
+  if (battle.enemy.currentHealth === 0) {
+    return finalizeBattle(battle, 'VICTORY');
+  }
+
+  battle.turnOwner = 'ENEMY';
+  return battle;
+};
+
+const finishEnemyAction = (battle: BattleView): BattleView => {
+  if (battle.player.currentHealth === 0) {
+    return finalizeBattle(battle, 'DEFEAT');
+  }
+
+  tickRuneCooldown(battle);
+  battle.turnOwner = 'PLAYER';
+  return battle;
+};
+
+const finishEnemyPreparation = (battle: BattleView): BattleView => {
+  tickRuneCooldown(battle);
+  battle.turnOwner = 'PLAYER';
+  return battle;
+};
+
+const resolveDefendOutcome = (battle: BattleView): DefendOutcome => {
+  const supportStoneGuardGainBonus = resolveSupportStoneGuardGainBonus(battle);
+  const stoneMasteryGuardGainBonus = resolveStoneMasteryGuardGainBonus(battle);
+
+  return {
+    guardGain: sum([
+      resolveDefendGuardGain(battle.player),
+      resolveStoneGuardGainBonus(battle),
+      supportStoneGuardGainBonus,
+      stoneMasteryGuardGainBonus,
+    ]),
+    guardCap: resolveGuardCapWithBonuses(battle, [
+      resolveStoneGuardCapBonus(battle),
+      resolveSupportStoneGuardCapBonus(battle),
+    ]),
+    supportStoneGuardGainBonus,
+    stoneMasteryGuardGainBonus,
+  };
+};
+
+const resolveBasicAttackOutcome = (battle: BattleView): BasicAttackOutcome => {
+  const baseDamage = calculatePhysicalDamage(battle.player.attack, battle.enemy.defence);
+  const emberBonus = resolveEmberAttackBonus(battle);
+  const supportEmberBonus = resolveSupportEmberAttackBonus(battle);
+  const emberExecutionBonus = resolveEmberExecutionBonus(battle);
+  const emberComboBonus = resolveEmberComboBonus(battle);
+  const echoBonus = resolveEchoIntentAttackBonus(battle);
+  const echoMasteryBonus = resolveEchoMasteryAttackBonus(battle);
+  const galeGuardGain = resolveGaleMasteryAttackGuardGain(battle);
+
+  return {
+    totalDamage: sum([
+      baseDamage,
+      emberBonus,
+      supportEmberBonus,
+      emberExecutionBonus,
+      emberComboBonus,
+      echoBonus,
+      echoMasteryBonus,
+    ]),
+    emberBonus,
+    supportEmberBonus,
+    emberExecutionBonus,
+    emberComboBonus,
+    echoBonus,
+    echoMasteryBonus,
+    galeGuardGain,
+  };
+};
+
 export class BattleEngine {
   public static performPlayerAction(battle: BattleView, action: BattleActionType): BattleView {
     switch (action) {
@@ -140,20 +256,13 @@ export class BattleEngine {
     const nextBattle = cloneBattle(battle);
     this.assertPlayerTurn(nextBattle);
 
-    const guardGain = resolveDefendGuardGain(nextBattle.player)
-      + resolveStoneGuardGainBonus(nextBattle)
-      + resolveSupportStoneGuardGainBonus(nextBattle)
-      + resolveStoneMasteryGuardGainBonus(nextBattle);
-    const nextGuard = Math.min(
-      resolveGuardCap(nextBattle.player) + resolveStoneGuardCapBonus(nextBattle) + resolveSupportStoneGuardCapBonus(nextBattle),
-      getGuardPoints(nextBattle.player) + guardGain,
-    );
-    nextBattle.player.guardPoints = nextGuard;
+    const outcome = resolveDefendOutcome(nextBattle);
+    addGuardPoints(nextBattle.player, outcome.guardGain, outcome.guardCap);
     nextBattle.log = appendBattleLog(
       nextBattle.log,
-      `🛡️ Вы занимаете защитную стойку и готовите защиту на ${guardGain} урона.`,
-      ...(resolveSupportStoneGuardGainBonus(nextBattle) > 0 ? ['🧩 Поддержка Тверди усиливает стойку ещё на 1 guard.'] : []),
-      ...(resolveStoneMasteryGuardGainBonus(nextBattle) > 0 ? ['🪨 Мастерство Тверди усиливает защитную стойку.'] : []),
+      `🛡️ Вы занимаете защитную стойку и готовите защиту на ${outcome.guardGain} урона.`,
+      ...messageWhen(outcome.supportStoneGuardGainBonus > 0, '🧩 Поддержка Тверди усиливает стойку ещё на 1 guard.'),
+      ...messageWhen(outcome.stoneMasteryGuardGainBonus > 0, '🪨 Мастерство Тверди усиливает защитную стойку.'),
     );
     nextBattle.turnOwner = 'ENEMY';
 
@@ -211,9 +320,7 @@ export class BattleEngine {
         nextBattle.log,
         `⚠️ ${nextBattle.enemy.name} готовит «${nextBattle.enemy.intent.title}». Защита на следующий ход сработает хуже обычного.`,
       );
-      tickRuneCooldown(nextBattle);
-      nextBattle.turnOwner = 'PLAYER';
-      return nextBattle;
+      return finishEnemyPreparation(nextBattle);
     }
 
     if (shouldEnemyPrepareHeavyStrike(nextBattle.enemy)) {
@@ -222,64 +329,44 @@ export class BattleEngine {
         nextBattle.log,
         `⚠️ ${nextBattle.enemy.name} готовит «${nextBattle.enemy.intent.title}». Следующий удар будет сильнее обычного.`,
       );
-      tickRuneCooldown(nextBattle);
-      nextBattle.turnOwner = 'PLAYER';
-      return nextBattle;
+      return finishEnemyPreparation(nextBattle);
     }
 
     resolveEnemyAttack(nextBattle, nextBattle.enemy.attack, `👾 ${nextBattle.enemy.name} ${nextBattle.enemy.attackText} и наносит {damage} урона.`);
-    if (nextBattle.player.currentHealth === 0) {
-      return finalizeBattle(nextBattle, 'DEFEAT');
-    }
-
-    tickRuneCooldown(nextBattle);
-    nextBattle.turnOwner = 'PLAYER';
-    return nextBattle;
+    return finishEnemyAction(nextBattle);
   }
 
   private static performAttack(nextBattle: BattleView): BattleView {
-    const baseDamage = calculatePhysicalDamage(nextBattle.player.attack, nextBattle.enemy.defence);
-    const emberBonus = resolveEmberAttackBonus(nextBattle);
-    const supportEmberBonus = resolveSupportEmberAttackBonus(nextBattle);
-    const emberExecutionBonus = resolveEmberExecutionBonus(nextBattle);
-    const emberComboBonus = resolveEmberComboBonus(nextBattle);
-    const echoBonus = resolveEchoIntentAttackBonus(nextBattle);
-    const echoMasteryBonus = resolveEchoMasteryAttackBonus(nextBattle);
-    const galeGuardGain = resolveGaleMasteryAttackGuardGain(nextBattle);
-    const totalDamage = baseDamage + emberBonus + supportEmberBonus + emberExecutionBonus + emberComboBonus + echoBonus + echoMasteryBonus;
+    const outcome = resolveBasicAttackOutcome(nextBattle);
 
-    if (galeGuardGain > 0) {
-      nextBattle.player.guardPoints = Math.min(
-        resolveGuardCap(nextBattle.player) + resolveStoneGuardCapBonus(nextBattle),
-        getGuardPoints(nextBattle.player) + galeGuardGain,
+    if (outcome.galeGuardGain > 0) {
+      addGuardPoints(
+        nextBattle.player,
+        outcome.galeGuardGain,
+        resolveGuardCapWithBonuses(nextBattle, [resolveStoneGuardCapBonus(nextBattle)]),
       );
     }
 
-    nextBattle.enemy.currentHealth = Math.max(0, nextBattle.enemy.currentHealth - totalDamage);
+    applyDamageToEnemy(nextBattle, outcome.totalDamage);
     nextBattle.log = appendBattleLog(
       nextBattle.log,
-      `⚔️ Вы наносите ${totalDamage} урона врагу ${nextBattle.enemy.name}.`,
-      ...(emberBonus > 0 ? [`🔥 Школа Пламени усиливает атаку ещё на ${emberBonus}.`] : []),
-      ...(supportEmberBonus > 0 ? ['🧩 Поддержка Пламени добавляет ещё 1 давления к базовой атаке.'] : []),
-      ...(emberExecutionBonus > 0 ? [`🔥 Мастерство Пламени помогает дожать врага ещё на ${emberExecutionBonus}.`] : []),
-      ...(emberComboBonus > 0 ? ['🔥 Разогрев Пламени превращает откат рунной техники в окно для ещё более сильного добивания.'] : []),
-      ...(echoBonus > 0 ? [`🧠 Школа Прорицания считывает намерение врага и добавляет ${echoBonus} магического урона.`] : []),
-      ...(echoMasteryBonus > 0 ? [`🧠 Мастерство Прорицания добавляет ещё ${echoMasteryBonus} урона по раскрытой угрозе.`] : []),
-      ...(galeGuardGain > 0 ? [`🌪️ Мастерство Бури готовит защиту ещё на ${galeGuardGain} урона.`] : []),
+      `⚔️ Вы наносите ${outcome.totalDamage} урона врагу ${nextBattle.enemy.name}.`,
+      ...messageWhen(outcome.emberBonus > 0, `🔥 Школа Пламени усиливает атаку ещё на ${outcome.emberBonus}.`),
+      ...messageWhen(outcome.supportEmberBonus > 0, '🧩 Поддержка Пламени добавляет ещё 1 давления к базовой атаке.'),
+      ...messageWhen(outcome.emberExecutionBonus > 0, `🔥 Мастерство Пламени помогает дожать врага ещё на ${outcome.emberExecutionBonus}.`),
+      ...messageWhen(outcome.emberComboBonus > 0, '🔥 Разогрев Пламени превращает откат рунной техники в окно для ещё более сильного добивания.'),
+      ...messageWhen(outcome.echoBonus > 0, `🧠 Школа Прорицания считывает намерение врага и добавляет ${outcome.echoBonus} магического урона.`),
+      ...messageWhen(outcome.echoMasteryBonus > 0, `🧠 Мастерство Прорицания добавляет ещё ${outcome.echoMasteryBonus} урона по раскрытой угрозе.`),
+      ...messageWhen(outcome.galeGuardGain > 0, `🌪️ Мастерство Бури готовит защиту ещё на ${outcome.galeGuardGain} урона.`),
     );
 
-    if (nextBattle.enemy.currentHealth === 0) {
-      return finalizeBattle(nextBattle, 'VICTORY');
-    }
-
-    nextBattle.turnOwner = 'ENEMY';
-    return nextBattle;
+    return finishPlayerAction(nextBattle);
   }
 
   private static performEmberPulse(nextBattle: BattleView, activeAbility: BattleRuneActionSnapshot): BattleView {
     const spellPower = nextBattle.player.attack + nextBattle.player.intelligence + 1;
     const damage = calculatePhysicalDamage(spellPower, nextBattle.enemy.magicDefence);
-    nextBattle.enemy.currentHealth = Math.max(0, nextBattle.enemy.currentHealth - damage);
+    applyDamageToEnemy(nextBattle, damage);
     spendRuneManaAndSetCooldown(nextBattle, activeAbility);
 
     nextBattle.log = appendBattleLog(
@@ -288,12 +375,7 @@ export class BattleEngine {
       `💙 Мана: ${nextBattle.player.currentMana}/${nextBattle.player.maxMana}.`,
     );
 
-    if (nextBattle.enemy.currentHealth === 0) {
-      return finalizeBattle(nextBattle, 'VICTORY');
-    }
-
-    nextBattle.turnOwner = 'ENEMY';
-    return nextBattle;
+    return finishPlayerAction(nextBattle);
   }
 
   private static performStoneBastion(nextBattle: BattleView, activeAbility: BattleRuneActionSnapshot): BattleView {
@@ -305,11 +387,21 @@ export class BattleEngine {
     ) + synergyDamageBonus;
     const intentBonus = nextBattle.enemy.intent?.code === 'HEAVY_STRIKE' ? 2 : 0;
     const supportGuardBonus = resolveSupportStoneGuardGainBonus(nextBattle);
-    const guardGain = resolveDefendGuardGain(nextBattle.player) + resolveStoneGuardGainBonus(nextBattle) + supportGuardBonus + 1 + intentBonus + synergyGuardBonus;
-    const guardCap = resolveGuardCap(nextBattle.player) + resolveStoneGuardCapBonus(nextBattle) + resolveSupportStoneGuardCapBonus(nextBattle);
+    const guardGain = sum([
+      resolveDefendGuardGain(nextBattle.player),
+      resolveStoneGuardGainBonus(nextBattle),
+      supportGuardBonus,
+      1,
+      intentBonus,
+      synergyGuardBonus,
+    ]);
+    const guardCap = resolveGuardCapWithBonuses(nextBattle, [
+      resolveStoneGuardCapBonus(nextBattle),
+      resolveSupportStoneGuardCapBonus(nextBattle),
+    ]);
 
-    nextBattle.enemy.currentHealth = Math.max(0, nextBattle.enemy.currentHealth - damage);
-    nextBattle.player.guardPoints = Math.min(guardCap, getGuardPoints(nextBattle.player) + guardGain);
+    applyDamageToEnemy(nextBattle, damage);
+    addGuardPoints(nextBattle.player, guardGain, guardCap);
     spendRuneManaAndSetCooldown(nextBattle, activeAbility);
 
     nextBattle.log = appendBattleLog(
@@ -321,12 +413,7 @@ export class BattleEngine {
       `💙 Мана: ${nextBattle.player.currentMana}/${nextBattle.player.maxMana}.`,
     );
 
-    if (nextBattle.enemy.currentHealth === 0) {
-      return finalizeBattle(nextBattle, 'VICTORY');
-    }
-
-    nextBattle.turnOwner = 'ENEMY';
-    return nextBattle;
+    return finishPlayerAction(nextBattle);
   }
 
   private static performGaleStep(nextBattle: BattleView, activeAbility: BattleRuneActionSnapshot): BattleView {
@@ -335,8 +422,8 @@ export class BattleEngine {
     const guardGain = resolveGaleGuardGain(nextBattle.player);
     const guardCap = resolveGuardCap(nextBattle.player);
 
-    nextBattle.enemy.currentHealth = Math.max(0, nextBattle.enemy.currentHealth - damage);
-    nextBattle.player.guardPoints = Math.min(guardCap, getGuardPoints(nextBattle.player) + guardGain);
+    applyDamageToEnemy(nextBattle, damage);
+    addGuardPoints(nextBattle.player, guardGain, guardCap);
     spendRuneManaAndSetCooldown(nextBattle, activeAbility);
 
     nextBattle.log = appendBattleLog(
@@ -345,12 +432,7 @@ export class BattleEngine {
       `💙 Мана: ${nextBattle.player.currentMana}/${nextBattle.player.maxMana}.`,
     );
 
-    if (nextBattle.enemy.currentHealth === 0) {
-      return finalizeBattle(nextBattle, 'VICTORY');
-    }
-
-    nextBattle.turnOwner = 'ENEMY';
-    return nextBattle;
+    return finishPlayerAction(nextBattle);
   }
 
   private static resolveHeavyStrike(nextBattle: BattleView): BattleView {
@@ -367,13 +449,7 @@ export class BattleEngine {
       `💥 ${nextBattle.enemy.name} проводит «${intent.title}» и наносит {damage} урона.`,
     );
 
-    if (nextBattle.player.currentHealth === 0) {
-      return finalizeBattle(nextBattle, 'DEFEAT');
-    }
-
-    tickRuneCooldown(nextBattle);
-    nextBattle.turnOwner = 'PLAYER';
-    return nextBattle;
+    return finishEnemyAction(nextBattle);
   }
 
   private static resolveGuardBreak(nextBattle: BattleView): BattleView {
@@ -391,13 +467,7 @@ export class BattleEngine {
       { shattersGuard: intent.shattersGuard },
     );
 
-    if (nextBattle.player.currentHealth === 0) {
-      return finalizeBattle(nextBattle, 'DEFEAT');
-    }
-
-    tickRuneCooldown(nextBattle);
-    nextBattle.turnOwner = 'PLAYER';
-    return nextBattle;
+    return finishEnemyAction(nextBattle);
   }
 
   private static assertPlayerTurn(battle: BattleView): void {

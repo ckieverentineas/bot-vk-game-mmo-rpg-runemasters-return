@@ -45,6 +45,7 @@ import {
   dynamicCommandConfig,
   errorCodeKeyboardFactoryByCode,
   GameCommandType,
+  isErrorKeyboardCode,
   recoverableCommandErrorCodes,
   recoveryRules,
   toRouteState,
@@ -71,14 +72,14 @@ const formatRuneCountLabel = (count: number): string => {
   const remainder100 = count % 100;
 
   if (remainder10 === 1 && remainder100 !== 11) {
-    return 'СЂСѓРЅР°';
+    return 'руна';
   }
 
   if (remainder10 >= 2 && remainder10 <= 4 && (remainder100 < 12 || remainder100 > 14)) {
-    return 'СЂСѓРЅС‹';
+    return 'руны';
   }
 
-  return 'СЂСѓРЅ';
+  return 'рун';
 };
 
 const normalizeBattleReplyState = (state: BattleReplyState): BattleActionResultView => (
@@ -112,7 +113,7 @@ const normalizeRuneHubReplyState = (state: RuneHubReplyState): CraftRuneResultVi
 );
 
 export class GameHandler {
-  public constructor(private readonly services: AppServices) {}
+  public constructor(public readonly services: AppServices) {}
 
   public async handle(ctx: Context): Promise<void> {
     const vkId = this.resolveVkId(ctx);
@@ -122,7 +123,7 @@ export class GameHandler {
 
     const commandEnvelope = resolveCommandEnvelope(ctx);
     if (!commandEnvelope.command) {
-      await this.reply(ctx, 'РљРѕРјР°РЅРґР° РЅРµ СЂР°СЃРїРѕР·РЅР°РЅР°.', createMainMenuKeyboard());
+      await this.reply(ctx, 'Команда не распознана.', createMainMenuKeyboard());
       return;
     }
 
@@ -139,7 +140,7 @@ export class GameHandler {
         ? await this.handleDynamicCommand(ctx, vkId, command, commandContext)
         : await this.executeStaticCommand(commandHandler, ctx, vkId, commandContext);
       if (!isHandled) {
-        throw new AppError('unknown_command', 'РќРµРёР·РІРµСЃС‚РЅР°СЏ РєРѕРјР°РЅРґР°. РСЃРїРѕР»СЊР·СѓР№С‚Рµ РєРЅРѕРїРєРё РјРµРЅСЋ РёР»Рё СЃС‚Р°СЂС‹Рµ С‚РµРєСЃС‚РѕРІС‹Рµ РєРѕРјР°РЅРґС‹.');
+        throw new AppError('unknown_command', 'Неизвестная команда. Используйте кнопки меню или старые текстовые команды.');
       }
 
     } catch (error) {
@@ -154,7 +155,7 @@ export class GameHandler {
       }
 
       Logger.error('Unhandled command error:', error);
-      await this.reply(ctx, 'Р’РЅСѓС‚СЂРµРЅРЅСЏСЏ РѕС€РёР±РєР° РёРіСЂРѕРІРѕРіРѕ РґРІРёР¶РєР°.', createMainMenuKeyboard());
+      await this.reply(ctx, 'Внутренняя ошибка игрового движка.', createMainMenuKeyboard());
     }
   }
 
@@ -165,13 +166,9 @@ export class GameHandler {
     context: CommandIntentContext,
   ): Promise<boolean> {
     for (const route of dynamicCommandConfig) {
-      const resolvedValue = route.resolve(command);
-      if (resolvedValue === null) {
-        continue;
+      if (await route.tryHandle(this, ctx, vkId, command, context)) {
+        return true;
       }
-
-      await route.handle(this, ctx, vkId, resolvedValue, context);
-      return true;
     }
 
     return false;
@@ -192,12 +189,12 @@ export class GameHandler {
     return Number.isFinite(vkId) ? vkId : null;
   }
 
-  private async showMainMenu(ctx: Context, vkId: number): Promise<void> {
+  public async showMainMenu(ctx: Context, vkId: number): Promise<void> {
     const player = await this.services.getPlayerProfile.execute(vkId);
     await this.reply(ctx, renderMainMenu(player), createMainMenuKeyboard(player));
   }
 
-  private async showProfile(ctx: Context, vkId: number): Promise<void> {
+  public async showProfile(ctx: Context, vkId: number): Promise<void> {
     const player = await this.services.getPlayerProfile.execute(vkId);
     await this.replyWithProfile(ctx, player);
   }
@@ -225,22 +222,22 @@ export class GameHandler {
     return false;
   }
 
-  private async confirmDeletePlayer(ctx: Context, vkId: number): Promise<void> {
+  public async confirmDeletePlayer(ctx: Context, vkId: number): Promise<void> {
     const player = await this.services.getPlayerProfile.execute(vkId);
     await this.reply(
       ctx,
       [
-        'вљ пёЏ РЈРґР°Р»РµРЅРёРµ РїРµСЂСЃРѕРЅР°Р¶Р°',
+        '⚠️ Удаление персонажа',
         '',
-        `Р‘СѓРґРµС‚ СѓРґР°Р»С‘РЅ РіРµСЂРѕР№ СѓСЂРѕРІРЅСЏ ${player.level}${player.runes.length > 0 ? ` Рё ${player.runes.length} ${formatRuneCountLabel(player.runes.length)}` : ''}.`,
-        'Р­С‚Рѕ РґРµР№СЃС‚РІРёРµ РЅРµРѕР±СЂР°С‚РёРјРѕ: РїСЂРѕРіСЂРµСЃСЃ Рё СЃР±РѕСЂРєР° Р±СѓРґСѓС‚ СѓРґР°Р»РµРЅС‹.',
-        'РќР°Р¶РјРёС‚Рµ В«рџ—‘пёЏ Р”Р°, СѓРґР°Р»РёС‚СЊВ» С‚РѕР»СЊРєРѕ РµСЃР»Рё РґРµР№СЃС‚РІРёС‚РµР»СЊРЅРѕ С…РѕС‚РёС‚Рµ РЅР°С‡Р°С‚СЊ Р·Р°РЅРѕРІРѕ.',
+        `Будет удалён герой уровня ${player.level}${player.runes.length > 0 ? ` и ${player.runes.length} ${formatRuneCountLabel(player.runes.length)}` : ''}.`,
+        'Это действие необратимо: прогресс и сборка будут удалены.',
+        'Нажмите «🗑️ Да, удалить» только если действительно хотите начать заново.',
       ].join('\n'),
       createDeleteConfirmationKeyboard(player),
     );
   }
 
-  private async deletePlayer(
+  public async deletePlayer(
     ctx: Context,
     vkId: number,
     intentId?: string,
@@ -248,15 +245,15 @@ export class GameHandler {
     intentSource: ReturnType<typeof resolveCommandEnvelope>['intentSource'] = null,
   ): Promise<void> {
     await this.services.deletePlayer.execute(vkId, intentId, intentStateKey, intentSource);
-    await this.reply(ctx, 'РџРµСЂСЃРѕРЅР°Р¶ СѓРґР°Р»С‘РЅ. РњРѕР¶РЅРѕ РЅР°С‡Р°С‚СЊ Р·Р°РЅРѕРІРѕ РІ Р»СЋР±РѕР№ РјРѕРјРµРЅС‚.', createEntryKeyboard());
+    await this.reply(ctx, 'Персонаж удалён. Можно начать заново в любой момент.', createEntryKeyboard());
   }
 
-  private async showInventory(ctx: Context, vkId: number): Promise<void> {
+  public async showInventory(ctx: Context, vkId: number): Promise<void> {
     const player = await this.services.getPlayerProfile.execute(vkId);
     await this.reply(ctx, renderInventory(player), createMainMenuKeyboard(player));
   }
 
-  private async startGame(ctx: Context, vkId: number): Promise<void> {
+  public async startGame(ctx: Context, vkId: number): Promise<void> {
     const result = await this.services.registerPlayer.execute(vkId);
     const keyboard = result.created || result.player.tutorialState === 'ACTIVE'
       ? createTutorialKeyboard(result.player)
@@ -273,7 +270,7 @@ export class GameHandler {
     }
   }
 
-  private async exploreLocationScreen(
+  public async exploreLocationScreen(
     ctx: Context,
     vkId: number,
     intentId?: string,
@@ -284,9 +281,8 @@ export class GameHandler {
     await this.replyWithLocation(ctx, player);
   }
 
-  private async returnRecapRoute(
+  public async returnRecapRoute(
     ctx: Context,
-    vkId: number,
     executeRoute: TutorialRouteExecutor,
     entrySurface: 'skip_tutorial' | 'return_to_adventure',
     context: CommandIntentContext,
@@ -297,17 +293,17 @@ export class GameHandler {
       routeState.stateKey,
       routeState.intentSource,
     ));
-    await this.reply(ctx, renderReturnRecap(result.player, '🚀 Возврат в приключение'), createMainMenuKeyboard(result.player));
+    await this.reply(ctx, renderReturnRecap(result.player, '🧭 Возвращение в приключения'), createMainMenuKeyboard(result.player));
     await this.trackReturnRecapShown(result.player, entrySurface);
   }
 
-  private async exploreNewBattle(ctx: Context, vkId: number, context: CommandIntentContext): Promise<void> {
+  public async exploreNewBattle(ctx: Context, vkId: number, context: CommandIntentContext): Promise<void> {
     const routeState = toRouteState(context);
     const battle = await this.services.exploreLocation.execute(vkId, routeState.intentId, routeState.stateKey, routeState.intentSource);
     await this.replyWithBattle(ctx, battle, vkId);
   }
 
-  private async executeBattleAction(
+  public async executeBattleAction(
     ctx: Context,
     vkId: number,
     action: BattleActionType,
@@ -340,7 +336,7 @@ export class GameHandler {
     }
   }
 
-  private async openRuneCollection(ctx: Context, vkId: number, trackSchoolNoviceOpen = false): Promise<void> {
+  public async openRuneCollection(ctx: Context, vkId: number, trackSchoolNoviceOpen = false): Promise<void> {
     const player = await this.services.getRuneCollection.execute(vkId);
     await this.replyWithRuneHub(ctx, player);
     if (trackSchoolNoviceOpen) {
@@ -348,12 +344,12 @@ export class GameHandler {
     }
   }
 
-  private async openRuneRerollMenu(ctx: Context, vkId: number): Promise<void> {
+  public async openRuneRerollMenu(ctx: Context, vkId: number): Promise<void> {
     const player = await this.services.getRuneCollection.execute(vkId);
     await this.reply(ctx, renderAltar(player), createRuneRerollKeyboard(player));
   }
 
-  private async equipCurrentRuneSlot(
+  public async equipCurrentRuneSlot(
     ctx: Context,
     vkId: number,
     slotIndex: 0 | 1,
@@ -370,7 +366,7 @@ export class GameHandler {
     await this.replyWithRuneHub(ctx, player);
   }
 
-  private async unequipCurrentRuneSlot(ctx: Context, vkId: number, context: CommandIntentContext): Promise<void> {
+  public async unequipCurrentRuneSlot(ctx: Context, vkId: number, context: CommandIntentContext): Promise<void> {
     const routeState = toRouteState(context);
     const player = await this.services.unequipCurrentRune.execute(
       vkId,
@@ -381,7 +377,7 @@ export class GameHandler {
     await this.replyWithRuneHub(ctx, player);
   }
 
-  private async craftRuneCommand(ctx: Context, vkId: number, context: CommandIntentContext): Promise<void> {
+  public async craftRuneCommand(ctx: Context, vkId: number, context: CommandIntentContext): Promise<void> {
     const routeState = toRouteState(context);
     const result = await this.services.craftRune.execute(
       vkId,
@@ -392,7 +388,7 @@ export class GameHandler {
     await this.replyWithRuneHub(ctx, result);
   }
 
-  private async destroyCurrentRuneCommand(ctx: Context, vkId: number, context: CommandIntentContext): Promise<void> {
+  public async destroyCurrentRuneCommand(ctx: Context, vkId: number, context: CommandIntentContext): Promise<void> {
     const routeState = toRouteState(context);
     const player = await this.services.destroyCurrentRune.execute(
       vkId,
@@ -411,7 +407,7 @@ export class GameHandler {
     await this.reply(ctx, renderLocation(player), createTutorialKeyboard(player));
   }
 
-  private async replyWithRuneHub(ctx: Context, state: RuneHubReplyState): Promise<void> {
+  public async replyWithRuneHub(ctx: Context, state: RuneHubReplyState): Promise<void> {
     const result = normalizeRuneHubReplyState(state);
     await this.reply(ctx, renderRuneScreen(result.player, result.acquisitionSummary), createRuneKeyboard(result.player));
   }
@@ -435,7 +431,7 @@ export class GameHandler {
     }
   }
 
-  private async safeGetActiveBattle(vkId: number): Promise<BattleView | null> {
+  public async safeGetActiveBattle(vkId: number): Promise<BattleView | null> {
     try {
       return await this.services.getActiveBattle.execute(vkId);
     } catch {
@@ -443,15 +439,17 @@ export class GameHandler {
     }
   }
 
-  private resolveBattleKeyboard(battle: BattleView): ReplyKeyboard {
+  public resolveBattleKeyboard(battle: BattleView): ReplyKeyboard {
     return battle.status === 'ACTIVE' ? createBattleKeyboard(battle) : createBattleResultKeyboard(battle);
   }
 
   private resolveErrorKeyboard(errorCode: string): ReplyKeyboard {
-    return errorCodeKeyboardFactoryByCode[errorCode]?.() ?? createMainMenuKeyboard();
+    return isErrorKeyboardCode(errorCode)
+      ? errorCodeKeyboardFactoryByCode[errorCode]?.() ?? createMainMenuKeyboard()
+      : createMainMenuKeyboard();
   }
 
-  private async reply(ctx: Context, message: string, keyboard: ReplyKeyboard): Promise<void> {
+  public async reply(ctx: Context, message: string, keyboard: ReplyKeyboard): Promise<void> {
     await ctx.reply(message, { keyboard });
   }
 

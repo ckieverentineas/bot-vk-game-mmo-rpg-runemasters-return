@@ -1,4 +1,4 @@
-import type { AbilitySeedDefinition } from './types';
+import type { AbilitySeedDefinition } from '../types';
 
 export const abilitySeed = [
   {

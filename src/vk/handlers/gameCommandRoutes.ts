@@ -1,6 +1,9 @@
 import type { Context } from 'vk-io';
 
+import type { RunePageSlot } from '../../modules/runes/domain/rune-collection';
+import type { StatKey } from '../../shared/types/game';
 import type { AppError } from '../../shared/domain/AppError';
+import { isAppError } from '../../shared/domain/AppError';
 import { gameCommands, resolveRuneCursorDeltaCommand, resolveRunePageSlotCommand, resolveRuneStatRerollCommand } from '../commands/catalog';
 import {
   createEntryKeyboard,
@@ -21,6 +24,7 @@ import { resolveCommandEnvelope } from '../router/commandRouter';
 import type { GameHandler } from './gameHandler';
 
 type ReplyKeyboard = ReturnType<typeof createEntryKeyboard>;
+type ErrorKeyboardCode = 'player_not_found' | 'runes_not_found' | 'rune_not_found' | 'rune_slot_not_found';
 
 export type CommandIntentContext = {
   readonly intentId: string | null;
@@ -37,7 +41,7 @@ export type StaticCommandHandler = (
 
 type DynamicCommandResolver<T> = (command: string) => T | null;
 
-type DynamicCommandHandler<T> = (
+type DynamicCommandExecutor<T> = (
   handler: GameHandler,
   ctx: Context,
   vkId: number,
@@ -45,10 +49,30 @@ type DynamicCommandHandler<T> = (
   context: CommandIntentContext,
 ) => Promise<void>;
 
-export type DynamicCommandRoute<T> = {
-  readonly resolve: DynamicCommandResolver<T>;
-  readonly handle: DynamicCommandHandler<T>;
+export type DynamicCommandRoute = {
+  readonly tryHandle: (
+    handler: GameHandler,
+    ctx: Context,
+    vkId: number,
+    command: string,
+    context: CommandIntentContext,
+  ) => Promise<boolean>;
 };
+
+const createDynamicCommandRoute = <T>(
+  resolve: DynamicCommandResolver<T>,
+  handle: DynamicCommandExecutor<T>,
+): DynamicCommandRoute => ({
+  tryHandle: async (handler, ctx, vkId, command, context) => {
+    const resolvedValue = resolve(command);
+    if (resolvedValue === null) {
+      return false;
+    }
+
+    await handle(handler, ctx, vkId, resolvedValue, context);
+    return true;
+  },
+});
 
 export type RecoveryRule = {
   readonly matches: (command: string, error: AppError) => boolean;
@@ -83,15 +107,16 @@ const runeManageCommandSet = new Set<GameCommandType>([
   gameCommands.destroyRune,
 ]);
 
-export const errorCodeKeyboardFactoryByCode: Partial<Record<
-  'player_not_found' | 'runes_not_found' | 'rune_not_found' | 'rune_slot_not_found',
-  () => ReplyKeyboard
->> = {
+export const errorCodeKeyboardFactoryByCode: Partial<Record<ErrorKeyboardCode, () => ReplyKeyboard>> = {
   player_not_found: createEntryKeyboard,
   runes_not_found: createRuneKeyboard,
   rune_not_found: createRuneKeyboard,
   rune_slot_not_found: createRuneKeyboard,
 };
+
+export const isErrorKeyboardCode = (errorCode: string): errorCode is ErrorKeyboardCode => (
+  Object.prototype.hasOwnProperty.call(errorCodeKeyboardFactoryByCode, errorCode)
+);
 
 export const config: Readonly<Partial<Record<GameCommandType, StaticCommandHandler>>> = {
   [gameCommands.start]: (handler, ctx, vkId) => handler.startGame(ctx, vkId),
@@ -110,7 +135,6 @@ export const config: Readonly<Partial<Record<GameCommandType, StaticCommandHandl
   [gameCommands.skipTutorial]: (handler, ctx, vkId, context) => {
     return handler.returnRecapRoute(
       ctx,
-      vkId,
       (entryIntentId, entryStateKey, entryIntentSource) => (
         handler.services.skipTutorial.execute(vkId, entryIntentId, entryStateKey, entryIntentSource)
       ),
@@ -121,7 +145,6 @@ export const config: Readonly<Partial<Record<GameCommandType, StaticCommandHandl
   [gameCommands.returnToAdventure]: (handler, ctx, vkId, context) => {
     return handler.returnRecapRoute(
       ctx,
-      vkId,
       (entryIntentId, entryStateKey, entryIntentSource) => (
         handler.services.returnToAdventure.execute(vkId, entryIntentId, entryStateKey, entryIntentSource)
       ),
@@ -144,10 +167,10 @@ export const config: Readonly<Partial<Record<GameCommandType, StaticCommandHandl
   [gameCommands.destroyRune]: (handler, ctx, vkId, context) => handler.destroyCurrentRuneCommand(ctx, vkId, context),
 };
 
-export const dynamicCommandConfig: readonly DynamicCommandRoute<number | string>[] = [
-  {
-    resolve: resolveRuneCursorDeltaCommand,
-    handle: async (handler, ctx, vkId, runeDelta, context) => {
+export const dynamicCommandConfig = [
+  createDynamicCommandRoute<number>(
+    resolveRuneCursorDeltaCommand,
+    async (handler, ctx, vkId, runeDelta, context) => {
       const player = await handler.services.moveRuneCursor.execute(
         vkId,
         runeDelta,
@@ -157,10 +180,10 @@ export const dynamicCommandConfig: readonly DynamicCommandRoute<number | string>
       );
       await handler.replyWithRuneHub(ctx, player);
     },
-  },
-  {
-    resolve: resolveRunePageSlotCommand,
-    handle: async (handler, ctx, vkId, runePageSlot, context) => {
+  ),
+  createDynamicCommandRoute<RunePageSlot>(
+    resolveRunePageSlotCommand,
+    async (handler, ctx, vkId, runePageSlot, context) => {
       const player = await handler.services.selectRunePageSlot.execute(
         vkId,
         runePageSlot,
@@ -170,10 +193,10 @@ export const dynamicCommandConfig: readonly DynamicCommandRoute<number | string>
       );
       await handler.replyWithRuneHub(ctx, player);
     },
-  },
-  {
-    resolve: resolveRuneStatRerollCommand,
-    handle: async (handler, ctx, vkId, runeStat, context) => {
+  ),
+  createDynamicCommandRoute<StatKey>(
+    resolveRuneStatRerollCommand,
+    async (handler, ctx, vkId, runeStat, context) => {
       const player = await handler.services.rerollCurrentRuneStat.execute(
         vkId,
         runeStat,
@@ -183,8 +206,8 @@ export const dynamicCommandConfig: readonly DynamicCommandRoute<number | string>
       );
       await handler.reply(ctx, renderAltar(player), createRuneRerollKeyboard(player));
     },
-  },
-];
+  ),
+] satisfies readonly DynamicCommandRoute[];
 
 export const recoveryRules: readonly RecoveryRule[] = [
   {
@@ -214,7 +237,16 @@ export const recoveryRules: readonly RecoveryRule[] = [
           createProfileKeyboard(player),
         );
         return true;
-      } catch {
+      } catch (profileError) {
+        if (
+          _command === gameCommands.confirmDeletePlayer
+          && isAppError(profileError)
+          && profileError.code === 'player_not_found'
+        ) {
+          await handler.reply(ctx, 'Персонаж удалён. Можно начать заново в любой момент.', createEntryKeyboard());
+          return true;
+        }
+
         await handler.reply(
           ctx,
           'Это команда уже истекла. Обновите профиль и начните заново, если всё ещё хотите удалить персонажа.',

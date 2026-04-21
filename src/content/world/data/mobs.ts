@@ -1,4 +1,4 @@
-import type { MobTemplateSeedDefinition } from './types';
+import type { MobTemplateSeedDefinition } from '../types';
 
 export const mobSeed = [
   {

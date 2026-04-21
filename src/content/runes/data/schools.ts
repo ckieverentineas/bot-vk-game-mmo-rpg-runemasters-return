@@ -1,4 +1,4 @@
-import type { SchoolSeedDefinition } from './types';
+import type { SchoolSeedDefinition } from '../types';
 
 export const schoolSeed = [
   {

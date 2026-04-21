@@ -1,4 +1,4 @@
-import type { RuneArchetypeSeedDefinition } from './types';
+import type { RuneArchetypeSeedDefinition } from '../types';
 
 export const runeArchetypeSeed = [
   {
