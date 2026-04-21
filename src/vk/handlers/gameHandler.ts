@@ -500,7 +500,7 @@ export class GameHandler {
 
   private async trackPostSessionNextGoalShown(player: PlayerState, battle: BattleView): Promise<void> {
     const nextGoal = buildBattleResultNextGoalView(battle, player);
-    if (!nextGoal || !battle.result) {
+    if (!nextGoal || !battle.result || battle.result === 'FLED') {
       return;
     }
 

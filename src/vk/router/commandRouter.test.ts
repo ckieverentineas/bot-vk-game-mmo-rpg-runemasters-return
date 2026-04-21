@@ -261,6 +261,22 @@ describe('normalizeCommand', () => {
       id: 511,
       messagePayload: null,
     } as never);
+    const engageAlias = resolveCommandEnvelope({
+      text: 'бой',
+      senderId: 1001,
+      peerId: 2000000001,
+      conversationMessageId: 90,
+      id: 514,
+      messagePayload: null,
+    } as never);
+    const fleeAlias = resolveCommandEnvelope({
+      text: 'бежать',
+      senderId: 1001,
+      peerId: 2000000001,
+      conversationMessageId: 91,
+      id: 515,
+      messagePayload: null,
+    } as never);
     const spell = resolveCommandEnvelope({
       text: 'спелл',
       senderId: 1001,
@@ -282,6 +298,12 @@ describe('normalizeCommand', () => {
     expect(attack.intentSource).toBe('legacy_text');
     expect(defendAlias.command).toBe(gameCommands.defend);
     expect(defendAlias.intentId).toBe('legacy-text:2000000001:1001:87:защита');
+    expect(engageAlias.command).toBe(gameCommands.engageBattle);
+    expect(engageAlias.intentId).toBe('legacy-text:2000000001:1001:90:в бой');
+    expect(engageAlias.intentSource).toBe('legacy_text');
+    expect(fleeAlias.command).toBe(gameCommands.fleeBattle);
+    expect(fleeAlias.intentId).toBe('legacy-text:2000000001:1001:91:отступить');
+    expect(fleeAlias.intentSource).toBe('legacy_text');
     expect(skills.command).toBe(gameCommands.skills);
     expect(skills.intentId).toBe('legacy-text:2000000001:1001:89:навыки');
     expect(spell.command).toBe(gameCommands.spell);

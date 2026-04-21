@@ -1,6 +1,7 @@
 import type {
   BattleEnemyIntentCode,
   BattleEnemySnapshot,
+  BattleEncounterView,
   BattlePlayerSnapshot,
   BattleResult,
   BattleRewardView,
@@ -19,6 +20,7 @@ export interface BattleSnapshotV1 {
   readonly actionRevision: number;
   readonly player: BattlePlayerSnapshot;
   readonly enemy: BattleEnemySnapshot;
+  readonly encounter?: BattleEncounterView | null;
   readonly log: string[];
   readonly result: BattleResult | null;
   readonly rewards: BattleRewardView | null;
@@ -125,6 +127,14 @@ const isBattleEnemySnapshot = (value: unknown): value is BattleEnemySnapshot => 
   && (value.hasUsedSignatureMove === undefined || typeof value.hasUsedSignatureMove === 'boolean')
 );
 
+const isBattleEncounterView = (value: unknown): value is BattleEncounterView => (
+  isJsonRecord(value)
+  && (value.status === 'OFFERED' || value.status === 'ENGAGED' || value.status === 'FLED')
+  && (value.initialTurnOwner === 'PLAYER' || value.initialTurnOwner === 'ENEMY')
+  && typeof value.canFlee === 'boolean'
+  && isNumber(value.fleeChancePercent)
+);
+
 const isRewardShardMap = (value: unknown): value is BattleRewardView['shards'] => (
   isJsonRecord(value)
   && Object.entries(value).every(([key, amount]) => isRuneRarity(key) && isNumber(amount))
@@ -143,18 +153,20 @@ export const isBattleSnapshot = (value: unknown): value is BattleSnapshot => (
   && isNumber(value.actionRevision)
   && isBattlePlayerSnapshot(value.player)
   && isBattleEnemySnapshot(value.enemy)
+  && (value.encounter === undefined || value.encounter === null || isBattleEncounterView(value.encounter))
   && isStringArray(value.log)
-  && (value.result === null || value.result === 'VICTORY' || value.result === 'DEFEAT')
+  && (value.result === null || value.result === 'VICTORY' || value.result === 'DEFEAT' || value.result === 'FLED')
   && (value.rewards === null || isBattleRewardView(value.rewards))
 );
 
 export const buildBattleSnapshot = (
-  battle: Pick<BattleView, 'actionRevision' | 'player' | 'enemy' | 'log' | 'result' | 'rewards'>,
+  battle: Pick<BattleView, 'actionRevision' | 'player' | 'enemy' | 'encounter' | 'log' | 'result' | 'rewards'>,
 ): BattleSnapshot => ({
   schemaVersion: BATTLE_SNAPSHOT_SCHEMA_VERSION,
   actionRevision: battle.actionRevision,
   player: battle.player,
   enemy: battle.enemy,
+  encounter: battle.encounter ?? null,
   log: [...battle.log],
   result: battle.result,
   rewards: battle.rewards,

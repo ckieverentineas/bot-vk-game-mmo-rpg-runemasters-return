@@ -12,7 +12,12 @@ export type RuneLoadoutCommandIntentKey = 'EQUIP_RUNE' | 'UNEQUIP_RUNE';
 export type RuneNavigationCommandIntentKey = 'MOVE_RUNE_CURSOR' | 'SELECT_RUNE_PAGE_SLOT';
 export type RuneCraftCommandIntentKey = 'CRAFT_RUNE' | 'REROLL_RUNE_STAT' | 'DESTROY_RUNE';
 export type ExplorationCommandIntentKey = 'ENTER_TUTORIAL_MODE' | 'SKIP_TUTORIAL' | 'RETURN_TO_ADVENTURE' | 'EXPLORE_LOCATION';
-export type BattleActionCommandIntentKey = 'BATTLE_ATTACK' | 'BATTLE_DEFEND' | 'BATTLE_RUNE_SKILL';
+export type BattleActionCommandIntentKey =
+  | 'BATTLE_ENGAGE'
+  | 'BATTLE_FLEE'
+  | 'BATTLE_ATTACK'
+  | 'BATTLE_DEFEND'
+  | 'BATTLE_RUNE_SKILL';
 export type BattleCommandIntentKey = BattleActionCommandIntentKey | 'EXPLORE_LOCATION';
 export type GameCommandIntentKey =
   | RuneCraftCommandIntentKey

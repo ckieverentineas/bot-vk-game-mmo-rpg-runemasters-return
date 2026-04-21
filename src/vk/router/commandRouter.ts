@@ -31,6 +31,8 @@ const legacyTextIntentCommands = new Set<string>([
   gameCommands.skipTutorial,
   gameCommands.returnToAdventure,
   gameCommands.explore,
+  gameCommands.engageBattle,
+  gameCommands.fleeBattle,
   gameCommands.attack,
   gameCommands.defend,
   gameCommands.skills,

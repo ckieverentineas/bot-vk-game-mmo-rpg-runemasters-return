@@ -128,4 +128,28 @@ describe('battle platform contracts', () => {
     expect(snapshot.enemy.code).toBe('slime');
     expect(snapshot.rewards?.gold).toBe(2);
   });
+
+  it('keeps encounter and flee state in the versioned battle snapshot', () => {
+    const snapshot = buildBattleSnapshot({
+      ...createBattle(),
+      status: 'ACTIVE',
+      result: 'FLED',
+      rewards: null,
+      encounter: {
+        status: 'FLED',
+        initialTurnOwner: 'ENEMY',
+        canFlee: true,
+        fleeChancePercent: 52,
+      },
+    });
+
+    expect(isBattleSnapshot(snapshot)).toBe(true);
+    expect(snapshot.result).toBe('FLED');
+    expect(snapshot.encounter).toEqual({
+      status: 'FLED',
+      initialTurnOwner: 'ENEMY',
+      canFlee: true,
+      fleeChancePercent: 52,
+    });
+  });
 });

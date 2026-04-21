@@ -26,12 +26,16 @@ export class PerformBattleAction {
     private readonly random: GameRandom,
   ) {}
 
-  private resolveCommandKey(action: BattleActionType): 'BATTLE_ATTACK' | 'BATTLE_DEFEND' | 'BATTLE_RUNE_SKILL' {
+  private resolveCommandKey(action: BattleActionType): 'BATTLE_ENGAGE' | 'BATTLE_FLEE' | 'BATTLE_ATTACK' | 'BATTLE_DEFEND' | 'BATTLE_RUNE_SKILL' {
     if (isRuneSkillAction(action)) {
       return 'BATTLE_RUNE_SKILL';
     }
 
     switch (action) {
+      case 'ENGAGE':
+        return 'BATTLE_ENGAGE';
+      case 'FLEE':
+        return 'BATTLE_FLEE';
       case 'DEFEND':
         return 'BATTLE_DEFEND';
       case 'ATTACK':
@@ -116,7 +120,10 @@ export class PerformBattleAction {
       return result;
     }
 
-    let battle = BattleEngine.performPlayerAction(recoveredBattle.battle, action);
+    const fleeSucceeded = action === 'FLEE'
+      && recoveredBattle.battle.encounter?.canFlee === true
+      && this.random.rollPercentage(recoveredBattle.battle.encounter.fleeChancePercent);
+    let battle = BattleEngine.performPlayerAction(recoveredBattle.battle, action, { fleeSucceeded });
 
     if (battle.status === 'ACTIVE') {
       battle = BattleEngine.resolveEnemyTurn(battle);

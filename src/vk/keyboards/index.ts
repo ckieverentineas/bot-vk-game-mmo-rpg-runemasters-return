@@ -4,6 +4,7 @@ import { Keyboard } from 'vk-io';
 
 import { gameBalance } from '../../config/game-balance';
 import { buildBattleActionIntentStateKey } from '../../modules/combat/application/command-intent-state';
+import { isBattleEncounterOffered } from '../../modules/combat/domain/battle-encounter';
 import {
   getBattleRuneLoadout,
   resolveBattleRuneSkillAction,
@@ -151,7 +152,31 @@ const createBattleSkillButton = (battle: BattleView, slot: BattleRuneSlotIndex):
   };
 };
 
+const createBattleEncounterActionLayout = (battle: BattleView): KeyboardLayout => {
+  const fleeChance = battle.encounter?.fleeChancePercent ?? 0;
+  const engageButton: KeyboardButtonDefinition = {
+    label: '⚔️ В бой',
+    command: gameCommands.engageBattle,
+    color: Keyboard.POSITIVE_COLOR,
+    intentScoped: true,
+    stateKey: buildBattleActionIntentStateKey(battle, 'ENGAGE'),
+  };
+  const fleeButton: KeyboardButtonDefinition = {
+    label: `💨 Отступить (${fleeChance}%)`,
+    command: gameCommands.fleeBattle,
+    color: Keyboard.PRIMARY_COLOR,
+    intentScoped: true,
+    stateKey: buildBattleActionIntentStateKey(battle, 'FLEE'),
+  };
+
+  return [[engageButton, fleeButton]];
+};
+
 const createBattleActionLayout = (battle: BattleView): KeyboardLayout => {
+  if (isBattleEncounterOffered(battle)) {
+    return createBattleEncounterActionLayout(battle);
+  }
+
   const skillButtons = ([0, 1] as const)
     .map((slot) => createBattleSkillButton(battle, slot))
     .filter((button): button is KeyboardButtonDefinition => button !== null);

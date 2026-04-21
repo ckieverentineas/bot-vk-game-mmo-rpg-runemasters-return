@@ -6,6 +6,7 @@ import type {
   BattleRuneActionSnapshot,
   BattleView,
 } from '../../../shared/types/game';
+import { isBattleEncounterOffered } from './battle-encounter';
 import { appendBattleLog, calculatePhysicalDamage, cloneBattle } from './battle-utils';
 import {
   getBattleRuneLoadoutForAction,
@@ -55,6 +56,10 @@ interface BasicAttackOutcome {
   readonly echoBonus: number;
   readonly echoMasteryBonus: number;
   readonly galeGuardGain: number;
+}
+
+interface PlayerActionOptions {
+  readonly fleeSucceeded?: boolean;
 }
 
 const sum = (values: readonly number[]): number => values.reduce((total, value) => total + value, 0);
@@ -249,8 +254,16 @@ const resolveBasicAttackOutcome = (battle: BattleView): BasicAttackOutcome => {
 };
 
 export class BattleEngine {
-  public static performPlayerAction(battle: BattleView, action: BattleActionType): BattleView {
+  public static performPlayerAction(
+    battle: BattleView,
+    action: BattleActionType,
+    options: PlayerActionOptions = {},
+  ): BattleView {
     switch (action) {
+      case 'ENGAGE':
+        return this.engageEncounter(battle);
+      case 'FLEE':
+        return this.attemptFlee(battle, options.fleeSucceeded ?? false);
       case 'ATTACK':
         return this.attack(battle);
       case 'DEFEND':
@@ -321,7 +334,7 @@ export class BattleEngine {
     const nextBattle = cloneBattle(battle);
     this.assertActive(nextBattle);
 
-    if (nextBattle.turnOwner !== 'ENEMY') {
+    if (nextBattle.turnOwner !== 'ENEMY' || isBattleEncounterOffered(nextBattle)) {
       return nextBattle;
     }
 
@@ -379,6 +392,60 @@ export class BattleEngine {
     );
 
     return finishPlayerAction(nextBattle);
+  }
+
+  private static engageEncounter(battle: BattleView): BattleView {
+    const nextBattle = cloneBattle(battle);
+    this.assertActive(nextBattle);
+    this.assertEncounterOffered(nextBattle);
+
+    const initialTurnOwner = nextBattle.encounter?.initialTurnOwner ?? 'PLAYER';
+    nextBattle.encounter = {
+      ...nextBattle.encounter!,
+      status: 'ENGAGED',
+    };
+    nextBattle.turnOwner = initialTurnOwner;
+    nextBattle.log = appendBattleLog(
+      nextBattle.log,
+      `⚔️ Вы принимаете встречу с ${nextBattle.enemy.name}: бой начинается.`,
+    );
+
+    return nextBattle;
+  }
+
+  private static attemptFlee(battle: BattleView, fleeSucceeded: boolean): BattleView {
+    const nextBattle = cloneBattle(battle);
+    this.assertActive(nextBattle);
+    this.assertEncounterOffered(nextBattle);
+
+    if (fleeSucceeded) {
+      nextBattle.encounter = {
+        ...nextBattle.encounter!,
+        status: 'FLED',
+      };
+      nextBattle.status = 'COMPLETED';
+      nextBattle.result = 'FLED';
+      nextBattle.turnOwner = 'PLAYER';
+      nextBattle.rewards = null;
+      nextBattle.log = appendBattleLog(
+        nextBattle.log,
+        `💨 Вы отступаете от ${nextBattle.enemy.name}: бой не начинается.`,
+      );
+
+      return nextBattle;
+    }
+
+    nextBattle.encounter = {
+      ...nextBattle.encounter!,
+      status: 'ENGAGED',
+    };
+    nextBattle.turnOwner = 'ENEMY';
+    nextBattle.log = appendBattleLog(
+      nextBattle.log,
+      `💨 Вы пытаетесь отступить, но ${nextBattle.enemy.name} перехватывает путь.`,
+    );
+
+    return nextBattle;
   }
 
   private static performEmberPulse(nextBattle: BattleView, activeAbility: BattleRuneActionSnapshot): BattleView {
@@ -487,8 +554,18 @@ export class BattleEngine {
   private static assertPlayerTurn(battle: BattleView): void {
     this.assertActive(battle);
 
+    if (isBattleEncounterOffered(battle)) {
+      throw new AppError('battle_encounter_pending', 'Сначала выберите: вступить в бой или попробовать отступить.');
+    }
+
     if (battle.turnOwner !== 'PLAYER') {
       throw new AppError('enemy_turn', 'Сейчас ход противника.');
+    }
+  }
+
+  private static assertEncounterOffered(battle: BattleView): void {
+    if (!isBattleEncounterOffered(battle)) {
+      throw new AppError('battle_encounter_already_resolved', 'Встреча уже перешла в бой.');
     }
   }
 

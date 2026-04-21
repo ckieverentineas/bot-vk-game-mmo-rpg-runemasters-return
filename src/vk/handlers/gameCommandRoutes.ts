@@ -157,6 +157,8 @@ export const config: Readonly<Partial<Record<GameCommandType, StaticCommandHandl
     );
   },
   [gameCommands.explore]: (handler, ctx, vkId, context) => handler.exploreNewBattle(ctx, vkId, context),
+  [gameCommands.engageBattle]: (handler, ctx, vkId, context) => handler.executeBattleAction(ctx, vkId, 'ENGAGE', context),
+  [gameCommands.fleeBattle]: (handler, ctx, vkId, context) => handler.executeBattleAction(ctx, vkId, 'FLEE', context),
   [gameCommands.attack]: (handler, ctx, vkId, context) => handler.executeBattleAction(ctx, vkId, 'ATTACK', context),
   [gameCommands.defend]: (handler, ctx, vkId, context) => handler.executeBattleAction(ctx, vkId, 'DEFEND', context),
   [gameCommands.skills]: (handler, ctx, vkId, context) => handler.executeBattleAction(ctx, vkId, 'RUNE_SKILL', context),

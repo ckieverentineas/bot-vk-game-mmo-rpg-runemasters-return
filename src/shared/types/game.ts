@@ -1,8 +1,8 @@
 export type StatKey = 'health' | 'attack' | 'defence' | 'magicDefence' | 'dexterity' | 'intelligence';
 export type TurnOwner = 'PLAYER' | 'ENEMY';
-export type BattleActionType = 'ATTACK' | 'DEFEND' | 'RUNE_SKILL' | 'RUNE_SKILL_SLOT_1' | 'RUNE_SKILL_SLOT_2';
+export type BattleActionType = 'ENGAGE' | 'FLEE' | 'ATTACK' | 'DEFEND' | 'RUNE_SKILL' | 'RUNE_SKILL_SLOT_1' | 'RUNE_SKILL_SLOT_2';
 export type BattleStatus = 'ACTIVE' | 'COMPLETED';
-export type BattleResult = 'VICTORY' | 'DEFEAT';
+export type BattleResult = 'VICTORY' | 'DEFEAT' | 'FLED';
 export type BattleEnemyIntentCode = 'HEAVY_STRIKE' | 'GUARD_BREAK';
 export type TutorialState = 'ACTIVE' | 'SKIPPED' | 'COMPLETED';
 export type RuneRarity = 'USUAL' | 'UNUSUAL' | 'RARE' | 'EPIC' | 'LEGENDARY' | 'MYTHICAL';
@@ -190,6 +190,13 @@ export interface BattleEnemyIntentSnapshot {
   shattersGuard?: boolean;
 }
 
+export interface BattleEncounterView {
+  status: 'OFFERED' | 'ENGAGED' | 'FLED';
+  initialTurnOwner: TurnOwner;
+  canFlee: boolean;
+  fleeChancePercent: number;
+}
+
 export interface BattleRewardView {
   experience: number;
   gold: number;
@@ -242,6 +249,7 @@ export interface BattleView {
   turnOwner: TurnOwner;
   player: BattlePlayerSnapshot;
   enemy: BattleEnemySnapshot;
+  encounter?: BattleEncounterView | null;
   log: string[];
   result: BattleResult | null;
   rewards: BattleRewardView | null;

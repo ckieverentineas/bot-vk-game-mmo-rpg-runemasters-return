@@ -671,6 +671,27 @@ describe('messages school-first onboarding framing', () => {
     expect(message).toContain('🔥 Пламя: враг уже просел');
   });
 
+  it('shows an encounter decision before normal battle tactics', () => {
+    const message = renderBattle(createBattle({
+      status: 'ACTIVE',
+      result: null,
+      rewards: null,
+      encounter: {
+        status: 'OFFERED',
+        initialTurnOwner: 'ENEMY',
+        canFlee: true,
+        fleeChancePercent: 52,
+      },
+    }));
+
+    expect(message).toContain('🧭 Встреча');
+    expect(message).toContain('Решение');
+    expect(message).toContain('Шанс отступить: 52%');
+    expect(message).toContain('враг успеет начать первым');
+    expect(message).not.toContain('Тактика');
+    expect(message).not.toContain('🎮 Действия:');
+  });
+
   it('shows the full battle log while it remains short enough to read', () => {
     const message = renderBattle(createBattle({
       status: 'ACTIVE',

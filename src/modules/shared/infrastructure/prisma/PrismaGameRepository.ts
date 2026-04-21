@@ -63,7 +63,7 @@ type PlayerRecord = Prisma.PlayerGetPayload<{ include: typeof playerInclude }>;
 type TransactionClient = Prisma.TransactionClient;
 type CommandIntentKey = GameCommandIntentKey;
 
-type PersistedBattleState = Pick<BattleView, 'status' | 'turnOwner' | 'player' | 'enemy' | 'log' | 'result' | 'rewards' | 'actionRevision'>;
+type PersistedBattleState = Pick<BattleView, 'status' | 'turnOwner' | 'player' | 'enemy' | 'encounter' | 'log' | 'result' | 'rewards' | 'actionRevision'>;
 
 const buildInventoryDeltaInput = (delta: InventoryDelta): Record<string, { increment: number }> => {
   const data: Record<string, { increment: number }> = {};
@@ -1615,7 +1615,7 @@ export class PrismaGameRepository implements GameRepository {
             inventoryDelta[shardField] = (inventoryDelta[shardField] ?? 0) + amount;
           }
         }
-      } else {
+      } else if (battle.result === 'DEFEAT') {
         nextDefeats += 1;
         nextVictoryStreak = 0;
         nextDefeatStreak += 1;
@@ -1943,6 +1943,7 @@ export class PrismaGameRepository implements GameRepository {
       : {
       player: playerSnapshot,
       enemy: enemySnapshot,
+      encounter: null,
       log: battleLog,
       result: battle.result as BattleView['result'],
       rewards: rewardsSnapshot,
@@ -1964,6 +1965,7 @@ export class PrismaGameRepository implements GameRepository {
       turnOwner: battle.turnOwner as BattleView['turnOwner'],
       player: hydrateBattlePlayerSnapshot(battle.playerId, battleSnapshot.player, persistedLoadoutSnapshot.snapshot),
       enemy: battleSnapshot.enemy,
+      encounter: battleSnapshot.encounter ?? null,
       log: battleSnapshot.log,
       result: battleSnapshot.result,
       rewards: battleSnapshot.rewards,

@@ -216,6 +216,12 @@ describe('ExploreLocation', () => {
         status: 'ACTIVE',
         battleType: 'PVE',
         locationLevel: resolveEncounterLocationLevel(player),
+        turnOwner: 'PLAYER',
+        encounter: expect.objectContaining({
+          status: 'OFFERED',
+          canFlee: true,
+          fleeChancePercent: 52,
+        }),
       }),
       expect.objectContaining({
         commandKey: 'EXPLORE_LOCATION',
@@ -224,6 +230,35 @@ describe('ExploreLocation', () => {
         currentStateKey: stateKey,
       }),
     );
+  });
+
+  it('offers an encounter decision before an adventure battle starts', async () => {
+    const player = createPlayer({ tutorialState: 'SKIPPED', locationLevel: 1 });
+    const repository = {
+      findPlayerByVkId: vi.fn().mockResolvedValue(player),
+      getCommandIntentResult: vi.fn().mockResolvedValue(null),
+      getActiveBattle: vi.fn().mockResolvedValue(null),
+      createBattle: vi.fn().mockImplementation(async (_playerId: number, battle: Omit<BattleView, 'id' | 'playerId' | 'createdAt' | 'updatedAt'>) => ({
+        id: 'battle-offered-encounter',
+        playerId: player.playerId,
+        createdAt: '2026-04-12T00:00:00.000Z',
+        updatedAt: '2026-04-12T00:00:00.000Z',
+        ...battle,
+      })),
+      saveBattle: vi.fn(),
+    } as unknown as GameRepository;
+    const useCase = new ExploreLocation(repository, createWorldCatalog(), createRandom());
+
+    const battle = await useCase.execute(player.vkId, 'intent-explore-offer-1', buildExploreLocationIntentStateKey(player), 'payload') as BattleView;
+
+    expect(battle.turnOwner).toBe('PLAYER');
+    expect(battle.encounter).toEqual({
+      status: 'OFFERED',
+      initialTurnOwner: 'PLAYER',
+      canFlee: true,
+      fleeChancePercent: 52,
+    });
+    expect(repository.saveBattle).not.toHaveBeenCalled();
   });
 
   it('can add a path episode before the generated battle', async () => {

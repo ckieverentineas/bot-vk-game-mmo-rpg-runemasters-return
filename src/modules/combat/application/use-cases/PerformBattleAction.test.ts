@@ -240,6 +240,84 @@ describe('PerformBattleAction', () => {
     expect(repository.finalizeBattle).not.toHaveBeenCalled();
   });
 
+  it('finalizes a successful flee as a neutral completed encounter', async () => {
+    const player = createPlayer();
+    const activeBattle = createBattle({
+      encounter: {
+        status: 'OFFERED',
+        initialTurnOwner: 'PLAYER',
+        canFlee: true,
+        fleeChancePercent: 52,
+      },
+    });
+    const random = createRandom();
+    vi.mocked(random.rollPercentage).mockReturnValue(true);
+    const repository = {
+      findPlayerByVkId: vi.fn().mockResolvedValue(player),
+      getCommandIntentResult: vi.fn().mockResolvedValue(null),
+      storeCommandIntentResult: vi.fn().mockResolvedValue(undefined),
+      getActiveBattle: vi.fn().mockResolvedValue(activeBattle),
+      finalizeBattle: vi.fn(async (_playerId: number, battle: BattleView) => ({
+        player,
+        battle,
+      })),
+      saveBattle: vi.fn(),
+    } as unknown as GameRepository;
+    const useCase = new PerformBattleAction(repository, random);
+    const stateKey = buildBattleActionIntentStateKey(activeBattle, 'FLEE');
+
+    const result = await useCase.execute(player.vkId, 'FLEE', 'intent-flee-1', stateKey, 'payload');
+
+    expect(random.rollPercentage).toHaveBeenCalledWith(52);
+    expect(result.battle.result).toBe('FLED');
+    expect(result.battle.rewards).toBeNull();
+    expect(result.battle.encounter?.status).toBe('FLED');
+    expect(repository.finalizeBattle).toHaveBeenCalledWith(
+      player.playerId,
+      expect.objectContaining({ result: 'FLED' }),
+      expect.objectContaining({ commandKey: 'BATTLE_FLEE' }),
+    );
+    expect(repository.saveBattle).not.toHaveBeenCalled();
+  });
+
+  it('saves a failed flee after the enemy immediately answers the opening', async () => {
+    const player = createPlayer();
+    const activeBattle = createBattle({
+      encounter: {
+        status: 'OFFERED',
+        initialTurnOwner: 'PLAYER',
+        canFlee: true,
+        fleeChancePercent: 52,
+      },
+    });
+    const random = createRandom();
+    vi.mocked(random.rollPercentage).mockReturnValue(false);
+    const repository = {
+      findPlayerByVkId: vi.fn().mockResolvedValue(player),
+      getCommandIntentResult: vi.fn().mockResolvedValue(null),
+      storeCommandIntentResult: vi.fn().mockResolvedValue(undefined),
+      getActiveBattle: vi.fn().mockResolvedValue(activeBattle),
+      finalizeBattle: vi.fn(),
+      saveBattle: vi.fn(async (battle: BattleView) => battle),
+    } as unknown as GameRepository;
+    const useCase = new PerformBattleAction(repository, random);
+    const stateKey = buildBattleActionIntentStateKey(activeBattle, 'FLEE');
+
+    const result = await useCase.execute(player.vkId, 'FLEE', 'intent-flee-2', stateKey, 'payload');
+
+    expect(random.rollPercentage).toHaveBeenCalledWith(52);
+    expect(result.battle.status).toBe('ACTIVE');
+    expect(result.battle.result).toBeNull();
+    expect(result.battle.encounter?.status).toBe('ENGAGED');
+    expect(result.battle.turnOwner).toBe('PLAYER');
+    expect(result.battle.player.currentHealth).toBeLessThan(activeBattle.player.currentHealth);
+    expect(repository.saveBattle).toHaveBeenCalledWith(
+      expect.objectContaining({ encounter: expect.objectContaining({ status: 'ENGAGED' }) }),
+      expect.objectContaining({ commandKey: 'BATTLE_FLEE' }),
+    );
+    expect(repository.finalizeBattle).not.toHaveBeenCalled();
+  });
+
   it('rejects malformed payload battle commands before mutation', async () => {
     const player = createPlayer();
     const activeBattle = createBattle();

@@ -93,6 +93,58 @@ describe('BattleEngine', () => {
     expect(resolved.rewards?.experience).toBe(10);
   });
 
+  it('starts combat from an offered encounter and restores the original first turn', () => {
+    const battle = createBattle({
+      turnOwner: 'PLAYER',
+      encounter: {
+        status: 'OFFERED',
+        initialTurnOwner: 'ENEMY',
+        canFlee: true,
+        fleeChancePercent: 52,
+      },
+    });
+
+    const resolved = BattleEngine.performPlayerAction(battle, 'ENGAGE');
+
+    expect(resolved.encounter?.status).toBe('ENGAGED');
+    expect(resolved.turnOwner).toBe('ENEMY');
+    expect(resolved.status).toBe('ACTIVE');
+    expect(resolved.log).toHaveLength(battle.log.length + 1);
+  });
+
+  it('can finish an offered encounter as a neutral flee result before combat starts', () => {
+    const battle = createBattle({
+      encounter: {
+        status: 'OFFERED',
+        initialTurnOwner: 'PLAYER',
+        canFlee: true,
+        fleeChancePercent: 52,
+      },
+    });
+
+    const resolved = BattleEngine.performPlayerAction(battle, 'FLEE', { fleeSucceeded: true });
+
+    expect(resolved.status).toBe('COMPLETED');
+    expect(resolved.result).toBe('FLED');
+    expect(resolved.rewards).toBeNull();
+    expect(resolved.encounter?.status).toBe('FLED');
+  });
+
+  it('blocks normal combat actions while the encounter choice is still pending', () => {
+    const battle = createBattle({
+      encounter: {
+        status: 'OFFERED',
+        initialTurnOwner: 'PLAYER',
+        canFlee: true,
+        fleeChancePercent: 52,
+      },
+    });
+
+    expect(() => BattleEngine.performPlayerAction(battle, 'ATTACK')).toThrowError(
+      expect.objectContaining({ code: 'battle_encounter_pending' }),
+    );
+  });
+
   it('не даёт защите опустить урон ниже единицы', () => {
     vi.spyOn(Math, 'random').mockReturnValue(0);
     const battle = createBattle({

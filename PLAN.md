@@ -49,6 +49,7 @@
 - [x] Existing-player return flow уже получил `return recap v1` без guilt/FOMO copy.
 - [x] `main menu`, `return recap`, `rune hub` и `battle result` уже используют единый school-aware next-goal слой.
 - [x] Исследование уже умеет выбирать исход шага: бой или standalone PvE-событие без FOMO и без создания `BattleSession`.
+- [x] Боевые исходы исследования теперь проходят через фазу `встречи`: враг представлен до первого хода, игрок может принять бой или попытаться отступить с шансом от ловкости.
 - [x] Есть reward duplication rails, stale-action rejection, command-intent dedupe и concurrency coverage для critical flows.
 - [x] Есть content validation, smoke tests, release preflight и telemetry v1 baseline.
 
@@ -86,6 +87,7 @@
   - [x] Расширить пул resource-find сцен на несколько ранних материалов, чтобы exploration-находки не ощущались одной повторяющейся травой.
   - [x] Подключить `Мастеров` к standalone exploration-сценам как лёгкие директорские подсказки без новой persistence-модели и без FOMO-давления.
   - [x] Вернуть post-battle CTA к `⚔️ Исследовать` и поднять шанс standalone exploration-сцен, чтобы исследования заметнее давали не только бои.
+  - [x] Добавить player-facing фазу встречи перед боем: представление врага, кнопки `⚔️ В бой` / `💨 Отступить`, нейтральный исход `FLED` и шанс отступления на основе ловкости.
   - [ ] Доказать через playtests и telemetry, что первый school payoff приходит быстро и читаемо.
   - [ ] Не расширять scope в social / PvP / live-ops, пока этот slice не доказан.
 

@@ -2,6 +2,7 @@ import { AppError } from '../../../../shared/domain/AppError';
 import type { BattleView, PlayerState } from '../../../../shared/types/game';
 import { finalizeRecoveredBattleIfNeeded } from '../../../combat/application/finalize-recovered-battle';
 import { BattleEngine } from '../../../combat/domain/battle-engine';
+import { createBattleEncounter, isBattleEncounterOffered } from '../../../combat/domain/battle-encounter';
 import { buildBattlePlayerSnapshot } from '../../../combat/domain/build-battle-player-snapshot';
 import { buildPlayerNextGoalView } from '../../../player/application/read-models/next-goal';
 import { buildPlayerSchoolRecognitionView } from '../../../player/application/read-models/school-recognition';
@@ -184,6 +185,11 @@ export class ExploreLocation {
     outcome: ExplorationBattleOutcome,
     commandOptions: ExploreLocationCommandOptions,
   ): Promise<BattleView> {
+    const playerSnapshot = buildBattlePlayerSnapshot(currentPlayer.playerId, vkId, outcome.playerStats, currentPlayer);
+    const shouldOfferEncounterChoice = outcome.locationLevel > 0 && currentPlayer.tutorialState !== 'ACTIVE';
+    const encounter = shouldOfferEncounterChoice
+      ? createBattleEncounter(playerSnapshot, outcome.enemy, outcome.turnOwner)
+      : null;
     const battle = await this.repository.createBattle(currentPlayer.playerId, {
       status: 'ACTIVE',
       battleType: 'PVE',
@@ -191,19 +197,20 @@ export class ExploreLocation {
       locationLevel: outcome.locationLevel,
       biomeCode: outcome.biome.code,
       enemyCode: outcome.template.code,
-      turnOwner: outcome.turnOwner,
-      player: buildBattlePlayerSnapshot(currentPlayer.playerId, vkId, outcome.playerStats, currentPlayer),
+      turnOwner: encounter ? 'PLAYER' : outcome.turnOwner,
+      player: playerSnapshot,
       enemy: outcome.enemy,
+      encounter,
       log: outcome.openingLog,
       result: null,
       rewards: null,
-    }, outcome.turnOwner === 'PLAYER' ? commandOptions : undefined);
+    }, encounter || outcome.turnOwner === 'PLAYER' ? commandOptions : undefined);
 
     await this.trackTutorialPathChosen(currentPlayer, battle);
     await this.trackSchoolNoviceEliteEncounterStarted(currentPlayer, battle, outcome.currentSchoolCode);
     await this.trackSchoolNoviceFollowUpBattleStart(currentPlayer, battle);
 
-    if (battle.turnOwner === 'ENEMY') {
+    if (!isBattleEncounterOffered(battle) && battle.turnOwner === 'ENEMY') {
       const resolved = BattleEngine.resolveEnemyTurn(battle);
       if (resolved.status === 'COMPLETED') {
         const finalized = await this.repository.finalizeBattle(currentPlayer.playerId, resolved, commandOptions);

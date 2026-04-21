@@ -11,6 +11,7 @@ import {
   createRuneKeyboard,
   createTutorialKeyboard,
 } from './index';
+import { gameCommands } from '../commands/catalog';
 
 const createPlayer = (overrides: Partial<PlayerState> = {}): PlayerState => ({
   userId: 1,
@@ -445,6 +446,27 @@ describe('profile keyboard', () => {
     expect(defend?.stateKey).toEqual(expect.any(String));
     expect(skill?.intentId).toEqual(expect.any(String));
     expect(skill?.stateKey).toEqual(expect.any(String));
+  });
+
+  it('shows only engage and flee actions while an encounter is still offered', () => {
+    const battle = createBattle({
+      encounter: {
+        status: 'OFFERED',
+        initialTurnOwner: 'PLAYER',
+        canFlee: true,
+        fleeChancePercent: 52,
+      },
+    });
+    const labels = collectLabels(createBattleKeyboard(battle));
+    const payloads = collectPayloads(createBattleKeyboard(battle));
+
+    expect(labels).toEqual(['⚔️ В бой', '💨 Отступить (52%)']);
+    expect(payloads.map((payload) => payload.command)).toEqual([
+      gameCommands.engageBattle,
+      gameCommands.fleeBattle,
+    ]);
+    expect(payloads.every((payload) => typeof payload.intentId === 'string')).toBe(true);
+    expect(payloads.every((payload) => typeof payload.stateKey === 'string')).toBe(true);
   });
 
   it('keeps battle action labels aligned with the battle state block', () => {

@@ -16,6 +16,7 @@ import {
 } from '../../modules/player/domain/school-mastery';
 import { type AcquisitionSummaryView } from '../../modules/player/application/read-models/acquisition-summary';
 import { buildBattleClarityView } from '../../modules/combat/application/read-models/battle-clarity';
+import { isBattleEncounterOffered } from '../../modules/combat/domain/battle-encounter';
 import { listBattleRuneLoadouts } from '../../modules/combat/domain/battle-rune-loadouts';
 import {
   buildBattleResultNextGoalView,
@@ -559,6 +560,33 @@ const renderBattleActionState = (battle: BattleView): string => {
   return `🎮 Действия: ${actions.join(' · ')}`;
 };
 
+const resolveBattleEnemyRankLabel = (battle: BattleView): string => {
+  if (battle.enemy.isBoss) {
+    return 'босс';
+  }
+
+  if (battle.enemy.isElite) {
+    return 'элита';
+  }
+
+  return 'обычный враг';
+};
+
+const renderBattleEncounterChoice = (battle: BattleView): string[] => {
+  const fleeChancePercent = battle.encounter?.fleeChancePercent ?? 0;
+  const firstMoveLine = battle.encounter?.initialTurnOwner === 'PLAYER'
+    ? 'Если вступить в бой, первый ход будет за вами.'
+    : 'Если вступить в бой, враг успеет начать первым.';
+
+  return [
+    `👁️ Встреча: ${battle.enemy.name} замечает вас на маршруте.`,
+    `Тип: ${resolveBattleEnemyRankLabel(battle)} · ${battle.enemy.kind}.`,
+    `💨 Шанс отступить: ${fleeChancePercent}% · ваша ЛВК ${battle.player.dexterity}, враг ${battle.enemy.dexterity}.`,
+    firstMoveLine,
+    'Выберите: принять бой или попробовать отступить до первого обмена ударами.',
+  ];
+};
+
 const renderBattleNextGoal = (battle: BattleView, player?: PlayerState): string[] => {
   const nextGoal = buildBattleResultNextGoalView(battle, player);
   if (!nextGoal) {
@@ -629,13 +657,18 @@ export const renderBattle = (battle: BattleView, player?: PlayerState, acquisiti
   const battleLogLines = selectBattleLogLines(battle.log);
   const clarity = buildBattleClarityView(battle);
   const enemyIntentLine = renderBattleEnemyIntent(battle);
-  const battleStateLine = battle.status === 'ACTIVE'
+  const isEncounterOffered = battle.status === 'ACTIVE' && isBattleEncounterOffered(battle);
+  const battleStateLine = isEncounterOffered
+    ? '🧭 Встреча'
+    : battle.status === 'ACTIVE'
     ? battle.turnOwner === 'PLAYER'
       ? '⚔️ Бой — ваш ход'
       : '⚔️ Бой — ход врага'
     : battle.result === 'VICTORY'
       ? '🏁 Победа'
-      : '💥 Поражение';
+      : battle.result === 'FLED'
+        ? '💨 Отступление'
+        : '💥 Поражение';
 
   const rewardLines = battle.status === 'COMPLETED' && battle.rewards
     ? [
@@ -662,7 +695,13 @@ export const renderBattle = (battle: BattleView, player?: PlayerState, acquisiti
     renderBattleActorBlock('Вы', battle.player, { guardPoints: battle.player.guardPoints }),
     renderBattleActorBlock('Враг', battle.enemy),
     '',
-    ...(battle.status === 'ACTIVE'
+    ...(isEncounterOffered
+      ? [
+          'Решение',
+          ...renderBattleEncounterChoice(battle),
+          '',
+        ]
+      : battle.status === 'ACTIVE'
       ? [
           'Тактика',
           ...(enemyIntentLine ? [enemyIntentLine] : []),
