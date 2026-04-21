@@ -567,7 +567,7 @@ describe('messages school-first onboarding framing', () => {
     }));
 
     expect(message).toContain('🌀 Импульс углей — готово');
-    expect(message).toContain('🎮 Действия: ⚔️ Атака · 🛡️ Защита (+2 guard) · 🌀 Импульс углей');
+    expect(message).toContain('🎮 Действия: ⚔️ Атака · 🛡️ Защита (+2 щит) · 🌀 Импульс углей');
     expect(message).not.toContain('Искра поддержки');
   });
 
@@ -610,9 +610,12 @@ describe('messages school-first onboarding framing', () => {
 
     expect(message).toContain('Состояние');
     expect(message).toContain('Вы: Рунный мастер #1001');
-    expect(message).toContain('████████░░ 6/8 HP · ██████ 4/4 маны · щит 3');
+    expect(message).toContain('❤️ ████████░░ 6/8 HP · 🛡️ щит 3');
+    expect(message).toContain('🔷 ██████ 4/4 маны');
+    expect(message).toContain('📊 Статы: ⚔️ 4 · 🛡️ 3 · 🔮 1 · 💨 3 · 🧠 1');
     expect(message).toContain('Враг: Учебный огонёк');
-    expect(message).toContain('█████░░░░░ 3/6 HP');
+    expect(message).toContain('❤️ █████░░░░░ 3/6 HP');
+    expect(message).toContain('📊 Статы: ⚔️ 2 · 🛡️ 0 · 🔮 0 · 💨 2 · 🧠 1');
     expect(message).toContain('Тактика');
     expect(message).toContain('🔥 Пламя: враг уже просел');
   });

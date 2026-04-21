@@ -6,26 +6,22 @@ import { buildBattlePlayerSnapshot } from '../../../combat/domain/build-battle-p
 import { buildPlayerNextGoalView } from '../../../player/application/read-models/next-goal';
 import { buildPlayerSchoolRecognitionView } from '../../../player/application/read-models/school-recognition';
 import {
-  getSchoolNovicePathDefinition,
   getSchoolNovicePathDefinitionForEnemy,
-  hasEquippedRuneOfSchoolAtLeastRarity,
   hasRuneOfSchoolAtLeastRarity,
 } from '../../../player/domain/school-novice-path';
-import { derivePlayerStats, getEquippedRune, resolveEncounterLocationLevel } from '../../../player/domain/player-stats';
-import { getSchoolDefinitionForArchetype } from '../../../runes/domain/rune-schools';
+import { resolveEncounterLocationLevel } from '../../../player/domain/player-stats';
 import { resolveCommandIntent, type CommandIntentSource } from '../../../shared/application/command-intent';
 import type { GameTelemetry } from '../../../shared/application/ports/GameTelemetry';
 import { requirePlayerByVkId } from '../../../shared/application/require-player';
 import type { GameRandom } from '../../../shared/application/ports/GameRandom';
 import type { GameRepository } from '../../../shared/application/ports/GameRepository';
 import type { WorldCatalog } from '../../../world/application/ports/WorldCatalog';
-import { buildEnemySnapshot, describeEncounter, pickEncounterTemplate, resolveInitialTurnOwner } from '../../../world/domain/enemy-scaling';
+import type { ExplorationSceneView } from '../../../world/domain/exploration-events';
 import {
-  type ExplorationSceneView,
-  resolveExplorationEventLine,
-  resolveStandaloneExplorationEvent,
-} from '../../../world/domain/exploration-events';
-import { resolveGameMasterEncounterLine } from '../../../world/domain/game-master-director';
+  type ExplorationBattleOutcome,
+  resolveExplorationOutcome,
+  resolveExplorationSchoolCode,
+} from '../../domain/exploration-outcome';
 import { Logger } from '../../../../utils/logger';
 
 import { buildExploreLocationIntentStateKey } from '../command-intent-state';
@@ -42,6 +38,13 @@ export interface ExploreLocationEventResult {
 }
 
 export type ExploreLocationResult = BattleView | ExploreLocationReplayResult | ExploreLocationEventResult;
+
+interface ExploreLocationCommandOptions {
+  readonly commandKey: 'EXPLORE_LOCATION';
+  readonly intentId?: string;
+  readonly intentStateKey?: string;
+  readonly currentStateKey?: string;
+}
 
 export const isExploreLocationEventResult = (result: unknown): result is ExploreLocationEventResult => (
   typeof result === 'object' && result !== null && 'event' in result
@@ -148,73 +151,53 @@ export class ExploreLocation {
     const currentPlayer = player;
 
     const locationLevel = resolveEncounterLocationLevel(currentPlayer);
-    const currentSchoolCode = getSchoolDefinitionForArchetype(getEquippedRune(currentPlayer)?.archetypeCode)?.code ?? null;
+    const currentSchoolCode = resolveExplorationSchoolCode(currentPlayer);
     const biome = this.worldCatalog.findBiomeForLocationLevel(locationLevel);
     if (!biome) {
       throw new AppError('biome_not_found', 'Для текущего уровня локации не найден биом.');
     }
 
-    const standaloneEvent = resolveStandaloneExplorationEvent({
+    const outcome = resolveExplorationOutcome({
+      player: currentPlayer,
       biome,
+      templates: this.worldCatalog.listMobTemplatesForBiome(biome.code),
       currentSchoolCode,
       locationLevel,
     }, this.random);
 
-    if (standaloneEvent) {
+    if (outcome.kind === 'event') {
       return this.persistExplorationEventResult(currentPlayer, {
-        event: standaloneEvent,
+        event: outcome.event,
         player: currentPlayer,
       }, commandOptions);
     }
 
-    const templates = this.worldCatalog.listMobTemplatesForBiome(biome.code);
-    const novicePath = getSchoolNovicePathDefinition(currentSchoolCode);
-    const preferMiniboss = !!(
-      novicePath
-      && novicePath.minibossRewardRarity
-      && hasEquippedRuneOfSchoolAtLeastRarity(currentPlayer, novicePath.schoolCode, novicePath.rewardRarity)
-      && !hasRuneOfSchoolAtLeastRarity(currentPlayer, novicePath.schoolCode, novicePath.minibossRewardRarity)
-    );
-    const template = pickEncounterTemplate(templates, locationLevel, {
-      schoolCode: currentSchoolCode,
-      preferMiniboss,
-    }, this.random);
-    const playerStats = derivePlayerStats(currentPlayer);
-    const enemy = buildEnemySnapshot(template, locationLevel);
-    const turnOwner = resolveInitialTurnOwner(playerStats.dexterity, enemy.dexterity);
-    const encounterLine = describeEncounter(biome, enemy, currentSchoolCode);
-    const gameMasterLine = resolveGameMasterEncounterLine({
-      biome,
-      enemy,
-      currentSchoolCode,
-      locationLevel,
-    });
-    const explorationEventLine = resolveExplorationEventLine({
-      biome,
-      currentSchoolCode,
-      locationLevel,
-    }, this.random);
-    const openingLog = [
-      gameMasterLine ? `${encounterLine} ${gameMasterLine}` : encounterLine,
-      ...(explorationEventLine ? [explorationEventLine] : []),
-    ];
+    return this.startBattleFromOutcome(vkId, currentPlayer, outcome, commandOptions);
+  }
+
+  private async startBattleFromOutcome(
+    vkId: number,
+    currentPlayer: PlayerState,
+    outcome: ExplorationBattleOutcome,
+    commandOptions: ExploreLocationCommandOptions,
+  ): Promise<BattleView> {
     const battle = await this.repository.createBattle(currentPlayer.playerId, {
       status: 'ACTIVE',
       battleType: 'PVE',
       actionRevision: 0,
-      locationLevel,
-      biomeCode: biome.code,
-      enemyCode: template.code,
-      turnOwner,
-      player: buildBattlePlayerSnapshot(currentPlayer.playerId, vkId, playerStats, currentPlayer),
-      enemy,
-      log: openingLog,
+      locationLevel: outcome.locationLevel,
+      biomeCode: outcome.biome.code,
+      enemyCode: outcome.template.code,
+      turnOwner: outcome.turnOwner,
+      player: buildBattlePlayerSnapshot(currentPlayer.playerId, vkId, outcome.playerStats, currentPlayer),
+      enemy: outcome.enemy,
+      log: outcome.openingLog,
       result: null,
       rewards: null,
-    }, turnOwner === 'PLAYER' ? commandOptions : undefined);
+    }, outcome.turnOwner === 'PLAYER' ? commandOptions : undefined);
 
     await this.trackTutorialPathChosen(currentPlayer, battle);
-    await this.trackSchoolNoviceEliteEncounterStarted(currentPlayer, battle, currentSchoolCode);
+    await this.trackSchoolNoviceEliteEncounterStarted(currentPlayer, battle, outcome.currentSchoolCode);
     await this.trackSchoolNoviceFollowUpBattleStart(currentPlayer, battle);
 
     if (battle.turnOwner === 'ENEMY') {
@@ -233,12 +216,7 @@ export class ExploreLocation {
   private async persistExplorationEventResult(
     player: PlayerState,
     result: ExploreLocationEventResult,
-    commandOptions: {
-      readonly commandKey: 'EXPLORE_LOCATION';
-      readonly intentId?: string;
-      readonly intentStateKey?: string;
-      readonly currentStateKey?: string;
-    },
+    commandOptions: ExploreLocationCommandOptions,
   ): Promise<ExploreLocationEventResult> {
     return this.repository.recordCommandIntentResult(
       player.playerId,

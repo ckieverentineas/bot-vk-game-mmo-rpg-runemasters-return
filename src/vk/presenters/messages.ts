@@ -429,26 +429,40 @@ const renderMeter = (current: number, max: number, width = 10): string => {
   return `${'█'.repeat(filled)}${'░'.repeat(width - filled)}`;
 };
 
-const renderBattleActorLine = (
+const renderBattleActorStats = (actor: Pick<StatBlock, 'attack' | 'defence' | 'magicDefence' | 'dexterity' | 'intelligence'>): string => (
+  `📊 Статы: ⚔️ ${actor.attack} · 🛡️ ${actor.defence} · 🔮 ${actor.magicDefence} · 💨 ${actor.dexterity} · 🧠 ${actor.intelligence}`
+);
+
+const renderBattleActorBlock = (
   title: string,
   actor: {
     name: string;
+    attack: number;
+    defence: number;
+    magicDefence: number;
+    dexterity: number;
+    intelligence: number;
     currentHealth: number;
     maxHealth: number;
     currentMana?: number;
     maxMana?: number;
   },
-  options: { includeMana?: boolean; guardPoints?: number } = {},
+  options: { guardPoints?: number } = {},
 ): string => {
-  const healthLine = `${renderMeter(actor.currentHealth, actor.maxHealth)} ${actor.currentHealth}/${actor.maxHealth} HP`;
-  const manaLine = options.includeMana && typeof actor.currentMana === 'number' && typeof actor.maxMana === 'number'
-    ? ` · ${renderMeter(actor.currentMana, actor.maxMana, 6)} ${actor.currentMana}/${actor.maxMana} маны`
-    : '';
+  const healthLine = `❤️ ${renderMeter(actor.currentHealth, actor.maxHealth)} ${actor.currentHealth}/${actor.maxHealth} HP`;
+  const manaLine = typeof actor.currentMana === 'number' && typeof actor.maxMana === 'number'
+    ? `🔷 ${renderMeter(actor.currentMana, actor.maxMana, 6)} ${actor.currentMana}/${actor.maxMana} маны`
+    : null;
   const guardLine = options.guardPoints && options.guardPoints > 0
-    ? ` · щит ${options.guardPoints}`
+    ? ` · 🛡️ щит ${options.guardPoints}`
     : '';
 
-  return `${title}: ${actor.name}\n${healthLine}${manaLine}${guardLine}`;
+  return [
+    `${title}: ${actor.name}`,
+    `${healthLine}${guardLine}`,
+    ...(manaLine ? [manaLine] : []),
+    renderBattleActorStats(actor),
+  ].join('\n');
 };
 
 const renderBattleRuneState = (battle: BattleView): string => {
@@ -483,7 +497,7 @@ const renderBattleEnemyIntent = (battle: BattleView): string | null => {
 const renderBattleActionState = (battle: BattleView): string => {
   const defendGain = resolveDefendGuardGain(battle.player);
   const activeAbility = battle.player.runeLoadout?.activeAbility ?? null;
-  const actions = ['⚔️ Атака', `🛡️ Защита (+${defendGain} guard)`];
+  const actions = ['⚔️ Атака', `🛡️ Защита (+${defendGain} щит)`];
 
   if (activeAbility) {
     actions.push(`🌀 ${activeAbility.name}`);
@@ -538,8 +552,8 @@ export const renderBattle = (battle: BattleView, player?: PlayerState, acquisiti
     battleStateLine,
     '',
     'Состояние',
-    renderBattleActorLine('Вы', battle.player, { includeMana: true, guardPoints: battle.player.guardPoints }),
-    renderBattleActorLine('Враг', battle.enemy),
+    renderBattleActorBlock('Вы', battle.player, { guardPoints: battle.player.guardPoints }),
+    renderBattleActorBlock('Враг', battle.enemy),
     '',
     ...(battle.status === 'ACTIVE'
       ? [
