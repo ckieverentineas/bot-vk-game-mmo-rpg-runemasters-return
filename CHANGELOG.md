@@ -40,6 +40,7 @@
 - `ExploreLocation` теперь может вернуть standalone exploration scene вместо боя: domain resolver выбирает outcome шага исследования, а VK handler только рендерит готовый результат без transport-owned игровых правил;
 - standalone exploration scenes получили player-facing типы (`передышка`, `находка`, `школьный след`, `опасный знак`, `Мастер испытаний`) и более широкий пул non-combat PvE-сцен без скрытых таймеров, FOMO или срочных экономических крючков;
 - `resource_find` exploration scene теперь может выдавать малую material-находку через exact-once inventory result: инвентарь меняется в той же command-intent транзакции, что и канонический ответ события, поэтому retry не дублирует награду;
+- пул `resource_find` расширен несколькими ранними находками (`трава`, `кожа`, `кость`, `металл`) с наградой ровно `+1`, чтобы non-combat exploration был разнообразнее, но не подменял основной рост через бои, руны и школы;
 - exploration outcome logic вынесена в [`src/modules/exploration/domain/exploration-outcome.ts`](src/modules/exploration/domain/exploration-outcome.ts): use-case теперь оркестрирует replay/persistence, а не собирает encounter plan вручную;
 - battle state UI теперь показывает игрока и врага симметричными блоками: имя, HP-bar, mana-bar и короткую строку боевых статов;
 - HP/mana шкалы в battle state UI стали цветными: здоровье меняет цвет по уровню риска, мана остаётся синей;

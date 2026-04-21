@@ -18,6 +18,15 @@ const createBiome = (overrides: Partial<BiomeView> = {}): BiomeView => ({
   ...overrides,
 });
 
+const pickStandaloneSceneByCode = (sceneCode: string) => resolveStandaloneExplorationEvent({
+  biome: createBiome(),
+  currentSchoolCode: null,
+  locationLevel: 10,
+}, {
+  rollPercentage: () => true,
+  pickOne: (items) => items.find((item) => item.code === sceneCode) ?? items[0]!,
+});
+
 describe('resolveExplorationEventLine', () => {
   it('does not interrupt the intro tutorial with extra exploration events', () => {
     const line = resolveExplorationEventLine({
@@ -108,14 +117,7 @@ describe('resolveStandaloneExplorationEvent', () => {
   });
 
   it('can return a resource-find scene with a small exact-once inventory effect', () => {
-    const event = resolveStandaloneExplorationEvent({
-      biome: createBiome(),
-      currentSchoolCode: null,
-      locationLevel: 1,
-    }, {
-      rollPercentage: () => true,
-      pickOne: (items) => items.find((item) => item.code === 'abandoned-camp') ?? items[0]!,
-    });
+    const event = pickStandaloneSceneByCode('abandoned-camp');
 
     expect(event).toMatchObject({
       code: 'abandoned-camp',
@@ -125,6 +127,26 @@ describe('resolveStandaloneExplorationEvent', () => {
     expect(getExplorationSceneInventoryDelta(event!)).toEqual({ herb: 1 });
     expect(getExplorationSceneEffectLine(event!)).toBe('Найдено: трава +1.');
     expect(event?.outcomeLine).not.toContain('сегодня');
+  });
+
+  it('keeps resource-find rewards small and varied by scene', () => {
+    const expectedFinds = [
+      ['abandoned-camp', { herb: 1 }, 'Найдено: трава +1.'],
+      ['torn-satchel', { leather: 1 }, 'Найдено: кожа +1.'],
+      ['old-snare', { bone: 1 }, 'Найдено: кость +1.'],
+      ['cold-iron-chip', { metal: 1 }, 'Найдено: металл +1.'],
+    ] as const;
+
+    for (const [sceneCode, delta, effectLine] of expectedFinds) {
+      const event = pickStandaloneSceneByCode(sceneCode);
+
+      expect(event).toMatchObject({
+        code: sceneCode,
+        kind: 'resource_find',
+      });
+      expect(getExplorationSceneInventoryDelta(event!)).toEqual(delta);
+      expect(getExplorationSceneEffectLine(event!)).toBe(effectLine);
+    }
   });
 
   it('can return a danger-sign scene before a future encounter', () => {

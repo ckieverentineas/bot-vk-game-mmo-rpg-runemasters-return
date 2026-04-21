@@ -48,6 +48,12 @@ interface ExplorationSceneDefinition extends Omit<ExplorationSceneView, 'effect'
 
 const noExplorationSceneEffect: ExplorationSceneEffect = { kind: 'none' };
 
+const inventoryFindEffect = (delta: InventoryDelta, line: string): ExplorationSceneEffect => ({
+  kind: 'inventory_delta',
+  delta,
+  line,
+});
+
 const explorationSceneKindLabels: Readonly<Record<ExplorationSceneKind, string>> = {
   rest: 'передышка',
   resource_find: 'находка',
@@ -128,11 +134,40 @@ const standaloneExplorationScenes: readonly ExplorationSceneDefinition[] = [
     description: 'Под навесом из корней лежат следы чужой экспедиции: пустые фляги, сухие травы и крошка рунной пыли на ткани.',
     outcomeLine: 'Боя нет: вы находите малый запас трав, но маршрут не превращается в гонку за ежедневными наградами.',
     nextStepLine: 'Дальше можно искать бой, след школы или более явную добычу в обычной системе наград.',
-    effect: {
-      kind: 'inventory_delta',
-      delta: { herb: 1 },
-      line: 'Найдено: трава +1.',
-    },
+    effect: inventoryFindEffect({ herb: 1 }, 'Найдено: трава +1.'),
+  },
+  {
+    code: 'torn-satchel',
+    kind: 'resource_find',
+    kindLabel: explorationSceneKindLabels.resource_find,
+    minLocationLevel: 1,
+    title: '🧵 Порванная сумка',
+    description: 'Между корнями застряла старая походная сумка. Её владелец ушёл давно, но плотная кожа ещё годится для мастерской.',
+    outcomeLine: 'Боя нет: вы забираете один пригодный лоскут, без редкой добычи и без скрытого давления на темп.',
+    nextStepLine: 'Материал полезен для будущих рецептов, а следующий шаг всё ещё выбирает обычный ход исследования.',
+    effect: inventoryFindEffect({ leather: 1 }, 'Найдено: кожа +1.'),
+  },
+  {
+    code: 'old-snare',
+    kind: 'resource_find',
+    kindLabel: explorationSceneKindLabels.resource_find,
+    minLocationLevel: 2,
+    title: '🪤 Старая ловушка',
+    description: 'В траве ржавеет охотничья петля. Рядом лежит выбеленная кость с мелкими рунными царапинами.',
+    outcomeLine: 'Боя нет: вы осторожно разбираете находку и забираете только то, что не тянет за собой новую угрозу.',
+    nextStepLine: 'Дальше маршрут снова может дать бой, знак школы или спокойную сцену.',
+    effect: inventoryFindEffect({ bone: 1 }, 'Найдено: кость +1.'),
+  },
+  {
+    code: 'cold-iron-chip',
+    kind: 'resource_find',
+    kindLabel: explorationSceneKindLabels.resource_find,
+    minLocationLevel: 4,
+    title: '⚙️ Холодный обломок',
+    description: 'Под каменной плитой поблёскивает обломок старого крепления. Металл потускнел, но всё ещё держит форму.',
+    outcomeLine: 'Боя нет: вы находите один небольшой кусок металла, не сбивая темп приключения в добывающий маршрут.',
+    nextStepLine: 'Такой трофей приятен, но главный рост всё ещё приходит через бои, руны и школы.',
+    effect: inventoryFindEffect({ metal: 1 }, 'Найдено: металл +1.'),
   },
   {
     code: 'fresh-clawmarks',
