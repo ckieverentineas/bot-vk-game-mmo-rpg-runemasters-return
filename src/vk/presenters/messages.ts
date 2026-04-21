@@ -2,6 +2,7 @@ import { gameBalance } from '../../config/game-balance';
 import {
   derivePlayerStats,
   getEquippedRune,
+  normalizeRuneIndex,
   getRuneEquippedSlot,
   getSelectedRune,
   getUnlockedRuneSlotCount,
@@ -87,6 +88,16 @@ const formatPassiveAbilityDetails = (ability: AbilityDefinition): string => (
   `🛡️ ${ability.name}\n${withSentencePeriod(ability.description)}`
 );
 
+const formatRuneStatDetails = (stats: StatBlock): string[] => {
+  const lines = runeStatSummaryOrder
+    .filter((key) => stats[key] > 0)
+    .map((key) => `${runeStatSummaryLabels[key]} +${stats[key]}`);
+
+  return lines.length > 0
+    ? ['Бонусы:', ...lines]
+    : ['Бонусы: нет'];
+};
+
 const formatRuneAbilityDetails = (runeContent: ReturnType<typeof describeRuneContent>): string[] => [
   ...(runeContent.activeAbilities.length > 0
     ? ['Активный навык:', ...runeContent.activeAbilities.map(formatActiveAbilityDetails)]
@@ -106,16 +117,6 @@ const renderAcquisitionSummary = (summary: AcquisitionSummaryView | null | undef
     `✨ Что изменилось: ${withSentencePeriod(summary.title)}`,
     ...(summary.nextStepLine ? [`👉 Дальше: ${withSentencePeriod(summary.nextStepLine)}`] : []),
   ];
-};
-
-const renderCompactRecognitionLine = (recognition: ReturnType<typeof buildPlayerSchoolRecognitionView>): string | null => {
-  if (!recognition) {
-    return null;
-  }
-
-  return recognition.signEquipped
-    ? `⭐ ${recognition.title}: активен.`
-    : `⭐ ${recognition.title}: ждёт в рунах.`;
 };
 
 const renderNextGoalSummary = (
@@ -218,29 +219,21 @@ const formatRune = (rune: RuneView | null): string => {
     `Руна: ${rune.name}`,
     `Редкость: ${gameBalance.runes.profiles[rune.rarity].title}${school ? ` · ${school.name}` : ''}`,
     ...(school ? [`Стиль: ${school.playPatternLine}`] : []),
-    `Бонусы: ${formatRuneStatSummary({
+    ...formatRuneStatDetails({
       health: rune.health,
       attack: rune.attack,
       defence: rune.defence,
       magicDefence: rune.magicDefence,
       dexterity: rune.dexterity,
       intelligence: rune.intelligence,
-    }, 4)}`,
+    }),
     ...formatRuneAbilityDetails(runeContent),
   ].join('\n');
 };
 
-const formatRunePageEntryPrefix = (isSelected: boolean, equippedSlot: number | null): string | null => {
-  if (isSelected && equippedSlot !== null) {
-    return `🎯✅ Надета ${equippedSlot + 1}`;
-  }
-
-  if (isSelected) {
-    return '🎯 Выбрана';
-  }
-
+const formatRunePageEntryStatus = (equippedSlot: number | null): string | null => {
   if (equippedSlot !== null) {
-    return `✅ Надета ${equippedSlot + 1}`;
+    return `✅ Надета: слот ${equippedSlot + 1}`;
   }
 
   return null;
@@ -249,13 +242,16 @@ const formatRunePageEntryPrefix = (isSelected: boolean, equippedSlot: number | n
 const formatRunePageEntry = (
   slot: number,
   rune: RuneView,
-  isSelected: boolean,
 ): string => {
   const school = getRuneSchoolPresentation(rune.archetypeCode);
-  const prefix = formatRunePageEntryPrefix(isSelected, getRuneEquippedSlot(rune));
-  const title = prefix ? `${prefix} · ${rune.name}` : rune.name;
+  const status = formatRunePageEntryStatus(getRuneEquippedSlot(rune));
 
-  return `${slot + 1}. ${title} · ${school?.name ?? 'без школы'} · ${formatRuneStatSummary(rune)}`;
+  return [
+    `${slot + 1}. ${rune.name}`,
+    ...(status ? [status] : []),
+    school?.name ?? 'без школы',
+    formatRuneStatSummary(rune),
+  ].join(' · ');
 };
 
 export const renderWelcome = (player: PlayerState, created: boolean): string => {
@@ -390,15 +386,11 @@ const renderEquippedRuneSlots = (player: PlayerState): string => {
 };
 
 export const renderRuneScreen = (player: PlayerState, acquisitionSummary?: AcquisitionSummaryView | null): string => {
-  const selectedRune = getSelectedRune(player);
-  const equippedRune = getEquippedRune(player);
   const page = buildRuneCollectionPage(player);
-  const nextGoal = buildPlayerNextGoalView(player);
-  const recognition = buildPlayerSchoolRecognitionView(player);
 
   if (player.runes.length === 0) {
     return [
-      '🔮 Руны и мастерская',
+      '🔮 Руны',
       '',
       'У вас пока нет рун.',
       'Первая боевая руна откроет школу рун и задаст ваш ранний стиль боя.',
@@ -410,33 +402,43 @@ export const renderRuneScreen = (player: PlayerState, acquisitionSummary?: Acqui
   }
 
   return [
-    '🔮 Руны и мастерская',
+    '🔮 Руны',
     '',
-    `Руны: ${player.runes.length} · карусель ${page.pageNumber}/${page.totalPages} · слоты 1-5`,
+    `Руны: ${player.runes.length} · страница ${page.pageNumber} из ${page.totalPages}`,
     `🧩 Слоты рун: ${getUnlockedRuneSlotCount(player)} открыто сейчас.`,
     renderEquippedRuneSlots(player),
-    `🎯 Выбрана: ${selectedRune ? selectedRune.name : 'нет руны'}`,
-    ...(equippedRune ? (() => {
-      const school = getRuneSchoolPresentation(equippedRune.archetypeCode);
-      return school ? [`Стиль: ${school.schoolLine}.`] : [];
-    })() : []),
-    ...(renderCompactRecognitionLine(recognition) ? [renderCompactRecognitionLine(recognition)!] : []),
     ...renderAcquisitionSummary(acquisitionSummary),
-    ...(['hunt_school_elite', 'equip_school_sign', 'challenge_school_miniboss', 'reach_next_school_mastery', 'fill_support_slot'].includes(nextGoal.goalType)
-      ? [
-          `🎯 Ближайшая веха: ${withSentencePeriod(nextGoal.milestoneProgressText ?? nextGoal.objectiveText)}`,
-          `👉 Сделать шаг: нажмите «${nextGoal.primaryActionLabel}».`,
-        ]
-      : []),
     '',
-    'Карусель рун:',
-    ...page.entries.map((entry) => formatRunePageEntry(entry.slot, entry.rune, entry.isSelected)),
+    'Список рун:',
+    ...page.entries.map((entry) => formatRunePageEntry(entry.slot, entry.rune)),
+  ].join('\n');
+};
+
+export const renderRuneDetailScreen = (
+  player: PlayerState,
+  acquisitionSummary?: AcquisitionSummaryView | null,
+): string => {
+  if (player.runes.length === 0) {
+    return renderRuneScreen(player, acquisitionSummary);
+  }
+
+  const selectedRune = getSelectedRune(player);
+  const selectedRuneNumber = normalizeRuneIndex(player.currentRuneIndex, player.runes.length) + 1;
+
+  return [
+    '🔮 Руна',
+    '',
+    `Руна ${selectedRuneNumber} из ${player.runes.length}`,
+    renderEquippedRuneSlots(player),
+    ...renderAcquisitionSummary(acquisitionSummary),
     '',
     formatRune(selectedRune),
   ].join('\n');
 };
 
-export const renderAltar = (player: PlayerState, acquisitionSummary?: AcquisitionSummaryView | null): string => renderRuneScreen(player, acquisitionSummary);
+export const renderAltar = (player: PlayerState, acquisitionSummary?: AcquisitionSummaryView | null): string => (
+  renderRuneDetailScreen(player, acquisitionSummary)
+);
 
 const meterEmptySegment = '⬛';
 

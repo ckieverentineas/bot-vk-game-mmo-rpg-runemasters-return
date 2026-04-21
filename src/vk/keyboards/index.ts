@@ -34,7 +34,12 @@ import {
   buildSelectRunePageSlotIntentStateKey,
   buildUnequipIntentStateKey,
 } from '../../modules/runes/application/command-intent-state';
-import { runeCollectionPageSize } from '../../modules/runes/domain/rune-collection';
+import {
+  buildRuneCollectionPage,
+  runeCollectionPageSize,
+  type RuneCollectionPageEntry,
+  type RunePageSlot,
+} from '../../modules/runes/domain/rune-collection';
 import type { BattleView, PlayerState } from '../../shared/types/game';
 import type { GameCommand } from '../commands/catalog';
 import { gameCommands } from '../commands/catalog';
@@ -179,17 +184,86 @@ const createBattleResultLayout = (battle: BattleView, player?: PlayerState): Key
   ];
 };
 
-const createRuneLayout = (player?: PlayerState): KeyboardLayout => {
+const runePageSlotCommands = [
+  gameCommands.selectRuneSlot1,
+  gameCommands.selectRuneSlot2,
+  gameCommands.selectRuneSlot3,
+  gameCommands.selectRuneSlot4,
+  gameCommands.selectRuneSlot5,
+] as const;
+
+const truncateKeyboardLabelPart = (text: string, maxLength: number): string => (
+  text.length <= maxLength ? text : `${text.slice(0, Math.max(0, maxLength - 1))}…`
+);
+
+const formatRuneSelectionButtonLabel = (entry: RuneCollectionPageEntry): string => {
+  const prefix = `${entry.slot + 1}. `;
+  const status = getRuneEquippedSlot(entry.rune) !== null ? ' ✅' : '';
+  const name = truncateKeyboardLabelPart(entry.rune.name, 38 - prefix.length - status.length);
+
+  return `${prefix}${name}${status}`;
+};
+
+const resolveRunePageSlot = (slot: number): RunePageSlot => {
+  if (slot === 0 || slot === 1 || slot === 2 || slot === 3 || slot === 4) {
+    return slot;
+  }
+
+  throw new Error(`Unsupported rune page slot: ${slot}`);
+};
+
+const resolveRuneSelectionCommand = (slot: RunePageSlot): GameCommand => runePageSlotCommands[slot];
+
+const createRuneListLayout = (player?: PlayerState): KeyboardLayout => {
+  const craftStateKey = player ? buildCraftIntentStateKey(player) : undefined;
+  if (!player || player.runes.length === 0) {
+    return [
+      [
+        { label: '✨ Создать', command: gameCommands.craftRune, color: Keyboard.POSITIVE_COLOR, intentScoped: Boolean(player), stateKey: craftStateKey },
+      ],
+      [
+        { label: '◀ Главное меню', command: gameCommands.backToMenu, color: Keyboard.SECONDARY_COLOR },
+      ],
+    ];
+  }
+
+  const page = buildRuneCollectionPage(player);
+  const previousPageStateKey = buildMoveRuneCursorIntentStateKey(player, -runeCollectionPageSize);
+  const nextPageStateKey = buildMoveRuneCursorIntentStateKey(player, runeCollectionPageSize);
+
+  return [
+    ...page.entries.map((entry) => {
+      const pageSlot = resolveRunePageSlot(entry.slot);
+
+      return [{
+        label: formatRuneSelectionButtonLabel(entry),
+        command: resolveRuneSelectionCommand(pageSlot),
+        color: entry.isSelected ? Keyboard.PRIMARY_COLOR : Keyboard.SECONDARY_COLOR,
+        intentScoped: true,
+        stateKey: buildSelectRunePageSlotIntentStateKey(player, pageSlot),
+      }] as const;
+    }),
+    [
+      { label: '◀ Назад', command: gameCommands.previousRunePage, color: Keyboard.SECONDARY_COLOR, intentScoped: true, stateKey: previousPageStateKey },
+      { label: '▶ Вперёд', command: gameCommands.nextRunePage, color: Keyboard.SECONDARY_COLOR, intentScoped: true, stateKey: nextPageStateKey },
+    ],
+    [
+      { label: '◀ Главное меню', command: gameCommands.backToMenu, color: Keyboard.SECONDARY_COLOR },
+    ],
+  ];
+};
+
+const createRuneDetailLayout = (player?: PlayerState): KeyboardLayout => {
   const selectedRune = player ? getSelectedRune(player) : null;
-  const nextGoal = player ? buildPlayerNextGoalView(player) : null;
   const selectedEquippedSlot = selectedRune ? getRuneEquippedSlot(selectedRune) : null;
   const craftStateKey = player ? buildCraftIntentStateKey(player) : undefined;
-  const previousPageStateKey = player ? buildMoveRuneCursorIntentStateKey(player, -runeCollectionPageSize) : undefined;
-  const nextPageStateKey = player ? buildMoveRuneCursorIntentStateKey(player, runeCollectionPageSize) : undefined;
-  const exploreStateKey = player ? buildExploreLocationIntentStateKey(player) : undefined;
   const destroyStateKey = player && selectedRune
     ? buildDestroyIntentStateKey(player, selectedRune.id, gameBalance.runes.profiles[selectedRune.rarity].shardField)
     : undefined;
+
+  if (!player || player.runes.length === 0) {
+    return createRuneListLayout(player);
+  }
 
   const autoEquipSlot = player ? resolveAutoEquipRuneSlot(player) : 0;
   const autoEquipTargetRune = player ? getEquippedRune(player, autoEquipSlot) : null;
@@ -226,26 +300,13 @@ const createRuneLayout = (player?: PlayerState): KeyboardLayout => {
   ];
 
   return [
-    ...(nextGoal?.goalType === 'challenge_school_miniboss'
-      ? [[
-          { label: nextGoal.primaryActionLabel, command: gameCommands.explore, color: Keyboard.POSITIVE_COLOR, intentScoped: Boolean(player), stateKey: exploreStateKey },
-        ] as const]
-      : []),
-    [
-      { label: '1', command: gameCommands.selectRuneSlot1, color: Keyboard.PRIMARY_COLOR, intentScoped: Boolean(player), stateKey: player ? buildSelectRunePageSlotIntentStateKey(player, 0) : undefined },
-      { label: '2', command: gameCommands.selectRuneSlot2, color: Keyboard.PRIMARY_COLOR, intentScoped: Boolean(player), stateKey: player ? buildSelectRunePageSlotIntentStateKey(player, 1) : undefined },
-      { label: '3', command: gameCommands.selectRuneSlot3, color: Keyboard.PRIMARY_COLOR, intentScoped: Boolean(player), stateKey: player ? buildSelectRunePageSlotIntentStateKey(player, 2) : undefined },
-      { label: '4', command: gameCommands.selectRuneSlot4, color: Keyboard.PRIMARY_COLOR, intentScoped: Boolean(player), stateKey: player ? buildSelectRunePageSlotIntentStateKey(player, 3) : undefined },
-      { label: '5', command: gameCommands.selectRuneSlot5, color: Keyboard.PRIMARY_COLOR, intentScoped: Boolean(player), stateKey: player ? buildSelectRunePageSlotIntentStateKey(player, 4) : undefined },
-    ],
-    [
-      { label: '◀️ Стр', command: gameCommands.previousRunePage, color: Keyboard.SECONDARY_COLOR, intentScoped: Boolean(player), stateKey: previousPageStateKey },
-      { label: '▶️ Стр', command: gameCommands.nextRunePage, color: Keyboard.SECONDARY_COLOR, intentScoped: Boolean(player), stateKey: nextPageStateKey },
-    ],
     ...(selectedRuneActionRow.length > 0 ? [selectedRuneActionRow] : []),
     [
       { label: '✨ Создать', command: gameCommands.craftRune, color: Keyboard.POSITIVE_COLOR, intentScoped: true, stateKey: craftStateKey },
       { label: '🔧 Перековать', command: gameCommands.rerollRuneMenu, color: Keyboard.PRIMARY_COLOR },
+    ],
+    [
+      { label: '◀ К списку рун', command: gameCommands.runeCollection, color: Keyboard.SECONDARY_COLOR },
     ],
     [
       { label: '◀ Главное меню', command: gameCommands.backToMenu, color: Keyboard.SECONDARY_COLOR },
@@ -291,9 +352,11 @@ export const createBattleKeyboard = (battle: BattleView): KeyboardBuilder => bui
 
 export const createBattleResultKeyboard = (battle: BattleView, player?: PlayerState): KeyboardBuilder => buildKeyboard(createBattleResultLayout(battle, player));
 
-export const createRuneKeyboard = (player?: PlayerState): KeyboardBuilder => buildKeyboard(createRuneLayout(player));
+export const createRuneKeyboard = (player?: PlayerState): KeyboardBuilder => buildKeyboard(createRuneListLayout(player));
 
-export const createAltarKeyboard = (player?: PlayerState): KeyboardBuilder => buildKeyboard(createRuneLayout(player));
+export const createRuneDetailKeyboard = (player?: PlayerState): KeyboardBuilder => buildKeyboard(createRuneDetailLayout(player));
+
+export const createAltarKeyboard = (player?: PlayerState): KeyboardBuilder => createRuneDetailKeyboard(player);
 
 export const createRuneRerollKeyboard = (player?: PlayerState): KeyboardBuilder => buildKeyboard(createRuneRerollLayout(player));
 

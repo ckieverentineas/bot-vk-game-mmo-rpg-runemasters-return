@@ -1,7 +1,15 @@
 import { describe, expect, it } from 'vitest';
 
 import type { BattleView, PlayerState, RuneDraft } from '../../shared/types/game';
-import { renderBattle, renderLocation, renderMainMenu, renderReturnRecap, renderRuneScreen, renderWelcome } from './messages';
+import {
+  renderBattle,
+  renderLocation,
+  renderMainMenu,
+  renderReturnRecap,
+  renderRuneDetailScreen,
+  renderRuneScreen,
+  renderWelcome,
+} from './messages';
 
 const createPlayer = (overrides: Partial<PlayerState> = {}): PlayerState => ({
   userId: 1,
@@ -207,8 +215,8 @@ describe('messages school-first onboarding framing', () => {
     });
   });
 
-  it('shows selected and equipped rune states distinctly on the rune screen', () => {
-    const message = renderRuneScreen(createPlayer({
+  it('shows a compact rune list before opening a rune card', () => {
+    const player = createPlayer({
       currentRuneIndex: 1,
       runes: [
         createCollectionRune('Руна A', 0),
@@ -218,22 +226,28 @@ describe('messages school-first onboarding framing', () => {
         createCollectionRune('Руна E'),
         createCollectionRune('Руна F'),
       ],
-    }));
+    });
+    const message = renderRuneScreen(player);
+    const detail = renderRuneDetailScreen(player);
 
-    expect(message).toContain('Руны: 6 · карусель 1/2 · слоты 1-5');
+    expect(message).toContain('Руны: 6 · страница 1 из 2');
     expect(message).toContain('🧩 Слоты рун: 2 открыто сейчас.');
     expect(message).toContain('Надето: 1. Руна A · 2. пусто');
-    expect(message).toContain('🎯 Выбрана: Руна B');
-    expect(message).toContain('Активный навык:');
-    expect(message).toContain('🌀 Импульс углей · 3 маны · КД 2');
-    expect(message).toContain('Базовый активный рунный навык архетипа огня.');
-    expect(message).toContain('Пассивные эффекты:');
-    expect(message).toContain('🛡️ Сердце углей');
-    expect(message).toContain('Пассивно усиливает атакующее давление владельца руны.');
-    expect(message).toContain('1. ✅ Надета 1 · Руна A');
-    expect(message).toContain('2. 🎯 Выбрана · Руна B');
+    expect(message).toContain('1. Руна A · ✅ Надета: слот 1');
+    expect(message).toContain('2. Руна B');
     expect(message).toContain('5. Руна E');
-    expect(message).not.toContain('Выберите слот 1-5');
+    expect(message).not.toContain('Активный навык:');
+
+    expect(detail).toContain('🔮 Руна');
+    expect(detail).toContain('Руна 2 из 6');
+    expect(detail).toContain('🎯 Выбрана');
+    expect(detail).toContain('Руна: Руна B');
+    expect(detail).toContain('Активный навык:');
+    expect(detail).toContain('🌀 Импульс углей · 3 маны · КД 2');
+    expect(detail).toContain('Базовый активный рунный навык архетипа огня.');
+    expect(detail).toContain('Пассивные эффекты:');
+    expect(detail).toContain('🛡️ Сердце углей');
+    expect(detail).toContain('Пассивно усиливает атакующее давление владельца руны.');
   });
 
   it('shows an equipped second rune as a full slot in the carousel', () => {
@@ -249,7 +263,7 @@ describe('messages school-first onboarding framing', () => {
 
     expect(message).toContain('🧩 Слоты рун: 2 открыто сейчас.');
     expect(message).toContain('Надето: 1. Руна A · 2. Руна B');
-    expect(message).toContain('2. 🎯✅ Надета 2 · Руна B');
+    expect(message).toContain('2. Руна B · ✅ Надета: слот 2');
   });
 
   it('keeps skipped players on the adventure path even with stale intro location state', () => {
@@ -372,33 +386,34 @@ describe('messages school-first onboarding framing', () => {
     expect(message).toContain('👉 Дальше: нажмите «🔮 Руны».');
   });
 
-  it('shows the nearest school milestone in the rune hub once mastery progress exists', () => {
-    const message = renderRuneScreen(createPlayer({
+  it('shows the nearest school milestone in the main menu once mastery progress exists', () => {
+    const message = renderMainMenu(createPlayer({
       tutorialState: 'SKIPPED',
       victories: 3,
       schoolMasteries: [{ schoolCode: 'ember', experience: 1, rank: 0 }],
       runes: [createEquippedRareRune(), createUnusualReserveRune()],
     }));
 
-    expect(message).toContain('🎯 Ближайшая веха: 1/3 до «Разогрев дожима»');
-    expect(message).toContain('⭐ Печать Пламени: активен.');
+    expect(message).toContain('⭐ Печать Пламени: Вы уже пережили большой бой Пламени');
+    expect(message).toContain('🎯 Следующая цель: одержите ещё 2 победы школой Пламени');
     expect(message).toContain('👉 Сделать шаг: нажмите «⚔️ Исследовать».');
   });
 
   it('shows school sign equip guidance after recognition if the unusual rune is still not equipped', () => {
-    const message = renderRuneScreen(createPlayer({
+    const message = renderMainMenu(createPlayer({
       tutorialState: 'SKIPPED',
       victories: 3,
       schoolMasteries: [{ schoolCode: 'ember', experience: 1, rank: 0 }],
       runes: [createEquippedRune(), createUnusualReserveRune()],
     }));
 
-    expect(message).toContain('⭐ Первый знак Пламени: ждёт в рунах.');
-    expect(message).toContain('🎯 Ближайшая веха: «Необычная руна Пламени» уже ждёт в коллекции рун.');
+    expect(message).toContain('⭐ Первый знак Пламени: Вы уже прошли первое испытание Пламени.');
+    expect(message).toContain('Первый знак школы ждёт в рунах');
+    expect(message).toContain('🎯 Следующая цель: откройте «🔮 Руны» и наденьте первый знак школы Пламени.');
     expect(message).toContain('👉 Сделать шаг: нажмите «🔮 Руны».');
   });
 
-  it('surfaces a direct school-test CTA after the first sign is equipped', () => {
+  it('keeps the first-sign follow-up under the normal explore CTA', () => {
     const player = createPlayer({
       tutorialState: 'SKIPPED',
       victories: 3,
@@ -406,14 +421,14 @@ describe('messages school-first onboarding framing', () => {
       runes: [createEquippedUnusualRune()],
     });
 
-    expect(renderReturnRecap(player)).toContain('🧭 Дальше: нажмите «⚔️ Проверить школу».');
-    expect(renderMainMenu(player)).toContain('👉 Сделать шаг: нажмите «⚔️ Проверить школу».');
-    expect(renderRuneScreen(player)).toContain('👉 Сделать шаг: нажмите «⚔️ Проверить школу».');
-    expect(renderBattle(createBattle(), player)).toContain('👉 Дальше: нажмите «⚔️ Проверить школу».');
+    expect(renderReturnRecap(player)).toContain('🧭 Дальше: нажмите «⚔️ Исследовать».');
+    expect(renderMainMenu(player)).toContain('👉 Сделать шаг: нажмите «⚔️ Исследовать».');
+    expect(renderRuneScreen(player)).not.toContain('Проверить школу');
+    expect(renderBattle(createBattle(), player)).toContain('👉 Дальше: нажмите «⚔️ Новый бой».');
   });
 
   it('guides the player to equip the school seal after the miniboss reward if the rare rune is still in reserve', () => {
-    const message = renderRuneScreen(createPlayer({
+    const message = renderMainMenu(createPlayer({
       tutorialState: 'SKIPPED',
       victories: 5,
       schoolMasteries: [{ schoolCode: 'ember', experience: 1, rank: 0 }],
@@ -426,37 +441,38 @@ describe('messages school-first onboarding framing', () => {
       }],
     }));
 
-    expect(message).toContain('⭐ Печать Пламени: ждёт в рунах.');
-    expect(message).toContain('🎯 Ближайшая веха: «Редкая руна Пламени» уже ждёт в коллекции рун.');
+    expect(message).toContain('⭐ Печать Пламени: Вы уже пережили большой бой Пламени.');
+    expect(message).toContain('Печать школы ждёт в рунах');
+    expect(message).toContain('🎯 Следующая цель: откройте «🔮 Руны» и наденьте печать школы Пламени.');
     expect(message).toContain('👉 Сделать шаг: нажмите «🔮 Руны».');
   });
 
   it('shows the school miniboss milestone once the first sign is already equipped', () => {
-    const message = renderRuneScreen(createPlayer({
+    const message = renderMainMenu(createPlayer({
       tutorialState: 'SKIPPED',
       victories: 4,
       schoolMasteries: [{ schoolCode: 'ember', experience: 1, rank: 0 }],
       runes: [createEquippedUnusualRune()],
     }));
 
-    expect(message).toContain('🎯 Ближайшая веха: Тёмный лес · Пепельная матрона.');
-    expect(message).toContain('👉 Сделать шаг: нажмите «⚔️ Проверить школу».');
+    expect(message).toContain('🎯 Следующая цель: разыщите Пепельную матрону');
+    expect(message).toContain('👉 Сделать шаг: нажмите «⚔️ Исследовать».');
   });
 
   it('shows a school novice path milestone before the first unusual school rune is earned', () => {
-    const message = renderRuneScreen(createPlayer({
+    const message = renderMainMenu(createPlayer({
       tutorialState: 'SKIPPED',
       victories: 3,
       schoolMasteries: [{ schoolCode: 'ember', experience: 1, rank: 0 }],
       runes: [createEquippedRune()],
     }));
 
-    expect(message).toContain('🎯 Ближайшая веха: Тёмный лес · Пепельная ведунья.');
+    expect(message).toContain('🎯 Следующая цель: разыщите Пепельную ведунью');
     expect(message).toContain('👉 Сделать шаг: нажмите «⚔️ Исследовать».');
   });
 
   it('shows an echo novice path milestone once the player reaches Прорицание without an unusual rune yet', () => {
-    const message = renderRuneScreen(createPlayer({
+    const message = renderMainMenu(createPlayer({
       tutorialState: 'SKIPPED',
       victories: 1,
       schoolMasteries: [{ schoolCode: 'echo', experience: 1, rank: 0 }],
@@ -469,12 +485,12 @@ describe('messages school-first onboarding framing', () => {
       }],
     }));
 
-    expect(message).toContain('🎯 Ближайшая веха: Тёмный лес · Слепой авгур.');
+    expect(message).toContain('🎯 Следующая цель: разыщите Слепого авгура');
     expect(message).toContain('👉 Сделать шаг: нажмите «⚔️ Исследовать».');
   });
 
   it('shows a gale novice path milestone once the player reaches Буря without an unusual rune yet', () => {
-    const message = renderRuneScreen(createPlayer({
+    const message = renderMainMenu(createPlayer({
       tutorialState: 'SKIPPED',
       victories: 1,
       schoolMasteries: [{ schoolCode: 'gale', experience: 1, rank: 0 }],
@@ -487,23 +503,23 @@ describe('messages school-first onboarding framing', () => {
       }],
     }));
 
-    expect(message).toContain('🎯 Ближайшая веха: Тёмный лес · Шквальная рысь.');
+    expect(message).toContain('🎯 Следующая цель: разыщите Шквальную рысь');
     expect(message).toContain('👉 Сделать шаг: нажмите «⚔️ Исследовать».');
   });
 
   it('shows gale seal recognition once the rare gale rune is already equipped', () => {
-    const message = renderRuneScreen(createPlayer({
+    const message = renderMainMenu(createPlayer({
       tutorialState: 'SKIPPED',
       victories: 5,
       schoolMasteries: [{ schoolCode: 'gale', experience: 1, rank: 0 }],
       runes: [createEquippedRareGaleRune()],
     }));
 
-    expect(message).toContain('⭐ Печать Бури: активен.');
+    expect(message).toContain('⭐ Печать Бури: Вы уже пережили большой бой Бури');
   });
 
   it('shows echo seal recognition once the rare echo rune is already equipped', () => {
-    const message = renderRuneScreen(createPlayer({
+    const message = renderMainMenu(createPlayer({
       tutorialState: 'SKIPPED',
       victories: 5,
       schoolMasteries: [{ schoolCode: 'echo', experience: 1, rank: 0 }],
@@ -517,7 +533,7 @@ describe('messages school-first onboarding framing', () => {
       }],
     }));
 
-    expect(message).toContain('⭐ Печать Прорицания: активен.');
+    expect(message).toContain('⭐ Печать Прорицания: Вы уже пережили большой бой Прорицания');
   });
 
   it('shows an impact recap block in the rune hub when a new rune changes the build', () => {

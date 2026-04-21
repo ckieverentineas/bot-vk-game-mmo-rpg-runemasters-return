@@ -1205,7 +1205,8 @@ describe('GameHandler smoke', () => {
 
     expect(getReplyCalls(ctx)[0]?.message).toContain('✨ Что изменилось: Стиль Пламени закреплён.');
     expect(getReplyCalls(ctx)[0]?.message).toContain('👉 Дальше: Следующий бой: держите давление');
-    expect(JSON.stringify(getReplyCalls(ctx)[0]?.keyboard)).toContain('Проверить школу');
+    expect(JSON.stringify(getReplyCalls(ctx)[0]?.keyboard)).not.toContain('Проверить школу');
+    expect(JSON.stringify(getReplyCalls(ctx)[0]?.keyboard)).toContain('К списку рун');
   });
 
   it('пробрасывает intentId для экипировки во второй слот через transport payload', async () => {
@@ -1408,11 +1409,14 @@ describe('GameHandler smoke', () => {
     await handler.handle(altarContext as never);
 
     expect(services.getRuneCollection.execute).toHaveBeenCalledTimes(2);
-    expect(getReplyCalls(runeContext)[0]?.message).toContain('Руны и мастерская');
-    expect(getReplyCalls(runeContext)[0]?.message).toContain('Редкость: Эпическая руна · Пламя');
-    expect(getReplyCalls(runeContext)[0]?.message).toContain('Стиль: Играй так: дави уроном');
-    expect(getReplyCalls(runeContext)[0]?.message).toContain('Импульс углей');
-    expect(getReplyCalls(altarContext)[0]?.message).toContain('Руны и мастерская');
+    expect(getReplyCalls(runeContext)[0]?.message).toContain('🔮 Руны');
+    expect(getReplyCalls(runeContext)[0]?.message).toContain('Список рун');
+    expect(getReplyCalls(runeContext)[0]?.message).toContain('1. Эпическая руна Пламени');
+    expect(getReplyCalls(runeContext)[0]?.message).not.toContain('Редкость: Эпическая руна · Пламя');
+    expect(getReplyCalls(altarContext)[0]?.message).toContain('🔮 Руна');
+    expect(getReplyCalls(altarContext)[0]?.message).toContain('Редкость: Эпическая руна · Пламя');
+    expect(getReplyCalls(altarContext)[0]?.message).toContain('Стиль: Играй так: дави уроном');
+    expect(getReplyCalls(altarContext)[0]?.message).toContain('Импульс углей');
   });
 
   it('выбирает руну через слот на странице', async () => {
@@ -1423,7 +1427,8 @@ describe('GameHandler smoke', () => {
     await handler.handle(ctx as never);
 
     expect(services.selectRunePageSlot.execute).toHaveBeenCalledWith(1001, 0, 'intent-rune-slot-1', 'state-rune-slot-1', 'payload');
-    expect(getReplyCalls(ctx)[0]?.message).toContain('Руны и мастерская');
+    expect(getReplyCalls(ctx)[0]?.message).toContain('🔮 Руна');
+    expect(getReplyCalls(ctx)[0]?.message).toContain('Редкость: Эпическая руна · Пламя');
   });
 
   it('перелистывает страницу рун через transport payload', async () => {
@@ -1465,7 +1470,7 @@ describe('GameHandler smoke', () => {
 
     const replies = getReplyCalls(ctx);
     expect(replies[0]?.message).toContain('На этой позиции нет руны');
-    expect(JSON.stringify(replies[0]?.keyboard)).toContain('✨ Создать');
+    expect(JSON.stringify(replies[0]?.keyboard)).not.toContain('✨ Создать');
     expect(JSON.stringify(replies[0]?.keyboard)).toContain('руна слот 1');
   });
 
@@ -1482,7 +1487,7 @@ describe('GameHandler smoke', () => {
 
     const replies = getReplyCalls(ctx);
     expect(replies[0]?.message).toContain('Этот экран рун уже устарел');
-    expect(replies[0]?.message).toContain('Руны и мастерская');
+    expect(replies[0]?.message).toContain('🔮 Руны');
     expect(JSON.stringify(replies[0]?.keyboard)).toContain('руны >');
   });
 
@@ -1499,7 +1504,7 @@ describe('GameHandler smoke', () => {
 
     const replies = getReplyCalls(ctx);
     expect(replies[0]?.message).toContain('Команда уже обрабатывается');
-    expect(replies[0]?.message).toContain('Руны и мастерская');
+    expect(replies[0]?.message).toContain('🔮 Руны');
     expect(JSON.stringify(replies[0]?.keyboard)).toContain('руна слот 1');
   });
 
@@ -1565,7 +1570,7 @@ describe('GameHandler smoke', () => {
 
     const replies = getReplyCalls(ctx);
     expect(replies[0]?.message).toContain('Команда уже обрабатывается');
-    expect(replies[0]?.message).toContain('Руны и мастерская');
+    expect(replies[0]?.message).toContain('🔮 Руна');
     expect(replies[0]?.message).toContain('Редкость: Эпическая руна · Пламя');
   });
 
@@ -1582,7 +1587,7 @@ describe('GameHandler smoke', () => {
 
     const replies = getReplyCalls(ctx);
     expect(replies[0]?.message).toContain('Эта кнопка уже устарела');
-    expect(replies[0]?.message).toContain('Руны и мастерская');
+    expect(replies[0]?.message).toContain('🔮 Руна');
     expect(JSON.stringify(replies[0]?.keyboard)).toContain('intentId');
     expect(JSON.stringify(replies[0]?.keyboard)).toContain('надеть');
   });
@@ -1600,7 +1605,7 @@ describe('GameHandler smoke', () => {
 
     const replies = getReplyCalls(ctx);
     expect(replies[0]?.message).toContain('Команда уже обрабатывается');
-    expect(replies[0]?.message).toContain('Руны и мастерская');
+    expect(replies[0]?.message).toContain('🔮 Руна');
     expect(JSON.stringify(replies[0]?.keyboard)).toContain('надеть');
   });
 

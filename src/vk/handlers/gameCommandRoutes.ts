@@ -8,6 +8,7 @@ import { gameCommands, resolveRuneCursorDeltaCommand, resolveRunePageSlotCommand
 import {
   createEntryKeyboard,
   createProfileKeyboard,
+  createRuneDetailKeyboard,
   createRuneKeyboard,
   createRuneRerollKeyboard,
   createTutorialKeyboard,
@@ -17,6 +18,7 @@ import {
   renderBattle,
   renderLocation,
   renderProfile,
+  renderRuneDetailScreen,
   renderRuneScreen,
 } from '../presenters/messages';
 import { resolveCommandEnvelope } from '../router/commandRouter';
@@ -90,6 +92,7 @@ export type GameCommandType = typeof gameCommands[keyof typeof gameCommands];
 export const recoverableCommandErrorCodes = new Set([
   'stale_command_intent',
   'command_retry_pending',
+  'rune_slot_not_found',
   'battle_in_progress',
 ]);
 
@@ -165,7 +168,7 @@ export const config: Readonly<Partial<Record<GameCommandType, StaticCommandHandl
   [gameCommands.equipRuneSlot1]: (handler, ctx, vkId, context) => handler.equipCurrentRuneSlot(ctx, vkId, 0, context),
   [gameCommands.equipRuneSlot2]: (handler, ctx, vkId, context) => handler.equipCurrentRuneSlot(ctx, vkId, 1, context),
   [gameCommands.unequipRune]: (handler, ctx, vkId, context) => handler.unequipCurrentRuneSlot(ctx, vkId, context),
-  [gameCommands.altar]: (handler, ctx, vkId) => handler.openRuneCollection(ctx, vkId, true),
+  [gameCommands.altar]: (handler, ctx, vkId) => handler.openRuneWorkshop(ctx, vkId, true),
   [gameCommands.craftRune]: (handler, ctx, vkId, context) => handler.craftRuneCommand(ctx, vkId, context),
   [gameCommands.rerollRuneMenu]: (handler, ctx, vkId) => handler.openRuneRerollMenu(ctx, vkId),
   [gameCommands.destroyRune]: (handler, ctx, vkId, context) => handler.destroyCurrentRuneCommand(ctx, vkId, context),
@@ -182,7 +185,7 @@ export const dynamicCommandConfig = [
         context.stateKey ?? undefined,
         context.intentSource,
       );
-      await handler.replyWithRuneHub(ctx, player);
+      await handler.replyWithRuneList(ctx, player);
     },
   ),
   createDynamicCommandRoute<RunePageSlot>(
@@ -195,7 +198,7 @@ export const dynamicCommandConfig = [
         context.stateKey ?? undefined,
         context.intentSource,
       );
-      await handler.replyWithRuneHub(ctx, player);
+      await handler.replyWithRuneDetail(ctx, player);
     },
   ),
   createDynamicCommandRoute<StatKey>(
@@ -323,8 +326,8 @@ export const recoveryRules: readonly RecoveryRule[] = [
       const player = await handler.services.getRuneCollection.execute(vkId);
       await handler.reply(
         ctx,
-        [error.message, '', renderRuneScreen(player)].join('\n'),
-        createRuneKeyboard(player),
+        [error.message, '', renderRuneDetailScreen(player)].join('\n'),
+        createRuneDetailKeyboard(player),
       );
       return true;
     },

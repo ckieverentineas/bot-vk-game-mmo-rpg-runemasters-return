@@ -7,6 +7,7 @@ import {
   createDeleteConfirmationKeyboard,
   createMainMenuKeyboard,
   createProfileKeyboard,
+  createRuneDetailKeyboard,
   createRuneKeyboard,
   createTutorialKeyboard,
 } from './index';
@@ -161,6 +162,7 @@ const collectPayloads = (
     | ReturnType<typeof createDeleteConfirmationKeyboard>
     | ReturnType<typeof createMainMenuKeyboard>
     | ReturnType<typeof createProfileKeyboard>
+    | ReturnType<typeof createRuneDetailKeyboard>
     | ReturnType<typeof createRuneKeyboard>
     | ReturnType<typeof createTutorialKeyboard>,
 ): SerializedButtonPayload[] => {
@@ -178,6 +180,7 @@ const collectLabels = (
     | ReturnType<typeof createBattleKeyboard>
     | ReturnType<typeof createBattleResultKeyboard>
     | ReturnType<typeof createMainMenuKeyboard>
+    | ReturnType<typeof createRuneDetailKeyboard>
     | ReturnType<typeof createRuneKeyboard>,
 ): string[] => {
   const serialized = JSON.parse(JSON.stringify(keyboard)) as {
@@ -202,39 +205,39 @@ describe('profile keyboard', () => {
   });
 
   it('adds intent metadata to rune carousel and selected-rune actions', () => {
-    const payloads = collectPayloads(createRuneKeyboard(createPlayer()));
+    const listPayloads = collectPayloads(createRuneKeyboard(createPlayer()));
+    const detailPayloads = collectPayloads(createRuneDetailKeyboard(createPlayer()));
 
-    const equip = payloads.find((payload) => payload.command === 'надеть');
-    const unequip = payloads.find((payload) => payload.command === 'снять');
-    const nextPage = payloads.find((payload) => payload.command === 'руны >');
-    const slotOne = payloads.find((payload) => payload.command === 'руна слот 1');
-    const slotFive = payloads.find((payload) => payload.command === 'руна слот 5');
+    const equip = detailPayloads.find((payload) => payload.command === 'надеть');
+    const unequip = detailPayloads.find((payload) => payload.command === 'снять');
+    const destroy = detailPayloads.find((payload) => payload.command === 'сломать');
+    const nextPage = listPayloads.find((payload) => payload.command === 'руны >');
+    const slotOne = listPayloads.find((payload) => payload.command === 'руна слот 1');
 
     expect(equip?.intentId).toEqual(expect.any(String));
     expect(equip?.stateKey).toEqual(expect.any(String));
     expect(unequip).toBeUndefined();
+    expect(destroy?.intentId).toEqual(expect.any(String));
+    expect(destroy?.stateKey).toEqual(expect.any(String));
     expect(nextPage?.intentId).toEqual(expect.any(String));
     expect(nextPage?.stateKey).toEqual(expect.any(String));
     expect(slotOne?.intentId).toEqual(expect.any(String));
     expect(slotOne?.stateKey).toEqual(expect.any(String));
-    expect(slotFive?.intentId).toEqual(expect.any(String));
-    expect(slotFive?.stateKey).toEqual(expect.any(String));
   });
 
   it('does not emit partial intent envelopes on rune keyboard without player context', () => {
-    const payloads = collectPayloads(createRuneKeyboard());
+    const payloads = collectPayloads(createRuneDetailKeyboard());
 
     const craft = payloads.find((payload) => payload.command === 'создать');
     const destroy = payloads.find((payload) => payload.command === 'сломать');
 
     expect(craft?.intentId).toBeUndefined();
     expect(craft?.stateKey).toBeUndefined();
-    expect(destroy?.intentId).toBeUndefined();
-    expect(destroy?.stateKey).toBeUndefined();
+    expect(destroy).toBeUndefined();
   });
 
   it('shows equip actions for an un-equipped selected rune', () => {
-    const labels = collectLabels(createRuneKeyboard(createPlayer({
+    const labels = collectLabels(createRuneDetailKeyboard(createPlayer({
       runes: [
         {
           ...createPlayer().runes[0]!,
@@ -251,7 +254,7 @@ describe('profile keyboard', () => {
   });
 
   it('auto-equips into the second slot when the first slot is occupied', () => {
-    const keyboard = createRuneKeyboard(createPlayer({
+    const keyboard = createRuneDetailKeyboard(createPlayer({
       runes: [
         {
           ...createPlayer().runes[0],
@@ -298,9 +301,9 @@ describe('profile keyboard', () => {
     const runeLabels = collectLabels(createRuneKeyboard(player));
     const battleResultLabels = collectLabels(createBattleResultKeyboard(createBattle({ status: 'COMPLETED', result: 'VICTORY', rewards: { experience: 6, gold: 2, shards: { USUAL: 1 }, droppedRune: null } }), player));
 
-    expect(mainMenuLabels).toContain('⚔️ Проверить школу');
-    expect(runeLabels).toContain('⚔️ Проверить школу');
-    expect(battleResultLabels).toContain('⚔️ Проверить школу');
+    expect(mainMenuLabels).toContain('⚔️ Исследовать');
+    expect(runeLabels).not.toContain('⚔️ Проверить школу');
+    expect(battleResultLabels).not.toContain('⚔️ Проверить школу');
   });
 
   it('keeps defeat battle-result CTA aligned with rune review instead of school-test retry', () => {
@@ -329,7 +332,7 @@ describe('profile keyboard', () => {
   });
 
   it('allows removing slot 1 even when slot 2 is filled', () => {
-    const labels = collectLabels(createRuneKeyboard(createPlayer({
+    const labels = collectLabels(createRuneDetailKeyboard(createPlayer({
       unlockedRuneSlotCount: 2,
       runes: [
         {
@@ -354,7 +357,7 @@ describe('profile keyboard', () => {
   });
 
   it('offers one automatic replacement action when all baseline slots are filled', () => {
-    const labels = collectLabels(createRuneKeyboard(createPlayer({
+    const labels = collectLabels(createRuneDetailKeyboard(createPlayer({
       unlockedRuneSlotCount: 2,
       runes: [
         {

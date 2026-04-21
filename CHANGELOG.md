@@ -32,7 +32,7 @@
 - tooling slice `release:evidence` теперь собирает unified markdown-отчёт по runtime evidence: onboarding coverage, school payoff, next-goal/return clarity и QA/exploit guardrails в одном release review артефакте;
 - telemetry baseline теперь закрывает и ранний onboarding funnel: `tutorial_path_chosen`, `first_school_presented` и `first_school_committed` дают evidence между `onboarding_started` и первым school payoff;
 - установка первого знака школы теперь сразу даёт compact payoff recap в rune hub, а следующий бой сильнее подсказывает, как именно проверить новый стиль этой школы на практике;
-- VK UX после первого знака школы теперь поднимает один dominant CTA `⚔️ Проверить школу` в меню, rune hub и battle-result follow-up, чтобы следующий meaningful бой был очевиден без лишней навигации;
+- VK UX после первого знака школы теперь ведёт игрока обычным CTA `⚔️ Исследовать`, чтобы школьная проверка не выглядела отдельным обязательным режимом и могла проходить через общий exploration resolver;
 - player-state hydration теперь проходит через compatibility-safe helper с current / legacy / future fixtures и repository hydration tests, чтобы persisted player state безопаснее переживал missing/unknown fields и rollback-сценарии;
 - `content:validate` теперь содержит hard completeness gate для shipped school packages, чтобы 4 стартовые школы не уходили в релиз с тихим drift между identity, encounter hooks и reward/chase wiring;
 - active battle теперь показывает compact combat clarity block с текущим состоянием боя и school-aware tactical hint, чтобы игроку было проще читать следующий meaningful ход без перегруза интерфейса;
@@ -52,9 +52,9 @@
 
 - `return recap`, главное меню, rune hub и завершённый бой теперь показывают не абстрактный следующий шаг, а ближайшую school-веху или ближайший loadout payoff без guilt/FOMO тона;
 - rune hub теперь явно показывает ближайшую mastery-веху и её payoff, если игрок уже идёт к unlock'у школы или ближайшему loadout payoff;
-- rune hub перешёл на карусель по 5 рун с явными статусами `выбрана` / `надета N`; кнопки `надеть в слот`, `снять` и `распылить` появляются в контексте выбранной руны;
+- rune hub разделён на два шага: первый экран показывает только карусель из 5 рун со статусом `надета`, а выбор руны открывает отдельную карточку со статами, навыками и действиями `надеть` / `снять` / `распылить`;
 - выбранная руна в rune hub теперь показывает описания активного навыка и пассивных эффектов, включая стоимость маны и откат активного действия;
-- rune hub теперь даёт одну кнопку `надеть`: выбранная руна автоматически занимает первый свободный слот, а список карусели 1-5 остаётся компактным перед подробной карточкой выбранной руны;
+- карточка руны теперь даёт одну кнопку `надеть`: выбранная руна автоматически занимает первый свободный слот, без выбора слота игроком;
 - второй слот больше не является player-facing “поддержкой”: две стартовые руны равноправно дают полные статы, пассивы и активные действия в бою;
 - telemetry `loadout_changed` больше не использует primary/support changeType: новое событие пишет нейтральный `equip_rune` / `unequip_rune` и 1-based `slotNumber`, чтобы будущие 3+ слоты не ломали модель;
 - battle result теперь использует актуальный `PlayerState`, чтобы следующий шаг после боя не расходился с `return recap` и `main menu`;

@@ -28,6 +28,7 @@ import {
   createEntryKeyboard,
   createMainMenuKeyboard,
   createProfileKeyboard,
+  createRuneDetailKeyboard,
   createRuneKeyboard,
   createRuneRerollKeyboard,
   createTutorialKeyboard,
@@ -41,6 +42,7 @@ import {
   renderMainMenu,
   renderProfile,
   renderReturnRecap,
+  renderRuneDetailScreen,
   renderRuneScreen,
   renderWelcome,
 } from '../presenters/messages';
@@ -344,7 +346,15 @@ export class GameHandler {
 
   public async openRuneCollection(ctx: Context, vkId: number, trackSchoolNoviceOpen = false): Promise<void> {
     const player = await this.services.getRuneCollection.execute(vkId);
-    await this.replyWithRuneHub(ctx, player);
+    await this.replyWithRuneList(ctx, player);
+    if (trackSchoolNoviceOpen) {
+      await this.trackSchoolNoviceRuneHubOpen(player);
+    }
+  }
+
+  public async openRuneWorkshop(ctx: Context, vkId: number, trackSchoolNoviceOpen = false): Promise<void> {
+    const player = await this.services.getRuneCollection.execute(vkId);
+    await this.replyWithRuneDetail(ctx, player);
     if (trackSchoolNoviceOpen) {
       await this.trackSchoolNoviceRuneHubOpen(player);
     }
@@ -369,7 +379,7 @@ export class GameHandler {
       routeState.stateKey,
       routeState.intentSource,
     );
-    await this.replyWithRuneHub(ctx, player);
+    await this.replyWithRuneDetail(ctx, player);
   }
 
   public async unequipCurrentRuneSlot(ctx: Context, vkId: number, context: CommandIntentContext): Promise<void> {
@@ -380,7 +390,7 @@ export class GameHandler {
       routeState.stateKey,
       routeState.intentSource,
     );
-    await this.replyWithRuneHub(ctx, player);
+    await this.replyWithRuneDetail(ctx, player);
   }
 
   public async craftRuneCommand(ctx: Context, vkId: number, context: CommandIntentContext): Promise<void> {
@@ -391,7 +401,7 @@ export class GameHandler {
       routeState.stateKey,
       routeState.intentSource,
     );
-    await this.replyWithRuneHub(ctx, result);
+    await this.replyWithRuneDetail(ctx, result);
   }
 
   public async destroyCurrentRuneCommand(ctx: Context, vkId: number, context: CommandIntentContext): Promise<void> {
@@ -402,7 +412,7 @@ export class GameHandler {
       routeState.stateKey,
       routeState.intentSource,
     );
-    await this.replyWithRuneHub(ctx, player);
+    await this.replyWithRuneDetail(ctx, player);
   }
 
   private async replyWithProfile(ctx: Context, player: PlayerState): Promise<void> {
@@ -413,9 +423,14 @@ export class GameHandler {
     await this.reply(ctx, renderLocation(player), createTutorialKeyboard(player));
   }
 
-  public async replyWithRuneHub(ctx: Context, state: RuneHubReplyState): Promise<void> {
+  public async replyWithRuneList(ctx: Context, state: RuneHubReplyState): Promise<void> {
     const result = normalizeRuneHubReplyState(state);
     await this.reply(ctx, renderRuneScreen(result.player, result.acquisitionSummary), createRuneKeyboard(result.player));
+  }
+
+  public async replyWithRuneDetail(ctx: Context, state: RuneHubReplyState): Promise<void> {
+    const result = normalizeRuneHubReplyState(state);
+    await this.reply(ctx, renderRuneDetailScreen(result.player, result.acquisitionSummary), createRuneDetailKeyboard(result.player));
   }
 
   private async replyWithExplorationResult(ctx: Context, state: ExplorationReplyState, vkId?: number): Promise<void> {

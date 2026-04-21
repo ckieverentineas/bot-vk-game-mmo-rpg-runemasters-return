@@ -317,7 +317,7 @@ describe('next goal read-model', () => {
     }));
 
     expect(goal.goalType).toBe('challenge_school_miniboss');
-    expect(goal.primaryActionLabel).toBe('⚔️ Проверить школу');
+    expect(goal.primaryActionLabel).toBe('⚔️ Исследовать');
   });
 
   it('guides gale to its school miniboss once the first sign is already equipped', () => {

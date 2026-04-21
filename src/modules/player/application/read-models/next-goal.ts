@@ -209,7 +209,6 @@ export const buildPlayerNextGoalView = (player: PlayerState): NextGoalView => {
         'explore',
         `разыщите ${novicePath.minibossEnemyNameAccusative} в ${novicePath.biomeName} и пройдите большой бой школы ${schoolDefinition.nameGenitive}`,
         {
-          primaryActionLabel: '⚔️ Проверить школу',
           schoolCode: novicePath.schoolCode,
           schoolName: equippedSchool?.name ?? schoolDefinition.name,
           whyText: `Этот бой проверяет, стал ли первый знак школы ${schoolDefinition.nameGenitive} реальной боевой сборкой, а не просто редкой наградой.`,
