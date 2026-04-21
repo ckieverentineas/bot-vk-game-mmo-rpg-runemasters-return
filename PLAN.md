@@ -26,17 +26,16 @@
 ## Что не считаем доказанным
 
 - School-first path по всем четырём школам не считается release-proven, пока не пройден ручной playtest и `release:evidence` не перестал возвращать `insufficient_evidence`.
-- Версия релиза требует продуктового решения: commit-based tooling показывает `1.03`, а `package.json` всё ещё живёт в npm-semver формате `2.0.0`.
+- Игровая версия считается только по commit-based правилу из `release:status`; `package.json` остаётся технической npm-метаинформацией и не является player-facing версией игры.
 - Production database rollout не считается оформленным, пока нет явной процедуры backup + migration/deploy для SQLite.
 
 ## Ближайший порядок работ
 
-1. Решить, как связать публичную commit-based версию `1.03` с npm-semver в `package.json`.
-2. Прогнать technical gate после остановки бота: `npm run db:generate`, `npm run check`, `npm run release:preflight`.
-3. Пройти ручной playtest: onboarding, encounter choice, fight/flee, rune hub, две руны, craft/reroll/destroy, четыре school paths.
-4. Собрать `npm run release:school-evidence` и `npm run release:evidence`; если verdict всё ещё `insufficient_evidence`, релиз не готов.
-5. После evidence pass обновить `README.md`, `CHANGELOG.md`, `PLAN.md` и при необходимости `ARCHITECTURE.md` / `RELEASE_CHECKLIST.md`.
-6. Подготовить минимальный ops-runbook: где `.env`, где SQLite DB, как запускается production-процесс, где логи и как откатываться.
+1. Прогнать technical gate после остановки бота: `npm run db:generate`, `npm run check`, `npm run release:preflight`.
+2. Пройти ручной playtest: onboarding, encounter choice, fight/flee, rune hub, две руны, craft/reroll/destroy, четыре school paths.
+3. Собрать `npm run release:school-evidence` и `npm run release:evidence`; если verdict всё ещё `insufficient_evidence`, релиз не готов.
+4. После evidence pass обновить `README.md`, `CHANGELOG.md`, `PLAN.md` и при необходимости `ARCHITECTURE.md` / `RELEASE_CHECKLIST.md`.
+5. Подготовить минимальный ops-runbook: где `.env`, где SQLite DB, как запускается production-процесс, где логи и как откатываться.
 
 ## Отложено или вырезано из релиза
 

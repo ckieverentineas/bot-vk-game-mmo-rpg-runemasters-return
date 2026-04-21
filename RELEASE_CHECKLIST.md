@@ -33,7 +33,7 @@ npm run release:preflight
 
 - `db:generate` проходит без `EPERM`;
 - `check` проходит полностью: typecheck, content validation, build, tests;
-- `release:status` показывает правдоподобное число коммитов и версию;
+- `release:status` показывает правдоподобное число коммитов и player-facing версию игры;
 - `release:summary` не расходится с `CHANGELOG.md`;
 - `release:preflight` проходит и не скрывает ошибки документов или контента.
 
@@ -90,7 +90,7 @@ Generated reports в `docs/testing/*-evidence-report.md` можно хранит
 
 - technical gate зелёный;
 - runtime evidence gate зелёный;
-- версия и changelog согласованы;
+- player-facing версия из `release:status` и changelog согласованы;
 - документация не спорит с runtime;
 - production handoff записан;
 - cut/deferred scope из `PLAN.md` не попал в релиз случайно.
