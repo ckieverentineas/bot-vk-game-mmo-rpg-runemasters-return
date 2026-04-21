@@ -13,6 +13,7 @@ import {
   resolveDefendGuardGain,
   resolveGaleGuardGain,
   resolveGuardCap,
+  resolveManaRegeneration,
   shouldEnemyPrepareGuardBreak,
   shouldEnemyPrepareHeavyStrike,
 } from './battle-tactics';
@@ -111,6 +112,32 @@ const spendRuneManaAndSetCooldown = (battle: BattleView, ability: BattleRuneActi
   ability.currentCooldown = ability.cooldownTurns;
 };
 
+const regeneratePlayerMana = (battle: BattleView): number => {
+  const manaGain = resolveManaRegeneration(battle.player);
+  if (manaGain <= 0 || battle.player.currentMana >= battle.player.maxMana) {
+    return 0;
+  }
+
+  const previousMana = battle.player.currentMana;
+  battle.player.currentMana = Math.min(battle.player.maxMana, previousMana + manaGain);
+
+  return battle.player.currentMana - previousMana;
+};
+
+const refreshPlayerTurnResources = (battle: BattleView): void => {
+  tickRuneCooldown(battle);
+
+  const restoredMana = regeneratePlayerMana(battle);
+  if (restoredMana <= 0) {
+    return;
+  }
+
+  battle.log = appendBattleLog(
+    battle.log,
+    `💙 Рунный фокус: +${restoredMana} маны.`,
+  );
+};
+
 const consumeGuardAgainstDamage = (
   player: BattlePlayerSnapshot,
   rawDamage: number,
@@ -171,13 +198,13 @@ const finishEnemyAction = (battle: BattleView): BattleView => {
     return finalizeBattle(battle, 'DEFEAT');
   }
 
-  tickRuneCooldown(battle);
+  refreshPlayerTurnResources(battle);
   battle.turnOwner = 'PLAYER';
   return battle;
 };
 
 const finishEnemyPreparation = (battle: BattleView): BattleView => {
-  tickRuneCooldown(battle);
+  refreshPlayerTurnResources(battle);
   battle.turnOwner = 'PLAYER';
   return battle;
 };

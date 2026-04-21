@@ -611,6 +611,44 @@ describe('BattleEngine', () => {
     expect(resolved.player.currentHealth).toBeLessThan(8);
   });
 
+  it('медленно восстанавливает ману, когда ход возвращается к игроку', () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0.5);
+    const battle = createBattle({
+      turnOwner: 'ENEMY',
+      player: {
+        ...createBattle().player,
+        currentMana: 1,
+      },
+      enemy: {
+        ...createBattle().enemy,
+        attack: 3,
+      },
+    });
+
+    const resolved = BattleEngine.resolveEnemyTurn(battle);
+
+    expect(resolved.turnOwner).toBe('PLAYER');
+    expect(resolved.player.currentMana).toBe(2);
+    expect(resolved.log.some((entry) => entry.includes('Рунный фокус: +1 маны'))).toBe(true);
+  });
+
+  it('не восстанавливает ману выше максимума', () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0.5);
+    const battle = createBattle({
+      turnOwner: 'ENEMY',
+      player: {
+        ...createBattle().player,
+        currentMana: 4,
+        maxMana: 4,
+      },
+    });
+
+    const resolved = BattleEngine.resolveEnemyTurn(battle);
+
+    expect(resolved.player.currentMana).toBe(4);
+    expect(resolved.log.some((entry) => entry.includes('Рунный фокус'))).toBe(false);
+  });
+
   it('не позволяет gale step бесконечно накапливать защиту', () => {
     vi.spyOn(Math, 'random').mockReturnValue(0.5);
     const battle = createBattle({

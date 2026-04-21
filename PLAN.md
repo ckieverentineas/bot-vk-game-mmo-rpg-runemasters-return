@@ -41,6 +41,7 @@
 - [x] Переписан модульный TypeScript-каркас проекта с release rails.
 - [x] Собран базовый loop: регистрация → tutorial → исследование → бой → руны.
 - [x] В бою уже есть `basic attack`, рунные active skills, `defend`, enemy intents и event-first presentation.
+- [x] Мана в бою медленно восстанавливается при возврате хода игроку, не превращая это в долговременную attrition-систему между боями.
 - [x] Школы рун стали player-facing identity вместо внутреннего жаргона.
 - [x] Tutorial и onboarding уже связывают путь `базовая атака → первая руна → школа → стиль боя`.
 - [x] School mastery уже стала основной ранней осью роста вместо legacy stat-allocation.

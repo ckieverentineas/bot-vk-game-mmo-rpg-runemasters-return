@@ -30,6 +30,14 @@ export const resolveGaleGuardGain = (player: Pick<BattlePlayerSnapshot, 'dexteri
   2 + Math.floor(player.dexterity / 2)
 );
 
+export const resolveManaRegeneration = (player: Pick<BattlePlayerSnapshot, 'intelligence' | 'maxMana'>): number => {
+  if (player.maxMana <= 0) {
+    return 0;
+  }
+
+  return Math.min(3, Math.max(1, Math.floor(player.intelligence / 4)));
+};
+
 export const enemySupportsHeavyStrike = (enemy: Pick<BattleEnemySnapshot, 'kind' | 'isElite' | 'isBoss'>): boolean => (
   enemy.isBoss || enemy.isElite || heavyStrikeEnemyKinds.has(enemy.kind)
 );

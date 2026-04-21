@@ -173,7 +173,7 @@ src/
 После первого playable rune combat slice battle snapshot дополнительно хранит:
 
 - active rune loadout игрока;
-- состояние маны и отката активного действия;
+- состояние маны и отката активного действия, включая медленное восстановление маны при возврате хода игроку;
 - временную защиту/guard как часть player snapshot, а не transport-состояния.
 - passive school identity остаётся derivable из `passiveAbilityCodes`, а не требует отдельной persistence-схемы.
 
@@ -218,7 +218,7 @@ src/
 
 ### 7.6. Attrition boundary
 
-Долговременные HP/мана между боями пока не являются runtime-контрактом. Включать их как прямую запись в `PlayerState` нельзя без отдельного recovery/rest use-case, UI-состояния до входа в бой, balance pass по early PvE и exploit review. Текущий бой остаётся snapshot-сессией, где здоровье и мана рассчитываются из derived stats при создании encounter.
+Долговременные HP/мана между боями пока не являются runtime-контрактом. Включать их как прямую запись в `PlayerState` нельзя без отдельного recovery/rest use-case, UI-состояния до входа в бой, balance pass по early PvE и exploit review. Текущий бой остаётся snapshot-сессией, где здоровье и мана рассчитываются из derived stats при создании encounter, а внутрибоевая регенерация маны остаётся локальным правилом этого snapshot'а.
 
 Следующий progression slice также меняет акцент growth-системы:
 
