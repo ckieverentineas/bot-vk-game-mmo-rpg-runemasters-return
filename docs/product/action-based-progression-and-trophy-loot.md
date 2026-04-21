@@ -471,56 +471,54 @@ display value = points / 100
 
 ---
 
-## 12. First Implementation Slice
+## 12. Current Implementation Slice
 
-Первый безопасный vertical slice:
+Первый backend vertical slice уже собран маленькими replay-safe шагами:
 
-```text
-feat: add trophy action resolver
-```
+- trophy action rewards моделируются отдельно от базовой победной награды;
+- `PlayerSkill` и skill types существуют в persistence и домене;
+- pending reward snapshot хранит доступные trophy actions и action-specific reward preview;
+- победа создаёт `PENDING` reward ledger в базе;
+- выбранное trophy action собирается exact-once и переводит ledger в `APPLIED`;
+- `claim_all` даёт быстрый безопасный сбор без skill progress;
+- bootstrap восстанавливает отсутствующие pending reward ledger-записи для уже завершённых победных боёв.
 
-Что входит:
+Что всё ещё не входит:
 
-- pure type `TrophyActionDefinition`;
-- pure resolver `resolveTrophyActions(enemy, playerContext)`;
-- действия только для:
-  - `wolf` / `boar` -> `skin_beast`;
-  - `slime` -> `gather_slime`;
-  - `spirit` / `mage` -> `extract_essence`;
-- fallback `claim_all`;
-- unit tests без базы.
-
-Что не входит:
-
-- миграция базы;
-- реальное pending reward collect;
-- рост статов;
+- отдельная player-facing trophy card после победы;
+- возврат к pending reward card из `начать` / `исследовать`;
 - hidden school pools;
-- UI-карточки.
-
-Это намеренно маленький шаг: сначала фиксируем язык действий и правила выбора кнопок.
+- unlock действий по skill thresholds;
+- action-based stat growth;
+- отображение навыков в профиле.
 
 ---
 
 ## 13. Implementation Roadmap
 
-1. `feat: add trophy action resolver`
-2. `feat: add player skill persistence`
-3. `feat: add skill-up chance resolver`
-4. `feat: create pending battle rewards`
-5. `feat: collect pending reward with selected action`
-6. `feat: show post-battle trophy card`
-7. `test: prevent duplicate trophy action rewards`
-8. `feat: add skinning skill growth`
-9. `feat: add reagent gathering skill growth`
-10. `feat: add essence extraction skill growth`
-11. `feat: add hidden drop pools by school`
-12. `feat: unlock trophy actions by skill thresholds`
-13. `feat: connect rune school behavior to school growth`
-14. `feat: connect combat behavior to stat growth`
-15. `feat: show skills in profile`
-16. `test: add local playtest for pending trophy reward`
-17. `docs: update OBT tester guide for action progression`
+1. Done: `feat: model trophy action rewards`
+2. Done: `feat: add skill up chance resolver`
+3. Done: `feat: add player skill types`
+4. Done: `feat: persist player skills`
+5. Done: `feat: add pending reward snapshot types`
+6. Done: `feat: add pending reward ledger`
+7. Done: `feat: create pending rewards after victory`
+8. Done: `feat: collect pending reward with selected action`
+9. Done: `feat: add claim all trophy action`
+10. Done: `feat: recover pending rewards on start`
+11. Next: `feat: show pending reward collection prompt after victory`
+12. Next: `feat: return to pending reward from start and explore`
+13. Next: `test: prevent duplicate trophy action rewards`
+14. Next: `feat: add skinning skill growth`
+15. Next: `feat: add reagent gathering skill growth`
+16. Next: `feat: add essence extraction skill growth`
+17. Next: `feat: show skills in profile`
+18. Later: `feat: add hidden drop pools by school`
+19. Later: `feat: unlock trophy actions by skill thresholds`
+20. Later: `feat: connect rune school behavior to school growth`
+21. Later: `feat: connect combat behavior to stat growth`
+22. Later: `test: add local playtest for pending trophy reward`
+23. Later: `docs: update OBT tester guide for action progression`
 
 ---
 
@@ -535,4 +533,3 @@ feat: add trophy action resolver
 5. Нужны ли инструменты профессий: нож, сосуд, резец, рунный фокус?
 6. Должны ли навыки влиять на шанс дропа сразу или сначала только на unlock кнопок?
 7. Какой минимум этой системы нужен до ОБТ, а что лучше оставить post-OBT?
-

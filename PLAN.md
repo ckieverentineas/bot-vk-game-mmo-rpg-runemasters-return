@@ -21,6 +21,7 @@
 - Рунная сборка стартует с двух равноправных слотов. Обе надетые руны дают статы, пассивы и активное действие, если оно есть.
 - Player-facing support-slot модель вырезана.
 - Рост персонажа смещён к школам, mastery, рунам и будущей ветке мастера, а не к старой раздаче stat points за уровни.
+- Action-based trophy rewards имеют первый backend vertical slice: победа создаёт `PENDING` reward ledger, доступные trophy actions фиксируются в snapshot, выбранное действие собирается exact-once, `claim_all` даёт быстрый безопасный сбор, а bootstrap восстанавливает потерянные pending-записи после рестарта.
 - Есть защита от повторных наград, отрицательных остатков инвентаря, stale battle overwrite и повторного применения command intent.
 - Есть smoke/regression/concurrency tests и release tooling для content validation, локального first-session playtest, summary, evidence и preflight.
 
@@ -29,15 +30,16 @@
 - School-first path по всем четырём школам не считается release-proven, пока не пройден ручной playtest и `release:evidence` не перестал возвращать `insufficient_evidence`.
 - Игровая версия считается только по commit-based правилу из `release:status`; `package.json` остаётся технической npm-метаинформацией и не является player-facing версией игры.
 - Production database rollout не считается оформленным, пока нет явной процедуры backup + migration/deploy для SQLite.
-- Action-based trophy rewards и hidden drop specializations пока считаются design candidate: первый shipped шаг — только чистый resolver доступных трофейных действий без изменения экономики и базы.
+- Action-based trophy rewards всё ещё не считаются player-facing release-proven: backend rail уже есть, но нет отдельной post-battle trophy card / возврата к pending reward из `начать` или `исследовать`, hidden drop pools, skill-threshold unlocks, stat growth и profile UI для навыков пока остаются будущими срезами.
 
 ## Ближайший порядок работ
 
-1. Прогнать technical gate после остановки бота: `npm run db:generate`, `npm run check`, `npm run release:local-playtest`, `npm run release:preflight`.
-2. Пройти ручной playtest поверх автоматического first-session smoke: onboarding, encounter choice, fight/flee, rune hub, две руны, craft/reroll/destroy, четыре school paths.
-3. Собрать `npm run release:school-evidence` и `npm run release:evidence`; если verdict всё ещё `insufficient_evidence`, релиз не готов.
-4. После evidence pass обновить `README.md`, `CHANGELOG.md`, `PLAN.md` и при необходимости `ARCHITECTURE.md` / `RELEASE_CHECKLIST.md`.
-5. Подготовить минимальный ops-runbook: где `.env`, где SQLite DB, как запускается production-процесс, где логи и как откатываться.
+1. Довести player-facing pending reward UX: после победы и после рестарта показывать отдельную trophy card с кнопками действий, а `начать` / `исследовать` должны возвращать к несобранной добыче.
+2. Прогнать technical gate после остановки бота: `npm run db:generate`, `npm run check`, `npm run release:local-playtest`, `npm run release:preflight`.
+3. Пройти ручной playtest поверх автоматического first-session smoke: onboarding, encounter choice, fight/flee, rune hub, две руны, craft/reroll/destroy, четыре school paths, pending trophy collect/replay.
+4. Собрать `npm run release:school-evidence` и `npm run release:evidence`; если verdict всё ещё `insufficient_evidence`, релиз не готов.
+5. После evidence pass обновить `README.md`, `CHANGELOG.md`, `PLAN.md` и при необходимости `ARCHITECTURE.md` / `RELEASE_CHECKLIST.md`.
+6. Подготовить минимальный ops-runbook: где `.env`, где SQLite DB, как запускается production-процесс, где логи и как откатываться.
 
 ## Отложено или вырезано из релиза
 
