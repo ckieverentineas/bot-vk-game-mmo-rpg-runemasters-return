@@ -358,7 +358,7 @@ export class GameHandler {
   public async equipCurrentRuneSlot(
     ctx: Context,
     vkId: number,
-    slotIndex: 0 | 1,
+    slotIndex: 0 | 1 | null,
     context: CommandIntentContext,
   ): Promise<void> {
     const routeState = toRouteState(context);

@@ -19,12 +19,11 @@ import {
 import { buildPlayerNextGoalView } from '../../modules/player/application/read-models/next-goal';
 import { buildBattleResultNextGoalView } from '../../modules/player/application/read-models/next-goal';
 import {
-  DEFAULT_UNLOCKED_RUNE_SLOT_COUNT,
   getEquippedRune,
   getRuneEquippedSlot,
   getSelectedRune,
-  getUnlockedRuneSlotCount,
   isPlayerInTutorial,
+  resolveAutoEquipRuneSlot,
 } from '../../modules/player/domain/player-stats';
 import {
   buildCraftIntentStateKey,
@@ -183,7 +182,6 @@ const createBattleResultLayout = (battle: BattleView, player?: PlayerState): Key
 const createRuneLayout = (player?: PlayerState): KeyboardLayout => {
   const selectedRune = player ? getSelectedRune(player) : null;
   const nextGoal = player ? buildPlayerNextGoalView(player) : null;
-  const unlockedRuneSlotCount = player ? getUnlockedRuneSlotCount(player) : DEFAULT_UNLOCKED_RUNE_SLOT_COUNT;
   const selectedEquippedSlot = selectedRune ? getRuneEquippedSlot(selectedRune) : null;
   const craftStateKey = player ? buildCraftIntentStateKey(player) : undefined;
   const previousPageStateKey = player ? buildMoveRuneCursorIntentStateKey(player, -runeCollectionPageSize) : undefined;
@@ -193,19 +191,16 @@ const createRuneLayout = (player?: PlayerState): KeyboardLayout => {
     ? buildDestroyIntentStateKey(player, selectedRune.id, gameBalance.runes.profiles[selectedRune.rarity].shardField)
     : undefined;
 
-  const openEquipmentSlots = ([0, 1] as const)
-    .filter((slot) => slot < unlockedRuneSlotCount);
-  const equipButtons = selectedRune && selectedEquippedSlot === null
-    ? openEquipmentSlots.map((slot): KeyboardButtonDefinition => {
-        const equippedRune = player ? getEquippedRune(player, slot) : null;
-        return {
-          label: equippedRune ? `🔁 Слот ${slot + 1}` : `✅ Слот ${slot + 1}`,
-          command: slot === 0 ? gameCommands.equipRuneSlot1 : gameCommands.equipRuneSlot2,
-          color: equippedRune ? Keyboard.PRIMARY_COLOR : Keyboard.POSITIVE_COLOR,
-          intentScoped: Boolean(player),
-          stateKey: player ? buildEquipIntentStateKey(player, slot) : undefined,
-        };
-      })
+  const autoEquipSlot = player ? resolveAutoEquipRuneSlot(player) : 0;
+  const autoEquipTargetRune = player ? getEquippedRune(player, autoEquipSlot) : null;
+  const equipButton = selectedRune && selectedEquippedSlot === null
+    ? [{
+        label: autoEquipTargetRune ? '🔁 Заменить' : '✅ Надеть',
+        command: gameCommands.equipRune,
+        color: autoEquipTargetRune ? Keyboard.PRIMARY_COLOR : Keyboard.POSITIVE_COLOR,
+        intentScoped: Boolean(player),
+        stateKey: player ? buildEquipIntentStateKey(player, autoEquipSlot) : undefined,
+      } as const]
     : [];
   const unequipButton = selectedRune && selectedEquippedSlot !== null
     ? [{
@@ -217,7 +212,7 @@ const createRuneLayout = (player?: PlayerState): KeyboardLayout => {
       } as const]
     : [];
   const selectedRuneActionRow = [
-    ...equipButtons,
+    ...equipButton,
     ...unequipButton,
     ...(selectedRune
       ? [{

@@ -161,7 +161,7 @@ export const config: Readonly<Partial<Record<GameCommandType, StaticCommandHandl
   [gameCommands.skillSlot2]: (handler, ctx, vkId, context) => handler.executeBattleAction(ctx, vkId, 'RUNE_SKILL_SLOT_2', context),
   [gameCommands.spell]: (handler, ctx, vkId, context) => handler.executeBattleAction(ctx, vkId, 'RUNE_SKILL', context),
   [gameCommands.runeCollection]: (handler, ctx, vkId) => handler.openRuneCollection(ctx, vkId, true),
-  [gameCommands.equipRune]: (handler, ctx, vkId, context) => handler.equipCurrentRuneSlot(ctx, vkId, 0, context),
+  [gameCommands.equipRune]: (handler, ctx, vkId, context) => handler.equipCurrentRuneSlot(ctx, vkId, null, context),
   [gameCommands.equipRuneSlot1]: (handler, ctx, vkId, context) => handler.equipCurrentRuneSlot(ctx, vkId, 0, context),
   [gameCommands.equipRuneSlot2]: (handler, ctx, vkId, context) => handler.equipCurrentRuneSlot(ctx, vkId, 1, context),
   [gameCommands.unequipRune]: (handler, ctx, vkId, context) => handler.unequipCurrentRuneSlot(ctx, vkId, context),

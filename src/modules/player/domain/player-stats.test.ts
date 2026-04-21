@@ -3,12 +3,14 @@ import { describe, expect, it } from 'vitest';
 import type { PlayerState } from '../../../shared/types/game';
 import {
   derivePlayerStats,
+  findFirstEmptyRuneSlot,
   getEquippedRuneIdsBySlot,
   getEquippedRunes,
   getUnlockedRuneSlotCount,
   isPlayerInTutorial,
   normalizeRuneIndex,
   resolveAdaptiveAdventureLocationLevel,
+  resolveAutoEquipRuneSlot,
   resolveEncounterLocationLevel,
   resolveLevelProgression,
 } from './player-stats';
@@ -215,6 +217,30 @@ describe('rune slot helpers', () => {
       dexterity: 6,
       intelligence: 1,
     });
+  });
+
+  it('находит первый свободный слот для автоматической экипировки', () => {
+    const player = createPlayerState({
+      runes: [
+        {
+          id: 'rune-1',
+          name: 'Основа',
+          rarity: 'USUAL',
+          health: 1,
+          attack: 1,
+          defence: 0,
+          magicDefence: 0,
+          dexterity: 0,
+          intelligence: 0,
+          isEquipped: true,
+          equippedSlot: 0,
+          createdAt: '2026-04-12T00:00:00.000Z',
+        },
+      ],
+    });
+
+    expect(findFirstEmptyRuneSlot(player)).toBe(1);
+    expect(resolveAutoEquipRuneSlot(player)).toBe(1);
   });
 });
 

@@ -208,13 +208,14 @@ const formatRune = (rune: RuneView | null): string => {
   const school = getRuneSchoolPresentation(rune.archetypeCode);
 
   return [
-    `${(() => {
+    (() => {
       const equippedSlot = getRuneEquippedSlot(rune);
       if (equippedSlot !== null) {
         return `✅ Надета: слот ${equippedSlot + 1}`;
       }
       return '🎯 Выбрана';
-    })()}: ${rune.name}`,
+    })(),
+    `Руна: ${rune.name}`,
     `Редкость: ${gameBalance.runes.profiles[rune.rarity].title}${school ? ` · ${school.name}` : ''}`,
     ...(school ? [`Стиль: ${school.playPatternLine}`] : []),
     `Бонусы: ${formatRuneStatSummary({
@@ -229,7 +230,7 @@ const formatRune = (rune: RuneView | null): string => {
   ].join('\n');
 };
 
-const formatRunePageEntryStatus = (isSelected: boolean, equippedSlot: number | null): string => {
+const formatRunePageEntryPrefix = (isSelected: boolean, equippedSlot: number | null): string | null => {
   if (isSelected && equippedSlot !== null) {
     return `🎯✅ Надета ${equippedSlot + 1}`;
   }
@@ -242,7 +243,19 @@ const formatRunePageEntryStatus = (isSelected: boolean, equippedSlot: number | n
     return `✅ Надета ${equippedSlot + 1}`;
   }
 
-  return '▫️ В коллекции';
+  return null;
+};
+
+const formatRunePageEntry = (
+  slot: number,
+  rune: RuneView,
+  isSelected: boolean,
+): string => {
+  const school = getRuneSchoolPresentation(rune.archetypeCode);
+  const prefix = formatRunePageEntryPrefix(isSelected, getRuneEquippedSlot(rune));
+  const title = prefix ? `${prefix} · ${rune.name}` : rune.name;
+
+  return `${slot + 1}. ${title} · ${school?.name ?? 'без школы'} · ${formatRuneStatSummary(rune)}`;
 };
 
 export const renderWelcome = (player: PlayerState, created: boolean): string => {
@@ -399,7 +412,7 @@ export const renderRuneScreen = (player: PlayerState, acquisitionSummary?: Acqui
   return [
     '🔮 Руны и мастерская',
     '',
-    `Руны: ${player.runes.length} · карусель ${page.pageNumber}/${page.totalPages} · по 5`,
+    `Руны: ${player.runes.length} · карусель ${page.pageNumber}/${page.totalPages} · слоты 1-5`,
     `🧩 Слоты рун: ${getUnlockedRuneSlotCount(player)} открыто сейчас.`,
     renderEquippedRuneSlots(player),
     `🎯 Выбрана: ${selectedRune ? selectedRune.name : 'нет руны'}`,
@@ -417,10 +430,7 @@ export const renderRuneScreen = (player: PlayerState, acquisitionSummary?: Acqui
       : []),
     '',
     'Карусель рун:',
-    ...page.entries.map((entry) => {
-      const school = getRuneSchoolPresentation(entry.rune.archetypeCode);
-      return `${entry.slot + 1}. ${formatRunePageEntryStatus(entry.isSelected, getRuneEquippedSlot(entry.rune))} · ${entry.rune.name} · ${school?.name ?? 'без школы'} · ${formatRuneStatSummary(entry.rune)}`;
-    }),
+    ...page.entries.map((entry) => formatRunePageEntry(entry.slot, entry.rune, entry.isSelected)),
     '',
     formatRune(selectedRune),
   ].join('\n');

@@ -90,6 +90,23 @@ export const getEquippedRune = (player: PlayerState, slot = 0): RuneView | null 
   getEquippedRunes(player).find((rune) => getRuneEquippedSlot(rune) === slot) ?? null
 );
 
+export const findFirstEmptyRuneSlot = (
+  player: PlayerState,
+  slotCount = getUnlockedRuneSlotCount(player),
+): number | null => {
+  for (let slot = 0; slot < slotCount; slot += 1) {
+    if (!getEquippedRune(player, slot)) {
+      return slot;
+    }
+  }
+
+  return null;
+};
+
+export const resolveAutoEquipRuneSlot = (player: PlayerState): number => (
+  findFirstEmptyRuneSlot(player) ?? 0
+);
+
 export const getSelectedRune = (player: PlayerState): RuneView | null => {
   if (player.runes.length === 0) {
     return null;

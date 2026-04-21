@@ -6,7 +6,7 @@ import {
 } from '../../domain/school-novice-path';
 import { describeRuneContent } from '../../../runes/domain/rune-abilities';
 import { getRuneSchoolPresentation, getSchoolDefinitionForArchetype } from '../../../runes/domain/rune-schools';
-import { getEquippedRune, getSelectedRune, getUnlockedRuneSlotCount } from '../../domain/player-stats';
+import { getEquippedRune, getRuneEquippedSlot, getSelectedRune, getUnlockedRuneSlotCount } from '../../domain/player-stats';
 import {
   getPlayerSchoolMasteryForArchetype,
   getSchoolMasteryDefinition,
@@ -172,7 +172,8 @@ export const buildPlayerNextGoalView = (player: PlayerState): NextGoalView => {
 
   if (novicePath && schoolDefinition) {
     const bestSchoolSign = findBestRuneOfSchoolAtLeastRarity(player, novicePath.schoolCode, novicePath.rewardRarity);
-    if (bestSchoolSign && bestSchoolSign.id !== equippedRune.id) {
+    const bestSchoolSignEquipped = bestSchoolSign ? getRuneEquippedSlot(bestSchoolSign) !== null : false;
+    if (bestSchoolSign && !bestSchoolSignEquipped) {
       const signNameLabel = novicePath.minibossRewardRarity && bestSchoolSign.rarity === novicePath.minibossRewardRarity
         ? 'печать школы'
         : 'первый знак школы';
@@ -200,18 +201,18 @@ export const buildPlayerNextGoalView = (player: PlayerState): NextGoalView => {
       && novicePath.minibossEnemyName
       && novicePath.minibossEnemyNameAccusative
       && novicePath.minibossRewardRarity
-      && bestSchoolSign.id === equippedRune.id
+      && bestSchoolSignEquipped
       && !hasRuneOfSchoolAtLeastRarity(player, novicePath.schoolCode, novicePath.minibossRewardRarity)
     ) {
-    return createGoalView(
-      'challenge_school_miniboss',
-      'explore',
-      `разыщите ${novicePath.minibossEnemyNameAccusative} в ${novicePath.biomeName} и пройдите большой бой школы ${schoolDefinition.nameGenitive}`,
-      {
-        primaryActionLabel: '⚔️ Проверить школу',
-        schoolCode: novicePath.schoolCode,
-        schoolName: equippedSchool?.name ?? schoolDefinition.name,
-        whyText: `Этот бой проверяет, стал ли первый знак школы ${schoolDefinition.nameGenitive} реальной боевой сборкой, а не просто редкой наградой.`,
+      return createGoalView(
+        'challenge_school_miniboss',
+        'explore',
+        `разыщите ${novicePath.minibossEnemyNameAccusative} в ${novicePath.biomeName} и пройдите большой бой школы ${schoolDefinition.nameGenitive}`,
+        {
+          primaryActionLabel: '⚔️ Проверить школу',
+          schoolCode: novicePath.schoolCode,
+          schoolName: equippedSchool?.name ?? schoolDefinition.name,
+          whyText: `Этот бой проверяет, стал ли первый знак школы ${schoolDefinition.nameGenitive} реальной боевой сборкой, а не просто редкой наградой.`,
           milestoneTitle: `Большой бой школы ${schoolDefinition.nameGenitive}`,
           milestoneProgressText: `${novicePath.biomeName} · ${novicePath.minibossEnemyName}`,
           milestoneBenefitText: `Победа может принести первую ${novicePath.minibossRewardRarity === 'RARE' ? 'редкую' : 'новую'} руну школы ${schoolDefinition.nameGenitive}.`,

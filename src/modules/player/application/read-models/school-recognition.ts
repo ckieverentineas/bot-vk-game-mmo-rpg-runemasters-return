@@ -1,5 +1,5 @@
 import type { PlayerState } from '../../../../shared/types/game';
-import { getEquippedRune } from '../../domain/player-stats';
+import { getEquippedRune, getRuneEquippedSlot } from '../../domain/player-stats';
 import {
   findBestRuneOfSchoolAtLeastRarity,
   getSchoolNovicePathDefinition,
@@ -24,7 +24,7 @@ export const buildPlayerSchoolRecognitionView = (player: PlayerState): SchoolRec
   }
 
   const bestSchoolSign = findBestRuneOfSchoolAtLeastRarity(player, novicePath.schoolCode, novicePath.rewardRarity);
-  const signEquipped = bestSchoolSign?.id === equippedRune?.id;
+  const signEquipped = bestSchoolSign ? getRuneEquippedSlot(bestSchoolSign) !== null : false;
   const hasSchoolSeal = !!bestSchoolSign && !!novicePath.minibossRewardRarity && bestSchoolSign.rarity === novicePath.minibossRewardRarity;
 
   if (hasSchoolSeal) {

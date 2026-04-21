@@ -292,6 +292,34 @@ describe('next goal read-model', () => {
     expect(goal.milestoneBenefitText).toContain('первую редкую руну школы Пламени');
   });
 
+  it('treats a first school sign in slot 2 as equipped for the miniboss goal', () => {
+    const baseRune = createPlayer().runes[0]!;
+    const goal = buildPlayerNextGoalView(createPlayer({
+      victories: 4,
+      runes: [
+        {
+          ...baseRune,
+          name: 'Обычная руна Пламени',
+          rarity: 'USUAL',
+          isEquipped: true,
+          equippedSlot: 0,
+        },
+        {
+          ...baseRune,
+          id: 'rune-2',
+          runeCode: 'rune-2',
+          name: 'Необычная руна Пламени',
+          rarity: 'UNUSUAL',
+          isEquipped: true,
+          equippedSlot: 1,
+        },
+      ],
+    }));
+
+    expect(goal.goalType).toBe('challenge_school_miniboss');
+    expect(goal.primaryActionLabel).toBe('⚔️ Проверить школу');
+  });
+
   it('guides gale to its school miniboss once the first sign is already equipped', () => {
     const goal = buildPlayerNextGoalView(createPlayer({
       victories: 4,

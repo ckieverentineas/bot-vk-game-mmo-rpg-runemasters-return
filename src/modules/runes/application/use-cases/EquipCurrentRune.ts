@@ -8,7 +8,13 @@ import {
 import { buildPlayerNextGoalView } from '../../../player/application/read-models/next-goal';
 import { buildPlayerSchoolRecognitionView } from '../../../player/application/read-models/school-recognition';
 import type { GameTelemetry } from '../../../shared/application/ports/GameTelemetry';
-import { getEquippedRune, getEquippedRuneIdsBySlot, getSelectedRune, getUnlockedRuneSlotCount } from '../../../player/domain/player-stats';
+import {
+  getEquippedRune,
+  getEquippedRuneIdsBySlot,
+  getSelectedRune,
+  getUnlockedRuneSlotCount,
+  resolveAutoEquipRuneSlot,
+} from '../../../player/domain/player-stats';
 import { getSchoolDefinitionForArchetype } from '../../../runes/domain/rune-schools';
 
 import { resolveCommandIntent, type CommandIntentSource } from '../../../shared/application/command-intent';
@@ -24,7 +30,7 @@ export class EquipCurrentRune {
 
   public async execute(
     vkId: number,
-    targetSlot = 0,
+    targetSlot: number | null = null,
     intentId?: string,
     intentStateKey?: string,
     intentSource: CommandIntentSource = 'payload',
@@ -49,7 +55,8 @@ export class EquipCurrentRune {
     }
 
     const unlockedSlotCount = getUnlockedRuneSlotCount(player);
-    if (!Number.isInteger(targetSlot) || targetSlot < 0 || targetSlot >= unlockedSlotCount) {
+    const resolvedTargetSlot = targetSlot ?? resolveAutoEquipRuneSlot(player);
+    if (!Number.isInteger(resolvedTargetSlot) || resolvedTargetSlot < 0 || resolvedTargetSlot >= unlockedSlotCount) {
       throw new AppError('rune_slot_locked', 'Этот слот рун пока закрыт. Откройте новый слот через развитие мастера.');
     }
 
@@ -58,7 +65,7 @@ export class EquipCurrentRune {
       throw new AppError('runes_not_found', 'У вас пока нет рун.');
     }
 
-    const currentStateKey = buildEquipIntentStateKey(player, targetSlot);
+    const currentStateKey = buildEquipIntentStateKey(player, resolvedTargetSlot);
     const intent = resolveCommandIntent(intentId, intentStateKey, intentSource, intentSource === null);
 
     if (intent?.intentId) {
@@ -87,12 +94,12 @@ export class EquipCurrentRune {
       throw new AppError('stale_command_intent', 'Эта кнопка уже устарела. Обновите экран перед повтором команды.');
     }
 
-    const previousRune = getEquippedRune(player, targetSlot);
+    const previousRune = getEquippedRune(player, resolvedTargetSlot);
     const recognitionBefore = buildPlayerSchoolRecognitionView(player);
     const nextGoalBefore = buildPlayerNextGoalView(player);
     const updatedPlayer = await this.repository.equipRune(player.playerId, rune.id, {
       commandKey: 'EQUIP_RUNE',
-      targetSlot,
+      targetSlot: resolvedTargetSlot,
       intentId: intent?.intentId,
       intentStateKey: intent?.intentStateKey,
       expectedPlayerUpdatedAt: player.updatedAt,
@@ -104,14 +111,14 @@ export class EquipCurrentRune {
       expectedRuneIds: player.runes.map((entry) => entry.id),
     });
 
-    const nextRune = getEquippedRune(updatedPlayer, targetSlot);
+    const nextRune = getEquippedRune(updatedPlayer, resolvedTargetSlot);
     const recognitionAfter = buildPlayerSchoolRecognitionView(updatedPlayer);
 
     try {
       if ((previousRune?.id ?? null) !== (nextRune?.id ?? null)) {
         await this.telemetry.loadoutChanged(updatedPlayer.userId, {
           changeType: 'equip_rune',
-          slotNumber: targetSlot + 1,
+          slotNumber: resolvedTargetSlot + 1,
           beforeSchoolCode: getSchoolDefinitionForArchetype(previousRune?.archetypeCode)?.code ?? null,
           afterSchoolCode: getSchoolDefinitionForArchetype(nextRune?.archetypeCode)?.code ?? null,
           beforeRarity: previousRune?.rarity ?? null,
@@ -120,7 +127,7 @@ export class EquipCurrentRune {
       }
 
       if (
-        targetSlot === 0
+        resolvedTargetSlot === 0
         && recognitionBefore?.signEquipped !== true
         && recognitionAfter?.signEquipped
         && ['equip_first_rune', 'equip_school_sign'].includes(nextGoalBefore.goalType)
@@ -146,7 +153,7 @@ export class EquipCurrentRune {
       Logger.warn('Telemetry logging failed', error);
     }
 
-    const acquisitionSummary = buildEquipAcquisitionSummary(player, updatedPlayer, targetSlot, nextGoalBefore.goalType);
+    const acquisitionSummary = buildEquipAcquisitionSummary(player, updatedPlayer, resolvedTargetSlot, nextGoalBefore.goalType);
     return acquisitionSummary
       ? { player: updatedPlayer, acquisitionSummary }
       : updatedPlayer;

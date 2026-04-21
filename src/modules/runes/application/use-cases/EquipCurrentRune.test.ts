@@ -282,6 +282,63 @@ describe('EquipCurrentRune', () => {
     expect(telemetry.schoolNoviceFollowUpActionTaken).not.toHaveBeenCalled();
   });
 
+  it('auto-equips the selected rune into the first empty slot', async () => {
+    const player = createPlayer({
+      unlockedRuneSlotCount: 2,
+      runes: [
+        {
+          ...createPlayer().runes[0],
+          isEquipped: true,
+          equippedSlot: 0,
+        },
+        {
+          ...createPlayer().runes[0],
+          id: 'rune-2',
+          runeCode: 'rune-2',
+          name: 'Руна B',
+          isEquipped: false,
+          equippedSlot: null,
+        },
+      ],
+      currentRuneIndex: 1,
+    });
+    const updatedPlayer = {
+      ...player,
+      runes: [
+        player.runes[0],
+        {
+          ...player.runes[1],
+          isEquipped: true,
+          equippedSlot: 1,
+        },
+      ],
+    };
+    const repository = {
+      findPlayerByVkId: vi.fn().mockResolvedValue(player),
+      getCommandIntentResult: vi.fn(),
+      equipRune: vi.fn().mockResolvedValue(updatedPlayer),
+      storeCommandIntentResult: vi.fn().mockResolvedValue(undefined),
+    } as unknown as GameRepository;
+    const useCase = new EquipCurrentRune(repository, {
+      loadoutChanged: vi.fn().mockResolvedValue(undefined),
+      firstSchoolCommitted: vi.fn().mockResolvedValue(undefined),
+      schoolNoviceFollowUpActionTaken: vi.fn().mockResolvedValue(undefined),
+    } as unknown as GameTelemetry);
+    const stateKey = buildEquipIntentStateKey(player, 1);
+
+    await useCase.execute(player.vkId, null, 'intent-auto-equip-1', stateKey);
+
+    expect(repository.equipRune).toHaveBeenCalledWith(
+      player.playerId,
+      'rune-2',
+      expect.objectContaining({
+        targetSlot: 1,
+        intentId: 'intent-auto-equip-1',
+        intentStateKey: stateKey,
+      }),
+    );
+  });
+
   it('logs equipping the first school sign as a novice follow-up action', async () => {
     const player = createPlayer({
       victories: 3,

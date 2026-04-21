@@ -204,7 +204,7 @@ describe('profile keyboard', () => {
   it('adds intent metadata to rune carousel and selected-rune actions', () => {
     const payloads = collectPayloads(createRuneKeyboard(createPlayer()));
 
-    const equip = payloads.find((payload) => payload.command === 'надеть слот 1');
+    const equip = payloads.find((payload) => payload.command === 'надеть');
     const unequip = payloads.find((payload) => payload.command === 'снять');
     const nextPage = payloads.find((payload) => payload.command === 'руны >');
     const slotOne = payloads.find((payload) => payload.command === 'руна слот 1');
@@ -243,13 +243,14 @@ describe('profile keyboard', () => {
       ],
     })));
 
-    expect(labels).toContain('✅ Слот 1');
-    expect(labels).toContain('✅ Слот 2');
+    expect(labels).toContain('✅ Надеть');
+    expect(labels).not.toContain('✅ Слот 1');
+    expect(labels).not.toContain('✅ Слот 2');
     expect(labels).toContain('🗑️ Распылить');
     expect(labels.some((label) => label.startsWith('❌ Снять'))).toBe(false);
   });
 
-  it('shows the second slot as a baseline equip target', () => {
+  it('auto-equips into the second slot when the first slot is occupied', () => {
     const keyboard = createRuneKeyboard(createPlayer({
       runes: [
         {
@@ -270,10 +271,12 @@ describe('profile keyboard', () => {
     const labels = collectLabels(keyboard);
     const payloads = collectPayloads(keyboard);
 
-    expect(labels).toContain('🔁 Слот 1');
-    expect(labels).toContain('✅ Слот 2');
+    expect(labels).toContain('✅ Надеть');
+    expect(labels).not.toContain('🔁 Слот 1');
+    expect(labels).not.toContain('✅ Слот 2');
     expect(labels).not.toContain('🧩 В поддержку');
-    expect(payloads.find((payload) => payload.command === 'надеть слот 2')?.intentId).toEqual(expect.any(String));
+    expect(payloads.find((payload) => payload.command === 'надеть')?.intentId).toEqual(expect.any(String));
+    expect(payloads.find((payload) => payload.command === 'надеть')?.stateKey).toEqual(expect.any(String));
   });
 
   it('adds a dominant school-test CTA when the first sign is already equipped', () => {
@@ -350,7 +353,7 @@ describe('profile keyboard', () => {
     expect(labels).not.toContain('🧩 В поддержку');
   });
 
-  it('offers replacement actions for both filled slots when a spare rune is selected', () => {
+  it('offers one automatic replacement action when all baseline slots are filled', () => {
     const labels = collectLabels(createRuneKeyboard(createPlayer({
       unlockedRuneSlotCount: 2,
       runes: [
@@ -378,8 +381,9 @@ describe('profile keyboard', () => {
       currentRuneIndex: 2,
     })));
 
-    expect(labels).toContain('🔁 Слот 1');
-    expect(labels).toContain('🔁 Слот 2');
+    expect(labels).toContain('🔁 Заменить');
+    expect(labels).not.toContain('🔁 Слот 1');
+    expect(labels).not.toContain('🔁 Слот 2');
     expect(labels).not.toContain('❌ Снять со слота 1');
   });
 

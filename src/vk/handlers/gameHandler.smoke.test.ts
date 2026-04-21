@@ -1130,7 +1130,7 @@ describe('GameHandler smoke', () => {
 
     await handler.handle(ctx as never);
 
-    expect(services.equipCurrentRune.execute).toHaveBeenCalledWith(1001, 0, 'legacy-text:2000000001:1001:82:надеть', undefined, 'legacy_text');
+    expect(services.equipCurrentRune.execute).toHaveBeenCalledWith(1001, null, 'legacy-text:2000000001:1001:82:надеть', undefined, 'legacy_text');
   });
 
   it('выводит server-owned legacy intent для текстового снятия руны', async () => {
@@ -1160,7 +1160,7 @@ describe('GameHandler smoke', () => {
 
     await handler.handle(ctx as never);
 
-    expect(services.equipCurrentRune.execute).toHaveBeenCalledWith(1001, 0, 'intent-equip-1', 'state-equip-1', 'payload');
+    expect(services.equipCurrentRune.execute).toHaveBeenCalledWith(1001, null, 'intent-equip-1', 'state-equip-1', 'payload');
   });
 
   it('показывает payoff recap после установки первого знака школы', async () => {
@@ -1601,7 +1601,7 @@ describe('GameHandler smoke', () => {
     const replies = getReplyCalls(ctx);
     expect(replies[0]?.message).toContain('Команда уже обрабатывается');
     expect(replies[0]?.message).toContain('Руны и мастерская');
-    expect(JSON.stringify(replies[0]?.keyboard)).toContain('надеть слот 1');
+    expect(JSON.stringify(replies[0]?.keyboard)).toContain('надеть');
   });
 
   it('проходит сценарий пропуска обучения', async () => {

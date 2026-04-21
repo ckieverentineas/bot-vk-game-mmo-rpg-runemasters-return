@@ -100,6 +100,28 @@ describe('school recognition read-model', () => {
     expect(recognition?.statusLine).toContain('школа признала вашу решимость');
   });
 
+  it('counts a first school sign in slot 2 as equipped', () => {
+    const baseRune = createPlayer().runes[0]!;
+    const recognition = buildPlayerSchoolRecognitionView(createPlayer({
+      runes: [
+        baseRune,
+        {
+          ...baseRune,
+          id: 'rune-2',
+          runeCode: 'rune-2',
+          name: 'Необычная руна Пламени',
+          rarity: 'UNUSUAL',
+          isEquipped: true,
+          equippedSlot: 1,
+          createdAt: '2026-04-13T00:00:00.000Z',
+        },
+      ],
+    }));
+
+    expect(recognition?.title).toBe('Первый знак Пламени');
+    expect(recognition?.signEquipped).toBe(true);
+  });
+
   it('shows a school seal message once the rare school rune is already equipped', () => {
     const recognition = buildPlayerSchoolRecognitionView(createPlayer({
       runes: [

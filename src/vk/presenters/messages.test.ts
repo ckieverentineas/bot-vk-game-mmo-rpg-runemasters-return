@@ -220,7 +220,7 @@ describe('messages school-first onboarding framing', () => {
       ],
     }));
 
-    expect(message).toContain('Руны: 6 · карусель 1/2 · по 5');
+    expect(message).toContain('Руны: 6 · карусель 1/2 · слоты 1-5');
     expect(message).toContain('🧩 Слоты рун: 2 открыто сейчас.');
     expect(message).toContain('Надето: 1. Руна A · 2. пусто');
     expect(message).toContain('🎯 Выбрана: Руна B');
@@ -232,7 +232,7 @@ describe('messages school-first onboarding framing', () => {
     expect(message).toContain('Пассивно усиливает атакующее давление владельца руны.');
     expect(message).toContain('1. ✅ Надета 1 · Руна A');
     expect(message).toContain('2. 🎯 Выбрана · Руна B');
-    expect(message).toContain('5. ▫️ В коллекции · Руна E');
+    expect(message).toContain('5. Руна E');
     expect(message).not.toContain('Выберите слот 1-5');
   });
 
