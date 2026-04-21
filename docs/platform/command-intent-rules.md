@@ -20,13 +20,13 @@ Covered by intent-based dedupe:
 - `skipTutorial`
 - `returnToAdventure`
 - `exploreLocation`
-- keyboard battle actions (`attack`, `defend`, `runeSkill`)
-- legacy text battle actions (`атака`, `защита`, `навыки`, `спелл`)
+- keyboard battle actions (`engageBattle`, `fleeBattle`, `attack`, `defend`, `runeSkill`)
+- legacy text battle actions (`в бой`, `отступить`, `бой`, `начать бой`, `сражаться`, `бежать`, `атака`, `защита`, `навыки`, `спелл`)
 
 Transport surface:
 
 - VK keyboard payloads for guarded buttons;
-- server-owned legacy text intents for `craftRune`, `rerollRuneStat`, `destroyRune`, `equipRune`, `unequipRune`, rune hub navigation (`+руна`, `-руна`, `руны >`, `руны <`, `руна слот 1..5` and aliases), `enterTutorialMode` (`локация`, `обучение`), `skipTutorial`, `returnToAdventure`, `exploreLocation` (`исследовать`), `attack`, `defend`, `runeSkill`.
+- server-owned legacy text intents for `craftRune`, `rerollRuneStat`, `destroyRune`, `equipRune`, `unequipRune`, rune hub navigation (`+руна`, `-руна`, `руны >`, `руны <`, `руна слот 1..5` and aliases), `enterTutorialMode` (`локация`, `обучение`), `skipTutorial`, `returnToAdventure`, `exploreLocation` (`исследовать`), `engageBattle`, `fleeBattle`, `attack`, `defend`, `runeSkill`.
 
 Not covered yet:
 
@@ -126,13 +126,13 @@ Fields of interest:
 
 ### Explore location
 
-- first arrival starts exactly one canonical encounter for the rendered exploration state;
-- duplicate same-intent arrival returns the stored battle instead of minting a second encounter or rerolling enemy selection;
+- first arrival starts exactly one canonical exploration outcome for the rendered exploration state;
+- duplicate same-intent arrival returns the stored outcome instead of minting a second event, encounter, or enemy selection;
 - stale explore button restores the latest battle or exploration context instead of silently starting another fight.
 
 ### Battle action
 
-- first arrival resolves exactly one action from the rendered battle state;
+- first arrival resolves exactly one action from the rendered battle state, including encounter `ENGAGE` / `FLEE` decisions;
 - duplicate same-intent arrival returns the stored post-action battle result instead of resolving another turn;
 - stale battle button restores the latest canonical battle view instead of replaying an old turn.
 
@@ -140,7 +140,7 @@ Fields of interest:
 
 - keyboard payload is the current source of intent ids;
 - delete confirmation uses keyboard-issued `intentId` + profile `updatedAt` stateKey and is replayed through an account-scoped delete receipt;
-- server-owned legacy text ids currently protect rune craft / reroll / destroy / equip / unequip, tutorial navigation (`пропустить обучение`, `в приключения`, `в мир`), and battle text inputs (`атака`, `защита`, `навыки`, `спелл`);
+- server-owned legacy text ids currently protect rune craft / reroll / destroy / equip / unequip, tutorial navigation (`пропустить обучение`, `в приключения`, `в мир`), and battle text inputs (`в бой`, `отступить`, `бой`, `начать бой`, `сражаться`, `бежать`, `атака`, `защита`, `навыки`, `спелл`);
 - server-owned legacy text ids also protect rune hub navigation (`+руна`, `-руна`, `руны >`, `руны <`, `руна слот 1..5` and aliases);
 - server-owned legacy text ids also protect tutorial entry via `локация` / `обучение`;
 - server-owned legacy text ids also protect exploration entry via `исследовать`;
@@ -160,12 +160,12 @@ Fields of interest:
 - same-intent unequip -> one canonical unequipped loadout only;
 - same-intent skip tutorial -> one canonical post-skip navigation state only;
 - same-intent return to adventure -> one canonical post-return navigation state only;
-- same-intent battle attack / defend / rune skill -> one canonical post-action battle result only;
+- same-intent battle engage / flee / attack / defend / rune skill -> one canonical post-action battle result only;
 - same-intent rune page / slot navigation -> one canonical post-navigation rune hub state only;
 - same-intent legacy text rune navigation -> one canonical post-navigation rune hub state only;
 - same-intent delete confirmation -> one canonical delete success only;
 - same-intent tutorial entry from main menu / legacy text -> one canonical tutorial context only;
-- same-intent explore from main menu / tutorial / battle-result CTA -> one canonical battle only;
+- same-intent explore from main menu / tutorial / battle-result CTA -> one canonical exploration outcome only;
 - stale reused intent after state change -> explicit `stale_command_intent` style rejection;
 - different intent ids still allow honest repeated actions.
 

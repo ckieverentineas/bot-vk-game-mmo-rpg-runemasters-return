@@ -1,36 +1,16 @@
-# Support Rune Slot v1
+# Support Rune Slot v1 — superseded
 
-> Исторический baseline slice. Актуальное боевое развитие поддержки продолжено в `docs/reviews/support-rune-slot-v2.md`.
+> Историческая ссылка для старых changelog-записей. Не использовать как актуальный design source.
 
-## Purpose
+## Superseded by current runtime
 
-Дать первый реальный шаг к `pre-battle loadout decisions` без взрыва боевого интерфейса.
+На 2026-04-21 player-facing модель `support-slot` отменена.
 
-## Locked rules
+Актуальное решение:
 
-- mastery milestone теперь может открыть **2-й слот рун**;
-- `slot 0` = **основа**;
-- `slot 1` = **поддержка**;
-- только **основа** даёт активную боевую кнопку и определяет primary school combat loop;
-- **поддержка** не даёт вторую кнопку и не живёт как отдельный action source;
-- поддержка даёт только **половину статов** выбранной руны как pre-battle breadth.
+- у игрока с начала есть два равноправных рунных слота;
+- каждая надетая руна работает полностью: статы, пассивы и активное действие, если оно есть;
+- интерфейс не делит руны на `основу` и `поддержку`;
+- будущие 3+ слоты должны открываться через progression tree мастера, уровни и очки, а не через модель поддержки.
 
-## Unlock rule
-
-- support-slot открывается, когда игрок достигает первой mastery-вехи любой школы;
-- это первый ощутимый progression payoff ширины сборки, а не ещё одна голая level-up прибавка.
-
-## Why this slice
-
-- усиливает `Rarity expands loadout breadth`;
-- добавляет реальный loadout choice без dual-cast хаоса;
-- сохраняет `Basic attack is evergreen` и single active rune clarity;
-- использует уже существующую slot-aware foundation, не ломая бой второй активкой.
-
-## Explicitly out of scope
-
-- третьи и последующие слоты;
-- вторая активная руна в бою;
-- slot swap mid-battle;
-- proc-web cross-slot combos;
-- slot-specific currencies или отдельное дерево unlock'ов.
+Подробности текущего rune UX описаны в `docs/reviews/rune-hub-ux-v1.md`, `PLAN.md` и `ARCHITECTURE.md`.

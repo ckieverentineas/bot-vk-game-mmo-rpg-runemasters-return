@@ -89,7 +89,7 @@ Healthy signal:
 
 Healthy signal:
 - return recap сокращает menu wandering и быстрее ведёт к первому осмысленному действию.
-- school-aware `nextStepType` помогает быстрее дойти до ближайшего school payoff или support-slot payoff.
+- school-aware `nextStepType` помогает быстрее дойти до ближайшего school payoff или заполнить свободный полноценный рунный слот.
 
 ### School pick health
 
@@ -139,8 +139,9 @@ Healthy signal:
 - `use_active_rune_skill`;
 - `hunt_school_elite`;
 - `equip_school_sign`;
+- `challenge_school_miniboss`;
 - `reach_next_school_mastery`;
-- `fill_support_slot`;
+- `fill_rune_slot`;
 - `push_higher_threat`;
 - `equip_dropped_rune`;
 - `review_runes_after_defeat`.

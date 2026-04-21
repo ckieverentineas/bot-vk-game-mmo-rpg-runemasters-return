@@ -14,8 +14,8 @@
   - `actionRevision = expectedRevision`
 - успешная mutation увеличивает `actionRevision` на `1`;
 - stale branch не перезаписывает новый state и получает canonical latest battle из persistence.
-- keyboard battle buttons (`атака`, `защита`, `рунное действие`) теперь дополнительно идут через scoped `intentId` + battle `stateKey`;
-- plain text `атака`, `защита`, `навыки` и `спелл` получают server-owned message intent id и используют тот же canonical replay receipt;
+- keyboard battle buttons (`в бой`, `отступить`, `атака`, `защита`, `рунное действие`) теперь дополнительно идут через scoped `intentId` + battle `stateKey`;
+- plain text `в бой`, `отступить`, `бой`, `начать бой`, `сражаться`, `бежать`, `атака`, `защита`, `навыки` и `спелл` получают server-owned message intent id и используют тот же canonical replay receipt;
 - duplicate same-intent battle input обязан вернуть canonical persisted battle result, а не провести второй turn resolution;
 - stale или retry-pending battle input обязан оставлять игрока внутри актуального battle context, а не выбрасывать в меню.
 
@@ -51,7 +51,7 @@
 - duplicate same-intent `location` обязан вернуть canonical tutorial-entry player state, а не повторно перетереть более свежий exploration state;
 - stale tutorial-entry input после уже изменившегося exploration state обязан восстановить актуальный tutorial/adventure контекст, а не вернуть игрока на устаревший экран обучения;
 - `explore` / `исследовать` используют keyboard-issued `intentId` + exploration `stateKey` либо server-owned legacy text intent id;
-- duplicate same-intent `explore` обязан вернуть canonical persisted battle, а не создать второй encounter или перероллить врага;
+- duplicate same-intent `explore` обязан вернуть canonical persisted exploration outcome, а не создать второе событие, второй encounter или перероллить врага;
 - stale explore input после уже изменившегося exploration state обязан вернуть игрока в актуальный battle/location context, а не стартовать новый бой поверх свежего состояния;
 - `skipTutorial` и `returnToAdventure` используют keyboard-issued `intentId` + exploration `stateKey`;
 - plain text `пропустить обучение`, `в приключения` и alias `в мир` получают server-owned message intent id и идут через canonical replay receipt;
@@ -69,7 +69,7 @@
 - stale equip / unequip reply обязан показывать актуальную рунную сборку, чтобы игрок сразу видел, какая руна реально экипирована сейчас.
 - stale / retry tutorial-entry reply обязан восстанавливать актуальный tutorial/adventure экран с понятным следующим CTA.
 - stale / retry tutorial-navigation reply обязан восстанавливать актуальный tutorial/adventure экран с правильным следующим CTA.
-- stale / retry explore reply обязан восстанавливать либо текущий бой, либо актуальный exploration screen с правильной кнопкой следующего боя.
+- stale / retry explore reply обязан восстанавливать либо текущую встречу/бой, либо актуальный exploration screen с правильной кнопкой следующего шага.
 - duplicate delete confirm reply обязан повторять каноническое сообщение об успешном удалении и оставлять игрока на entry CTA.
 
 ## Logging

@@ -371,7 +371,7 @@ Game Master слой допустим только как **PvE adventure direct
 
 **Вес события = Базовый вес × Состояние региона × Смещение кармы × Влияние города × Недавняя история**
 
-Безопасный 1.0-срез уже разделяет outcome шага исследования на battle encounter и standalone non-combat scene. Такие сцены дают темп, school-aware чтение мира и FOMO-safe framing Мастеров испытаний, но не выдают силу, не ставят таймеры и не подменяют core PvE loop.
+Безопасный 1.0-срез уже разделяет outcome шага исследования на battle encounter и standalone non-combat scene. Battle encounter сначала показывает встречу, врага и шанс отступления, а уже затем переводит игрока в бой через явный выбор. Standalone-сцены дают темп, school-aware чтение мира и FOMO-safe framing Мастеров испытаний, но не выдают силу, не ставят таймеры и не подменяют core PvE loop.
 
 ## 5.2. Karma axis
 

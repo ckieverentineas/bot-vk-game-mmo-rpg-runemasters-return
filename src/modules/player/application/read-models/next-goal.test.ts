@@ -382,7 +382,7 @@ describe('next goal read-model', () => {
       ],
     }));
 
-    expect(goal.goalType).toBe('fill_support_slot');
+    expect(goal.goalType).toBe('fill_rune_slot');
     expect(goal.primaryActionLabel).toBe('🔮 Руны');
     expect(goal.milestoneProgressText).toBe('Второй слот рун уже открыт.');
   });

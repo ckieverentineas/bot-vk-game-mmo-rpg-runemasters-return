@@ -30,7 +30,7 @@ Versioned persistence contracts must let the runtime distinguish between:
   - unknown `tutorialState -> ACTIVE`;
   - missing inventory -> `emptyInventory()`;
   - missing starter school masteries -> derived fallback views;
-  - support-slot availability по persisted value и mastery-derived unlock без silent downgrade.
+  - `unlockedRuneSlotCount` не должен silent downgrade'иться ниже текущего baseline двух равноправных рунных слотов.
 
 ## Battle snapshot rules
 

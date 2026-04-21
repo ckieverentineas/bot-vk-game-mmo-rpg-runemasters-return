@@ -18,6 +18,7 @@
 Runemasters Return 1.0 — это **PvE-first social build-RPG** для коротких, но осмысленных сессий, где игрок:
 
 - осваивает **школы рун** как главную build-ось;
+- исследует мир через PvE-события и встречи, где бой начинается после понятного player choice, а не как внезапный технический переход;
 - читает намерения врага и отвечает не только цифрами, но и решениями;
 - растёт через **расширение сборки**, а не через голую инфляцию силы;
 - возвращается ради новых целей, mastery и выраженного стиля боя, а не из-за давления или страха потери.
@@ -26,7 +27,9 @@ Runemasters Return 1.0 — это **PvE-first social build-RPG** для коро
 
 - **PvE-first** — core progression опирается на PvE;
 - **Schools first** — школа рун остаётся главной identity-осью;
+- **Exploration first** — следующий шаг игрока идёт через `Исследовать`, где возможны события, встречи, бой или отступление;
 - **Basic attack is evergreen** — базовая атака не превращается в мусорную кнопку;
+- **Two full rune slots** — стартовая сборка держит две равноправные руны без player-facing support-slot модели;
 - **Rarity expands loadout breadth** — редкость расширяет варианты сборки, а не ломает баланс x2 цифрами;
 - **Ethical retention only** — возврат строится на curiosity, mastery, belonging и expression.
 
@@ -68,11 +71,7 @@ Runemasters Return 1.0 — это **PvE-first social build-RPG** для коро
 
 ## Governance baseline
 
-Для 1.0 этим charter'ом утверждается governance baseline из `PLAN.md`:
-
-- owner model из `PLAN.md` section `2.4`;
-- review rhythm из `PLAN.md` section `2.6`;
-- update rule из `PLAN.md` section `2.7`.
+Для 1.0 этим charter'ом утверждается governance baseline из `PLAN.md`: живой план хранит текущие решения, ближайший порядок работ, cut/defer list и правило обновления документов.
 
 Минимальное правило:
 

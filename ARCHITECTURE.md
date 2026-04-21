@@ -4,7 +4,7 @@
 
 - держать игровой движок расширяемым без разрастания transport-слоя;
 - разделять чистую бизнес-логику и побочные эффекты;
-- ускорить добавление новых систем: навыков рун, крафта, квестов, PvP, событий и сезонов;
+- ускорить добавление новых систем: навыков рун, крафта, квестов и PvE-событий; PvP и сезоны допускаются только после отдельного scope review;
 - поддерживать рабочую дисциплину через тесты, changelog и commit-based релизы.
 
 ## Основной архитектурный стиль
@@ -71,13 +71,14 @@ src/
 - регистрация игрока;
 - профиль, mastery и player-facing growth framing;
 - school mastery и базовая progression-ось поверх школы рун;
-- derived stats, инвентарь, работа с экипированной руной.
+- derived stats, инвентарь, работа с надетыми рунами.
 
 ### `exploration`
 
 - интро-обучение и возврат в него;
 - адаптивный подбор уровня угрозы;
-- старт encounter;
+- выбор outcome исследования: standalone PvE-событие или предложенная встреча;
+- старт встречи с врагом, где игрок сначала выбирает `В бой` или `Отступить`;
 - восстановление уже активного боя.
 
 ### `combat`
@@ -125,7 +126,7 @@ src/
 
 `src/vk/keyboards/index.ts` строит клавиатуры из layout-массивов. Новые кнопки добавляются декларативно, а не длинными chain-вызовами.
 
-В текущем rune UX это позволяет держать один и тот же action set для unified rune hub: page navigation, быстрый выбор 5 рун на странице, slot selection, equip primary/support, unequip, craft, reroll и destroy без размножения handler-веток.
+В текущем rune UX это позволяет держать один и тот же action set для unified rune hub: page navigation, быстрый выбор 5 рун на странице, выбор конкретной руны, автоэкипировку в свободный слот, unequip, craft, reroll и destroy без размножения handler-веток.
 
 ### 3. Централизованная сериализация
 
@@ -141,7 +142,7 @@ src/
 - консистентность рунных архетипов и способностей;
 - базовые ограничения игрового баланса и стартовой конфигурации.
 
-Текущее правило: `archetypeCode` остаётся внутренним content/storage key, а player-facing **школа** выводится через canonical `SchoolDefinition` read-model поверх этого key. Это позволяет развести fantasy-domain и combat-role без миграции базы на раннем этапе и не держать отдельную hand-written карту school presentation. Тот же read-model теперь используется в onboarding-presenter слое, чтобы welcome / tutorial / rune hub говорили об одной и той же school identity. Return recap и battle result больше не собирают next-step guidance локально в `transport`: ближайшая school-веха теперь выводится через общий application read-model [`src/modules/player/application/read-models/next-goal.ts`](src/modules/player/application/read-models/next-goal.ts) поверх текущего `PlayerState`. Rune hub теперь явно показывает `основу` и `поддержку`, но только `основа` остаётся источником активной боевой руны; support-slot живёт как bounded pre-battle breadth до отдельного multi-action review.
+Текущее правило: `archetypeCode` остаётся внутренним content/storage key, а player-facing **школа** выводится через canonical `SchoolDefinition` read-model поверх этого key. Это позволяет развести fantasy-domain и combat-role без миграции базы на раннем этапе и не держать отдельную hand-written карту school presentation. Тот же read-model теперь используется в onboarding-presenter слое, чтобы welcome / tutorial / rune hub говорили об одной и той же school identity. Return recap и battle result больше не собирают next-step guidance локально в `transport`: ближайшая school-веха теперь выводится через общий application read-model [`src/modules/player/application/read-models/next-goal.ts`](src/modules/player/application/read-models/next-goal.ts) поверх текущего `PlayerState`. Rune hub теперь показывает две равноправные стартовые руны как полноценную сборку: обе надетые руны дают статы, пассивы и активное действие, если оно есть.
 
 Эта валидация запускается через `npm run content:validate`, входит в `npm run check`, включена в `npm run release:preflight`, вызывается через [`seed()`](src/database/seed.ts:3) как fast validation hook и дополнительно исполняется на старте приложения перед сборкой runtime-каталога мира.
 
@@ -173,6 +174,7 @@ src/
 После первого playable rune combat slice battle snapshot дополнительно хранит:
 
 - active rune loadout игрока;
+- secondary rune loadout игрока; в legacy snapshot-поле оно всё ещё называется `supportRuneLoadout`, но runtime трактует его как второй полноценный слот;
 - состояние маны и отката активного действия, включая медленное восстановление маны при возврате хода игроку;
 - временную защиту/guard как часть player snapshot, а не transport-состояния.
 - passive school identity остаётся derivable из `passiveAbilityCodes`, а не требует отдельной persistence-схемы.
@@ -214,7 +216,9 @@ src/
 
 Standalone-сцены сохраняются через `recordCommandIntentResult()` поверх command-intent rail, поэтому повтор того же `исследовать` intent возвращает тот же outcome. В текущем v1 эти сцены не выдают силу и не меняют экономику: это pacing/readability слой без FOMO.
 
-Создание `BattleSession` остаётся в use-case: resolver вычисляет enemy snapshot, turn owner, opening log и school/miniboss preference, а persistence, enemy-first автоход и telemetry остаются на application-границе.
+Создание `BattleSession` остаётся в use-case: resolver вычисляет enemy snapshot, turn owner, opening log и school/miniboss preference, а persistence и telemetry остаются на application-границе.
+
+Боевой outcome исследования теперь создаёт не мгновенный первый ход, а предложенную встречу: `BattleSession.encounter.status = OFFERED`, клавиатура показывает `В бой` и `Отступить`, а обычные боевые действия блокируются до решения игрока. `ENGAGE` переводит встречу в бой и восстанавливает исходного первого ходящего, `FLEE` может завершить с нейтральным результатом `FLED` или провалиться в бой с ответом врага.
 
 ### 7.5. Мастера испытаний
 
@@ -237,8 +241,8 @@ Standalone-сцены сохраняются через `recordCommandIntentResu
 - legacy stat-allocation удалена из runtime и persistence-контрактов полностью;
 - новая ось роста начинает идти через `PlayerSchoolMastery`, чтобы школа усиливала именно стиль боя, а не только голые числа.
 - для locked slice первые same-school synergies у Пламени и Тверди живут прямо в battle-domain rules и используют уже существующее состояние боя (`cooldown`, `guard`, `hp threshold`), а не отдельный новый runtime layer.
-- support-slot открывается через mastery milestone и пока даёт только половину статов выбранной руны; это первый loadout breadth slice без второй active action семантики.
-- support-slot v2 добавляет bounded passive modifier layer для locked школ, но current one-active combat budget остаётся временным readability rule, а не permanent ban на future multi-skill expansion.
+- два стартовых рунных слота являются baseline и работают полностью: статы, пассивы и active skill не режутся ролью слота.
+- future 3+ slots должны открываться через ветку мастера и отдельный progression/balance review, а не через возврат player-facing support-slot модели.
 
 ### 8. Release discipline
 
@@ -330,5 +334,6 @@ Shipped telemetry v1 не вводит отдельную analytics-platform и 
 - активные и пассивные навыки рун;
 - дополнительные боевые действия помимо базовой атаки;
 - крафт и предметы поверх текущего инвентаря;
-- сезонные ивенты, квесты и PvP;
+- квесты и новые PvE-события;
+- seasonal/live-ops и PvP только после отдельного product/safety review;
 - отдельный слой application DTO при росте числа transport-контрактов.

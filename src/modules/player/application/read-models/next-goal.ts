@@ -22,7 +22,7 @@ export type NextGoalType =
   | 'equip_school_sign'
   | 'challenge_school_miniboss'
   | 'reach_next_school_mastery'
-  | 'fill_support_slot'
+  | 'fill_rune_slot'
   | 'push_higher_threat'
   | 'equip_dropped_rune'
   | 'review_runes_after_defeat';
@@ -241,7 +241,7 @@ export const buildPlayerNextGoalView = (player: PlayerState): NextGoalView => {
 
   if (getUnlockedRuneSlotCount(player) > 1 && !getEquippedRune(player, 1)) {
     return createGoalView(
-      'fill_support_slot',
+      'fill_rune_slot',
       'open_runes',
       'откройте «🔮 Руны» и наденьте вторую руну в свободный слот',
       {

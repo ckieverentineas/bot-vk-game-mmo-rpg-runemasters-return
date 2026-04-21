@@ -1,201 +1,67 @@
 # PLAN — Runemasters Return
 
-> Последовательный plan-to-1.0 checklist без сроков.
-> Пункты отсортированы по зависимости и release value, а не по календарю.
+> Живой план текущего продукта. История уже сделанных изменений живёт в `CHANGELOG.md`; этот файл не должен превращаться в кладбище закрытых чекбоксов.
 
-Связанные документы:
+## Источники правды
 
-- `docs/product/1-0-release-charter.md`
-- `docs/product/deep-progression-rpg-vision.md`
-- `ARCHITECTURE.md`
-- `docs/telemetry/telemetry-plan.md`
-- `RELEASE_CHECKLIST.md`
-- `CHANGELOG.md`
+- `docs/product/1-0-release-charter.md` — обещание 1.0, out-of-scope и ethical retention boundaries.
+- `docs/product/deep-progression-rpg-vision.md` — дальняя vision-рамка, не committed scope.
+- `ARCHITECTURE.md` — границы модулей, persistence/runtime contracts и replay-safety rails.
+- `RELEASE_CHECKLIST.md` — что проверять перед крупной поставкой.
+- `CHANGELOG.md` — история shipped-изменений и release notes.
+- `docs/reviews/*` — decision snapshots. Старые support-slot review оставлены только как superseded references для истории.
 
-Статусы:
+## Текущие продуктовые решения
 
-- `[x]` done — завершено и уже вошло в рабочую базу проекта
-- `[~]` current — активный фокус
-- `[ ]` next — следующая обязательная очередь
-- `[-]` deferred — сознательно не тащим сейчас
-
-Правила:
-
-- закрываем пункт только когда есть код, docs, tests и нужное evidence;
-- новые задачи добавляем по зависимости и смыслу, а не по «срочности на словах»;
-- если изменение влияет на UX, экономику, награды или replay-safety, обновляем связанные docs и release rails;
-- не расширяем scope в social / PvP / live-ops, пока не доказан core PvE loop.
-
-## Зафиксированные решения
-
-- [x] `1.0` остаётся `PvE-first`, `schools-first` и без mandatory PvP.
-- [x] Никаких pay-for-power, guilt UX, FOMO-давления и punitive retention loops.
-- [x] Базовая атака должна оставаться полезной, а не быть одноразовым tutorial relic.
-- [x] Редкость расширяет сборку, а не ломает баланс лотерейной raw power.
-- [x] Exact-once semantics для наград, stale-action safety и persistence fallback не ослабляются ради удобства.
-- [x] Архитектурные границы сохраняются: `domain` → `application` → `infrastructure` → `src/vk`.
-- [x] Circles, async PvP и live-ops допускаются только после отдельного evidence review, а не как default roadmap promise.
-
-## Уже собранная база
-
-- [x] Переписан модульный TypeScript-каркас проекта с release rails.
-- [x] Собран базовый loop: регистрация → tutorial → исследование → бой → руны.
-- [x] В бою уже есть `basic attack`, рунные active skills, `defend`, enemy intents и event-first presentation.
-- [x] Мана в бою медленно восстанавливается при возврате хода игроку, не превращая это в долговременную attrition-систему между боями.
-- [x] Школы рун стали player-facing identity вместо внутреннего жаргона.
-- [x] Tutorial и onboarding уже связывают путь `базовая атака → первая руна → школа → стиль боя`.
-- [x] School mastery уже стала основной ранней осью роста вместо legacy stat-allocation.
-- [x] Два стартовых слота рун уже равноправны: обе надетые руны дают полные статы, пассивы и активные действия без player-facing модели “поддержки”.
-- [x] Existing-player return flow уже получил `return recap v1` без guilt/FOMO copy.
-- [x] `main menu`, `return recap`, `rune hub` и `battle result` уже используют единый school-aware next-goal слой.
-- [x] Исследование уже умеет выбирать исход шага: бой или standalone PvE-событие без FOMO и без создания `BattleSession`.
-- [x] Боевые исходы исследования теперь проходят через фазу `встречи`: враг представлен до первого хода, игрок может принять бой или попытаться отступить с шансом от ловкости.
-- [x] Есть reward duplication rails, stale-action rejection, command-intent dedupe и concurrency coverage для critical flows.
-- [x] Есть content validation, smoke tests, release preflight и telemetry v1 baseline.
+- 1.0 остаётся `PvE-first`, `schools-first` и без mandatory PvP.
+- FOMO, guilt UX, pay-for-power, exclusive power windows и attendance pressure не допускаются.
+- Основной CTA маршрута — `⚔️ Исследовать`. Исследование может дать standalone PvE-событие или встречу с врагом.
+- Бой больше не начинается мгновенно из исследования: сначала игрок видит врага, понимает угрозу и выбирает `⚔️ В бой` или `💨 Отступить`.
+- Шанс отступления считается от ловкости и даёт нейтральный исход `FLED`, без наград и без штрафного давления.
+- После завершённого боя игрок возвращается в общий exploration loop через `⚔️ Исследовать`, а не в отдельную кнопку “Новый бой”.
+- Мастера испытаний — только FOMO-safe PvE framing: они объясняют сцену, школу и tactical ask, но не раздают силу, не ставят таймеры и не являются live-ops системой.
+- Рунная сборка стартует с двух равноправных слотов. Каждая надетая руна работает полностью: статы, пассивы и активное действие, если оно есть.
+- Player-facing support-slot модель вырезана. Будущие 3+ слоты допустимы только как progression payoff через уровни, очки и ветку мастера.
+- Rune hub работает в два шага: список по 5 рун на странице, затем карточка выбранной руны со статами, пассивами, активными навыками и действиями.
+- `Надеть` автоматически использует первый свободный слот; игроку не нужно выбирать слот, пока это не станет реально нужным для продвинутой сборки.
+- Мана медленно восстанавливается внутри боя при возврате хода игроку. Долговременная HP/мана attrition между боями отложена до полноценной rest/recovery экономики.
+- Рост персонажа строится вокруг школ, mastery, рун и будущей ветки мастера, а не вокруг legacy stat allocation.
 
 ## Текущий фокус
 
-- [~] Превратить собранную базу в сильный vertical slice, который реально хочется продолжать, а не просто «потыкать и уйти».
-  - [~] Зафиксировать стартовые school packages и их читаемые payoffs.
-  - [~] Дать минимум 2 по-настоящему сильные school-first PvE ветки с разными врагами, ритмом и payoff.
-    - [x] Добавить ранние school-specific elite encounter hooks для Пламени и Тверди в `dark-forest`.
-    - [x] Добавить первый targeted same-school reward hook для этих элит, чтобы payoff был меньше похож на RNG-казино.
-    - [x] Добавить school novice guidance loop к этим элитам и первой unusual rune школы без новой quest/persistence-системы.
-    - [x] Добавить минимальный telemetry/evidence слой для старта school novice loop и aligned reward claim.
-    - [x] Закрепить первую aligned unusual rune как `испытание школы пройдено`, а не как безымянный лут-момент.
-    - [x] Добавить post-trial handoff: если первый знак школы уже получен, но ещё не экипирован, вести игрока прямо к его установке.
-    - [x] Начать логировать meaningful follow-up шаги после school trial: `open_runes`, `equip_school_sign`, `start_next_battle`.
-    - [x] Добавить первый school-aligned miniboss continuation для Пламени и Тверди после установки знака школы.
-    - [x] Поднять first `RARE` school payoff в `печать школы` и довести игрока от этой награды до её реальной установки в сборку.
-    - [x] Добавить узкий novice proof для Прорицания на существующих telegraph/intention rails без полного school-v1 package.
-    - [x] Довести Бурю до первого полного раннего school path по уже доказанному шаблону без новой tempo-системы.
-    - [x] Довести Прорицание до первого полного раннего school path по уже доказанному шаблону без нового combat runtime.
-    - [x] Добавить tooling-отчёт по school-first evidence funnel, чтобы playtest baseline по 4 школам собирался в одном markdown-срезе.
-  - [x] Ясно показывать, что именно игрок получил от новой редкости, новой руны или нового unlock'а.
-  - [x] Дать compact combat clarity block на активном ходу: текущее состояние боя + school-aware hint без новой боевой системы.
-  - [x] Сделать state-блок боя читаемым: HP, мана и статы игрока/врага показываются отдельными строками.
-  - [x] Покрасить resource-шкалы боя: HP меняет цвет по состоянию, мана отображается синей шкалой.
-  - [x] Расширить видимый battle timeline до нескольких последних событий, чтобы действие игрока не пропадало после реакции врага и регена маны.
-  - [x] Сделать battle timeline адаптивным: короткий бой показывает весь журнал, длинный сохраняет начало, пропуск и последние события без перегруза сообщения.
-  - [x] Синхронизировать боевую клавиатуру с UI: защита показывает прирост щита, рунная кнопка показывает доступность и не появляется без активного навыка.
-  - [x] Переделать rune hub в двухшаговый UX: список-карусель по 5 рун со статусом `надета`, затем отдельная карточка выбранной руны со статами, навыками и действиями `надеть / снять / распылить`.
-  - [x] Убрать player-facing support-slot модель: два стартовых слота работают как полноценные рунные слоты, а future 3+ слоты остаются задачей progression tree.
-  - [x] Добавить FOMO-safe слой `Мастеров испытаний` для PvE encounter framing без таймеров, streak'ов, ручной раздачи силы и live-ops давления.
-  - [x] Добавить exploration outcome resolver, который может вернуть бой или отдельную non-combat сцену без награды за срочность.
-  - [x] Расширить non-combat exploration на типы событий: передышка, находка, школьный след, опасный знак и Мастер испытаний.
-  - [x] Подключить малые resource-find эффекты к exact-once rail: standalone находка может дать материал без создания боя и без риска повторной выдачи при retry.
-  - [x] Расширить пул resource-find сцен на несколько ранних материалов, чтобы exploration-находки не ощущались одной повторяющейся травой.
-  - [x] Подключить `Мастеров` к standalone exploration-сценам как лёгкие директорские подсказки без новой persistence-модели и без FOMO-давления.
-  - [x] Вернуть post-battle CTA к `⚔️ Исследовать` и поднять шанс standalone exploration-сцен, чтобы исследования заметнее давали не только бои.
-  - [x] Добавить player-facing фазу встречи перед боем: представление врага, кнопки `⚔️ В бой` / `💨 Отступить`, нейтральный исход `FLED` и шанс отступления на основе ловкости.
-  - [ ] Доказать через playtests и telemetry, что первый school payoff приходит быстро и читаемо.
-  - [ ] Не расширять scope в social / PvP / live-ops, пока этот slice не доказан.
+Довести текущий PvE vertical slice до состояния, где игрок без внешних объяснений понимает:
 
-## Последовательный путь к релизу 1.0
+- что он сейчас исследует;
+- почему перед ним именно эта встреча или событие;
+- чем отличается `В бой` от `Отступить`;
+- что дала новая руна, знак школы или печать школы;
+- какой следующий шаг полезен, но не навязан давлением.
 
-### 1. Product lock для ближайшего релизного ядра
+## Ближайшие шаги
 
-- [x] Зафиксировать `1.0 promise` и явный out-of-scope.
-- [x] Зафиксировать ethical retention boundaries.
-- [~] Заморозить starter school bible в практическом виде, а не только как идею.
-- [ ] Заморозить rarity ladder и правила targeted chase.
-- [ ] Ясно описать, что считается «сильным school payoff» в раннем loop.
-- [ ] Держать явный cut-list для всего, что не усиливает core PvE / school loop.
+1. Проверить playtest-сценарий `исследовать -> событие/встреча -> бой/отступление -> результат -> исследовать` на читаемость и отсутствие “меня просто бросило в бой”.
+2. Дотянуть battle/exploration copy: события игрока, ответ врага, реген маны, FLED и victory/defeat должны читаться как одна последовательность.
+3. Укрепить rune hub как рабочий инструмент сборки: 5 рун на странице, понятные статусы `надета`, подробная карточка, чистые действия без support-терминов.
+4. Спроектировать ветку мастера: очки за уровни, meaningful perks, открытие 3+ рунных слотов и ограничения без FOMO/pay-for-power.
+5. Прежде чем включать долговременную attrition, отдельно спроектировать recovery/rest loop, pre-battle UI состояния, баланс ранних школ и exploit review.
+6. Расширить school-first PvE content: события, enemies, miniboss pressure points и targeted rewards для всех четырёх стартовых школ.
+7. Прогнать release evidence и ручной playtest по onboarding, school payoff, encounter choice, rune UX и post-session next goal.
 
-### 2. Platform safety и runtime contracts
+## Отложено или вырезано
 
-- [x] Ввести versioned battle/loadout/reward contracts.
-- [x] Ввести canonical reward write-path и exact-once reward claim semantics.
-- [x] Ввести stale-action rejection и replay-safe mutation rails.
-- [x] Ввести command-intent dedupe для keyboard и legacy-text hot paths.
-- [~] Поддерживать battle/loadout/reward compatibility fixtures и safe fallback policy при новых срезах.
-- [~] Довести backlog migration / persistence checks для критических состояний до системного набора.
-  - [x] Добавить current / legacy / future fixtures и hydration tests для player-state compatibility.
-- [ ] Держать duplication matrix и concurrency-critical cases как живые release rails, а не разовый аудит.
+- Player-facing support-slot / passive-only second rune model.
+- Отдельная кнопка `Проверить школу` как обязательный режим; школьная проверка должна жить внутри `Исследовать`.
+- Post-battle `Новый бой`, который обходит exploration resolver.
+- Real-time PvP, open PvP, ganking и mandatory PvP.
+- Social/PvP/live-ops scope до доказанного core PvE loop.
+- Free player market, auction-house economy и guild-war scale competition.
+- Daily chores, hard streaks, absence punishment и power-exclusive limited events.
+- Долговременная attrition без честной recovery/rest системы.
+- Глубокая crafting-игра как отдельный продукт внутри продукта до доказанного early/mid PvE loop.
 
-### 3. Onboarding, return и next-step clarity
+## Правило обновления
 
-- [x] Переписать welcome / tutorial copy в school-first framing.
-- [x] Добавить `return recap v1`.
-- [x] Добавить post-battle `Следующая цель`.
-- [x] Вынести school-aware next-goal read-model в единый слой.
-- [x] Добавить ясный player-facing feedback: что именно изменила новая редкость, новая руна или unlock сборки.
-- [ ] Проверить, что игрок не тонет в терминах, кнопках и системном шуме.
-- [ ] Сохранить VK UX компактным: короткие, actionable сообщения вместо длинных простыней.
-
-### 4. Telemetry, validation и release evidence
-
-- [x] Подготовить telemetry plan v1.
-- [x] Подготовить content validator scope и release preflight rails.
-- [x] Покрыть transport smoke и critical repository regressions.
-- [x] Логировать `onboarding_started`, `loadout_changed`, `return_recap_shown`, `post_session_next_goal_shown`.
-- [~] Использовать telemetry и playtests как evidence для ship / iterate / cut решений.
-- [~] Собирать регулярный обзор по onboarding clarity, school readability и loadout engagement.
-  - [x] Добавить `npm run release:evidence` с единым markdown-срезом по onboarding coverage, school payoff, next-goal/return clarity и QA/exploit guardrails поверх текущего `GameLog` rail.
-  - [x] Дозакрыть onboarding evidence gap через `tutorial_path_chosen`, `first_school_presented` и `first_school_committed`.
-  - [x] Добавить compact payoff confirmation после установки первого знака школы и battle hint для следующего school-first боя.
-  - [x] После первого знака школы вести игрока через обычный CTA `⚔️ Исследовать`, чтобы школьная проверка оставалась частью exploration flow.
-- [ ] Не тащить новые product promises без evidence из runtime и playtests.
-
-### 5. Vertical Slice proof
-
-- [ ] Довести 2 strongest starter schools до действительно запоминающегося early-to-mid PvE loop.
-  - [ ] Под эти школы собрать enemy roles, encounters и miniboss pressure points.
-  - [ ] Дать targeted chase, который ощущается намеренным поиском, а не казино.
-  - [ ] Дать первый midgame hook после раннего mastery / loadout payoff.
-- [ ] Доказать, что первый school payoff приходит быстро и меняет решения игрока в бою.
-- [ ] Доказать, что battle result и return flow создают желание продолжать, а не menu wandering.
-- [ ] Держать награды, upgrade sinks и loadout growth читаемыми и честными.
-
-### 6. Alpha shape
-
-- [ ] Довести все 4 стартовые школы до release-shapable состояния.
-- [ ] Расширить PvE path до midgame / proto-endgame без пустого провала между стартом и «когда-нибудь потом».
-- [ ] Спроектировать ветку прокачки мастера: очки за уровни, meaningful perks и открытие 3+ рунных слотов без FOMO и pay-for-power.
-- [ ] Добавить quests / goals слой, который поддерживает короткие meaningful sessions.
-- [ ] Рассмотреть combat attrition только вместе с recovery/rest economy, UI-состоянием до боя и полным balance pass; не включать как скрытое наказание за серию боёв.
-- [ ] Укрепить economy, progression tuning и content throughput.
-- [ ] Прогнать exploit / abuse sweep по всем новым reward-bearing loops.
-
-### 7. Beta hardening
-
-- [ ] Проверить реальную player readability и healthy retention без FOMO-механик.
-- [ ] Добрать контентное покрытие, нужное для честного `1.0 promise`.
-- [ ] Довести support / rollback / hotfix readiness.
-- [ ] Рассматривать circles / social-lite только если core loop уже доказан и не просит срочного rework.
-- [ ] Рассматривать optional async PvP только если он реально усиливает продукт и не ломает safety/scope.
-
-### 8. Release 1.0 readiness
-
-- [ ] Закрыть final content lock по школам, PvE path, экономике и return loop.
-- [ ] Пройти полный `RELEASE_CHECKLIST.md` без оговорок.
-- [ ] Убедиться, что `README`, `CHANGELOG`, `ARCHITECTURE` и player-facing promise совпадают с реально shipped состоянием.
-- [ ] Подготовить launch monitoring и post-launch response plan без манипулятивного retention pressure.
-- [ ] Закрыть или явно вырезать весь scope, который не доказывается к моменту релиза.
-
-## Deferred / not now
-
-- [-] Real-time PvP.
-- [-] Open PvP / ganking.
-- [-] Territory control, guild wars и обязательная соревновательная политика.
-- [-] Свободная торговля и player market.
-- [-] `8+` школ на старте.
-- [-] Глубокий crafting simulator как отдельная игра внутри игры.
-- [-] Mandatory attendance systems.
-- [-] Жёсткие seasonal wipes.
-- [-] Power-exclusive FOMO events, panic offers и guilt-driven comeback loops.
-- [-] Любое расширение social / PvP / live-ops до доказательства core PvE loop.
-
-## Long-horizon design direction
-
-- [-] Зафиксирован aspirational GDD для более глубокой progression-centric версии Runemasters Return: `docs/product/deep-progression-rpg-vision.md`.
-- [-] Этот vision-документ не является committed 1.0 scope, production promise или тихим расширением roadmap.
-- [-] Любая система из него переносится в committed order только после отдельной product / tech / ethical-retention / exploit review оценки.
-
-## Как обновлять этот план
-
-- Переводим каждый пункт только между четырьмя состояниями: `[x]`, `[~]`, `[ ]`, `[-]`.
-- Уже завершённое не удаляем: это история реального прогресса, а не мусор.
-- Новые пункты добавляем в тот блок, к которому они относятся по зависимости.
-- Если решение уже зафиксировано в source-of-truth документе, в плане держим короткую формулировку и ссылку, а не дублируем весь policy-текст.
-- Если shipped slice меняет продуктовое обещание, UX, telemetry semantics или release behavior, синхронизируем связанные markdown-документы сразу.
+- Новое поведение игрока обновляет `README.md`, `CHANGELOG.md`, `PLAN.md` и при необходимости `ARCHITECTURE.md` / `RELEASE_CHECKLIST.md`.
+- `PLAN.md` хранит только текущую карту решений и ближайший порядок работ. Закрытые детали уходят в `CHANGELOG.md`.
+- Старый review-документ не должен спорить с текущим runtime. Если решение отменено, документ помечается `superseded` и остаётся только как историческая ссылка.
+- Любой новый scope, который меняет economy, rewards, persistence, replay-safety или retention pressure, сначала проходит product/tech/exploit review.
