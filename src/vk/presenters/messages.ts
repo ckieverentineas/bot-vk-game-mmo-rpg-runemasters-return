@@ -571,8 +571,14 @@ const renderBattleNextGoal = (battle: BattleView, player?: PlayerState): string[
   ];
 };
 
+const recentBattleLogLimit = 4;
+
+const selectRecentBattleLogLines = (log: readonly string[]): readonly string[] => (
+  log.length > 0 ? log.slice(-recentBattleLogLimit) : ['Пока без событий.']
+);
+
 export const renderBattle = (battle: BattleView, player?: PlayerState, acquisitionSummary?: AcquisitionSummaryView | null): string => {
-  const latestLogLines = battle.log.length > 0 ? battle.log.slice(-2) : ['Пока без событий.'];
+  const latestLogLines = selectRecentBattleLogLines(battle.log);
   const clarity = buildBattleClarityView(battle);
   const enemyIntentLine = renderBattleEnemyIntent(battle);
   const battleStateLine = battle.status === 'ACTIVE'

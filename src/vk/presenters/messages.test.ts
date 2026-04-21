@@ -671,7 +671,7 @@ describe('messages school-first onboarding framing', () => {
     expect(message).toContain('🔥 Пламя: враг уже просел');
   });
 
-  it('shows the last two battle events as a readable timeline', () => {
+  it('shows enough recent battle events to keep the player action visible', () => {
     const message = renderBattle(createBattle({
       status: 'ACTIVE',
       result: null,
@@ -679,13 +679,17 @@ describe('messages school-first onboarding framing', () => {
       log: [
         '🗺️ Тёмный лес: на вас выходит обычный враг Синий слизень.',
         '🧭 Путевой эпизод: вы находите свежие следы.',
-        '⚔️ Вы наносите 4 урона врагу Синий слизень.',
+        '🌀 Импульс углей прожигает Синий слизень на 8 урона.',
+        '⚠️ Синий слизень готовит «Кислотный прорыв». Защита на следующий ход сработает хуже обычного.',
+        '💙 Рунный фокус: +1 маны.',
       ],
     }));
 
     expect(message).toContain('Ход событий');
     expect(message).toContain('• 🧭 Путевой эпизод: вы находите свежие следы.');
-    expect(message).toContain('• ⚔️ Вы наносите 4 урона врагу Синий слизень.');
+    expect(message).toContain('• 🌀 Импульс углей прожигает Синий слизень на 8 урона.');
+    expect(message).toContain('• ⚠️ Синий слизень готовит «Кислотный прорыв». Защита на следующий ход сработает хуже обычного.');
+    expect(message).toContain('• 💙 Рунный фокус: +1 маны.');
     expect(message).not.toContain('• 🗺️ Тёмный лес');
   });
 
