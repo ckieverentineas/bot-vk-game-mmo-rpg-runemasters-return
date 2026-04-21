@@ -4,6 +4,10 @@ import { Prisma } from '@prisma/client';
 import { describe, expect, it, vi } from 'vitest';
 
 import type { BattleView, PlayerState, RuneDraft, StatBlock } from '../../../../shared/types/game';
+import { createPendingRewardSnapshot, type PendingRewardAppliedResultSnapshot } from '../../../rewards/domain/pending-reward-snapshot';
+import type { TrophyActionDefinition } from '../../../rewards/domain/trophy-actions';
+import { createAppliedPendingRewardLedgerEntry, createPendingRewardLedgerEntry } from '../../domain/contracts/reward-ledger';
+import type { RewardIntent } from '../../domain/contracts/reward-intent';
 import { PrismaGameRepository } from './PrismaGameRepository';
 import type { PersistedPlayerStateHydrationInput } from './player-state-hydration';
 
@@ -287,6 +291,59 @@ const createStats = (): StatBlock => ({
   intelligence: 0,
 });
 
+const createRewardIntent = (): RewardIntent => ({
+  schemaVersion: 1,
+  intentId: 'battle-victory:battle-1',
+  sourceType: 'BATTLE_VICTORY',
+  sourceId: 'battle-1',
+  playerId: 1,
+  payload: {
+    experience: 4,
+    gold: 2,
+    shards: {
+      USUAL: 2,
+    },
+    droppedRune: null,
+  },
+});
+
+const createTrophyActions = (): readonly TrophyActionDefinition[] => [
+  {
+    code: 'skin_beast',
+    label: 'Skin beast',
+    skillCodes: ['gathering.skinning'],
+    visibleRewardFields: ['leather', 'bone'],
+  },
+  {
+    code: 'claim_all',
+    label: 'Claim all',
+    skillCodes: [],
+    visibleRewardFields: [],
+  },
+];
+
+const createPendingRewardLedgerRecord = () => {
+  const pendingSnapshot = createPendingRewardSnapshot(
+    createRewardIntent(),
+    createTrophyActions(),
+    '2026-04-22T00:00:00.000Z',
+  );
+  const ledger = createPendingRewardLedgerEntry(pendingSnapshot);
+
+  return {
+    id: 'reward-ledger-row-1',
+    playerId: 1,
+    ledgerKey: ledger.ledgerKey,
+    sourceType: ledger.sourceType,
+    sourceId: ledger.sourceId,
+    status: ledger.status,
+    entrySnapshot: JSON.stringify(ledger),
+    appliedAt: null,
+    createdAt: new Date('2026-04-22T00:00:00.000Z'),
+    updatedAt: new Date('2026-04-22T00:00:00.000Z'),
+  };
+};
+
 const createPlayerStateSnapshot = (): PlayerState => ({
   userId: 10,
   vkId: 1001,
@@ -362,6 +419,7 @@ const createPrismaMock = () => {
     rewardLedgerRecord: {
       create: vi.fn(),
       findUnique: vi.fn(),
+      updateMany: vi.fn(),
     },
     commandIntentRecord: {
       create: vi.fn(),
@@ -540,6 +598,148 @@ describe('PrismaGameRepository release hardening', () => {
         rank: 1,
       },
     ]);
+  });
+
+  it('collects a pending reward with the selected trophy action', async () => {
+    const { repository, tx } = createPrismaMock();
+    const pendingRecord = createPendingRewardLedgerRecord();
+
+    tx.rewardLedgerRecord.findUnique.mockResolvedValue(pendingRecord);
+    tx.rewardLedgerRecord.updateMany.mockResolvedValue({ count: 1 });
+    tx.playerSkill.findMany.mockResolvedValue([]);
+    tx.playerSkill.upsert.mockResolvedValue({});
+    tx.player.findUnique.mockResolvedValue({
+      ...createPlayerRecord(),
+      skills: [
+        {
+          playerId: 1,
+          skillCode: 'gathering.skinning',
+          experience: 1,
+          rank: 0,
+          updatedAt: new Date('2026-04-22T00:01:00.000Z'),
+        },
+      ],
+    });
+
+    const result = await repository.collectPendingReward(1, 'battle-victory:battle-1', 'skin_beast');
+
+    expect(tx.rewardLedgerRecord.findUnique).toHaveBeenCalledWith({
+      where: {
+        ledgerKey: 'battle-victory:battle-1',
+      },
+    });
+    expect(tx.rewardLedgerRecord.updateMany).toHaveBeenCalledWith({
+      where: {
+        playerId: 1,
+        ledgerKey: 'battle-victory:battle-1',
+        status: 'PENDING',
+      },
+      data: {
+        status: 'APPLIED',
+        entrySnapshot: expect.any(String),
+        appliedAt: expect.any(Date),
+      },
+    });
+
+    const updateData = tx.rewardLedgerRecord.updateMany.mock.calls[0]?.[0]?.data;
+    const ledgerSnapshot = JSON.parse(String(updateData?.entrySnapshot));
+
+    expect(ledgerSnapshot).toMatchObject({
+      ledgerKey: 'battle-victory:battle-1',
+      status: 'APPLIED',
+      pendingRewardSnapshot: {
+        status: 'APPLIED',
+        selectedActionCode: 'skin_beast',
+        appliedResult: {
+          baseRewardApplied: true,
+          inventoryDelta: {},
+          skillUps: [
+            {
+              skillCode: 'gathering.skinning',
+              experienceBefore: 0,
+              experienceAfter: 1,
+              rankBefore: 0,
+              rankAfter: 0,
+            },
+          ],
+          statUps: [],
+          schoolUps: [],
+        },
+      },
+    });
+    expect(tx.playerSkill.upsert).toHaveBeenCalledWith({
+      where: {
+        playerId_skillCode: {
+          playerId: 1,
+          skillCode: 'gathering.skinning',
+        },
+      },
+      update: {
+        experience: 1,
+        rank: 0,
+      },
+      create: {
+        playerId: 1,
+        skillCode: 'gathering.skinning',
+        experience: 1,
+        rank: 0,
+      },
+    });
+    expect(result.ledgerKey).toBe('battle-victory:battle-1');
+    expect(result.selectedActionCode).toBe('skin_beast');
+    expect(result.appliedResult).toEqual(ledgerSnapshot.pendingRewardSnapshot.appliedResult);
+    expect(result.player.skills).toEqual([
+      {
+        skillCode: 'gathering.skinning',
+        experience: 1,
+        rank: 0,
+      },
+    ]);
+  });
+
+  it('replays an already applied pending reward without applying it again', async () => {
+    const { repository, tx } = createPrismaMock();
+    const pendingRecord = createPendingRewardLedgerRecord();
+    const pendingLedger = JSON.parse(pendingRecord.entrySnapshot);
+    const appliedAt = '2026-04-22T00:01:00.000Z';
+    const appliedResult: PendingRewardAppliedResultSnapshot = {
+      baseRewardApplied: true,
+      inventoryDelta: {},
+      skillUps: [
+        {
+          skillCode: 'gathering.skinning',
+          experienceBefore: 0,
+          experienceAfter: 1,
+          rankBefore: 0,
+          rankAfter: 0,
+        },
+      ],
+      statUps: [],
+      schoolUps: [],
+    };
+    const appliedLedger = createAppliedPendingRewardLedgerEntry({
+      ...pendingLedger.pendingRewardSnapshot,
+      status: 'APPLIED',
+      selectedActionCode: 'skin_beast',
+      appliedResult,
+      updatedAt: appliedAt,
+    }, appliedAt);
+
+    tx.rewardLedgerRecord.findUnique.mockResolvedValue({
+      ...pendingRecord,
+      status: 'APPLIED',
+      entrySnapshot: JSON.stringify(appliedLedger),
+      appliedAt: new Date(appliedAt),
+    });
+    tx.player.findUnique.mockResolvedValue(createPlayerRecord());
+
+    const result = await repository.collectPendingReward(1, 'battle-victory:battle-1', 'claim_all');
+
+    expect(result.ledgerKey).toBe('battle-victory:battle-1');
+    expect(result.selectedActionCode).toBe('skin_beast');
+    expect(result.appliedResult).toEqual(appliedResult);
+    expect(tx.rewardLedgerRecord.updateMany).not.toHaveBeenCalled();
+    expect(tx.playerSkill.upsert).not.toHaveBeenCalled();
   });
 
   it('creates new players without fresh legacy stat points', async () => {

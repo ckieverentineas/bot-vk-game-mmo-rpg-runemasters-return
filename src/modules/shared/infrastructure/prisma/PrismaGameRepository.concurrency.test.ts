@@ -421,6 +421,71 @@ describe.sequential('PrismaGameRepository concurrency rails', () => {
     expect(runeCount).toBe(1);
   });
 
+  it('collects a pending victory reward once with the selected trophy action', async () => {
+    const player = await createPlayer(20032);
+    const activeBattle = await repository.createBattle(player.playerId, createBattleInput(player.playerId));
+    const completedBattle = toCompletedVictoryBattle(activeBattle, createRuneDraft('РќР°РіСЂР°РґРЅР°СЏ СЂСѓРЅР° РџР»Р°РјРµРЅРё'));
+
+    await repository.finalizeBattle(player.playerId, completedBattle);
+
+    const pendingLedger = await prisma.rewardLedgerRecord.findFirstOrThrow({
+      where: {
+        playerId: player.playerId,
+      },
+    });
+
+    const first = await repository.collectPendingReward(player.playerId, pendingLedger.ledgerKey, 'gather_slime');
+    const second = await repository.collectPendingReward(player.playerId, pendingLedger.ledgerKey, 'claim_all');
+    const persistedLedger = await prisma.rewardLedgerRecord.findUnique({
+      where: {
+        ledgerKey: pendingLedger.ledgerKey,
+      },
+    });
+    const persistedSkills = await prisma.playerSkill.findMany({
+      where: {
+        playerId: player.playerId,
+      },
+    });
+    const ledgerSnapshot = JSON.parse(persistedLedger?.entrySnapshot ?? '{}') as {
+      status?: string;
+      pendingRewardSnapshot?: {
+        status?: string;
+        selectedActionCode?: string;
+        appliedResult?: {
+          skillUps?: Array<{
+            skillCode?: string;
+            experienceBefore?: number;
+            experienceAfter?: number;
+          }>;
+        };
+      };
+    };
+
+    expect(first.selectedActionCode).toBe('gather_slime');
+    expect(second.selectedActionCode).toBe('gather_slime');
+    expect(persistedLedger?.status).toBe('APPLIED');
+    expect(persistedLedger?.appliedAt).toBeInstanceOf(Date);
+    expect(ledgerSnapshot.status).toBe('APPLIED');
+    expect(ledgerSnapshot.pendingRewardSnapshot?.status).toBe('APPLIED');
+    expect(ledgerSnapshot.pendingRewardSnapshot?.selectedActionCode).toBe('gather_slime');
+    expect(ledgerSnapshot.pendingRewardSnapshot?.appliedResult?.skillUps).toEqual([
+      {
+        skillCode: 'gathering.reagent_gathering',
+        experienceBefore: 0,
+        experienceAfter: 1,
+        rankBefore: 0,
+        rankAfter: 0,
+      },
+    ]);
+    expect(persistedSkills).toEqual([
+      expect.objectContaining({
+        skillCode: 'gathering.reagent_gathering',
+        experience: 1,
+        rank: 0,
+      }),
+    ]);
+  });
+
   it('returns the same canonical drop when parallel finalize branches resolve different random outcomes', async () => {
     const player = await createPlayer(20031);
     const activeBattle = await repository.createBattle(player.playerId, createBattleInput(player.playerId));

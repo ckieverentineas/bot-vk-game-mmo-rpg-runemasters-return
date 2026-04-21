@@ -8,6 +8,8 @@ import type {
   RuneRarity,
   StatBlock,
 } from '../../../../shared/types/game';
+import type { PendingRewardAppliedResultSnapshot } from '../../../rewards/domain/pending-reward-snapshot';
+import type { TrophyActionCode } from '../../../rewards/domain/trophy-actions';
 
 export type RuneLoadoutCommandIntentKey = 'EQUIP_RUNE' | 'UNEQUIP_RUNE';
 export type RuneNavigationCommandIntentKey = 'MOVE_RUNE_CURSOR' | 'SELECT_RUNE_PAGE_SLOT';
@@ -86,6 +88,13 @@ export interface FinalizeBattleResult {
   readonly battle: BattleView;
 }
 
+export interface CollectPendingRewardResult {
+  readonly player: PlayerState;
+  readonly ledgerKey: string;
+  readonly selectedActionCode: TrophyActionCode;
+  readonly appliedResult: PendingRewardAppliedResultSnapshot;
+}
+
 export interface CommandIntentReplayResult<TResult = PlayerState> {
   readonly status: 'APPLIED' | 'PENDING';
   readonly result?: TResult;
@@ -125,6 +134,7 @@ export interface GameRepository {
     buildResult: (player: PlayerState) => TResult,
   ): Promise<TResult>;
   applyPlayerSkillExperience(playerId: number, gains: readonly PlayerSkillPointGain[]): Promise<PlayerState>;
+  collectPendingReward(playerId: number, ledgerKey: string, actionCode: TrophyActionCode): Promise<CollectPendingRewardResult>;
   saveExplorationState(
     playerId: number,
     state: Pick<PlayerState, 'locationLevel' | 'highestLocationLevel' | 'victoryStreak' | 'defeatStreak' | 'tutorialState'>,

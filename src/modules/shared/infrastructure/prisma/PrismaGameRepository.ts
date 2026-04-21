@@ -33,14 +33,29 @@ import {
 } from '../../../player/domain/school-mastery';
 import { applyPlayerSkillExperience as applyPlayerSkillExperienceDomain } from '../../../player/domain/player-skills';
 import { getSchoolNovicePathDefinitionForEnemy, hasRuneOfSchoolAtLeastRarity } from '../../../player/domain/school-novice-path';
-import { createPendingRewardSnapshot } from '../../../rewards/domain/pending-reward-snapshot';
+import {
+  createPendingRewardSnapshot,
+  type PendingRewardAppliedResultSnapshot,
+  type PendingRewardAppliedSnapshotV1,
+  type PendingRewardSkillUpSnapshot,
+  type PendingRewardTrophyActionSnapshot,
+} from '../../../rewards/domain/pending-reward-snapshot';
 import { resolveTrophyActions } from '../../../rewards/domain/trophy-actions';
+import type { TrophyActionCode } from '../../../rewards/domain/trophy-actions';
 import { getSchoolDefinitionForArchetype } from '../../../runes/domain/rune-schools';
 import { hydratePlayerStateFromPersistence } from './player-state-hydration';
 import { buildLoadoutSnapshotFromBattle, isLoadoutSnapshot, projectBattleRuneLoadout, type LoadoutSnapshot } from '../../domain/contracts/loadout-snapshot';
-import { createPendingRewardLedgerEntry } from '../../domain/contracts/reward-ledger';
+import {
+  createAppliedPendingRewardLedgerEntry,
+  createPendingRewardLedgerEntry,
+  isRewardLedgerEntry,
+  type AppliedPendingRewardLedgerEntryV1,
+  type PendingRewardLedgerEntryV1,
+  type RewardLedgerEntry,
+} from '../../domain/contracts/reward-ledger';
 import { createBattleVictoryRewardIntent } from '../../domain/contracts/reward-intent';
 import type {
+  CollectPendingRewardResult,
   CreateBattleOptions,
   FinalizeBattleResult,
   GameCommandIntentKey,
@@ -106,6 +121,48 @@ const aggregatePlayerSkillPointGains = (
   result.set(gain.skillCode, (result.get(gain.skillCode) ?? 0) + points);
   return result;
 }, new Map<PlayerSkillCode, number>());
+
+const parseRewardLedgerEntrySnapshot = (value: string): RewardLedgerEntry => {
+  const parsed = parseJson<unknown>(value, null);
+
+  if (!isRewardLedgerEntry(parsed)) {
+    throw new AppError('reward_ledger_snapshot_invalid', 'Снимок награды поврежден. Обновите экран и попробуйте еще раз.');
+  }
+
+  return parsed;
+};
+
+const isPendingRewardLedgerEntryForCollection = (
+  ledger: RewardLedgerEntry,
+): ledger is PendingRewardLedgerEntryV1 => (
+  ledger.status === 'PENDING' && 'pendingRewardSnapshot' in ledger
+);
+
+const isAppliedPendingRewardLedgerEntryForCollection = (
+  ledger: RewardLedgerEntry,
+): ledger is AppliedPendingRewardLedgerEntryV1 => (
+  ledger.status === 'APPLIED' && 'pendingRewardSnapshot' in ledger
+);
+
+const findPendingRewardTrophyAction = (
+  ledger: PendingRewardLedgerEntryV1,
+  actionCode: TrophyActionCode,
+): PendingRewardTrophyActionSnapshot => {
+  const action = ledger.pendingRewardSnapshot.trophyActions.find((candidate) => candidate.code === actionCode);
+
+  if (!action) {
+    throw new AppError('pending_reward_action_unavailable', 'Это действие для трофеев уже недоступно. Обновите экран.');
+  }
+
+  return action;
+};
+
+const buildPendingRewardSkillPointGains = (
+  action: PendingRewardTrophyActionSnapshot,
+): readonly PlayerSkillPointGain[] => action.skillCodes.map((skillCode) => ({
+  skillCode,
+  points: 1,
+}));
 
 const defaultBattlePlayerSnapshot = (playerId: number): BattleView['player'] => ({
   playerId,
@@ -579,6 +636,127 @@ export class PrismaGameRepository implements GameRepository {
     return 'PENDING';
   }
 
+  private ensureCollectableRewardLedger(
+    ledger: RewardLedgerEntry,
+    playerId: number,
+    ledgerKey: string,
+  ): void {
+    if (ledger.playerId !== playerId || ledger.ledgerKey !== ledgerKey) {
+      throw new AppError('reward_ledger_snapshot_invalid', 'Снимок награды не совпадает с записью. Обновите экран.');
+    }
+  }
+
+  private async buildCollectedPendingRewardResult(
+    tx: TransactionClient,
+    playerId: number,
+    ledger: AppliedPendingRewardLedgerEntryV1,
+  ): Promise<CollectPendingRewardResult> {
+    return {
+      player: this.mapPlayer(await this.requirePlayerRecord(tx, playerId)),
+      ledgerKey: ledger.ledgerKey,
+      selectedActionCode: ledger.pendingRewardSnapshot.selectedActionCode,
+      appliedResult: ledger.pendingRewardSnapshot.appliedResult,
+    };
+  }
+
+  private async tryReplayCollectedPendingReward(
+    tx: TransactionClient,
+    playerId: number,
+    ledgerKey: string,
+  ): Promise<CollectPendingRewardResult | null> {
+    const record = await tx.rewardLedgerRecord.findUnique({
+      where: { ledgerKey },
+    });
+
+    if (!record || record.playerId !== playerId) {
+      return null;
+    }
+
+    const ledger = parseRewardLedgerEntrySnapshot(record.entrySnapshot);
+    this.ensureCollectableRewardLedger(ledger, playerId, ledgerKey);
+
+    if (!isAppliedPendingRewardLedgerEntryForCollection(ledger)) {
+      return null;
+    }
+
+    return this.buildCollectedPendingRewardResult(tx, playerId, ledger);
+  }
+
+  private async resolvePendingRewardSkillUps(
+    tx: TransactionClient,
+    playerId: number,
+    gains: readonly PlayerSkillPointGain[],
+  ): Promise<readonly PendingRewardSkillUpSnapshot[]> {
+    const aggregatedGains = aggregatePlayerSkillPointGains(gains);
+
+    if (aggregatedGains.size === 0) {
+      return [];
+    }
+
+    const skillCodes = [...aggregatedGains.keys()];
+    const persistedSkills = await tx.playerSkill.findMany({
+      where: {
+        playerId,
+        skillCode: {
+          in: skillCodes,
+        },
+      },
+    });
+    const persistedSkillsByCode = new Map<PlayerSkillCode, (typeof persistedSkills)[number]>(
+      persistedSkills.map((skill) => [skill.skillCode as PlayerSkillCode, skill]),
+    );
+
+    return [...aggregatedGains.entries()].map(([skillCode, points]) => {
+      const currentSkill = persistedSkillsByCode.get(skillCode);
+      const nextSkill = applyPlayerSkillExperienceDomain(
+        currentSkill
+          ? {
+              skillCode,
+              experience: currentSkill.experience,
+              rank: currentSkill.rank,
+            }
+          : null,
+        skillCode,
+        points,
+      );
+
+      return {
+        skillCode,
+        experienceBefore: currentSkill?.experience ?? 0,
+        experienceAfter: nextSkill.experience,
+        rankBefore: currentSkill?.rank ?? 0,
+        rankAfter: nextSkill.rank,
+      };
+    });
+  }
+
+  private async persistPendingRewardSkillUps(
+    tx: TransactionClient,
+    playerId: number,
+    skillUps: readonly PendingRewardSkillUpSnapshot[],
+  ): Promise<void> {
+    for (const skillUp of skillUps) {
+      await tx.playerSkill.upsert({
+        where: {
+          playerId_skillCode: {
+            playerId,
+            skillCode: skillUp.skillCode,
+          },
+        },
+        update: {
+          experience: skillUp.experienceAfter,
+          rank: skillUp.rankAfter,
+        },
+        create: {
+          playerId,
+          skillCode: skillUp.skillCode,
+          experience: skillUp.experienceAfter,
+          rank: skillUp.rankAfter,
+        },
+      });
+    }
+  }
+
   public async findPlayerByVkId(vkId: number): Promise<PlayerState | null> {
     const player = await this.prisma.player.findFirst({
       where: {
@@ -712,6 +890,87 @@ export class PrismaGameRepository implements GameRepository {
       }
 
       return this.mapPlayer(await this.requirePlayerRecord(tx, playerId));
+    });
+  }
+
+  public async collectPendingReward(
+    playerId: number,
+    ledgerKey: string,
+    actionCode: TrophyActionCode,
+  ): Promise<CollectPendingRewardResult> {
+    return this.prisma.$transaction(async (tx) => {
+      const record = await tx.rewardLedgerRecord.findUnique({
+        where: { ledgerKey },
+      });
+
+      if (!record || record.playerId !== playerId) {
+        throw new AppError('pending_reward_not_found', 'Награда уже недоступна. Обновите экран.');
+      }
+
+      const ledger = parseRewardLedgerEntrySnapshot(record.entrySnapshot);
+      this.ensureCollectableRewardLedger(ledger, playerId, ledgerKey);
+
+      if (isAppliedPendingRewardLedgerEntryForCollection(ledger)) {
+        return this.buildCollectedPendingRewardResult(tx, playerId, ledger);
+      }
+
+      if (!isPendingRewardLedgerEntryForCollection(ledger)) {
+        throw new AppError('pending_reward_not_found', 'Награда уже недоступна. Обновите экран.');
+      }
+
+      const action = findPendingRewardTrophyAction(ledger, actionCode);
+      const skillUps = await this.resolvePendingRewardSkillUps(
+        tx,
+        playerId,
+        buildPendingRewardSkillPointGains(action),
+      );
+      const appliedAt = new Date();
+      const appliedResult: PendingRewardAppliedResultSnapshot = {
+        baseRewardApplied: true,
+        inventoryDelta: {},
+        skillUps,
+        statUps: [],
+        schoolUps: [],
+      };
+      const appliedSnapshot: PendingRewardAppliedSnapshotV1 = {
+        ...ledger.pendingRewardSnapshot,
+        status: 'APPLIED',
+        selectedActionCode: action.code,
+        appliedResult,
+        updatedAt: appliedAt.toISOString(),
+      };
+      const appliedLedger = createAppliedPendingRewardLedgerEntry(appliedSnapshot, appliedAt.toISOString());
+      const claimed = await tx.rewardLedgerRecord.updateMany({
+        where: {
+          playerId,
+          ledgerKey,
+          status: 'PENDING',
+        },
+        data: {
+          status: 'APPLIED',
+          entrySnapshot: stringifyJson(appliedLedger, '{}'),
+          appliedAt,
+        },
+      });
+
+      if (claimed.count === 0) {
+        const replay = await this.tryReplayCollectedPendingReward(tx, playerId, ledgerKey);
+
+        if (replay) {
+          return replay;
+        }
+
+        throw new AppError('command_retry_pending', 'Награда уже обрабатывается. Обновите экран через мгновение.');
+      }
+
+      await this.persistPendingRewardSkillUps(tx, playerId, skillUps);
+
+      return {
+        player: this.mapPlayer(await this.requirePlayerRecord(tx, playerId)),
+        ledgerKey: appliedLedger.ledgerKey,
+        selectedActionCode: action.code,
+        appliedResult,
+      };
     });
   }
 
