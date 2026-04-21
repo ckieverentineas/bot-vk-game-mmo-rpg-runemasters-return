@@ -98,10 +98,10 @@ describe('EquipCurrentRune', () => {
         intentStateKey: stateKey,
         expectedPlayerUpdatedAt: player.updatedAt,
         expectedCurrentRuneIndex: 0,
-        expectedUnlockedRuneSlotCount: 1,
+        expectedUnlockedRuneSlotCount: 2,
         expectedSelectedRuneId: 'rune-1',
         expectedEquippedRuneId: null,
-        expectedEquippedRuneIdsBySlot: [null],
+        expectedEquippedRuneIdsBySlot: [null, null],
         expectedRuneIds: ['rune-1'],
       }),
     );
@@ -212,7 +212,7 @@ describe('EquipCurrentRune', () => {
     expect(repository.equipRune).not.toHaveBeenCalled();
   });
 
-  it('equips the selected rune into support slot when it is unlocked', async () => {
+  it('equips the selected rune into slot 2 when it is unlocked', async () => {
     const player = createPlayer({
       unlockedRuneSlotCount: 2,
       runes: [
@@ -260,7 +260,7 @@ describe('EquipCurrentRune', () => {
     const useCase = new EquipCurrentRune(repository, telemetry);
     const stateKey = buildEquipIntentStateKey(player, 1);
 
-    await useCase.execute(player.vkId, 1, 'intent-support-1', stateKey);
+    await useCase.execute(player.vkId, 1, 'intent-slot-2-1', stateKey);
 
     expect(repository.equipRune).toHaveBeenCalledWith(
       player.playerId,
@@ -272,7 +272,8 @@ describe('EquipCurrentRune', () => {
       }),
     );
     expect(telemetry.loadoutChanged).toHaveBeenCalledWith(updatedPlayer.userId, {
-      changeType: 'equip_support',
+      changeType: 'equip_rune',
+      slotNumber: 2,
       beforeSchoolCode: null,
       afterSchoolCode: 'ember',
       beforeRarity: null,
@@ -452,7 +453,7 @@ describe('EquipCurrentRune', () => {
     expect(repository.equipRune).toHaveBeenCalled();
   });
 
-  it('rejects support-slot equip before the slot is unlocked', async () => {
+  it('rejects equip into a still-locked future rune slot', async () => {
     const player = createPlayer();
     const repository = {
       findPlayerByVkId: vi.fn().mockResolvedValue(player),
@@ -464,27 +465,32 @@ describe('EquipCurrentRune', () => {
       schoolNoviceFollowUpActionTaken: vi.fn(),
     } as unknown as GameTelemetry);
 
-    await expect(useCase.execute(player.vkId, 1, 'intent-support-locked', 'state-support-locked')).rejects.toMatchObject({
+    await expect(useCase.execute(player.vkId, 2, 'intent-slot-locked', 'state-slot-locked')).rejects.toMatchObject({
       code: 'rune_slot_locked',
     });
     expect(repository.equipRune).not.toHaveBeenCalled();
   });
 
-  it('requires the primary slot before support-slot equip', async () => {
+  it('allows equipping slot 2 without requiring slot 1 as an anchor', async () => {
     const player = createPlayer({ unlockedRuneSlotCount: 2 });
     const repository = {
       findPlayerByVkId: vi.fn().mockResolvedValue(player),
       getCommandIntentResult: vi.fn(),
-      equipRune: vi.fn(),
+      equipRune: vi.fn().mockResolvedValue(player),
     } as unknown as GameRepository;
     const useCase = new EquipCurrentRune(repository, {
       loadoutChanged: vi.fn(),
       schoolNoviceFollowUpActionTaken: vi.fn(),
     } as unknown as GameTelemetry);
 
-    await expect(useCase.execute(player.vkId, 1, 'intent-support-need-primary', buildEquipIntentStateKey(player, 1))).rejects.toMatchObject({
-      code: 'rune_primary_required',
-    });
-    expect(repository.equipRune).not.toHaveBeenCalled();
+    await expect(useCase.execute(player.vkId, 1, 'intent-slot-2', buildEquipIntentStateKey(player, 1))).resolves.toBe(player);
+    expect(repository.equipRune).toHaveBeenCalledWith(
+      player.playerId,
+      'rune-1',
+      expect.objectContaining({
+        targetSlot: 1,
+        intentId: 'intent-slot-2',
+      }),
+    );
   });
 });

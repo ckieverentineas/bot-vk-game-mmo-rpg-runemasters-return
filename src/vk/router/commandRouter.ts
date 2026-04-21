@@ -34,7 +34,11 @@ const legacyTextIntentCommands = new Set<string>([
   gameCommands.attack,
   gameCommands.defend,
   gameCommands.skills,
+  gameCommands.skillSlot1,
+  gameCommands.skillSlot2,
   gameCommands.spell,
+  gameCommands.equipRuneSlot1,
+  gameCommands.equipRuneSlot2,
 ]);
 
 const legacyTextIntentMatchers: readonly LegacyTextIntentMatcher[] = [

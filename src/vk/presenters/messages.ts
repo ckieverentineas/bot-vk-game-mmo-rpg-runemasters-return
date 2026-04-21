@@ -15,6 +15,7 @@ import {
 } from '../../modules/player/domain/school-mastery';
 import { type AcquisitionSummaryView } from '../../modules/player/application/read-models/acquisition-summary';
 import { buildBattleClarityView } from '../../modules/combat/application/read-models/battle-clarity';
+import { listBattleRuneLoadouts } from '../../modules/combat/domain/battle-rune-loadouts';
 import {
   buildBattleResultNextGoalView,
   buildPlayerNextGoalView,
@@ -123,10 +124,9 @@ const renderSchoolMasteryLine = (player: PlayerState): string => {
   const nextThreshold = resolveNextSchoolMasteryThreshold(mastery.rank);
   const nextUnlock = definition?.unlocks.find((entry) => entry.rank === mastery.rank + 1) ?? null;
   const currentUnlock = definition?.unlocks.find((entry) => entry.rank === mastery.rank) ?? null;
-  const slotSuffix = getUnlockedRuneSlotCount(player) > 1 ? ' · слот поддержки открыт.' : '.';
 
   if (nextThreshold === null) {
-    return `Мастерство школы: ${equippedSchool.name} · ранг ${mastery.rank}${currentUnlock ? ` · открыто: ${currentUnlock.title}${slotSuffix}` : slotSuffix}`;
+    return `Мастерство школы: ${equippedSchool.name} · ранг ${mastery.rank}${currentUnlock ? ` · открыто: ${currentUnlock.title}.` : '.'}`;
   }
 
   return `Мастерство школы: ${equippedSchool.name} · ранг ${mastery.rank} · ${mastery.experience}/${nextThreshold} до «${nextUnlock?.title ?? 'новой вехи'}».`;
@@ -198,13 +198,10 @@ const formatRune = (rune: RuneView | null): string => {
   return [
     `${(() => {
       const equippedSlot = getRuneEquippedSlot(rune);
-      if (equippedSlot === 0) {
-        return '🛡️ Основа';
+      if (equippedSlot !== null) {
+        return `✅ Надета: слот ${equippedSlot + 1}`;
       }
-      if (equippedSlot === 1) {
-        return '🧩 Поддержка';
-      }
-      return '🎯 Выбрано';
+      return '🎯 Выбрана';
     })()}: ${rune.name}`,
     `Редкость: ${gameBalance.runes.profiles[rune.rarity].title}${school ? ` · ${school.name}` : ''}`,
     ...(school ? [`Стиль: ${school.playPatternLine}`] : []),
@@ -222,27 +219,19 @@ const formatRune = (rune: RuneView | null): string => {
 };
 
 const formatRunePageEntryStatus = (isSelected: boolean, equippedSlot: number | null): string => {
-  if (isSelected && equippedSlot === 0) {
-    return '🎯🛡️ Основа';
-  }
-
-  if (isSelected && equippedSlot === 1) {
-    return '🎯🧩 Поддержка';
+  if (isSelected && equippedSlot !== null) {
+    return `🎯✅ Надета ${equippedSlot + 1}`;
   }
 
   if (isSelected) {
     return '🎯 Выбрана';
   }
 
-  if (equippedSlot === 0) {
-    return '🛡️ Основа';
+  if (equippedSlot !== null) {
+    return `✅ Надета ${equippedSlot + 1}`;
   }
 
-  if (equippedSlot === 1) {
-    return '🧩 Поддержка';
-  }
-
-  return '▫️ В запасе';
+  return '▫️ В коллекции';
 };
 
 export const renderWelcome = (player: PlayerState, created: boolean): string => {
@@ -283,7 +272,7 @@ export const renderMainMenu = (player: PlayerState): string => {
       : `🎯 Уровень угрозы: ${resolveAdaptiveAdventureLocationLevel(player)}`,
     `💰 Руная пыль: ${player.gold}`,
     `🧭 Максимально пройденная угроза: ${player.highestLocationLevel}`,
-    `🧩 Слоты рун: ${getUnlockedRuneSlotCount(player)}/2`,
+    `🧩 Слоты рун: ${getUnlockedRuneSlotCount(player)} открыто`,
     `🔮 Экипирована: ${equippedRune ? equippedRune.name : 'нет руны'}`,
     renderSchoolMasteryLine(player),
     ...(player.tutorialState === 'ACTIVE' ? ['🜂 Первый бой ведёт к первой руне, а первая руна открывает школу рун.'] : []),
@@ -309,7 +298,7 @@ export const renderProfile = (player: PlayerState): string => {
     `📊 Опыт: ${player.experience}/${nextLevelXp}`,
     `💰 Руная пыль: ${player.gold}`,
     `🏆 Победы / Поражения: ${player.victories}/${player.defeats}`,
-    `🧩 Слоты рун: ${getUnlockedRuneSlotCount(player)}/2`,
+    `🧩 Слоты рун: ${getUnlockedRuneSlotCount(player)} открыто`,
     renderSchoolMasteryLine(player),
     'Дальнейший рост силы идёт через руны, школу рун и её мастерство, а не через ручное распределение статов.',
     '',
@@ -367,6 +356,15 @@ export const renderExplorationEvent = (event: ExplorationSceneView, player: Play
   ...renderNextGoalSummary(buildPlayerNextGoalView(player), '👉 Продолжить'),
 ].join('\n');
 
+const renderEquippedRuneSlots = (player: PlayerState): string => {
+  const slotLines = Array.from({ length: getUnlockedRuneSlotCount(player) }, (_, slot) => {
+    const rune = getEquippedRune(player, slot);
+    return `${slot + 1}. ${rune ? rune.name : 'пусто'}`;
+  });
+
+  return `Надето: ${slotLines.join(' · ')}`;
+};
+
 export const renderRuneScreen = (player: PlayerState, acquisitionSummary?: AcquisitionSummaryView | null): string => {
   const selectedRune = getSelectedRune(player);
   const equippedRune = getEquippedRune(player);
@@ -390,11 +388,10 @@ export const renderRuneScreen = (player: PlayerState, acquisitionSummary?: Acqui
   return [
     '🔮 Руны и мастерская',
     '',
-    `Руны: ${player.runes.length} · стр. ${page.pageNumber}/${page.totalPages}`,
-    `🧩 Слоты рун: ${getUnlockedRuneSlotCount(player)}/2 открыто сейчас.`,
-    `🛡️ Основа: ${getEquippedRune(player, 0)?.name ?? 'пусто'}`,
-    `🧩 Поддержка: ${getUnlockedRuneSlotCount(player) > 1 ? (getEquippedRune(player, 1)?.name ?? 'пусто') : '🔒 откроется на mastery-вехе'}`,
-    `🎯 Выбрано: ${selectedRune ? selectedRune.name : 'нет руны'}`,
+    `Руны: ${player.runes.length} · карусель ${page.pageNumber}/${page.totalPages} · по 5`,
+    `🧩 Слоты рун: ${getUnlockedRuneSlotCount(player)} открыто сейчас.`,
+    renderEquippedRuneSlots(player),
+    `🎯 Выбрана: ${selectedRune ? selectedRune.name : 'нет руны'}`,
     ...(equippedRune ? (() => {
       const school = getRuneSchoolPresentation(equippedRune.archetypeCode);
       return school ? [`Стиль: ${school.schoolLine}.`] : [];
@@ -408,7 +405,7 @@ export const renderRuneScreen = (player: PlayerState, acquisitionSummary?: Acqui
         ]
       : []),
     '',
-    'Список на этой странице:',
+    'Карусель рун:',
     ...page.entries.map((entry) => {
       const school = getRuneSchoolPresentation(entry.rune.archetypeCode);
       return `${entry.slot + 1}. ${formatRunePageEntryStatus(entry.isSelected, getRuneEquippedSlot(entry.rune))} · ${entry.rune.name} · ${school?.name ?? 'без школы'} · ${formatRuneStatSummary(entry.rune)}`;
@@ -485,23 +482,25 @@ const renderBattleActorBlock = (
 };
 
 const renderBattleRuneState = (battle: BattleView): string => {
-  const runeLoadout = battle.player.runeLoadout ?? null;
-  if (!runeLoadout) {
+  const runeLoadouts = listBattleRuneLoadouts(battle.player);
+  if (runeLoadouts.length === 0) {
     return '🔮 Без руны: доступна базовая атака.';
   }
 
-  const activeAbility = runeLoadout.activeAbility;
-  if (!activeAbility) {
-    return `🔮 ${runeLoadout.runeName}: пассивный стиль без отдельной боевой кнопки.`;
-  }
+  return runeLoadouts.map(({ slot, loadout }) => {
+    const activeAbility = loadout.activeAbility;
+    if (!activeAbility) {
+      return `🔮 Слот ${slot + 1}: ${loadout.runeName} · пассивы активны.`;
+    }
 
-  const state = activeAbility.currentCooldown > 0
-    ? `откат ${activeAbility.currentCooldown} хода`
-    : battle.player.currentMana < activeAbility.manaCost
-      ? `нужно ${activeAbility.manaCost} маны`
-      : 'готово';
+    const state = activeAbility.currentCooldown > 0
+      ? `откат ${activeAbility.currentCooldown} хода`
+      : battle.player.currentMana < activeAbility.manaCost
+        ? `нужно ${activeAbility.manaCost} маны`
+        : 'готово';
 
-  return `🌀 ${activeAbility.name} — ${state}`;
+    return `🌀 Слот ${slot + 1}: ${activeAbility.name} — ${state}`;
+  }).join('\n');
 };
 
 const renderBattleEnemyIntent = (battle: BattleView): string | null => {
@@ -515,12 +514,14 @@ const renderBattleEnemyIntent = (battle: BattleView): string | null => {
 
 const renderBattleActionState = (battle: BattleView): string => {
   const defendGain = resolveDefendGuardGain(battle.player);
-  const activeAbility = battle.player.runeLoadout?.activeAbility ?? null;
   const actions = ['⚔️ Атака', `🛡️ Защита (+${defendGain} щит)`];
 
-  if (activeAbility) {
-    actions.push(`🌀 ${activeAbility.name}`);
-  }
+  actions.push(
+    ...listBattleRuneLoadouts(battle.player)
+      .flatMap(({ slot, loadout }) => (
+        loadout.activeAbility ? [`🌀 ${slot + 1}: ${loadout.activeAbility.name}`] : []
+      )),
+  );
 
   return `🎮 Действия: ${actions.join(' · ')}`;
 };

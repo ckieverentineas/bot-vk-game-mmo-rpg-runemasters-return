@@ -1239,7 +1239,7 @@ describe('PrismaGameRepository release hardening', () => {
     }));
   });
 
-  it('rejects moving the only primary rune into support slot through repository path', async () => {
+  it('allows moving the first rune into slot 2 through repository path', async () => {
     const { repository, tx } = createPrismaMock();
     const currentPlayer = createPlayerRecord();
     currentPlayer.progress.unlockedRuneSlotCount = 2;
@@ -1263,15 +1263,23 @@ describe('PrismaGameRepository release hardening', () => {
       updatedAt: new Date('2026-04-12T00:00:00.000Z'),
     }];
     tx.player.findUnique.mockResolvedValue(currentPlayer);
+    tx.rune.updateMany.mockResolvedValue({ count: 1 });
 
-    await expect(repository.equipRune(1, 'rune-1', { targetSlot: 1 })).rejects.toMatchObject({
-      code: 'rune_primary_required',
+    await expect(repository.equipRune(1, 'rune-1', { targetSlot: 1 })).resolves.toMatchObject({
+      playerId: 1,
     });
 
-    expect(tx.rune.updateMany).not.toHaveBeenCalled();
+    expect(tx.rune.updateMany).toHaveBeenCalledWith({
+      where: { playerId: 1, equippedSlot: 1 },
+      data: { isEquipped: false, equippedSlot: null },
+    });
+    expect(tx.rune.updateMany).toHaveBeenCalledWith({
+      where: { id: 'rune-1', playerId: 1 },
+      data: { isEquipped: true, equippedSlot: 1 },
+    });
   });
 
-  it('rejects removing the primary rune while support slot is still filled', async () => {
+  it('allows removing slot 1 while slot 2 is still filled', async () => {
     const { repository, tx } = createPrismaMock();
     const currentPlayer = createPlayerRecord();
     currentPlayer.progress.unlockedRuneSlotCount = 2;
@@ -1316,12 +1324,16 @@ describe('PrismaGameRepository release hardening', () => {
       },
     ];
     tx.player.findUnique.mockResolvedValue(currentPlayer);
+    tx.rune.updateMany.mockResolvedValue({ count: 1 });
 
-    await expect(repository.equipRune(1, null, { targetSlot: 0 })).rejects.toMatchObject({
-      code: 'rune_primary_required',
+    await expect(repository.equipRune(1, null, { targetSlot: 0 })).resolves.toMatchObject({
+      playerId: 1,
     });
 
-    expect(tx.rune.updateMany).not.toHaveBeenCalled();
+    expect(tx.rune.updateMany).toHaveBeenCalledWith({
+      where: { playerId: 1, equippedSlot: 0 },
+      data: { isEquipped: false, equippedSlot: null },
+    });
   });
 
   it('does not snap skipped players back to intro after finishing a stale intro battle', async () => {
@@ -1503,7 +1515,7 @@ describe('PrismaGameRepository release hardening', () => {
           },
           supportRuneLoadout: {
             runeId: 'rune-2',
-            runeName: 'Щит поддержки',
+            runeName: 'Щит второго слота',
             archetypeCode: 'stone',
             archetypeName: 'Страж',
             schoolCode: 'stone',

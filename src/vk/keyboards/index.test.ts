@@ -201,10 +201,10 @@ describe('profile keyboard', () => {
     expect(deletePlayer?.intentId).toBeUndefined();
   });
 
-  it('adds intent metadata to equip and unequip buttons when rune context is available', () => {
+  it('adds intent metadata to rune carousel and selected-rune actions', () => {
     const payloads = collectPayloads(createRuneKeyboard(createPlayer()));
 
-    const equip = payloads.find((payload) => payload.command === 'надеть');
+    const equip = payloads.find((payload) => payload.command === 'надеть слот 1');
     const unequip = payloads.find((payload) => payload.command === 'снять');
     const nextPage = payloads.find((payload) => payload.command === 'руны >');
     const slotOne = payloads.find((payload) => payload.command === 'руна слот 1');
@@ -212,8 +212,7 @@ describe('profile keyboard', () => {
 
     expect(equip?.intentId).toEqual(expect.any(String));
     expect(equip?.stateKey).toEqual(expect.any(String));
-    expect(unequip?.intentId).toEqual(expect.any(String));
-    expect(unequip?.stateKey).toEqual(expect.any(String));
+    expect(unequip).toBeUndefined();
     expect(nextPage?.intentId).toEqual(expect.any(String));
     expect(nextPage?.stateKey).toEqual(expect.any(String));
     expect(slotOne?.intentId).toEqual(expect.any(String));
@@ -234,7 +233,7 @@ describe('profile keyboard', () => {
     expect(destroy?.stateKey).toBeUndefined();
   });
 
-  it('does not promise unequip when no rune is currently equipped', () => {
+  it('shows equip actions for an un-equipped selected rune', () => {
     const labels = collectLabels(createRuneKeyboard(createPlayer({
       runes: [
         {
@@ -244,14 +243,14 @@ describe('profile keyboard', () => {
       ],
     })));
 
-    expect(labels).toContain('🚫 Снимать нечего');
-    expect(labels).not.toContain('❌ Снять текущую');
+    expect(labels).toContain('✅ Слот 1');
+    expect(labels).toContain('✅ Слот 2');
+    expect(labels).toContain('🗑️ Распылить');
+    expect(labels.some((label) => label.startsWith('❌ Снять'))).toBe(false);
   });
 
-  it('shows support-slot equip CTA only after the second slot is unlocked', () => {
-    const lockedLabels = collectLabels(createRuneKeyboard(createPlayer()));
-    const unlockedKeyboard = createRuneKeyboard(createPlayer({
-      unlockedRuneSlotCount: 2,
+  it('shows the second slot as a baseline equip target', () => {
+    const keyboard = createRuneKeyboard(createPlayer({
       runes: [
         {
           ...createPlayer().runes[0],
@@ -268,12 +267,13 @@ describe('profile keyboard', () => {
       ],
       currentRuneIndex: 1,
     }));
-    const unlockedLabels = collectLabels(unlockedKeyboard);
-    const unlockedPayloads = collectPayloads(unlockedKeyboard);
+    const labels = collectLabels(keyboard);
+    const payloads = collectPayloads(keyboard);
 
-    expect(lockedLabels).not.toContain('🧩 В поддержку');
-    expect(unlockedLabels).toContain('🧩 В поддержку');
-    expect(unlockedPayloads.find((payload) => payload.command === 'надеть в поддержку')?.intentId).toEqual(expect.any(String));
+    expect(labels).toContain('🔁 Слот 1');
+    expect(labels).toContain('✅ Слот 2');
+    expect(labels).not.toContain('🧩 В поддержку');
+    expect(payloads.find((payload) => payload.command === 'надеть слот 2')?.intentId).toEqual(expect.any(String));
   });
 
   it('adds a dominant school-test CTA when the first sign is already equipped', () => {
@@ -325,7 +325,7 @@ describe('profile keyboard', () => {
     expect(battleResultLabels).not.toContain('⚔️ Проверить школу');
   });
 
-  it('does not promise support equip or primary unequip when the selected rune is the only primary anchor', () => {
+  it('allows removing slot 1 even when slot 2 is filled', () => {
     const labels = collectLabels(createRuneKeyboard(createPlayer({
       unlockedRuneSlotCount: 2,
       runes: [
@@ -346,11 +346,11 @@ describe('profile keyboard', () => {
       currentRuneIndex: 0,
     })));
 
+    expect(labels).toContain('❌ Снять со слота 1');
     expect(labels).not.toContain('🧩 В поддержку');
-    expect(labels).not.toContain('❌ Снять основу');
   });
 
-  it('does not promise primary unequip when support is filled and the player selected a spare rune', () => {
+  it('offers replacement actions for both filled slots when a spare rune is selected', () => {
     const labels = collectLabels(createRuneKeyboard(createPlayer({
       unlockedRuneSlotCount: 2,
       runes: [
@@ -378,7 +378,9 @@ describe('profile keyboard', () => {
       currentRuneIndex: 2,
     })));
 
-    expect(labels).not.toContain('❌ Снять основу');
+    expect(labels).toContain('🔁 Слот 1');
+    expect(labels).toContain('🔁 Слот 2');
+    expect(labels).not.toContain('❌ Снять со слота 1');
   });
 
   it('adds intent metadata to delete confirmation button when player context is available', () => {
@@ -427,7 +429,7 @@ describe('profile keyboard', () => {
 
     const attack = payloads.find((payload) => payload.command === 'атака');
     const defend = payloads.find((payload) => payload.command === 'защита');
-    const skill = payloads.find((payload) => payload.command === 'навыки');
+    const skill = payloads.find((payload) => payload.command === 'навык 1');
 
     expect(attack?.intentId).toEqual(expect.any(String));
     expect(attack?.stateKey).toEqual(expect.any(String));
@@ -442,7 +444,7 @@ describe('profile keyboard', () => {
 
     expect(labels).toContain('⚔️ Атака');
     expect(labels).toContain('🛡️ Защита (+2 щит)');
-    expect(labels).toContain('🌀 Пульс Пламени');
+    expect(labels).toContain('🌀 1 Пульс Пламени');
   });
 
   it('shows rune skill availability directly on the battle keyboard', () => {
@@ -465,8 +467,8 @@ describe('profile keyboard', () => {
       },
     })));
 
-    expect(cooldownLabels).toContain('🌀 Пульс Пламени · КД 2');
-    expect(lowManaLabels).toContain('🌀 Пульс Пламени · нужно 3 маны');
+    expect(cooldownLabels).toContain('🌀 1 Пульс Пламени · КД 2');
+    expect(lowManaLabels).toContain('🌀 1 Пульс Пламени · нужно 3 маны');
   });
 
   it('does not show a dead rune action button without an active rune skill', () => {

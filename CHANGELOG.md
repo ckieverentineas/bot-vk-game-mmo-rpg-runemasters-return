@@ -42,6 +42,8 @@
 - battle state UI теперь показывает игрока и врага симметричными блоками: имя, HP-bar, mana-bar и короткую строку боевых статов;
 - HP/mana шкалы в battle state UI стали цветными: здоровье меняет цвет по уровню риска, мана остаётся синей;
 - battle keyboard теперь повторяет тот же язык, что и state-блок: кнопка защиты показывает прирост щита, рунный навык показывает КД/нехватку маны, а пустая рунная кнопка скрыта;
+- battle keyboard теперь поддерживает две активные рунные кнопки `навык 1` / `навык 2`, а intent-state учитывает конкретный слот активного действия;
+- Prisma migration `20260421120000_make_two_rune_slots_baseline` переводит `PlayerProgress.unlockedRuneSlotCount` на baseline `2` и поднимает старые значения ниже двух;
 - command-intent rail получил общий `recordCommandIntentResult`, чтобы replay-safe команды могли сохранять не только мутации игрока или battle creation, но и чистые outcome-сцены без отдельной persistence-сущности;
 - типобезопасный telemetry adapter [`RepositoryGameTelemetry`](src/modules/shared/infrastructure/telemetry/RepositoryGameTelemetry.ts) поверх существующего `GameLog` rail для semantic-событий UX и loadout flow;
 - тесты на canonical next-goal read-model в [`src/modules/player/application/read-models/next-goal.test.ts`](src/modules/player/application/read-models/next-goal.test.ts).
@@ -49,7 +51,10 @@
 ### Changed
 
 - `return recap`, главное меню, rune hub и завершённый бой теперь показывают не абстрактный следующий шаг, а ближайшую school-веху или ближайший loadout payoff без guilt/FOMO тона;
-- rune hub теперь явно показывает ближайшую mastery-веху и её payoff, если игрок уже идёт к unlock'у школы или открыл слот поддержки;
+- rune hub теперь явно показывает ближайшую mastery-веху и её payoff, если игрок уже идёт к unlock'у школы или ближайшему loadout payoff;
+- rune hub перешёл на карусель по 5 рун с явными статусами `выбрана` / `надета N`; кнопки `надеть в слот`, `снять` и `распылить` появляются в контексте выбранной руны;
+- второй слот больше не является player-facing “поддержкой”: две стартовые руны равноправно дают полные статы, пассивы и активные действия в бою;
+- telemetry `loadout_changed` больше не использует primary/support changeType: новое событие пишет нейтральный `equip_rune` / `unequip_rune` и 1-based `slotNumber`, чтобы будущие 3+ слоты не ломали модель;
 - battle result теперь использует актуальный `PlayerState`, чтобы следующий шаг после боя не расходился с `return recap` и `main menu`;
 - battle result и крафт руны теперь могут объяснить, что именно дала новая награда или unlock, а не оставлять игрока наедине с названием предмета;
 - ранний encounter intro теперь может подсказывать, какая школа особенно хорошо отвечает на конкретный элитный pressure pattern, вместо немого появления врага без tactical framing;

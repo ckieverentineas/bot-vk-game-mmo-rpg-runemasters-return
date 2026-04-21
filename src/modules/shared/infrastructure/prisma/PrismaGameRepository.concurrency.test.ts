@@ -103,6 +103,26 @@ const toCompletedVictoryBattle = (battle: Awaited<ReturnType<PrismaGameRepositor
   log: [...battle.log, '🏆 Победа!'],
 });
 
+const splitSqlScript = (script: string): string[] => script
+  .split(';')
+  .map((statement) => statement
+    .split('\n')
+    .filter((line) => !line.trimStart().startsWith('--'))
+    .join('\n')
+    .trim())
+  .filter((statement) => statement.length > 0);
+
+const applyCurrentPrismaSchema = async (prisma: PrismaClient): Promise<void> => {
+  const script = execSync('npx prisma migrate diff --from-empty --to-schema-datamodel prisma/schema.prisma --script', {
+    cwd: process.cwd(),
+    stdio: 'pipe',
+  }).toString('utf8');
+
+  for (const statement of splitSqlScript(script)) {
+    await prisma.$executeRawUnsafe(statement);
+  }
+};
+
 describe.sequential('PrismaGameRepository concurrency rails', () => {
   const dbPath = path.join(tmpdir(), `runemasters-concurrency-${process.pid}-${Date.now()}.db`);
   const databaseUrl = `file:${dbPath.replace(/\\/g, '/')}`;
@@ -110,15 +130,6 @@ describe.sequential('PrismaGameRepository concurrency rails', () => {
   let repository: PrismaGameRepository;
 
   beforeAll(async () => {
-    execSync('npx prisma db push --skip-generate', {
-      cwd: process.cwd(),
-      env: {
-        ...process.env,
-        DATABASE_URL: databaseUrl,
-      },
-      stdio: 'pipe',
-    });
-
     prisma = new PrismaClient({
       datasources: {
         db: {
@@ -126,12 +137,15 @@ describe.sequential('PrismaGameRepository concurrency rails', () => {
         },
       },
     });
+    await applyCurrentPrismaSchema(prisma);
 
     repository = new PrismaGameRepository(prisma);
   });
 
   afterAll(async () => {
-    await prisma.$disconnect();
+    if (prisma) {
+      await prisma.$disconnect();
+    }
 
     if (existsSync(dbPath)) {
       rmSync(dbPath, { force: true });
@@ -470,10 +484,10 @@ describe.sequential('PrismaGameRepository concurrency rails', () => {
         intentStateKey: 'state-equip-1',
         expectedPlayerUpdatedAt: currentPlayer!.updatedAt,
         expectedCurrentRuneIndex: 0,
-        expectedUnlockedRuneSlotCount: 1,
+        expectedUnlockedRuneSlotCount: 2,
         expectedSelectedRuneId: rune!.id,
         expectedEquippedRuneId: null,
-        expectedEquippedRuneIdsBySlot: [null],
+        expectedEquippedRuneIdsBySlot: [null, null],
         expectedRuneIds: [rune!.id],
       }),
       repository.equipRune(player.playerId, rune!.id, {
@@ -483,10 +497,10 @@ describe.sequential('PrismaGameRepository concurrency rails', () => {
         intentStateKey: 'state-equip-1',
         expectedPlayerUpdatedAt: currentPlayer!.updatedAt,
         expectedCurrentRuneIndex: 0,
-        expectedUnlockedRuneSlotCount: 1,
+        expectedUnlockedRuneSlotCount: 2,
         expectedSelectedRuneId: rune!.id,
         expectedEquippedRuneId: null,
-        expectedEquippedRuneIdsBySlot: [null],
+        expectedEquippedRuneIdsBySlot: [null, null],
         expectedRuneIds: [rune!.id],
       }),
     ]);
@@ -512,10 +526,10 @@ describe.sequential('PrismaGameRepository concurrency rails', () => {
       intentStateKey: 'state-equip-stale',
       expectedPlayerUpdatedAt: persistedPlayer!.updatedAt,
       expectedCurrentRuneIndex: 0,
-      expectedUnlockedRuneSlotCount: 1,
+      expectedUnlockedRuneSlotCount: 2,
       expectedSelectedRuneId: runeA!.id,
       expectedEquippedRuneId: null,
-      expectedEquippedRuneIdsBySlot: [null],
+      expectedEquippedRuneIdsBySlot: [null, null],
       expectedRuneIds: [runeA!.id, runeB!.id],
     })).rejects.toMatchObject({
       code: 'stale_command_intent',
@@ -543,10 +557,10 @@ describe.sequential('PrismaGameRepository concurrency rails', () => {
       intentStateKey: 'state-equip-after-craft',
       expectedPlayerUpdatedAt: beforeCraft!.updatedAt,
       expectedCurrentRuneIndex: 0,
-      expectedUnlockedRuneSlotCount: 1,
+      expectedUnlockedRuneSlotCount: 2,
       expectedSelectedRuneId: rune!.id,
       expectedEquippedRuneId: null,
-      expectedEquippedRuneIdsBySlot: [null],
+      expectedEquippedRuneIdsBySlot: [null, null],
       expectedRuneIds: [rune!.id],
     })).rejects.toMatchObject({
       code: 'stale_command_intent',
@@ -569,10 +583,10 @@ describe.sequential('PrismaGameRepository concurrency rails', () => {
         intentStateKey: 'state-unequip-1',
         expectedPlayerUpdatedAt: equippedPlayer!.updatedAt,
         expectedCurrentRuneIndex: 0,
-        expectedUnlockedRuneSlotCount: 1,
+        expectedUnlockedRuneSlotCount: 2,
         expectedSelectedRuneId: rune!.id,
         expectedEquippedRuneId: rune!.id,
-        expectedEquippedRuneIdsBySlot: [rune!.id],
+        expectedEquippedRuneIdsBySlot: [rune!.id, null],
         expectedRuneIds: [rune!.id],
       }),
       repository.equipRune(player.playerId, null, {
@@ -582,10 +596,10 @@ describe.sequential('PrismaGameRepository concurrency rails', () => {
         intentStateKey: 'state-unequip-1',
         expectedPlayerUpdatedAt: equippedPlayer!.updatedAt,
         expectedCurrentRuneIndex: 0,
-        expectedUnlockedRuneSlotCount: 1,
+        expectedUnlockedRuneSlotCount: 2,
         expectedSelectedRuneId: rune!.id,
         expectedEquippedRuneId: rune!.id,
-        expectedEquippedRuneIdsBySlot: [rune!.id],
+        expectedEquippedRuneIdsBySlot: [rune!.id, null],
         expectedRuneIds: [rune!.id],
       }),
     ]);
@@ -611,10 +625,10 @@ describe.sequential('PrismaGameRepository concurrency rails', () => {
       intentStateKey: 'state-unequip-stale',
       expectedPlayerUpdatedAt: equippedPlayer!.updatedAt,
       expectedCurrentRuneIndex: 0,
-      expectedUnlockedRuneSlotCount: 1,
+      expectedUnlockedRuneSlotCount: 2,
       expectedSelectedRuneId: runeA!.id,
       expectedEquippedRuneId: runeA!.id,
-      expectedEquippedRuneIdsBySlot: [runeA!.id],
+      expectedEquippedRuneIdsBySlot: [runeA!.id, null],
       expectedRuneIds: [runeA!.id, runeB!.id],
     })).rejects.toMatchObject({
       code: 'stale_command_intent',
@@ -639,10 +653,10 @@ describe.sequential('PrismaGameRepository concurrency rails', () => {
       intentStateKey: 'state-unequip-after-destroy',
       expectedPlayerUpdatedAt: equippedPlayer!.updatedAt,
       expectedCurrentRuneIndex: 0,
-      expectedUnlockedRuneSlotCount: 1,
+      expectedUnlockedRuneSlotCount: 2,
       expectedSelectedRuneId: runeA!.id,
       expectedEquippedRuneId: runeA!.id,
-      expectedEquippedRuneIdsBySlot: [runeA!.id],
+      expectedEquippedRuneIdsBySlot: [runeA!.id, null],
       expectedRuneIds: [runeA!.id, runeB!.id],
     })).rejects.toMatchObject({
       code: 'stale_command_intent',

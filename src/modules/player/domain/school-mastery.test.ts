@@ -101,7 +101,7 @@ describe('school mastery', () => {
     expect(listMissingStarterSchoolMasteries(player).map((entry) => entry.schoolCode)).toEqual(['stone', 'gale', 'echo']);
   });
 
-  it('unlocks the support slot at the first mastery milestone', () => {
+  it('keeps first mastery saves at the two-slot rune baseline', () => {
     const player = createPlayer({
       schoolMasteries: [createSchoolMasteryView('ember', 3)],
     });

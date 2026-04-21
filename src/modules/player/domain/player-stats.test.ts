@@ -167,10 +167,10 @@ describe('rune slot helpers', () => {
     });
 
     expect(getEquippedRunes(player)[0]?.equippedSlot ?? 0).toBe(0);
-    expect(getEquippedRuneIdsBySlot(player)).toEqual(['rune-1']);
+    expect(getEquippedRuneIdsBySlot(player)).toEqual(['rune-1', null]);
   });
 
-  it('открывает support-slot после mastery milestone и даёт от него половину статов', () => {
+  it('считает второй слот базовым и даёт от него полные статы', () => {
     const player = createPlayerState({
       schoolMasteries: [{ schoolCode: 'ember', experience: 3, rank: 1 }],
       runes: [
@@ -190,7 +190,7 @@ describe('rune slot helpers', () => {
         },
         {
           id: 'rune-2',
-          name: 'Поддержка',
+          name: 'Вторая руна',
           rarity: 'USUAL',
           health: 3,
           attack: 3,
@@ -208,8 +208,8 @@ describe('rune slot helpers', () => {
     expect(getUnlockedRuneSlotCount(player)).toBe(2);
     expect(getEquippedRuneIdsBySlot(player)).toEqual(['rune-1', 'rune-2']);
     expect(derivePlayerStats(player)).toEqual({
-      health: 16,
-      attack: 10,
+      health: 17,
+      attack: 11,
       defence: 6,
       magicDefence: 2,
       dexterity: 6,

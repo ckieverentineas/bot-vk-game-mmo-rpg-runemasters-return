@@ -15,6 +15,7 @@ import type {
 } from '../../../../shared/types/game';
 import { buildBattleSnapshot, isBattleSnapshot, type BattleSnapshot } from '../../domain/contracts/battle-snapshot';
 import {
+  DEFAULT_UNLOCKED_RUNE_SLOT_COUNT,
   getEquippedRune,
   getEquippedRuneIdsBySlot,
   getSelectedRune,
@@ -778,6 +779,7 @@ export class PrismaGameRepository implements GameRepository {
                 create: {
                   locationLevel: gameBalance.world.introLocationLevel,
                   currentRuneIndex: 0,
+                  unlockedRuneSlotCount: DEFAULT_UNLOCKED_RUNE_SLOT_COUNT,
                   activeBattleId: null,
                   tutorialState: 'ACTIVE',
                   victories: 0,
@@ -1033,21 +1035,6 @@ export class PrismaGameRepository implements GameRepository {
 
         if (targetSlot >= getUnlockedRuneSlotCount(currentPlayer)) {
           throw new AppError('rune_slot_locked', 'Этот слот рун пока закрыт. Продвигайтесь дальше, чтобы открыть его.');
-        }
-
-        const primaryRune = getEquippedRune(currentPlayer, 0);
-        const supportRune = getEquippedRune(currentPlayer, 1);
-
-        if (targetSlot > 0 && !primaryRune) {
-          throw new AppError('rune_primary_required', 'Сначала наденьте руну в основной слот, а потом расширяйте сборку поддержкой.');
-        }
-
-        if (targetSlot > 0 && runeId && primaryRune?.id === runeId) {
-          throw new AppError('rune_primary_required', 'Нельзя увести единственную основную руну в поддержку, пока основной слот не занят другой руной.');
-        }
-
-        if (targetSlot === 0 && runeId === null && supportRune) {
-          throw new AppError('rune_primary_required', 'Сначала снимите или переставьте руну поддержки, а потом освобождайте основной слот.');
         }
 
         await tx.rune.updateMany({
@@ -1571,7 +1558,7 @@ export class PrismaGameRepository implements GameRepository {
       let nextLocationLevel = currentPlayer.locationLevel;
       let nextHighestLocationLevel = currentPlayer.highestLocationLevel;
       let nextTutorialState = currentPlayer.tutorialState;
-      let nextUnlockedRuneSlotCount = currentPlayer.unlockedRuneSlotCount ?? 1;
+      let nextUnlockedRuneSlotCount = getUnlockedRuneSlotCount(currentPlayer);
       const inventoryDelta: InventoryDelta = {};
       const schoolMasteryReward = resolveBattleSchoolMasteryRewardGain(battle);
 

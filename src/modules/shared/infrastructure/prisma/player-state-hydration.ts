@@ -2,6 +2,7 @@ import { gameBalance } from '../../../../config/game-balance';
 import type { InventoryView, PlayerState, RuneRarity, RuneView, StatBlock } from '../../../../shared/types/game';
 import { parseJson } from '../../../../shared/utils/json';
 import {
+  DEFAULT_UNLOCKED_RUNE_SLOT_COUNT,
   emptyInventory,
   getRuneEquippedSlot,
 } from '../../../player/domain/player-stats';
@@ -167,7 +168,8 @@ export const hydratePlayerStateFromPersistence = (
     currentRuneIndex: normalizeCurrentRuneIndex(persisted.progress?.currentRuneIndex, runes.length),
     unlockedRuneSlotCount: resolveUnlockedRuneSlotCountFromSchoolMasteries(
       { schoolMasteries: mergedSchoolMasteries },
-      clampNonNegativeInteger(persisted.progress?.unlockedRuneSlotCount, 1) || 1,
+      clampNonNegativeInteger(persisted.progress?.unlockedRuneSlotCount, DEFAULT_UNLOCKED_RUNE_SLOT_COUNT)
+        || DEFAULT_UNLOCKED_RUNE_SLOT_COUNT,
     ),
     activeBattleId: typeof persisted.progress?.activeBattleId === 'string' ? persisted.progress.activeBattleId : null,
     victories: clampNonNegativeInteger(persisted.progress?.victories, 0),

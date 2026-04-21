@@ -566,7 +566,10 @@ export const summarizeReleaseEvidence = (
         continue;
       }
 
-      if (isNonUsualRarity(details.afterRarity) && typeof details.changeType === 'string' && details.changeType.startsWith('equip_')) {
+      const isEquipChange = details.changeType === 'equip_rune'
+        || (typeof details.changeType === 'string' && details.changeType.startsWith('equip_'));
+
+      if (isNonUsualRarity(details.afterRarity) && isEquipChange) {
         schoolLoadoutAccumulators.get(afterSchoolCode)!.loadoutChangedAfterRewardUsers.add(entry.userId);
       }
 

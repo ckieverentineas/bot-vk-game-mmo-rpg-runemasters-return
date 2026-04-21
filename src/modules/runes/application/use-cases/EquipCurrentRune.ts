@@ -8,7 +8,7 @@ import {
 import { buildPlayerNextGoalView } from '../../../player/application/read-models/next-goal';
 import { buildPlayerSchoolRecognitionView } from '../../../player/application/read-models/school-recognition';
 import type { GameTelemetry } from '../../../shared/application/ports/GameTelemetry';
-import { getEquippedRune, getEquippedRuneIdsBySlot, getRuneEquippedSlot, getSelectedRune, getUnlockedRuneSlotCount } from '../../../player/domain/player-stats';
+import { getEquippedRune, getEquippedRuneIdsBySlot, getSelectedRune, getUnlockedRuneSlotCount } from '../../../player/domain/player-stats';
 import { getSchoolDefinitionForArchetype } from '../../../runes/domain/rune-schools';
 
 import { resolveCommandIntent, type CommandIntentSource } from '../../../shared/application/command-intent';
@@ -50,20 +50,12 @@ export class EquipCurrentRune {
 
     const unlockedSlotCount = getUnlockedRuneSlotCount(player);
     if (!Number.isInteger(targetSlot) || targetSlot < 0 || targetSlot >= unlockedSlotCount) {
-      throw new AppError('rune_slot_locked', 'Этот слот рун пока закрыт. Сначала откройте его через мастерство школы.');
-    }
-
-    if (targetSlot > 0 && !getEquippedRune(player, 0)) {
-      throw new AppError('rune_primary_required', 'Сначала наденьте руну в основной слот, а потом расширяйте сборку поддержкой.');
+      throw new AppError('rune_slot_locked', 'Этот слот рун пока закрыт. Откройте новый слот через развитие мастера.');
     }
 
     const rune = getSelectedRune(player);
     if (!rune) {
       throw new AppError('runes_not_found', 'У вас пока нет рун.');
-    }
-
-    if (targetSlot > 0 && getRuneEquippedSlot(rune) === 0) {
-      throw new AppError('rune_primary_required', 'Нельзя увести единственную основную руну в поддержку, пока основной слот не занят другой руной.');
     }
 
     const currentStateKey = buildEquipIntentStateKey(player, targetSlot);
@@ -118,7 +110,8 @@ export class EquipCurrentRune {
     try {
       if ((previousRune?.id ?? null) !== (nextRune?.id ?? null)) {
         await this.telemetry.loadoutChanged(updatedPlayer.userId, {
-          changeType: targetSlot === 0 ? 'equip_primary' : 'equip_support',
+          changeType: 'equip_rune',
+          slotNumber: targetSlot + 1,
           beforeSchoolCode: getSchoolDefinitionForArchetype(previousRune?.archetypeCode)?.code ?? null,
           afterSchoolCode: getSchoolDefinitionForArchetype(nextRune?.archetypeCode)?.code ?? null,
           beforeRarity: previousRune?.rarity ?? null,

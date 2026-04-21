@@ -36,7 +36,7 @@ export const buildBattlePlayerSnapshot = (
   player: Pick<PlayerState, 'runes' | 'schoolMasteries'>,
 ): BattlePlayerSnapshot => {
   const equippedRune = getEquippedRune(player as PlayerState, 0);
-  const supportRune = getEquippedRune(player as PlayerState, 1);
+  const secondaryRune = getEquippedRune(player as PlayerState, 1);
   const school = getSchoolDefinitionForArchetype(equippedRune?.archetypeCode);
   const mastery = player ? getPlayerSchoolMasteryForArchetype(player, equippedRune?.archetypeCode) : null;
   const loadoutSnapshot = buildLoadoutSnapshot(equippedRune, {
@@ -44,15 +44,15 @@ export const buildBattlePlayerSnapshot = (
     schoolMasteryRank: mastery?.rank ?? 0,
     schoolProgressStage: resolveSchoolProgressStage(player, school?.code, equippedRune?.rarity),
   });
-  const supportSchool = getSchoolDefinitionForArchetype(supportRune?.archetypeCode);
-  const supportMastery = supportRune ? getPlayerSchoolMasteryForArchetype(player, supportRune.archetypeCode) : null;
-  const supportLoadoutSnapshot = buildLoadoutSnapshot(supportRune, {
-    schoolCode: supportSchool?.code ?? null,
-    schoolMasteryRank: supportMastery?.rank ?? 0,
-    schoolProgressStage: resolveSchoolProgressStage(player, supportSchool?.code, supportRune?.rarity),
+  const secondarySchool = getSchoolDefinitionForArchetype(secondaryRune?.archetypeCode);
+  const secondaryMastery = secondaryRune ? getPlayerSchoolMasteryForArchetype(player, secondaryRune.archetypeCode) : null;
+  const secondaryLoadoutSnapshot = buildLoadoutSnapshot(secondaryRune, {
+    schoolCode: secondarySchool?.code ?? null,
+    schoolMasteryRank: secondaryMastery?.rank ?? 0,
+    schoolProgressStage: resolveSchoolProgressStage(player, secondarySchool?.code, secondaryRune?.rarity),
   });
   const projectedLoadout = projectBattleRuneLoadout(loadoutSnapshot);
-  const projectedSupportLoadout = projectBattleRuneLoadout(supportLoadoutSnapshot);
+  const projectedSecondaryLoadout = projectBattleRuneLoadout(secondaryLoadoutSnapshot);
 
   return {
     playerId,
@@ -67,7 +67,7 @@ export const buildBattlePlayerSnapshot = (
     maxMana: stats.intelligence * 4,
     currentMana: stats.intelligence * 4,
     runeLoadout: projectedLoadout,
-    supportRuneLoadout: projectedSupportLoadout,
+    supportRuneLoadout: projectedSecondaryLoadout,
     guardPoints: 0,
   };
 };

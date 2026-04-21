@@ -6,6 +6,7 @@ import { requirePlayerByVkId } from '../../../shared/application/require-player'
 import type { GameRandom } from '../../../shared/application/ports/GameRandom';
 import type { GameRepository } from '../../../shared/application/ports/GameRepository';
 import { BattleEngine } from '../../domain/battle-engine';
+import { isRuneSkillAction } from '../../domain/battle-rune-loadouts';
 import { buildBattleActionIntentStateKey } from '../command-intent-state';
 
 import { finalizeRecoveredBattleIfNeeded } from '../finalize-recovered-battle';
@@ -26,11 +27,13 @@ export class PerformBattleAction {
   ) {}
 
   private resolveCommandKey(action: BattleActionType): 'BATTLE_ATTACK' | 'BATTLE_DEFEND' | 'BATTLE_RUNE_SKILL' {
+    if (isRuneSkillAction(action)) {
+      return 'BATTLE_RUNE_SKILL';
+    }
+
     switch (action) {
       case 'DEFEND':
         return 'BATTLE_DEFEND';
-      case 'RUNE_SKILL':
-        return 'BATTLE_RUNE_SKILL';
       case 'ATTACK':
       default:
         return 'BATTLE_ATTACK';

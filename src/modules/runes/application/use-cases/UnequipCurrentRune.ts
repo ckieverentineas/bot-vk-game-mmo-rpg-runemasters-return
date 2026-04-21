@@ -30,10 +30,6 @@ export class UnequipCurrentRune {
     }
 
     const targetSlot = getSelectedRune(player) ? getRuneEquippedSlot(getSelectedRune(player)!) ?? 0 : 0;
-    if (targetSlot === 0 && getEquippedRune(player, 1)) {
-      throw new AppError('rune_primary_required', 'Сначала снимите или переставьте руну поддержки, а потом освобождайте основной слот.');
-    }
-
     const currentStateKey = buildUnequipIntentStateKey(player, targetSlot);
     const intent = resolveCommandIntent(intentId, intentStateKey, intentSource, intentSource === null);
 
@@ -59,7 +55,8 @@ export class UnequipCurrentRune {
     const nextRune = getEquippedRune(updatedPlayer, targetSlot);
     if ((previousRune?.id ?? null) !== (nextRune?.id ?? null)) {
       await this.telemetry.loadoutChanged(updatedPlayer.userId, {
-        changeType: targetSlot === 0 ? 'unequip_primary' : 'unequip_support',
+        changeType: 'unequip_rune',
+        slotNumber: targetSlot + 1,
         beforeSchoolCode: getSchoolDefinitionForArchetype(previousRune?.archetypeCode)?.code ?? null,
         afterSchoolCode: getSchoolDefinitionForArchetype(nextRune?.archetypeCode)?.code ?? null,
         beforeRarity: previousRune?.rarity ?? null,

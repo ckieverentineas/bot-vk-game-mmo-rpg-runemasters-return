@@ -83,7 +83,8 @@ describe('summarizeReleaseEvidence', () => {
         userId: 11,
         action: 'loadout_changed',
         details: JSON.stringify({
-          changeType: 'equip_primary',
+          changeType: 'equip_rune',
+          slotNumber: 1,
           afterSchoolCode: 'ember',
           afterRarity: 'UNUSUAL',
         }),

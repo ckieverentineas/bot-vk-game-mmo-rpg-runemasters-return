@@ -1,6 +1,6 @@
 export type StatKey = 'health' | 'attack' | 'defence' | 'magicDefence' | 'dexterity' | 'intelligence';
 export type TurnOwner = 'PLAYER' | 'ENEMY';
-export type BattleActionType = 'ATTACK' | 'DEFEND' | 'RUNE_SKILL';
+export type BattleActionType = 'ATTACK' | 'DEFEND' | 'RUNE_SKILL' | 'RUNE_SKILL_SLOT_1' | 'RUNE_SKILL_SLOT_2';
 export type BattleStatus = 'ACTIVE' | 'COMPLETED';
 export type BattleResult = 'VICTORY' | 'DEFEAT';
 export type BattleEnemyIntentCode = 'HEAVY_STRIKE' | 'GUARD_BREAK';

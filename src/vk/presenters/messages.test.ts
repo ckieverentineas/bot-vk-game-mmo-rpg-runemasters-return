@@ -220,18 +220,17 @@ describe('messages school-first onboarding framing', () => {
       ],
     }));
 
-    expect(message).toContain('Руны: 6 · стр. 1/2');
-    expect(message).toContain('🧩 Слоты рун: 1/2 открыто сейчас.');
-    expect(message).toContain('🛡️ Основа: Руна A');
-    expect(message).toContain('🧩 Поддержка: 🔒 откроется на mastery-вехе');
-    expect(message).toContain('🎯 Выбрано: Руна B');
-    expect(message).toContain('1. 🛡️ Основа · Руна A');
+    expect(message).toContain('Руны: 6 · карусель 1/2 · по 5');
+    expect(message).toContain('🧩 Слоты рун: 2 открыто сейчас.');
+    expect(message).toContain('Надето: 1. Руна A · 2. пусто');
+    expect(message).toContain('🎯 Выбрана: Руна B');
+    expect(message).toContain('1. ✅ Надета 1 · Руна A');
     expect(message).toContain('2. 🎯 Выбрана · Руна B');
-    expect(message).toContain('5. ▫️ В запасе · Руна E');
+    expect(message).toContain('5. ▫️ В коллекции · Руна E');
     expect(message).not.toContain('Выберите слот 1-5');
   });
 
-  it('shows unlocked support slot when school mastery opens the second slot', () => {
+  it('shows an equipped second rune as a full slot in the carousel', () => {
     const message = renderRuneScreen(createPlayer({
       tutorialState: 'SKIPPED',
       schoolMasteries: [{ schoolCode: 'ember', experience: 3, rank: 1 }],
@@ -242,9 +241,9 @@ describe('messages school-first onboarding framing', () => {
       currentRuneIndex: 1,
     }));
 
-    expect(message).toContain('🧩 Слоты рун: 2/2 открыто сейчас.');
-    expect(message).toContain('🧩 Поддержка: Руна B');
-    expect(message).toContain('2. 🎯🧩 Поддержка · Руна B');
+    expect(message).toContain('🧩 Слоты рун: 2 открыто сейчас.');
+    expect(message).toContain('Надето: 1. Руна A · 2. Руна B');
+    expect(message).toContain('2. 🎯✅ Надета 2 · Руна B');
   });
 
   it('keeps skipped players on the adventure path even with stale intro location state', () => {
@@ -530,7 +529,7 @@ describe('messages school-first onboarding framing', () => {
     expect(message).toContain('👉 Дальше: Откройте «🔮 Руны» и примерьте её в сборке.');
   });
 
-  it('shows support rune contribution in battle text without adding a second active skill promise', () => {
+  it('shows both rune slots in battle text and actions', () => {
     const message = renderBattle(createBattle({
       status: 'ACTIVE',
       result: null,
@@ -554,21 +553,27 @@ describe('messages school-first onboarding framing', () => {
           },
         },
         supportRuneLoadout: {
-          runeId: 'rune-support-1',
-          runeName: 'Искра поддержки',
+          runeId: 'rune-slot-2-1',
+          runeName: 'Искра Бури',
           archetypeCode: 'ember',
           archetypeName: 'Штурм',
           schoolCode: 'ember',
           schoolMasteryRank: 0,
           passiveAbilityCodes: ['ember_heart'],
-          activeAbility: null,
+          activeAbility: {
+            code: 'gale_step',
+            name: 'Шаг шквала',
+            manaCost: 2,
+            cooldownTurns: 2,
+            currentCooldown: 0,
+          },
         },
       },
     }));
 
-    expect(message).toContain('🌀 Импульс углей — готово');
-    expect(message).toContain('🎮 Действия: ⚔️ Атака · 🛡️ Защита (+2 щит) · 🌀 Импульс углей');
-    expect(message).not.toContain('Искра поддержки');
+    expect(message).toContain('🌀 Слот 1: Импульс углей — готово');
+    expect(message).toContain('🌀 Слот 2: Шаг шквала — готово');
+    expect(message).toContain('🎮 Действия: ⚔️ Атака · 🛡️ Защита (+2 щит) · 🌀 1: Импульс углей · 🌀 2: Шаг шквала');
   });
 
   it('shows a compact combat clarity state line during the active player turn', () => {
@@ -676,13 +681,13 @@ describe('messages school-first onboarding framing', () => {
       runes: [createEquippedRune()],
     }), {
       kind: 'slot_unlock',
-      title: 'Открыт слот поддержки',
-      changeLine: 'Сборка стала шире: теперь можно усилить школу второй руной поддержки без второй боевой кнопки.',
-      nextStepLine: 'Откройте «🔮 Руны» и поставьте руну поддержки.',
+      title: 'Открыт новый слот рун',
+      changeLine: 'Сборка стала шире: теперь можно надеть ещё одну полноценную руну.',
+      nextStepLine: 'Откройте «🔮 Руны» и выберите, какой слот занять новой руной.',
     });
 
-    expect(message).toContain('✨ Что изменилось: Открыт слот поддержки.');
-    expect(message).toContain('👉 Дальше: Откройте «🔮 Руны» и поставьте руну поддержки.');
+    expect(message).toContain('✨ Что изменилось: Открыт новый слот рун.');
+    expect(message).toContain('👉 Дальше: Откройте «🔮 Руны» и выберите, какой слот занять новой руной.');
   });
 
   it('celebrates the first aligned school trial completion in battle result', () => {

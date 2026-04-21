@@ -675,9 +675,9 @@ describe('GameHandler smoke', () => {
       }),
       acquisitionSummary: {
         kind: 'slot_unlock',
-        title: 'Открыт слот поддержки',
-        changeLine: 'Сборка стала шире: теперь можно усилить школу второй руной поддержки без второй боевой кнопки.',
-        nextStepLine: 'Откройте «🔮 Руны» и поставьте руну поддержки.',
+        title: 'Открыт новый слот рун',
+        changeLine: 'Сборка стала шире: теперь можно надеть ещё одну полноценную руну.',
+        nextStepLine: 'Откройте «🔮 Руны» и выберите, какой слот занять новой руной.',
       },
     });
     const handler = new GameHandler(services);
@@ -685,8 +685,8 @@ describe('GameHandler smoke', () => {
 
     await handler.handle(ctx as never);
 
-    expect(getReplyCalls(ctx)[0]?.message).toContain('✨ Что изменилось: Открыт слот поддержки.');
-    expect(getReplyCalls(ctx)[0]?.message).toContain('👉 Дальше: Откройте «🔮 Руны» и поставьте руну поддержки.');
+    expect(getReplyCalls(ctx)[0]?.message).toContain('✨ Что изменилось: Открыт новый слот рун.');
+    expect(getReplyCalls(ctx)[0]?.message).toContain('👉 Дальше: Откройте «🔮 Руны» и выберите, какой слот занять новой руной.');
   });
 
   it('логирует первое school reveal после battle result с school trial completion', async () => {
@@ -1208,17 +1208,17 @@ describe('GameHandler smoke', () => {
     expect(JSON.stringify(getReplyCalls(ctx)[0]?.keyboard)).toContain('Проверить школу');
   });
 
-  it('пробрасывает intentId для экипировки в support-slot через transport payload', async () => {
+  it('пробрасывает intentId для экипировки во второй слот через transport payload', async () => {
     const services = createServices();
     const handler = new GameHandler(services);
-    const ctx = createFakeContext({ command: 'надеть в поддержку', intentId: 'intent-support-1', stateKey: 'state-support-1' });
+    const ctx = createFakeContext({ command: 'надеть в поддержку', intentId: 'intent-slot-2-1', stateKey: 'state-slot-2-1' });
 
     await handler.handle(ctx as never);
 
-    expect(services.equipCurrentRune.execute).toHaveBeenCalledWith(1001, 1, 'intent-support-1', 'state-support-1', 'payload');
+    expect(services.equipCurrentRune.execute).toHaveBeenCalledWith(1001, 1, 'intent-slot-2-1', 'state-slot-2-1', 'payload');
   });
 
-  it('не поднимает first-sign payoff recap на replayed support-slot equip', async () => {
+  it('не поднимает first-sign payoff recap на replayed экипировку во второй слот', async () => {
     const services = createServices();
     vi.mocked(services.equipCurrentRune.execute).mockResolvedValueOnce({
       player: createPlayer({
@@ -1246,8 +1246,8 @@ describe('GameHandler smoke', () => {
             createdAt: '2026-04-12T00:00:00.000Z',
           },
           {
-            id: 'rune-support-1',
-            runeCode: 'rune-support-1',
+            id: 'rune-slot-2-1',
+            runeCode: 'rune-slot-2-1',
             archetypeCode: 'stone',
             passiveAbilityCodes: ['stone_skin'],
             activeAbilityCodes: ['stone_counter'],
@@ -1269,7 +1269,7 @@ describe('GameHandler smoke', () => {
       replayed: true,
     });
     const handler = new GameHandler(services);
-    const ctx = createFakeContext({ command: 'надеть в поддержку', intentId: 'intent-support-replay-1', stateKey: 'state-support-replay-1' });
+    const ctx = createFakeContext({ command: 'надеть в поддержку', intentId: 'intent-slot-2-replay-1', stateKey: 'state-slot-2-replay-1' });
 
     await handler.handle(ctx as never);
 
@@ -1466,7 +1466,7 @@ describe('GameHandler smoke', () => {
     const replies = getReplyCalls(ctx);
     expect(replies[0]?.message).toContain('На этой позиции нет руны');
     expect(JSON.stringify(replies[0]?.keyboard)).toContain('✨ Создать');
-    expect(JSON.stringify(replies[0]?.keyboard)).toContain('🗑️ Распылить');
+    expect(JSON.stringify(replies[0]?.keyboard)).toContain('руна слот 1');
   });
 
   it('восстанавливает rune hub после stale перелистывания страницы', async () => {
@@ -1601,7 +1601,7 @@ describe('GameHandler smoke', () => {
     const replies = getReplyCalls(ctx);
     expect(replies[0]?.message).toContain('Команда уже обрабатывается');
     expect(replies[0]?.message).toContain('Руны и мастерская');
-    expect(JSON.stringify(replies[0]?.keyboard)).toContain('снять');
+    expect(JSON.stringify(replies[0]?.keyboard)).toContain('надеть слот 1');
   });
 
   it('проходит сценарий пропуска обучения', async () => {

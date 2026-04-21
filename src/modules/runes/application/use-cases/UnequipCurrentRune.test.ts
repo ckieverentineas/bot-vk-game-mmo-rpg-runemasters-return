@@ -95,10 +95,10 @@ describe('UnequipCurrentRune', () => {
         intentStateKey: stateKey,
         expectedPlayerUpdatedAt: player.updatedAt,
         expectedCurrentRuneIndex: 0,
-        expectedUnlockedRuneSlotCount: 1,
+        expectedUnlockedRuneSlotCount: 2,
         expectedSelectedRuneId: 'rune-1',
         expectedEquippedRuneId: 'rune-1',
-        expectedEquippedRuneIdsBySlot: ['rune-1'],
+        expectedEquippedRuneIdsBySlot: ['rune-1', null],
         expectedRuneIds: ['rune-1'],
       }),
     );
@@ -167,7 +167,7 @@ describe('UnequipCurrentRune', () => {
     expect(repository.equipRune).not.toHaveBeenCalled();
   });
 
-  it('unequips the support slot when the selected rune occupies slot 2', async () => {
+  it('unequips slot 2 when the selected rune occupies it', async () => {
     const player = createPlayer({
       unlockedRuneSlotCount: 2,
       runes: [
@@ -213,7 +213,7 @@ describe('UnequipCurrentRune', () => {
     const useCase = new UnequipCurrentRune(repository, telemetry);
     const stateKey = buildUnequipIntentStateKey(player, 1);
 
-    await useCase.execute(player.vkId, 'intent-unequip-support', stateKey);
+    await useCase.execute(player.vkId, 'intent-unequip-slot-2', stateKey);
 
     expect(repository.equipRune).toHaveBeenCalledWith(
       player.playerId,
@@ -225,7 +225,8 @@ describe('UnequipCurrentRune', () => {
       }),
     );
     expect(telemetry.loadoutChanged).toHaveBeenCalledWith(updatedPlayer.userId, {
-      changeType: 'unequip_support',
+      changeType: 'unequip_rune',
+      slotNumber: 2,
       beforeSchoolCode: 'ember',
       afterSchoolCode: null,
       beforeRarity: 'USUAL',

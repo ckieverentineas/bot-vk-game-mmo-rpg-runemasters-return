@@ -2,7 +2,7 @@ import { gameBalance } from '../../../config/game-balance';
 import type { InventoryView, PlayerState, RuneRarity, RuneView, ShardField, StatBlock } from '../../../shared/types/game';
 import { resolveUnlockedRuneSlotCountFromSchoolMasteries } from './school-mastery';
 
-export const DEFAULT_UNLOCKED_RUNE_SLOT_COUNT = 1;
+export const DEFAULT_UNLOCKED_RUNE_SLOT_COUNT = 2;
 
 export const emptyStats = (): StatBlock => ({
   health: 0,
@@ -39,7 +39,8 @@ export const addStats = (left: StatBlock, right: StatBlock): StatBlock => ({
 
 export const getUnlockedRuneSlotCount = (player: Pick<PlayerState, 'unlockedRuneSlotCount' | 'schoolMasteries'>): number => {
   const slotCount = player.unlockedRuneSlotCount ?? DEFAULT_UNLOCKED_RUNE_SLOT_COUNT;
-  const normalizedSlotCount = Number.isInteger(slotCount) && slotCount > 0 ? slotCount : DEFAULT_UNLOCKED_RUNE_SLOT_COUNT;
+  const persistedSlotCount = Number.isInteger(slotCount) && slotCount > 0 ? slotCount : DEFAULT_UNLOCKED_RUNE_SLOT_COUNT;
+  const normalizedSlotCount = Math.max(DEFAULT_UNLOCKED_RUNE_SLOT_COUNT, persistedSlotCount);
 
   return 'schoolMasteries' in player
     ? resolveUnlockedRuneSlotCountFromSchoolMasteries(player, normalizedSlotCount)
@@ -89,17 +90,6 @@ export const getEquippedRune = (player: PlayerState, slot = 0): RuneView | null 
   getEquippedRunes(player).find((rune) => getRuneEquippedSlot(rune) === slot) ?? null
 );
 
-const scaleSupportRuneStat = (value: number): number => (value <= 0 ? 0 : Math.ceil(value / 2));
-
-const projectSupportRuneStats = (rune: RuneView): StatBlock => ({
-  health: scaleSupportRuneStat(rune.health),
-  attack: scaleSupportRuneStat(rune.attack),
-  defence: scaleSupportRuneStat(rune.defence),
-  magicDefence: scaleSupportRuneStat(rune.magicDefence),
-  dexterity: scaleSupportRuneStat(rune.dexterity),
-  intelligence: scaleSupportRuneStat(rune.intelligence),
-});
-
 export const getSelectedRune = (player: PlayerState): RuneView | null => {
   if (player.runes.length === 0) {
     return null;
@@ -110,13 +100,7 @@ export const getSelectedRune = (player: PlayerState): RuneView | null => {
 
 export const derivePlayerStats = (player: PlayerState): StatBlock => {
   const equippedRunes = getEquippedRunes(player);
-  const primaryRune = equippedRunes.find((rune) => getRuneEquippedSlot(rune) === 0) ?? null;
-  const supportRunes = equippedRunes.filter((rune) => getRuneEquippedSlot(rune) !== 0);
-
-  return supportRunes.reduce(
-    (stats, rune) => addStats(stats, projectSupportRuneStats(rune)),
-    addStats(player.baseStats, primaryRune ?? emptyStats()),
-  );
+  return equippedRunes.reduce((stats, rune) => addStats(stats, rune), player.baseStats);
 };
 
 export const clamp = (value: number, min: number, max: number): number => Math.max(min, Math.min(max, value));

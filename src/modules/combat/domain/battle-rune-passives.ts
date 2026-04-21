@@ -1,28 +1,30 @@
 import type { BattleView } from '../../../shared/types/game';
+import { listBattleRuneLoadouts } from './battle-rune-loadouts';
 
 const hasPassive = (battle: BattleView, code: string): boolean => (
-  battle.player.runeLoadout?.passiveAbilityCodes.includes(code) ?? false
+  listBattleRuneLoadouts(battle.player).some(({ loadout }) => loadout.passiveAbilityCodes.includes(code))
 );
 
-const hasSupportPassive = (battle: BattleView, code: string): boolean => (
-  battle.player.supportRuneLoadout?.passiveAbilityCodes.includes(code) ?? false
+const countPassive = (battle: BattleView, code: string): number => (
+  listBattleRuneLoadouts(battle.player)
+    .filter(({ loadout }) => loadout.passiveAbilityCodes.includes(code))
+    .length
 );
 
 const hasSchoolMastery = (battle: BattleView, schoolCode: string, rank = 1): boolean => (
-  battle.player.runeLoadout?.schoolCode === schoolCode
-  && (battle.player.runeLoadout?.schoolMasteryRank ?? 0) >= rank
+  listBattleRuneLoadouts(battle.player).some(({ loadout }) => (
+    loadout.schoolCode === schoolCode && (loadout.schoolMasteryRank ?? 0) >= rank
+  ))
 );
 
 const hasActiveCooldownWindow = (battle: BattleView): boolean => (
-  (battle.player.runeLoadout?.activeAbility?.currentCooldown ?? 0) > 0
+  listBattleRuneLoadouts(battle.player).some(({ loadout }) => (
+    (loadout.activeAbility?.currentCooldown ?? 0) > 0
+  ))
 );
 
 export const resolveEmberAttackBonus = (battle: BattleView): number => (
-  hasPassive(battle, 'ember_heart') ? 1 : 0
-);
-
-export const resolveSupportEmberAttackBonus = (battle: BattleView): number => (
-  battle.player.runeLoadout?.schoolCode === 'ember' && hasSupportPassive(battle, 'ember_heart') ? 1 : 0
+  countPassive(battle, 'ember_heart')
 );
 
 export const resolveEmberExecutionBonus = (battle: BattleView): number => (
@@ -40,19 +42,11 @@ export const resolveEmberComboBonus = (battle: BattleView): number => (
 );
 
 export const resolveStoneGuardGainBonus = (battle: BattleView): number => (
-  hasPassive(battle, 'stone_guard') ? 2 : 0
-);
-
-export const resolveSupportStoneGuardGainBonus = (battle: BattleView): number => (
-  battle.player.runeLoadout?.schoolCode === 'stone' && hasSupportPassive(battle, 'stone_guard') ? 1 : 0
+  countPassive(battle, 'stone_guard') * 2
 );
 
 export const resolveStoneGuardCapBonus = (battle: BattleView): number => (
-  hasPassive(battle, 'stone_guard') ? 2 : 0
-);
-
-export const resolveSupportStoneGuardCapBonus = (battle: BattleView): number => (
-  battle.player.runeLoadout?.schoolCode === 'stone' && hasSupportPassive(battle, 'stone_guard') ? 1 : 0
+  countPassive(battle, 'stone_guard') * 2
 );
 
 export const resolveStoneMasteryGuardGainBonus = (battle: BattleView): number => (

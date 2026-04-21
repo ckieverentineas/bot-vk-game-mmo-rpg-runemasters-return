@@ -14,8 +14,8 @@ export interface SchoolMasteryDefinition {
 }
 
 const maxSchoolMasteryRank = 1;
-export const supportRuneSlotUnlockMasteryRank = 1;
-export const supportRuneSlotCount = 2;
+export const firstMasteryRuneSlotFloorRank = 1;
+export const firstMasteryRuneSlotFloorCount = 2;
 
 const schoolMasteryDefinitions: readonly SchoolMasteryDefinition[] = [
   {
@@ -170,8 +170,8 @@ export const resolveUnlockedRuneSlotCountFromSchoolMasteries = (
   player: Pick<PlayerState, 'schoolMasteries'>,
   currentUnlockedSlotCount = 1,
 ): number => {
-  const hasSupportSlotUnlock = listPlayerSchoolMasteries(player).some((mastery) => mastery.rank >= supportRuneSlotUnlockMasteryRank);
-  return hasSupportSlotUnlock
-    ? Math.max(currentUnlockedSlotCount, supportRuneSlotCount)
+  const reachedFirstMasteryFloor = listPlayerSchoolMasteries(player).some((mastery) => mastery.rank >= firstMasteryRuneSlotFloorRank);
+  return reachedFirstMasteryFloor
+    ? Math.max(currentUnlockedSlotCount, firstMasteryRuneSlotFloorCount)
     : currentUnlockedSlotCount;
 };

@@ -340,7 +340,7 @@ describe('next goal read-model', () => {
     expect(goal.milestoneBenefitText).toContain('первую редкую руну школы Прорицания');
   });
 
-  it('switches to support-slot goal once the mastery unlock is reached', () => {
+  it('asks the player to fill the baseline second rune slot', () => {
     const goal = buildPlayerNextGoalView(createPlayer({
       victories: 4,
       schoolMasteries: [{ schoolCode: 'ember', experience: 3, rank: 1 }],
@@ -356,7 +356,7 @@ describe('next goal read-model', () => {
 
     expect(goal.goalType).toBe('fill_support_slot');
     expect(goal.primaryActionLabel).toBe('🔮 Руны');
-    expect(goal.milestoneProgressText).toBe('Слот поддержки уже открыт.');
+    expect(goal.milestoneProgressText).toBe('Второй слот рун уже открыт.');
   });
 
   it('keeps battle-result guidance aligned with the current player goal when no rune drops', () => {

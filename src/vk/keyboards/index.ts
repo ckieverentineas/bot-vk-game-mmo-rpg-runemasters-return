@@ -4,6 +4,11 @@ import { Keyboard } from 'vk-io';
 
 import { gameBalance } from '../../config/game-balance';
 import { buildBattleActionIntentStateKey } from '../../modules/combat/application/command-intent-state';
+import {
+  getBattleRuneLoadout,
+  resolveBattleRuneSkillAction,
+  type BattleRuneSlotIndex,
+} from '../../modules/combat/domain/battle-rune-loadouts';
 import { resolveDefendGuardGain } from '../../modules/combat/domain/battle-tactics';
 import {
   buildEnterTutorialModeIntentStateKey,
@@ -13,7 +18,14 @@ import {
 } from '../../modules/exploration/application/command-intent-state';
 import { buildPlayerNextGoalView } from '../../modules/player/application/read-models/next-goal';
 import { buildBattleResultNextGoalView } from '../../modules/player/application/read-models/next-goal';
-import { getEquippedRune, getRuneEquippedSlot, getSelectedRune, getUnlockedRuneSlotCount, isPlayerInTutorial } from '../../modules/player/domain/player-stats';
+import {
+  DEFAULT_UNLOCKED_RUNE_SLOT_COUNT,
+  getEquippedRune,
+  getRuneEquippedSlot,
+  getSelectedRune,
+  getUnlockedRuneSlotCount,
+  isPlayerInTutorial,
+} from '../../modules/player/domain/player-stats';
 import {
   buildCraftIntentStateKey,
   buildDestroyIntentStateKey,
@@ -109,13 +121,14 @@ const createProfileLayout = (_player?: PlayerState): KeyboardLayout => [[
   { label: '🗑️ Удалить персонажа', command: gameCommands.deletePlayer, color: Keyboard.NEGATIVE_COLOR },
 ]];
 
-const createBattleSkillButton = (battle: BattleView): KeyboardButtonDefinition | null => {
-  const activeAbility = battle.player.runeLoadout?.activeAbility ?? null;
+const createBattleSkillButton = (battle: BattleView, slot: BattleRuneSlotIndex): KeyboardButtonDefinition | null => {
+  const activeAbility = getBattleRuneLoadout(battle.player, slot)?.activeAbility ?? null;
   if (!activeAbility) {
     return null;
   }
 
-  const stateKey = buildBattleActionIntentStateKey(battle, 'RUNE_SKILL');
+  const action = resolveBattleRuneSkillAction(slot);
+  const stateKey = buildBattleActionIntentStateKey(battle, action);
   const isReady = activeAbility.currentCooldown <= 0 && battle.player.currentMana >= activeAbility.manaCost;
   const labelSuffix = activeAbility.currentCooldown > 0
     ? ` · КД ${activeAbility.currentCooldown}`
@@ -124,8 +137,8 @@ const createBattleSkillButton = (battle: BattleView): KeyboardButtonDefinition |
       : '';
 
   return {
-    label: `🌀 ${activeAbility.name}${labelSuffix}`,
-    command: gameCommands.skills,
+    label: `🌀 ${slot + 1} ${activeAbility.name}${labelSuffix}`,
+    command: slot === 0 ? gameCommands.skillSlot1 : gameCommands.skillSlot2,
     color: isReady ? Keyboard.PRIMARY_COLOR : Keyboard.SECONDARY_COLOR,
     intentScoped: true,
     stateKey,
@@ -133,14 +146,16 @@ const createBattleSkillButton = (battle: BattleView): KeyboardButtonDefinition |
 };
 
 const createBattleActionLayout = (battle: BattleView): KeyboardLayout => {
-  const skillButton = createBattleSkillButton(battle);
+  const skillButtons = ([0, 1] as const)
+    .map((slot) => createBattleSkillButton(battle, slot))
+    .filter((button): button is KeyboardButtonDefinition => button !== null);
 
   return [
     [
       { label: '⚔️ Атака', command: gameCommands.attack, color: Keyboard.POSITIVE_COLOR, intentScoped: true, stateKey: buildBattleActionIntentStateKey(battle, 'ATTACK') },
       { label: `🛡️ Защита (+${resolveDefendGuardGain(battle.player)} щит)`, command: gameCommands.defend, color: Keyboard.PRIMARY_COLOR, intentScoped: true, stateKey: buildBattleActionIntentStateKey(battle, 'DEFEND') },
     ],
-    ...(skillButton ? [[skillButton]] : []),
+    ...(skillButtons.length > 0 ? [skillButtons] : []),
   ];
 };
 
@@ -168,84 +183,76 @@ const createBattleResultLayout = (battle: BattleView, player?: PlayerState): Key
 const createRuneLayout = (player?: PlayerState): KeyboardLayout => {
   const selectedRune = player ? getSelectedRune(player) : null;
   const nextGoal = player ? buildPlayerNextGoalView(player) : null;
-  const primaryRune = player ? getEquippedRune(player, 0) : null;
-  const unlockedRuneSlotCount = player ? getUnlockedRuneSlotCount(player) : 1;
-  const supportRune = player && unlockedRuneSlotCount > 1 ? getEquippedRune(player, 1) : null;
+  const unlockedRuneSlotCount = player ? getUnlockedRuneSlotCount(player) : DEFAULT_UNLOCKED_RUNE_SLOT_COUNT;
   const selectedEquippedSlot = selectedRune ? getRuneEquippedSlot(selectedRune) : null;
   const craftStateKey = player ? buildCraftIntentStateKey(player) : undefined;
-  const equipPrimaryStateKey = player ? buildEquipIntentStateKey(player, 0) : undefined;
-  const equipSupportStateKey = player ? buildEquipIntentStateKey(player, 1) : undefined;
-  const unequipStateKey = player ? buildUnequipIntentStateKey(player, selectedEquippedSlot ?? 0) : undefined;
   const previousPageStateKey = player ? buildMoveRuneCursorIntentStateKey(player, -runeCollectionPageSize) : undefined;
   const nextPageStateKey = player ? buildMoveRuneCursorIntentStateKey(player, runeCollectionPageSize) : undefined;
   const exploreStateKey = player ? buildExploreLocationIntentStateKey(player) : undefined;
   const destroyStateKey = player && selectedRune
     ? buildDestroyIntentStateKey(player, selectedRune.id, gameBalance.runes.profiles[selectedRune.rarity].shardField)
     : undefined;
-  const equipPrimaryLabel = !selectedRune
-    ? '✅ В основу'
-    : selectedEquippedSlot === 0
-      ? '✅ В основе'
-      : primaryRune
-        ? '🔁 В основу'
-        : '✅ В основу';
-  const equipSupportLabel = unlockedRuneSlotCount < 2
-    ? '🔒 Слот 2'
-    : !primaryRune
-      ? '🔒 Нужна основа'
-      : !selectedRune
-        ? '🧩 В поддержку'
-        : selectedEquippedSlot === 1
-          ? '🧩 В поддержке'
-          : supportRune
-            ? '🔁 В поддержку'
-            : '🧩 В поддержку';
-  const equipSupportColor = unlockedRuneSlotCount < 2 || !primaryRune
-    ? Keyboard.SECONDARY_COLOR
-    : Keyboard.PRIMARY_COLOR;
-  const unequipLabel = !primaryRune && !supportRune
-    ? '🚫 Снимать нечего'
-    : selectedEquippedSlot === 1
-      ? '❌ Снять поддержку'
-      : selectedEquippedSlot === 0
-        ? '❌ Снять основу'
-        : primaryRune
-          ? '❌ Снять основу'
-          : '❌ Снять поддержку';
-  const canUnequipVisible = !supportRune || selectedEquippedSlot === 1 || (!primaryRune && !supportRune);
 
-     return [
-      ...(nextGoal?.goalType === 'challenge_school_miniboss'
-        ? [[
-            { label: nextGoal.primaryActionLabel, command: gameCommands.explore, color: Keyboard.POSITIVE_COLOR, intentScoped: Boolean(player), stateKey: exploreStateKey },
-          ] as const]
-        : []),
-      [
+  const openEquipmentSlots = ([0, 1] as const)
+    .filter((slot) => slot < unlockedRuneSlotCount);
+  const equipButtons = selectedRune && selectedEquippedSlot === null
+    ? openEquipmentSlots.map((slot): KeyboardButtonDefinition => {
+        const equippedRune = player ? getEquippedRune(player, slot) : null;
+        return {
+          label: equippedRune ? `🔁 Слот ${slot + 1}` : `✅ Слот ${slot + 1}`,
+          command: slot === 0 ? gameCommands.equipRuneSlot1 : gameCommands.equipRuneSlot2,
+          color: equippedRune ? Keyboard.PRIMARY_COLOR : Keyboard.POSITIVE_COLOR,
+          intentScoped: Boolean(player),
+          stateKey: player ? buildEquipIntentStateKey(player, slot) : undefined,
+        };
+      })
+    : [];
+  const unequipButton = selectedRune && selectedEquippedSlot !== null
+    ? [{
+        label: `❌ Снять со слота ${selectedEquippedSlot + 1}`,
+        command: gameCommands.unequipRune,
+        color: Keyboard.NEGATIVE_COLOR,
+        intentScoped: Boolean(player),
+        stateKey: player ? buildUnequipIntentStateKey(player, selectedEquippedSlot) : undefined,
+      } as const]
+    : [];
+  const selectedRuneActionRow = [
+    ...equipButtons,
+    ...unequipButton,
+    ...(selectedRune
+      ? [{
+          label: '🗑️ Распылить',
+          command: gameCommands.destroyRune,
+          color: Keyboard.NEGATIVE_COLOR,
+          intentScoped: true,
+          stateKey: destroyStateKey,
+        } as const]
+      : []),
+  ];
+
+  return [
+    ...(nextGoal?.goalType === 'challenge_school_miniboss'
+      ? [[
+          { label: nextGoal.primaryActionLabel, command: gameCommands.explore, color: Keyboard.POSITIVE_COLOR, intentScoped: Boolean(player), stateKey: exploreStateKey },
+        ] as const]
+      : []),
+    [
       { label: '1', command: gameCommands.selectRuneSlot1, color: Keyboard.PRIMARY_COLOR, intentScoped: Boolean(player), stateKey: player ? buildSelectRunePageSlotIntentStateKey(player, 0) : undefined },
       { label: '2', command: gameCommands.selectRuneSlot2, color: Keyboard.PRIMARY_COLOR, intentScoped: Boolean(player), stateKey: player ? buildSelectRunePageSlotIntentStateKey(player, 1) : undefined },
       { label: '3', command: gameCommands.selectRuneSlot3, color: Keyboard.PRIMARY_COLOR, intentScoped: Boolean(player), stateKey: player ? buildSelectRunePageSlotIntentStateKey(player, 2) : undefined },
       { label: '4', command: gameCommands.selectRuneSlot4, color: Keyboard.PRIMARY_COLOR, intentScoped: Boolean(player), stateKey: player ? buildSelectRunePageSlotIntentStateKey(player, 3) : undefined },
       { label: '5', command: gameCommands.selectRuneSlot5, color: Keyboard.PRIMARY_COLOR, intentScoped: Boolean(player), stateKey: player ? buildSelectRunePageSlotIntentStateKey(player, 4) : undefined },
-      ],
-      [
+    ],
+    [
       { label: '◀️ Стр', command: gameCommands.previousRunePage, color: Keyboard.SECONDARY_COLOR, intentScoped: Boolean(player), stateKey: previousPageStateKey },
       { label: '▶️ Стр', command: gameCommands.nextRunePage, color: Keyboard.SECONDARY_COLOR, intentScoped: Boolean(player), stateKey: nextPageStateKey },
-      ],
-    [
-      { label: equipPrimaryLabel, command: gameCommands.equipRune, color: Keyboard.POSITIVE_COLOR, intentScoped: Boolean(player), stateKey: equipPrimaryStateKey },
-      ...(unlockedRuneSlotCount > 1 && selectedEquippedSlot !== 0
-        ? [{ label: equipSupportLabel, command: gameCommands.equipSupportRune, color: equipSupportColor, intentScoped: Boolean(player), stateKey: equipSupportStateKey } as const]
-        : []),
-      ...(canUnequipVisible && !(selectedEquippedSlot === 0 && supportRune)
-        ? [{ label: unequipLabel, command: gameCommands.unequipRune, color: Keyboard.NEGATIVE_COLOR, intentScoped: Boolean(player), stateKey: unequipStateKey } as const]
-        : []),
     ],
+    ...(selectedRuneActionRow.length > 0 ? [selectedRuneActionRow] : []),
     [
       { label: '✨ Создать', command: gameCommands.craftRune, color: Keyboard.POSITIVE_COLOR, intentScoped: true, stateKey: craftStateKey },
       { label: '🔧 Перековать', command: gameCommands.rerollRuneMenu, color: Keyboard.PRIMARY_COLOR },
     ],
     [
-      { label: '🗑️ Распылить', command: gameCommands.destroyRune, color: Keyboard.NEGATIVE_COLOR, intentScoped: true, stateKey: destroyStateKey },
       { label: '◀ Главное меню', command: gameCommands.backToMenu, color: Keyboard.SECONDARY_COLOR },
     ],
   ];

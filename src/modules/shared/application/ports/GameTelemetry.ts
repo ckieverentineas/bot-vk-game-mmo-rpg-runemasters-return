@@ -20,7 +20,8 @@ export interface GameTelemetry {
   loadoutChanged(
     userId: number,
     payload: {
-      readonly changeType: 'equip_primary' | 'equip_support' | 'unequip_primary' | 'unequip_support';
+      readonly changeType: 'equip_rune' | 'unequip_rune';
+      readonly slotNumber: number;
       readonly beforeSchoolCode: string | null;
       readonly afterSchoolCode: string | null;
       readonly beforeRarity: RuneRarity | null;

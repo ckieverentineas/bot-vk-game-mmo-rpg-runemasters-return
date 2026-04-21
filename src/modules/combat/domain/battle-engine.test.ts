@@ -127,6 +127,37 @@ describe('BattleEngine', () => {
     expect(resolved.log.some((entry) => entry.includes('Импульс углей'))).toBe(true);
   });
 
+  it('позволяет применить активное действие второй руны', () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0.5);
+    const battle = createBattle({
+      player: {
+        ...createBattle().player,
+        supportRuneLoadout: {
+          runeId: 'rune-2',
+          runeName: 'Руна Бури',
+          archetypeCode: 'gale',
+          archetypeName: 'Скиталец',
+          schoolCode: 'gale',
+          schoolMasteryRank: 0,
+          passiveAbilityCodes: [],
+          activeAbility: {
+            code: 'gale_step',
+            name: 'Шаг шквала',
+            manaCost: 2,
+            cooldownTurns: 2,
+            currentCooldown: 0,
+          },
+        },
+      },
+    });
+
+    const resolved = BattleEngine.performPlayerAction(battle, 'RUNE_SKILL_SLOT_2');
+
+    expect(resolved.player.currentMana).toBe(2);
+    expect(resolved.player.supportRuneLoadout?.activeAbility?.currentCooldown).toBe(2);
+    expect(resolved.log.some((entry) => entry.includes('Шаг шквала'))).toBe(true);
+  });
+
   it('школа пламени усиливает базовую атаку постоянным давлением', () => {
     vi.spyOn(Math, 'random').mockReturnValue(0.5);
     const battle = createBattle({
@@ -192,7 +223,7 @@ describe('BattleEngine', () => {
     expect(resolved.log.some((entry) => entry.includes('Разогрев Пламени'))).toBe(true);
   });
 
-  it('поддержка пламени добавляет пассивное давление без второй активной кнопки', () => {
+  it('вторая руна пламени добавляет полное пассивное давление', () => {
     vi.spyOn(Math, 'random').mockReturnValue(0.5);
     const battle = createBattle({
       player: {
@@ -203,8 +234,8 @@ describe('BattleEngine', () => {
           schoolCode: 'ember',
         },
         supportRuneLoadout: {
-          runeId: 'rune-support-1',
-          runeName: 'Искра поддержки',
+          runeId: 'rune-slot-2-1',
+          runeName: 'Вторая искра',
           archetypeCode: 'ember',
           archetypeName: 'Штурм',
           schoolCode: 'ember',
@@ -218,7 +249,7 @@ describe('BattleEngine', () => {
     const resolved = BattleEngine.attack(battle);
 
     expect(resolved.enemy.currentHealth).toBe(3);
-    expect(resolved.log.some((entry) => entry.includes('Поддержка Пламени'))).toBe(true);
+    expect(resolved.log.some((entry) => entry.includes('Школа Пламени'))).toBe(true);
   });
 
   it('даёт игроку универсальную защиту вместо атаки', () => {
@@ -272,7 +303,7 @@ describe('BattleEngine', () => {
     expect(resolved.log.some((entry) => entry.includes('Мастерство Тверди'))).toBe(true);
   });
 
-  it('поддержка тверди усиливает guard без второй активной кнопки', () => {
+  it('вторая руна тверди даёт полный guard-бонус', () => {
     const battle = createBattle({
       player: {
         ...createBattle().player,
@@ -285,8 +316,8 @@ describe('BattleEngine', () => {
           schoolCode: 'stone',
         },
         supportRuneLoadout: {
-          runeId: 'rune-support-2',
-          runeName: 'Щит поддержки',
+          runeId: 'rune-slot-2-2',
+          runeName: 'Второй щит',
           archetypeCode: 'stone',
           archetypeName: 'Страж',
           schoolCode: 'stone',
@@ -299,8 +330,8 @@ describe('BattleEngine', () => {
 
     const resolved = BattleEngine.defend(battle);
 
-    expect(resolved.player.guardPoints).toBe(3);
-    expect(resolved.log.some((entry) => entry.includes('Поддержка Тверди'))).toBe(true);
+    expect(resolved.player.guardPoints).toBe(4);
+    expect(resolved.log.some((entry) => entry.includes('защитную стойку'))).toBe(true);
   });
 
   it('школа тверди даёт активный отпор против опасного хода', () => {

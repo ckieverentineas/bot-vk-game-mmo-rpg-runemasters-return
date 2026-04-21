@@ -340,7 +340,7 @@ describe('acquisition summary read-model', () => {
     expect(summary?.changeLine).toContain('Прорицание признало, что вы не просто увидели угрозу');
   });
 
-  it('prioritizes support slot unlock when mastery opens build breadth', () => {
+  it('keeps mastery unlock as the visible gain now that two rune slots are baseline', () => {
     const before = createPlayer({
       runes: [createRune({ isEquipped: true, equippedSlot: 0 })],
       schoolMasteries: [{ schoolCode: 'ember', experience: 2, rank: 0 }],
@@ -354,9 +354,9 @@ describe('acquisition summary read-model', () => {
 
     const summary = buildBattleAcquisitionSummary(before, after, createBattle());
 
-    expect(summary?.kind).toBe('slot_unlock');
-    expect(summary?.title).toBe('Открыт слот поддержки');
-    expect(summary?.nextStepLine).toContain('поставьте руну поддержки');
+    expect(summary?.kind).toBe('mastery_unlock');
+    expect(summary?.title).toBe('Новая school-веха: «Разогрев дожима»');
+    expect(summary?.nextStepLine).toContain('проверьте новый эффект школы');
   });
 
   it('returns null when battle gives no new build-impacting gain', () => {

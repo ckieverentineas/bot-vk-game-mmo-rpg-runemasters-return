@@ -8,6 +8,11 @@ import type {
 } from '../../../shared/types/game';
 import { appendBattleLog, calculatePhysicalDamage, cloneBattle } from './battle-utils';
 import {
+  getBattleRuneLoadoutForAction,
+  listBattleRuneLoadouts,
+  resolveBattleRuneSlotIndexFromAction,
+} from './battle-rune-loadouts';
+import {
   createGuardBreakIntent,
   createHeavyStrikeIntent,
   resolveDefendGuardGain,
@@ -29,9 +34,6 @@ import {
   resolveStoneSynergyDamageBonus,
   resolveStoneSynergyGuardBonus,
   resolveStoneMasteryGuardGainBonus,
-  resolveSupportEmberAttackBonus,
-  resolveSupportStoneGuardCapBonus,
-  resolveSupportStoneGuardGainBonus,
 } from './battle-rune-passives';
 
 interface GuardDamageResult {
@@ -42,14 +44,12 @@ interface GuardDamageResult {
 interface DefendOutcome {
   readonly guardGain: number;
   readonly guardCap: number;
-  readonly supportStoneGuardGainBonus: number;
   readonly stoneMasteryGuardGainBonus: number;
 }
 
 interface BasicAttackOutcome {
   readonly totalDamage: number;
   readonly emberBonus: number;
-  readonly supportEmberBonus: number;
   readonly emberExecutionBonus: number;
   readonly emberComboBonus: number;
   readonly echoBonus: number;
@@ -94,17 +94,13 @@ const addGuardPoints = (player: BattlePlayerSnapshot, guardGain: number, guardCa
   player.guardPoints = Math.min(guardCap, getGuardPoints(player) + guardGain);
 };
 
-const getActiveRuneAction = (battle: BattleView): BattleRuneActionSnapshot | null => (
-  battle.player.runeLoadout?.activeAbility ?? null
-);
-
 const tickRuneCooldown = (battle: BattleView): void => {
-  const activeAbility = getActiveRuneAction(battle);
-  if (!activeAbility || activeAbility.currentCooldown <= 0) {
-    return;
+  for (const { loadout } of listBattleRuneLoadouts(battle.player)) {
+    const activeAbility = loadout.activeAbility;
+    if (activeAbility && activeAbility.currentCooldown > 0) {
+      activeAbility.currentCooldown -= 1;
+    }
   }
-
-  activeAbility.currentCooldown -= 1;
 };
 
 const spendRuneManaAndSetCooldown = (battle: BattleView, ability: BattleRuneActionSnapshot): void => {
@@ -210,21 +206,17 @@ const finishEnemyPreparation = (battle: BattleView): BattleView => {
 };
 
 const resolveDefendOutcome = (battle: BattleView): DefendOutcome => {
-  const supportStoneGuardGainBonus = resolveSupportStoneGuardGainBonus(battle);
   const stoneMasteryGuardGainBonus = resolveStoneMasteryGuardGainBonus(battle);
 
   return {
     guardGain: sum([
       resolveDefendGuardGain(battle.player),
       resolveStoneGuardGainBonus(battle),
-      supportStoneGuardGainBonus,
       stoneMasteryGuardGainBonus,
     ]),
     guardCap: resolveGuardCapWithBonuses(battle, [
       resolveStoneGuardCapBonus(battle),
-      resolveSupportStoneGuardCapBonus(battle),
     ]),
-    supportStoneGuardGainBonus,
     stoneMasteryGuardGainBonus,
   };
 };
@@ -232,7 +224,6 @@ const resolveDefendOutcome = (battle: BattleView): DefendOutcome => {
 const resolveBasicAttackOutcome = (battle: BattleView): BasicAttackOutcome => {
   const baseDamage = calculatePhysicalDamage(battle.player.attack, battle.enemy.defence);
   const emberBonus = resolveEmberAttackBonus(battle);
-  const supportEmberBonus = resolveSupportEmberAttackBonus(battle);
   const emberExecutionBonus = resolveEmberExecutionBonus(battle);
   const emberComboBonus = resolveEmberComboBonus(battle);
   const echoBonus = resolveEchoIntentAttackBonus(battle);
@@ -243,14 +234,12 @@ const resolveBasicAttackOutcome = (battle: BattleView): BasicAttackOutcome => {
     totalDamage: sum([
       baseDamage,
       emberBonus,
-      supportEmberBonus,
       emberExecutionBonus,
       emberComboBonus,
       echoBonus,
       echoMasteryBonus,
     ]),
     emberBonus,
-    supportEmberBonus,
     emberExecutionBonus,
     emberComboBonus,
     echoBonus,
@@ -267,7 +256,9 @@ export class BattleEngine {
       case 'DEFEND':
         return this.defend(battle);
       case 'RUNE_SKILL':
-        return this.useRuneSkill(battle);
+      case 'RUNE_SKILL_SLOT_1':
+      case 'RUNE_SKILL_SLOT_2':
+        return this.useRuneSkill(battle, action);
       default:
         throw new AppError('unknown_battle_action', `Неизвестное боевое действие: ${action}.`);
     }
@@ -288,7 +279,6 @@ export class BattleEngine {
     nextBattle.log = appendBattleLog(
       nextBattle.log,
       `🛡️ Вы занимаете защитную стойку и готовите защиту на ${outcome.guardGain} урона.`,
-      ...messageWhen(outcome.supportStoneGuardGainBonus > 0, '🧩 Поддержка Тверди усиливает стойку ещё на 1 guard.'),
       ...messageWhen(outcome.stoneMasteryGuardGainBonus > 0, '🪨 Мастерство Тверди усиливает защитную стойку.'),
     );
     nextBattle.turnOwner = 'ENEMY';
@@ -296,13 +286,15 @@ export class BattleEngine {
     return nextBattle;
   }
 
-  public static useRuneSkill(battle: BattleView): BattleView {
+  public static useRuneSkill(battle: BattleView, action: BattleActionType = 'RUNE_SKILL_SLOT_1'): BattleView {
     const nextBattle = cloneBattle(battle);
     this.assertPlayerTurn(nextBattle);
 
-    const activeAbility = getActiveRuneAction(nextBattle);
-    if (!activeAbility || !nextBattle.player.runeLoadout) {
-      throw new AppError('rune_skill_not_available', 'Сейчас у экипированной руны нет активного боевого действия.');
+    const runeLoadout = getBattleRuneLoadoutForAction(nextBattle, action);
+    const activeAbility = runeLoadout?.activeAbility ?? null;
+    if (!activeAbility) {
+      const slotNumber = resolveBattleRuneSlotIndexFromAction(action) + 1;
+      throw new AppError('rune_skill_not_available', `В слоте ${slotNumber} сейчас нет активного боевого действия.`);
     }
 
     if (activeAbility.currentCooldown > 0) {
@@ -379,7 +371,6 @@ export class BattleEngine {
       nextBattle.log,
       `⚔️ Вы наносите ${outcome.totalDamage} урона врагу ${nextBattle.enemy.name}.`,
       ...messageWhen(outcome.emberBonus > 0, `🔥 Школа Пламени усиливает атаку ещё на ${outcome.emberBonus}.`),
-      ...messageWhen(outcome.supportEmberBonus > 0, '🧩 Поддержка Пламени добавляет ещё 1 давления к базовой атаке.'),
       ...messageWhen(outcome.emberExecutionBonus > 0, `🔥 Мастерство Пламени помогает дожать врага ещё на ${outcome.emberExecutionBonus}.`),
       ...messageWhen(outcome.emberComboBonus > 0, '🔥 Разогрев Пламени превращает откат рунной техники в окно для ещё более сильного добивания.'),
       ...messageWhen(outcome.echoBonus > 0, `🧠 Школа Прорицания считывает намерение врага и добавляет ${outcome.echoBonus} магического урона.`),
@@ -413,18 +404,15 @@ export class BattleEngine {
       nextBattle.enemy.defence,
     ) + synergyDamageBonus;
     const intentBonus = nextBattle.enemy.intent?.code === 'HEAVY_STRIKE' ? 2 : 0;
-    const supportGuardBonus = resolveSupportStoneGuardGainBonus(nextBattle);
     const guardGain = sum([
       resolveDefendGuardGain(nextBattle.player),
       resolveStoneGuardGainBonus(nextBattle),
-      supportGuardBonus,
       1,
       intentBonus,
       synergyGuardBonus,
     ]);
     const guardCap = resolveGuardCapWithBonuses(nextBattle, [
       resolveStoneGuardCapBonus(nextBattle),
-      resolveSupportStoneGuardCapBonus(nextBattle),
     ]);
 
     applyDamageToEnemy(nextBattle, damage);
@@ -435,7 +423,6 @@ export class BattleEngine {
       nextBattle.log,
       `🌀 ${activeAbility.name} наносит ${damage} урона и поднимает каменную защиту на ${guardGain}.`,
       ...(intentBonus > 0 ? ['🪨 Школа Тверди укрепляется ещё сильнее против заранее раскрытой угрозы.'] : []),
-      ...(supportGuardBonus > 0 ? ['🧩 Поддержка Тверди добавляет ещё 1 защиты к каменному отпору.'] : []),
       ...(synergyDamageBonus > 0 ? ['🪨 Ответ стойки превращает накопленную защиту в более жёсткий контрудар.'] : []),
       `💙 Мана: ${nextBattle.player.currentMana}/${nextBattle.player.maxMana}.`,
     );

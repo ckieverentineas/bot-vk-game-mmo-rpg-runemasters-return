@@ -56,7 +56,7 @@ model PlayerProgress {
   playerId              Int      @id
   locationLevel         Int      @default(0)
   currentRuneIndex      Int      @default(0)
-  unlockedRuneSlotCount Int      @default(1)
+  unlockedRuneSlotCount Int      @default(2)
   activeBattleId        String?
   tutorialState         String   @default("ACTIVE")
   victories             Int      @default(0)

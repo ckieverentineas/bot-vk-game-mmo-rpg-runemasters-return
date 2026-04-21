@@ -153,7 +153,6 @@ export const buildPlayerNextGoalView = (player: PlayerState): NextGoalView => {
   if (
     novicePath
     && schoolDefinition
-    && getUnlockedRuneSlotCount(player) === 1
     && !hasRuneOfSchoolAtLeastRarity(player, novicePath.schoolCode, novicePath.rewardRarity)
   ) {
     return createGoalView(
@@ -246,14 +245,14 @@ export const buildPlayerNextGoalView = (player: PlayerState): NextGoalView => {
     return createGoalView(
       'fill_support_slot',
       'open_runes',
-      'откройте «🔮 Руны» и заполните слот поддержки второй руной для более широкой сборки',
+      'откройте «🔮 Руны» и наденьте вторую руну в свободный слот',
       {
         schoolCode: schoolDefinition?.code ?? null,
         schoolName: equippedSchool?.name ?? null,
-        whyText: 'Поддержка расширяет сборку без второй боевой кнопки и усиливает стиль пассивно.',
-        milestoneTitle: 'Слот поддержки открыт',
-        milestoneProgressText: 'Слот поддержки уже открыт.',
-        milestoneBenefitText: 'Поддержка даёт половину статов выбранной руны и добавляет ограниченный пассивный вклад.',
+        whyText: 'Каждая надетая руна работает полностью: статы, пассивы и активное действие в бою.',
+        milestoneTitle: 'Свободный слот рун',
+        milestoneProgressText: 'Второй слот рун уже открыт.',
+        milestoneBenefitText: 'Вторая руна добавит полные статы, пассивы и свою боевую кнопку, если у неё есть активное действие.',
       },
     );
   }
