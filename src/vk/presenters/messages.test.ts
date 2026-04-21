@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import type { BattleView, PlayerState, RuneDraft } from '../../shared/types/game';
 import {
   renderBattle,
+  renderExplorationEvent,
   renderLocation,
   renderMainMenu,
   renderReturnRecap,
@@ -204,6 +205,27 @@ describe('messages school-first onboarding framing', () => {
     const message = renderMainMenu(createPlayer());
 
     expect(message).toContain('заберите первую боевую руну и откройте свою школу рун');
+  });
+
+  it('shows standalone exploration resource effects without battle controls', () => {
+    const message = renderExplorationEvent({
+      code: 'abandoned-camp',
+      kind: 'resource_find',
+      kindLabel: 'находка',
+      title: '🎒 Брошенный привал',
+      description: 'Под навесом из корней лежит малый запас трав.',
+      outcomeLine: 'Боя нет: вы находите малый запас трав.',
+      nextStepLine: 'Дальше можно снова исследовать маршрут.',
+      effect: {
+        kind: 'inventory_delta',
+        delta: { herb: 1 },
+        line: 'Найдено: трава +1.',
+      },
+    }, createPlayer({ tutorialState: 'SKIPPED', locationLevel: 1 }));
+
+    expect(message).toContain('Тип: находка');
+    expect(message).toContain('Найдено: трава +1.');
+    expect(message).not.toContain('Действия:');
   });
 
   it('teases schools on the empty rune screen', () => {

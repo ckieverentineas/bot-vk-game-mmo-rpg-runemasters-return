@@ -16,7 +16,10 @@ import { requirePlayerByVkId } from '../../../shared/application/require-player'
 import type { GameRandom } from '../../../shared/application/ports/GameRandom';
 import type { GameRepository } from '../../../shared/application/ports/GameRepository';
 import type { WorldCatalog } from '../../../world/application/ports/WorldCatalog';
-import type { ExplorationSceneView } from '../../../world/domain/exploration-events';
+import {
+  getExplorationSceneInventoryDelta,
+  type ExplorationSceneView,
+} from '../../../world/domain/exploration-events';
 import {
   type ExplorationBattleOutcome,
   resolveExplorationOutcome,
@@ -218,6 +221,20 @@ export class ExploreLocation {
     result: ExploreLocationEventResult,
     commandOptions: ExploreLocationCommandOptions,
   ): Promise<ExploreLocationEventResult> {
+    const inventoryDelta = getExplorationSceneInventoryDelta(result.event);
+
+    if (inventoryDelta) {
+      return this.repository.recordInventoryDeltaResult(
+        player.playerId,
+        inventoryDelta,
+        commandOptions,
+        (updatedPlayer) => ({
+          ...result,
+          player: updatedPlayer,
+        }),
+      );
+    }
+
     return this.repository.recordCommandIntentResult(
       player.playerId,
       commandOptions.commandKey,

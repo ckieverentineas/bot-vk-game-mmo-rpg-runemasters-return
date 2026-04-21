@@ -314,6 +314,70 @@ describe('ExploreLocation', () => {
     );
   });
 
+  it('persists a standalone resource event through an exact-once inventory result', async () => {
+    const player = createPlayer({ tutorialState: 'SKIPPED', locationLevel: 1 });
+    const rewardedPlayer = createPlayer({
+      ...player,
+      inventory: {
+        ...player.inventory,
+        herb: player.inventory.herb + 1,
+      },
+    });
+    const stateKey = buildExploreLocationIntentStateKey(player);
+    const repository = {
+      findPlayerByVkId: vi.fn().mockResolvedValue(player),
+      getCommandIntentResult: vi.fn().mockResolvedValue(null),
+      getActiveBattle: vi.fn().mockResolvedValue(null),
+      recordCommandIntentResult: vi.fn(),
+      recordInventoryDeltaResult: vi.fn(async (
+        _playerId: number,
+        _delta: unknown,
+        _options: unknown,
+        buildResult: (player: PlayerState) => unknown,
+      ) => buildResult(rewardedPlayer)),
+      createBattle: vi.fn(),
+    } as unknown as GameRepository;
+    const random: GameRandom = {
+      nextInt: vi.fn().mockReturnValue(1),
+      rollPercentage: vi.fn().mockReturnValue(true),
+      pickOne: vi.fn(<T extends { code?: string }>(items: readonly T[]) => (
+        items.find((item) => item.code === 'abandoned-camp') ?? items[0]!
+      )),
+    };
+    const worldCatalog = createWorldCatalog({
+      findBiomeForLocationLevel: vi.fn().mockReturnValue({
+        ...createBiome(),
+        code: 'dark-forest',
+        name: 'Тёмный лес',
+        minLevel: 1,
+        maxLevel: 15,
+      }),
+    });
+    const useCase = new ExploreLocation(repository, worldCatalog, random);
+
+    const result = await useCase.execute(player.vkId, 'intent-explore-resource-1', stateKey, 'payload');
+
+    if (!('event' in result)) {
+      throw new Error('Expected standalone exploration event result.');
+    }
+
+    expect(result.event.code).toBe('abandoned-camp');
+    expect(result.player.inventory.herb).toBe(player.inventory.herb + 1);
+    expect(repository.createBattle).not.toHaveBeenCalled();
+    expect(repository.recordCommandIntentResult).not.toHaveBeenCalled();
+    expect(repository.recordInventoryDeltaResult).toHaveBeenCalledWith(
+      player.playerId,
+      { herb: 1 },
+      expect.objectContaining({
+        commandKey: 'EXPLORE_LOCATION',
+        intentId: 'intent-explore-resource-1',
+        intentStateKey: stateKey,
+        currentStateKey: stateKey,
+      }),
+      expect.any(Function),
+    );
+  });
+
   it('returns the canonical replay result before encounter generation for legacy text', async () => {
     const replayedBattle = createBattle({
       status: 'COMPLETED',

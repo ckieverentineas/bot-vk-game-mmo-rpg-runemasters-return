@@ -483,6 +483,7 @@ describe('GameHandler smoke', () => {
         description: 'Вы находите сухой уступ под корнями.',
         outcomeLine: 'Боя нет: экспедиция получает паузу без скрытого давления.',
         nextStepLine: 'Когда будете готовы, можно снова двинуться глубже.',
+        effect: { kind: 'none' },
       },
       player: createPlayer({ tutorialState: 'SKIPPED', locationLevel: 1 }),
     } as never);

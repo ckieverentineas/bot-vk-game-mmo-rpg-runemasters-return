@@ -1,7 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
 import type { BiomeView } from '../../../shared/types/game';
-import { resolveExplorationEventLine, resolveStandaloneExplorationEvent } from './exploration-events';
+import {
+  getExplorationSceneEffectLine,
+  getExplorationSceneInventoryDelta,
+  resolveExplorationEventLine,
+  resolveStandaloneExplorationEvent,
+} from './exploration-events';
 
 const createBiome = (overrides: Partial<BiomeView> = {}): BiomeView => ({
   id: 1,
@@ -99,9 +104,10 @@ describe('resolveStandaloneExplorationEvent', () => {
       title: expect.stringContaining('Тихая передышка'),
     });
     expect(event?.outcomeLine).toContain('Боя нет');
+    expect(event?.effect.kind).toBe('none');
   });
 
-  it('can return a resource-find scene without granting urgency rewards', () => {
+  it('can return a resource-find scene with a small exact-once inventory effect', () => {
     const event = resolveStandaloneExplorationEvent({
       biome: createBiome(),
       currentSchoolCode: null,
@@ -116,7 +122,9 @@ describe('resolveStandaloneExplorationEvent', () => {
       kind: 'resource_find',
       kindLabel: 'находка',
     });
-    expect(event?.outcomeLine).toContain('не получаете награду просто за удачный шаг');
+    expect(getExplorationSceneInventoryDelta(event!)).toEqual({ herb: 1 });
+    expect(getExplorationSceneEffectLine(event!)).toBe('Найдено: трава +1.');
+    expect(event?.outcomeLine).not.toContain('сегодня');
   });
 
   it('can return a danger-sign scene before a future encounter', () => {

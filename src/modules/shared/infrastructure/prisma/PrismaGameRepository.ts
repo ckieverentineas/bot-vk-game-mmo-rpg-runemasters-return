@@ -40,6 +40,7 @@ import type {
   FinalizeBattleResult,
   GameCommandIntentKey,
   GameRepository,
+  RecordInventoryDeltaResultOptions,
   SaveBattleOptions,
   SaveExplorationOptions,
   SaveRuneCursorOptions,
@@ -613,6 +614,26 @@ export class PrismaGameRepository implements GameRepository {
       intentStateKey,
       currentStateKey,
       async () => result,
+    ));
+  }
+
+  public async recordInventoryDeltaResult<TResult>(
+    playerId: number,
+    delta: InventoryDelta,
+    options: RecordInventoryDeltaResultOptions,
+    buildResult: (player: PlayerState) => TResult,
+  ): Promise<TResult> {
+    return this.prisma.$transaction((tx) => this.runWithCommandIntent(
+      tx,
+      playerId,
+      options.commandKey,
+      options.intentId,
+      options.intentStateKey,
+      options.currentStateKey,
+      async () => {
+        const updatedPlayer = await this.applyInventoryDelta(tx, playerId, delta);
+        return buildResult(updatedPlayer);
+      },
     ));
   }
 
@@ -1271,12 +1292,20 @@ export class PrismaGameRepository implements GameRepository {
   }
 
   public async adjustInventory(playerId: number, delta: InventoryDelta): Promise<PlayerState> {
+    return this.applyInventoryDelta(this.prisma, playerId, delta);
+  }
+
+  private async applyInventoryDelta(
+    client: TransactionClient | PrismaClient,
+    playerId: number,
+    delta: InventoryDelta,
+  ): Promise<PlayerState> {
     const data = buildInventoryDeltaInput(delta);
     if (Object.keys(data).length === 0) {
-      return this.requirePlayer(playerId);
+      return this.mapPlayer(await this.requirePlayerRecord(client, playerId));
     }
 
-    const updated = await this.prisma.playerInventory.updateMany({
+    const updated = await client.playerInventory.updateMany({
       where: buildInventoryAvailabilityWhere(playerId, delta),
       data: data as Prisma.PlayerInventoryUpdateManyMutationInput,
     });
@@ -1285,7 +1314,7 @@ export class PrismaGameRepository implements GameRepository {
       throw new AppError('inventory_underflow', 'Ресурсов уже не хватает. Обновите экран и попробуйте снова.');
     }
 
-    return this.requirePlayer(playerId);
+    return this.mapPlayer(await this.requirePlayerRecord(client, playerId));
   }
 
   public async createBattle(playerId: number, battle: CreateBattleInput, options?: CreateBattleOptions): Promise<BattleView> {

@@ -26,7 +26,10 @@ import { resolveDefendGuardGain } from '../../modules/combat/domain/battle-tacti
 import { describeRuneContent } from '../../modules/runes/domain/rune-abilities';
 import { buildRuneCollectionPage } from '../../modules/runes/domain/rune-collection';
 import { getRuneSchoolPresentation, listSchoolDefinitions } from '../../modules/runes/domain/rune-schools';
-import type { ExplorationSceneView } from '../../modules/world/domain/exploration-events';
+import {
+  getExplorationSceneEffectLine,
+  type ExplorationSceneView,
+} from '../../modules/world/domain/exploration-events';
 import type { AbilityDefinition, BattleView, PlayerState, RuneView, StatBlock } from '../../shared/types/game';
 
 const formatStatBlock = (stats: StatBlock): string => [
@@ -364,18 +367,23 @@ export const renderLocation = (player: PlayerState): string => [
   ...renderNextGoalSummary(buildPlayerNextGoalView(player)),
 ].join('\n');
 
-export const renderExplorationEvent = (event: ExplorationSceneView, player: PlayerState): string => [
-  '🧭 Исследование',
-  '',
-  event.title,
-  ...(event.kindLabel ? [`Тип: ${event.kindLabel}`] : []),
-  event.description,
-  '',
-  event.outcomeLine,
-  event.nextStepLine,
-  '',
-  ...renderNextGoalSummary(buildPlayerNextGoalView(player), '👉 Продолжить'),
-].join('\n');
+export const renderExplorationEvent = (event: ExplorationSceneView, player: PlayerState): string => {
+  const effectLine = getExplorationSceneEffectLine(event);
+
+  return [
+    '🧭 Исследование',
+    '',
+    event.title,
+    ...(event.kindLabel ? [`Тип: ${event.kindLabel}`] : []),
+    event.description,
+    '',
+    event.outcomeLine,
+    ...(effectLine ? [effectLine] : []),
+    event.nextStepLine,
+    '',
+    ...renderNextGoalSummary(buildPlayerNextGoalView(player), '👉 Продолжить'),
+  ].join('\n');
+};
 
 const renderEquippedRuneSlots = (player: PlayerState): string => {
   const slotLines = Array.from({ length: getUnlockedRuneSlotCount(player) }, (_, slot) => {

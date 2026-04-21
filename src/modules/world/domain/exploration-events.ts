@@ -1,4 +1,4 @@
-import type { BiomeView } from '../../../shared/types/game';
+import type { BiomeView, InventoryDelta } from '../../../shared/types/game';
 import type { GameRandom } from '../../shared/application/ports/GameRandom';
 
 export interface ExplorationEventContext {
@@ -21,6 +21,14 @@ export type ExplorationSceneKind =
   | 'trial_master'
   | 'danger_sign';
 
+export type ExplorationSceneEffect =
+  | { readonly kind: 'none' }
+  | {
+    readonly kind: 'inventory_delta';
+    readonly delta: InventoryDelta;
+    readonly line: string;
+  };
+
 export interface ExplorationSceneView {
   readonly code: string;
   readonly kind: ExplorationSceneKind;
@@ -29,12 +37,16 @@ export interface ExplorationSceneView {
   readonly description: string;
   readonly outcomeLine: string;
   readonly nextStepLine: string;
+  readonly effect: ExplorationSceneEffect;
 }
 
-interface ExplorationSceneDefinition extends ExplorationSceneView {
+interface ExplorationSceneDefinition extends Omit<ExplorationSceneView, 'effect'> {
   readonly minLocationLevel: number;
   readonly schoolCode?: string;
+  readonly effect?: ExplorationSceneEffect;
 }
+
+const noExplorationSceneEffect: ExplorationSceneEffect = { kind: 'none' };
 
 const explorationSceneKindLabels: Readonly<Record<ExplorationSceneKind, string>> = {
   rest: 'передышка',
@@ -114,8 +126,13 @@ const standaloneExplorationScenes: readonly ExplorationSceneDefinition[] = [
     minLocationLevel: 1,
     title: '🎒 Брошенный привал',
     description: 'Под навесом из корней лежат следы чужой экспедиции: пустые фляги, сухие травы и крошка рунной пыли на ткани.',
-    outcomeLine: 'Боя нет: вы понимаете, какие материалы чаще встречаются здесь, но не получаете награду просто за удачный шаг.',
-    nextStepLine: 'Дальше можно искать бой, след школы или явную добычу в обычной системе наград.',
+    outcomeLine: 'Боя нет: вы находите малый запас трав, но маршрут не превращается в гонку за ежедневными наградами.',
+    nextStepLine: 'Дальше можно искать бой, след школы или более явную добычу в обычной системе наград.',
+    effect: {
+      kind: 'inventory_delta',
+      delta: { herb: 1 },
+      line: 'Найдено: трава +1.',
+    },
   },
   {
     code: 'fresh-clawmarks',
@@ -201,7 +218,16 @@ const toSceneView = (event: ExplorationSceneDefinition): ExplorationSceneView =>
   description: event.description,
   outcomeLine: event.outcomeLine,
   nextStepLine: event.nextStepLine,
+  effect: event.effect ?? noExplorationSceneEffect,
 });
+
+export const getExplorationSceneInventoryDelta = (event: ExplorationSceneView): InventoryDelta | null => (
+  event.effect?.kind === 'inventory_delta' ? event.effect.delta : null
+);
+
+export const getExplorationSceneEffectLine = (event: ExplorationSceneView): string | null => (
+  event.effect?.kind === 'inventory_delta' ? event.effect.line : null
+);
 
 export const resolveStandaloneExplorationEvent = (
   context: ExplorationEventContext,

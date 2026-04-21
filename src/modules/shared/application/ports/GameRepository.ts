@@ -61,6 +61,13 @@ export interface SaveBattleOptions {
   readonly currentStateKey?: string;
 }
 
+export interface RecordInventoryDeltaResultOptions {
+  readonly commandKey: GameCommandIntentKey;
+  readonly intentId?: string;
+  readonly intentStateKey?: string;
+  readonly currentStateKey?: string;
+}
+
 export interface CreateBattleOptions {
   readonly commandKey?: 'EXPLORE_LOCATION';
   readonly intentId?: string;
@@ -104,6 +111,12 @@ export interface GameRepository {
     intentStateKey: string | undefined,
     currentStateKey: string | undefined,
     result: TResult,
+  ): Promise<TResult>;
+  recordInventoryDeltaResult<TResult>(
+    playerId: number,
+    delta: InventoryDelta,
+    options: RecordInventoryDeltaResultOptions,
+    buildResult: (player: PlayerState) => TResult,
   ): Promise<TResult>;
   saveExplorationState(
     playerId: number,

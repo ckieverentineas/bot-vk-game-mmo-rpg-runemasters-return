@@ -663,6 +663,34 @@ describe.sequential('PrismaGameRepository concurrency rails', () => {
     });
   });
 
+  it('applies a standalone exploration inventory effect only once for a duplicate intent', async () => {
+    const player = await createPlayer(2027);
+    const options = {
+      commandKey: 'EXPLORE_LOCATION' as const,
+      intentId: 'intent-explore-resource-1',
+      intentStateKey: 'state-explore-resource-1',
+      currentStateKey: 'state-explore-resource-1',
+    };
+
+    const [first, second] = await Promise.all([
+      repository.recordInventoryDeltaResult(player.playerId, { herb: 1 }, options, (updatedPlayer) => ({
+        eventCode: 'first-resource-scene',
+        player: updatedPlayer,
+      })),
+      repository.recordInventoryDeltaResult(player.playerId, { herb: 1 }, options, (updatedPlayer) => ({
+        eventCode: 'second-resource-scene',
+        player: updatedPlayer,
+      })),
+    ]);
+
+    const persistedPlayer = await repository.findPlayerById(player.playerId);
+
+    expect(first.eventCode).toBe(second.eventCode);
+    expect(first.player.inventory.herb).toBe(second.player.inventory.herb);
+    expect(first.player.inventory.herb).toBe(player.inventory.herb + 1);
+    expect(persistedPlayer?.inventory.herb).toBe(player.inventory.herb + 1);
+  });
+
   it('returns the canonical crafted rune for a duplicate intent even with enough budget for two crafts', async () => {
     const player = await createPlayer(2014);
     await prisma.playerInventory.update({
