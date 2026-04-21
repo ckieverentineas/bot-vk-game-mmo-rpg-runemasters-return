@@ -9,6 +9,7 @@
 - `RELEASE_CHECKLIST.md` — практический gate перед релизом.
 - `CHANGELOG.md` — история shipped-изменений и release notes.
 - `docs/product/1-0-release-charter.md` — обещание 1.0, explicit out-of-scope и ethical retention boundaries.
+- `docs/product/action-based-progression-and-trophy-loot.md` — committed design candidate для pending trophy rewards, action-based навыков, скрытого дропа и узких специализаций.
 - `docs/reviews/*` — исторические decision snapshots. Если review-документ спорит с runtime, он должен быть помечен как superseded, а не использоваться как актуальный план.
 
 ## Что уже является базой
@@ -28,6 +29,7 @@
 - School-first path по всем четырём школам не считается release-proven, пока не пройден ручной playtest и `release:evidence` не перестал возвращать `insufficient_evidence`.
 - Игровая версия считается только по commit-based правилу из `release:status`; `package.json` остаётся технической npm-метаинформацией и не является player-facing версией игры.
 - Production database rollout не считается оформленным, пока нет явной процедуры backup + migration/deploy для SQLite.
+- Action-based trophy rewards и hidden drop specializations пока считаются design candidate: первый shipped шаг — только чистый resolver доступных трофейных действий без изменения экономики и базы.
 
 ## Ближайший порядок работ
 

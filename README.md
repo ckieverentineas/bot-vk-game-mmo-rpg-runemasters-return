@@ -81,6 +81,7 @@ Runemasters Return — VK MMO RPG на TypeScript с модульным игро
 - `docs/platform/rng-authority-rules.md` — граница server-authoritative randomness для craft / reroll / reward drops;
 - `docs/platform/command-intent-rules.md` — intent-based replay policy для keyboard rune mutations с достаточным бюджетом;
 - `docs/product/1-0-release-charter.md` — утверждённое обещание релиза 1.0, explicit out-of-scope и ethical retention red lines;
+- `docs/product/action-based-progression-and-trophy-loot.md` — дизайн pending trophy rewards, action-based навыков, скрытого дропа от школ/рун/ролей и узких специализаций;
 - `docs/reviews/phase-1-exit-gate.md` — единый gate-review для перехода из Foundation & Platform к Vertical Slice scope lock;
 - `docs/reviews/progression-rework-v1.md` — решение по уходу от новых stat points за уровни к school mastery как следующей оси роста;
 - `docs/reviews/starter-synergy-v1.md` — первый locked same-school synergy slice для Пламени и Тверди;
