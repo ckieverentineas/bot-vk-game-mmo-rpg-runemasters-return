@@ -407,6 +407,15 @@ export const renderRuneScreen = (player: PlayerState, acquisitionSummary?: Acqui
 
 export const renderAltar = (player: PlayerState, acquisitionSummary?: AcquisitionSummaryView | null): string => renderRuneScreen(player, acquisitionSummary);
 
+const renderMeter = (current: number, max: number, width = 10): string => {
+  if (max <= 0) {
+    return '░'.repeat(width);
+  }
+
+  const filled = Math.max(0, Math.min(width, Math.round((current / max) * width)));
+  return `${'█'.repeat(filled)}${'░'.repeat(width - filled)}`;
+};
+
 const renderBattleActorLine = (
   title: string,
   actor: {
@@ -418,14 +427,15 @@ const renderBattleActorLine = (
   },
   options: { includeMana?: boolean; guardPoints?: number } = {},
 ): string => {
+  const healthLine = `${renderMeter(actor.currentHealth, actor.maxHealth)} ${actor.currentHealth}/${actor.maxHealth} HP`;
   const manaLine = options.includeMana && typeof actor.currentMana === 'number' && typeof actor.maxMana === 'number'
-    ? ` · ${actor.currentMana}/${actor.maxMana} маны`
+    ? ` · ${renderMeter(actor.currentMana, actor.maxMana, 6)} ${actor.currentMana}/${actor.maxMana} маны`
     : '';
   const guardLine = options.guardPoints && options.guardPoints > 0
-    ? ` · guard ${options.guardPoints}`
+    ? ` · щит ${options.guardPoints}`
     : '';
 
-  return `${title}: ${actor.name} · ${actor.currentHealth}/${actor.maxHealth} HP${manaLine}${guardLine}`;
+  return `${title}: ${actor.name}\n${healthLine}${manaLine}${guardLine}`;
 };
 
 const renderBattleRuneState = (battle: BattleView): string => {
@@ -466,7 +476,7 @@ const renderBattleActionState = (battle: BattleView): string => {
     actions.push(`🌀 ${activeAbility.name}`);
   }
 
-  return `Действия: ${actions.join(' · ')}`;
+  return `🎮 Действия: ${actions.join(' · ')}`;
 };
 
 const renderBattleNextGoal = (battle: BattleView, player?: PlayerState): string[] => {
@@ -482,7 +492,7 @@ const renderBattleNextGoal = (battle: BattleView, player?: PlayerState): string[
 };
 
 export const renderBattle = (battle: BattleView, player?: PlayerState, acquisitionSummary?: AcquisitionSummaryView | null): string => {
-  const latestLogLine = battle.log.length > 0 ? battle.log[battle.log.length - 1] : 'Пока без событий.';
+  const latestLogLines = battle.log.length > 0 ? battle.log.slice(-2) : ['Пока без событий.'];
   const clarity = buildBattleClarityView(battle);
   const enemyIntentLine = renderBattleEnemyIntent(battle);
   const battleStateLine = battle.status === 'ACTIVE'
@@ -514,14 +524,22 @@ export const renderBattle = (battle: BattleView, player?: PlayerState, acquisiti
   return [
     battleStateLine,
     '',
+    'Состояние',
     renderBattleActorLine('Вы', battle.player, { includeMana: true, guardPoints: battle.player.guardPoints }),
     renderBattleActorLine('Враг', battle.enemy),
-    ...(battle.status === 'ACTIVE' && enemyIntentLine ? [enemyIntentLine] : []),
-    ...(battle.status === 'ACTIVE' && clarity.schoolHintLine ? [clarity.schoolHintLine] : []),
-    renderBattleRuneState(battle),
-    ...(battle.status === 'ACTIVE' && battle.turnOwner === 'PLAYER' ? [renderBattleActionState(battle)] : []),
     '',
-    `Последнее: ${latestLogLine}`,
+    ...(battle.status === 'ACTIVE'
+      ? [
+          'Тактика',
+          ...(enemyIntentLine ? [enemyIntentLine] : []),
+          ...(clarity.schoolHintLine ? [clarity.schoolHintLine] : []),
+          renderBattleRuneState(battle),
+          ...(battle.turnOwner === 'PLAYER' ? [renderBattleActionState(battle)] : []),
+          '',
+        ]
+      : []),
+    'Ход событий',
+    ...latestLogLines.map((entry) => `• ${entry}`),
     ...rewardLines,
     ...renderAcquisitionSummary(acquisitionSummary),
     ...postSessionLines,

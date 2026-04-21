@@ -135,6 +135,7 @@
 - [ ] Довести все 4 стартовые школы до release-shapable состояния.
 - [ ] Расширить PvE path до midgame / proto-endgame без пустого провала между стартом и «когда-нибудь потом».
 - [ ] Добавить quests / goals слой, который поддерживает короткие meaningful sessions.
+- [ ] Рассмотреть combat attrition только вместе с recovery/rest economy, UI-состоянием до боя и полным balance pass; не включать как скрытое наказание за серию боёв.
 - [ ] Укрепить economy, progression tuning и content throughput.
 - [ ] Прогнать exploit / abuse sweep по всем новым reward-bearing loops.
 

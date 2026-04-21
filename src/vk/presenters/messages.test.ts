@@ -567,7 +567,7 @@ describe('messages school-first onboarding framing', () => {
     }));
 
     expect(message).toContain('🌀 Импульс углей — готово');
-    expect(message).toContain('Действия: ⚔️ Атака · 🛡️ Защита (+2 guard) · 🌀 Импульс углей');
+    expect(message).toContain('🎮 Действия: ⚔️ Атака · 🛡️ Защита (+2 guard) · 🌀 Импульс углей');
     expect(message).not.toContain('Искра поддержки');
   });
 
@@ -608,9 +608,31 @@ describe('messages school-first onboarding framing', () => {
       },
     }));
 
-    expect(message).toContain('Вы: Рунный мастер #1001 · 6/8 HP · 4/4 маны · guard 3');
-    expect(message).toContain('Враг: Учебный огонёк · 3/6 HP');
+    expect(message).toContain('Состояние');
+    expect(message).toContain('Вы: Рунный мастер #1001');
+    expect(message).toContain('████████░░ 6/8 HP · ██████ 4/4 маны · щит 3');
+    expect(message).toContain('Враг: Учебный огонёк');
+    expect(message).toContain('█████░░░░░ 3/6 HP');
+    expect(message).toContain('Тактика');
     expect(message).toContain('🔥 Пламя: враг уже просел');
+  });
+
+  it('shows the last two battle events as a readable timeline', () => {
+    const message = renderBattle(createBattle({
+      status: 'ACTIVE',
+      result: null,
+      rewards: null,
+      log: [
+        '🗺️ Тёмный лес: на вас выходит обычный враг Синий слизень.',
+        '🧭 Путевой эпизод: вы находите свежие следы.',
+        '⚔️ Вы наносите 4 урона врагу Синий слизень.',
+      ],
+    }));
+
+    expect(message).toContain('Ход событий');
+    expect(message).toContain('• 🧭 Путевой эпизод: вы находите свежие следы.');
+    expect(message).toContain('• ⚔️ Вы наносите 4 урона врагу Синий слизень.');
+    expect(message).not.toContain('• 🗺️ Тёмный лес');
   });
 
   it('shows an echo-specific combat clarity hint around revealed intent', () => {

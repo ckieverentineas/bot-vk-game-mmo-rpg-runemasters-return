@@ -226,6 +226,42 @@ describe('ExploreLocation', () => {
     );
   });
 
+  it('can add a non-combat exploration event before the generated battle', async () => {
+    const player = createPlayer({ tutorialState: 'SKIPPED', locationLevel: 1 });
+    const repository = {
+      findPlayerByVkId: vi.fn().mockResolvedValue(player),
+      getCommandIntentResult: vi.fn().mockResolvedValue(null),
+      getActiveBattle: vi.fn().mockResolvedValue(null),
+      createBattle: vi.fn().mockImplementation(async (_playerId: number, battle: Omit<BattleView, 'id' | 'playerId' | 'createdAt' | 'updatedAt'>) => ({
+        id: 'battle-with-event',
+        playerId: player.playerId,
+        createdAt: '2026-04-12T00:00:00.000Z',
+        updatedAt: '2026-04-12T00:00:00.000Z',
+        ...battle,
+      })),
+    } as unknown as GameRepository;
+    const random: GameRandom = {
+      nextInt: vi.fn().mockReturnValue(1),
+      rollPercentage: vi.fn().mockReturnValue(true),
+      pickOne: vi.fn(<T>(items: readonly T[]) => items[0]!),
+    };
+    const worldCatalog = createWorldCatalog({
+      findBiomeForLocationLevel: vi.fn().mockReturnValue({
+        ...createBiome(),
+        code: 'dark-forest',
+        name: 'Тёмный лес',
+        minLevel: 1,
+        maxLevel: 15,
+      }),
+    });
+    const useCase = new ExploreLocation(repository, worldCatalog, random);
+
+    const battle = await useCase.execute(player.vkId, 'intent-explore-event-1', buildExploreLocationIntentStateKey(player), 'payload') as BattleView;
+
+    expect(battle.log[0]).toContain('на вас выходит');
+    expect(battle.log.some((entry) => entry.includes('Путевой эпизод'))).toBe(true);
+  });
+
   it('returns the canonical replay result before encounter generation for legacy text', async () => {
     const replayedBattle = createBattle({
       status: 'COMPLETED',
