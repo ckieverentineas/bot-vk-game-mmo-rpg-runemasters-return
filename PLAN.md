@@ -79,6 +79,7 @@
   - [x] Убрать player-facing support-slot модель: два стартовых слота работают как полноценные рунные слоты, а future 3+ слоты остаются задачей progression tree.
   - [x] Добавить FOMO-safe слой `Мастеров испытаний` для PvE encounter framing без таймеров, streak'ов, ручной раздачи силы и live-ops давления.
   - [x] Добавить exploration outcome resolver, который может вернуть бой или отдельную non-combat сцену без награды за срочность.
+  - [x] Расширить non-combat exploration на типы событий: передышка, находка, школьный след, опасный знак и Мастер испытаний.
   - [ ] Доказать через playtests и telemetry, что первый school payoff приходит быстро и читаемо.
   - [ ] Не расширять scope в social / PvP / live-ops, пока этот slice не доказан.
 

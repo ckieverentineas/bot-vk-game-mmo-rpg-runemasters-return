@@ -368,6 +368,7 @@ export const renderExplorationEvent = (event: ExplorationSceneView, player: Play
   '🧭 Исследование',
   '',
   event.title,
+  ...(event.kindLabel ? [`Тип: ${event.kindLabel}`] : []),
   event.description,
   '',
   event.outcomeLine,

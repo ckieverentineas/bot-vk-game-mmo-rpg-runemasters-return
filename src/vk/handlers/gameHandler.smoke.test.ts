@@ -477,6 +477,8 @@ describe('GameHandler smoke', () => {
     vi.mocked(services.exploreLocation.execute).mockResolvedValueOnce({
       event: {
         code: 'quiet-rest',
+        kind: 'rest',
+        kindLabel: 'передышка',
         title: '🌿 Тихая передышка',
         description: 'Вы находите сухой уступ под корнями.',
         outcomeLine: 'Боя нет: экспедиция получает паузу без скрытого давления.',
@@ -492,6 +494,7 @@ describe('GameHandler smoke', () => {
     const replies = getReplyCalls(ctx);
     expect(replies[0]?.message).toContain('🧭 Исследование');
     expect(replies[0]?.message).toContain('Тихая передышка');
+    expect(replies[0]?.message).toContain('Тип: передышка');
     expect(replies[0]?.message).toContain('Боя нет');
     expect(replies[0]?.message).not.toContain('Действия:');
     expect(JSON.stringify(replies[0]?.keyboard)).toContain('Исследовать');

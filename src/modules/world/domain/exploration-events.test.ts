@@ -94,9 +94,47 @@ describe('resolveStandaloneExplorationEvent', () => {
 
     expect(event).toMatchObject({
       code: 'quiet-rest',
+      kind: 'rest',
+      kindLabel: 'передышка',
       title: expect.stringContaining('Тихая передышка'),
     });
     expect(event?.outcomeLine).toContain('Боя нет');
+  });
+
+  it('can return a resource-find scene without granting urgency rewards', () => {
+    const event = resolveStandaloneExplorationEvent({
+      biome: createBiome(),
+      currentSchoolCode: null,
+      locationLevel: 1,
+    }, {
+      rollPercentage: () => true,
+      pickOne: (items) => items.find((item) => item.code === 'abandoned-camp') ?? items[0]!,
+    });
+
+    expect(event).toMatchObject({
+      code: 'abandoned-camp',
+      kind: 'resource_find',
+      kindLabel: 'находка',
+    });
+    expect(event?.outcomeLine).toContain('не получаете награду просто за удачный шаг');
+  });
+
+  it('can return a danger-sign scene before a future encounter', () => {
+    const event = resolveStandaloneExplorationEvent({
+      biome: createBiome(),
+      currentSchoolCode: null,
+      locationLevel: 2,
+    }, {
+      rollPercentage: () => true,
+      pickOne: (items) => items.find((item) => item.code === 'fresh-clawmarks') ?? items[0]!,
+    });
+
+    expect(event).toMatchObject({
+      code: 'fresh-clawmarks',
+      kind: 'danger_sign',
+      kindLabel: 'опасный знак',
+    });
+    expect(event?.nextStepLine).toContain('прочитать первый ход');
   });
 
   it('can return a school-aware standalone scene without FOMO wording', () => {
@@ -110,6 +148,7 @@ describe('resolveStandaloneExplorationEvent', () => {
     });
 
     expect(event?.title).toContain('предзнаменование');
+    expect(event?.kind).toBe('school_clue');
     expect(`${event?.description} ${event?.outcomeLine}`).not.toContain('сегодня');
   });
 

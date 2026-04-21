@@ -14,8 +14,17 @@ interface ExplorationEventDefinition {
   readonly line: string;
 }
 
+export type ExplorationSceneKind =
+  | 'rest'
+  | 'resource_find'
+  | 'school_clue'
+  | 'trial_master'
+  | 'danger_sign';
+
 export interface ExplorationSceneView {
   readonly code: string;
+  readonly kind: ExplorationSceneKind;
+  readonly kindLabel: string;
   readonly title: string;
   readonly description: string;
   readonly outcomeLine: string;
@@ -26,6 +35,14 @@ interface ExplorationSceneDefinition extends ExplorationSceneView {
   readonly minLocationLevel: number;
   readonly schoolCode?: string;
 }
+
+const explorationSceneKindLabels: Readonly<Record<ExplorationSceneKind, string>> = {
+  rest: 'передышка',
+  resource_find: 'находка',
+  school_clue: 'школьный след',
+  trial_master: 'Мастер испытаний',
+  danger_sign: 'опасный знак',
+};
 
 const explorationEvents: readonly ExplorationEventDefinition[] = [
   {
@@ -72,6 +89,8 @@ const explorationEvents: readonly ExplorationEventDefinition[] = [
 const standaloneExplorationScenes: readonly ExplorationSceneDefinition[] = [
   {
     code: 'quiet-rest',
+    kind: 'rest',
+    kindLabel: explorationSceneKindLabels.rest,
     minLocationLevel: 1,
     title: '🌿 Тихая передышка',
     description: 'Вы находите сухой уступ под корнями и на несколько минут уходите с линии угрозы.',
@@ -80,6 +99,8 @@ const standaloneExplorationScenes: readonly ExplorationSceneDefinition[] = [
   },
   {
     code: 'broken-ward',
+    kind: 'danger_sign',
+    kindLabel: explorationSceneKindLabels.danger_sign,
     minLocationLevel: 1,
     title: '🔎 Сломанная печать',
     description: 'На камне проступает старый защитный узор. Он уже не держит силу, зато ясно показывает, где раньше проходила безопасная тропа.',
@@ -87,7 +108,29 @@ const standaloneExplorationScenes: readonly ExplorationSceneDefinition[] = [
     nextStepLine: 'Следующая вылазка может привести к настоящей встрече.',
   },
   {
+    code: 'abandoned-camp',
+    kind: 'resource_find',
+    kindLabel: explorationSceneKindLabels.resource_find,
+    minLocationLevel: 1,
+    title: '🎒 Брошенный привал',
+    description: 'Под навесом из корней лежат следы чужой экспедиции: пустые фляги, сухие травы и крошка рунной пыли на ткани.',
+    outcomeLine: 'Боя нет: вы понимаете, какие материалы чаще встречаются здесь, но не получаете награду просто за удачный шаг.',
+    nextStepLine: 'Дальше можно искать бой, след школы или явную добычу в обычной системе наград.',
+  },
+  {
+    code: 'fresh-clawmarks',
+    kind: 'danger_sign',
+    kindLabel: explorationSceneKindLabels.danger_sign,
+    minLocationLevel: 2,
+    title: '⚠️ Свежие зарубки',
+    description: 'На коре видны глубокие отметины. Угроза рядом, но сейчас вы замечаете её раньше, чем она замечает вас.',
+    outcomeLine: 'Боя нет: сцена предупреждает о роли будущего врага и не превращает опасность в внезапный штраф.',
+    nextStepLine: 'Следующий шаг может привести к стычке, где это предупреждение поможет прочитать первый ход.',
+  },
+  {
     code: 'trial-master-mark',
+    kind: 'trial_master',
+    kindLabel: explorationSceneKindLabels.trial_master,
     minLocationLevel: 2,
     title: '🎲 След Мастера испытаний',
     description: 'На старом указателе вы замечаете пометку Мастера испытаний: не приказ, а короткую подсказку к тому, какой вопрос задаёт эта местность.',
@@ -96,6 +139,8 @@ const standaloneExplorationScenes: readonly ExplorationSceneDefinition[] = [
   },
   {
     code: 'ember-crosswind',
+    kind: 'school_clue',
+    kindLabel: explorationSceneKindLabels.school_clue,
     minLocationLevel: 1,
     schoolCode: 'ember',
     title: '🔥 Пепельная развилка',
@@ -105,6 +150,8 @@ const standaloneExplorationScenes: readonly ExplorationSceneDefinition[] = [
   },
   {
     code: 'stone-shelter',
+    kind: 'school_clue',
+    kindLabel: explorationSceneKindLabels.school_clue,
     minLocationLevel: 1,
     schoolCode: 'stone',
     title: '🪨 Каменная ниша',
@@ -114,6 +161,8 @@ const standaloneExplorationScenes: readonly ExplorationSceneDefinition[] = [
   },
   {
     code: 'gale-updraft',
+    kind: 'school_clue',
+    kindLabel: explorationSceneKindLabels.school_clue,
     minLocationLevel: 1,
     schoolCode: 'gale',
     title: '🌪️ Встречный поток',
@@ -123,6 +172,8 @@ const standaloneExplorationScenes: readonly ExplorationSceneDefinition[] = [
   },
   {
     code: 'echo-omen',
+    kind: 'school_clue',
+    kindLabel: explorationSceneKindLabels.school_clue,
     minLocationLevel: 1,
     schoolCode: 'echo',
     title: '🧠 Тихое предзнаменование',
@@ -144,6 +195,8 @@ const isSceneAvailable = (event: ExplorationSceneDefinition, context: Exploratio
 
 const toSceneView = (event: ExplorationSceneDefinition): ExplorationSceneView => ({
   code: event.code,
+  kind: event.kind,
+  kindLabel: event.kindLabel,
   title: event.title,
   description: event.description,
   outcomeLine: event.outcomeLine,
