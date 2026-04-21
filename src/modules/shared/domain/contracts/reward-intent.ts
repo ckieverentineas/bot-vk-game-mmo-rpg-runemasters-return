@@ -57,7 +57,7 @@ const isRuneDraft = (value: unknown): value is RuneDraft => (
   && isOptionalStringArray(value.passiveAbilityCodes)
 );
 
-const isRewardPayload = (value: unknown): value is RewardPayloadV1 => (
+export const isRewardPayload = (value: unknown): value is RewardPayloadV1 => (
   isJsonRecord(value)
   && isNumber(value.experience)
   && isNumber(value.gold)
