@@ -52,22 +52,40 @@ export interface PendingRewardAppliedResultSnapshot {
   readonly schoolUps: readonly PendingRewardSchoolUpSnapshot[];
 }
 
-export interface PendingRewardSnapshotV1 {
+export interface PendingRewardSnapshotBaseV1 {
   readonly schemaVersion: typeof PENDING_REWARD_SNAPSHOT_SCHEMA_VERSION;
   readonly intentId: string;
   readonly sourceType: RewardSourceType;
   readonly sourceId: string;
   readonly playerId: number;
-  readonly status: PendingRewardSnapshotStatus;
   readonly baseReward: RewardPayloadV1;
   readonly trophyActions: readonly PendingRewardTrophyActionSnapshot[];
-  readonly selectedActionCode: TrophyActionCode | null;
-  readonly appliedResult: PendingRewardAppliedResultSnapshot | null;
   readonly createdAt: string;
   readonly updatedAt?: string;
 }
 
-export type PendingRewardSnapshot = PendingRewardSnapshotV1;
+export interface PendingRewardOpenSnapshotV1 extends PendingRewardSnapshotBaseV1 {
+  readonly status: 'PENDING';
+  readonly selectedActionCode: null;
+  readonly appliedResult: null;
+}
+
+export interface PendingRewardAppliedSnapshotV1 extends PendingRewardSnapshotBaseV1 {
+  readonly status: 'APPLIED';
+  readonly selectedActionCode: TrophyActionCode;
+  readonly appliedResult: PendingRewardAppliedResultSnapshot;
+}
+
+export interface PendingRewardExpiredSnapshotV1 extends PendingRewardSnapshotBaseV1 {
+  readonly status: 'EXPIRED';
+  readonly selectedActionCode: null;
+  readonly appliedResult: null;
+}
+
+export type PendingRewardSnapshot =
+  | PendingRewardOpenSnapshotV1
+  | PendingRewardAppliedSnapshotV1
+  | PendingRewardExpiredSnapshotV1;
 
 const trophyActionCodes: readonly TrophyActionCode[] = [
   'claim_all',
@@ -228,7 +246,7 @@ export const createPendingRewardSnapshot = (
   intent: RewardIntent,
   trophyActions: readonly TrophyActionDefinition[],
   createdAt: string,
-): PendingRewardSnapshot => ({
+): PendingRewardOpenSnapshotV1 => ({
   schemaVersion: PENDING_REWARD_SNAPSHOT_SCHEMA_VERSION,
   intentId: intent.intentId,
   sourceType: intent.sourceType,

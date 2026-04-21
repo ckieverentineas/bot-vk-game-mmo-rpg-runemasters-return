@@ -2,9 +2,16 @@ import { describe, expect, it } from 'vitest';
 
 import type { BattleView, RuneView } from '../../../../shared/types/game';
 
+import { createPendingRewardSnapshot } from '../../../rewards/domain/pending-reward-snapshot';
+import type { TrophyActionDefinition } from '../../../rewards/domain/trophy-actions';
 import { buildBattleSnapshot, isBattleSnapshot } from './battle-snapshot';
 import { buildLoadoutSnapshot, projectBattleRuneLoadout } from './loadout-snapshot';
-import { createAppliedRewardLedgerEntry } from './reward-ledger';
+import {
+  createAppliedPendingRewardLedgerEntry,
+  createAppliedRewardLedgerEntry,
+  createPendingRewardLedgerEntry,
+  isRewardLedgerEntry,
+} from './reward-ledger';
 import { createBattleVictoryRewardIntent } from './reward-intent';
 
 const createRune = (): RuneView => ({
@@ -82,6 +89,21 @@ const createBattle = (): BattleView => ({
   updatedAt: '2026-04-12T00:00:00.000Z',
 });
 
+const createTrophyActions = (): readonly TrophyActionDefinition[] => [
+  {
+    code: 'skin_beast',
+    label: 'Skin beast',
+    skillCodes: ['gathering.skinning'],
+    visibleRewardFields: ['leather', 'bone'],
+  },
+  {
+    code: 'claim_all',
+    label: 'Claim all',
+    skillCodes: [],
+    visibleRewardFields: [],
+  },
+];
+
 describe('battle platform contracts', () => {
   it('builds a versioned loadout snapshot and projects it back into battle state', () => {
     const snapshot = buildLoadoutSnapshot(createRune());
@@ -116,6 +138,79 @@ describe('battle platform contracts', () => {
       sourceId: 'battle-1',
       playerId: 1,
     });
+    expect(isRewardLedgerEntry(ledger)).toBe(true);
+  });
+
+  it('creates a canonical pending reward ledger entry from a pending reward snapshot', () => {
+    const intent = createBattleVictoryRewardIntent(1, createBattle());
+    const snapshot = createPendingRewardSnapshot(intent!, createTrophyActions(), '2026-04-22T00:00:00.000Z');
+
+    const ledger = createPendingRewardLedgerEntry(snapshot);
+
+    expect(ledger).toEqual({
+      schemaVersion: 1,
+      ledgerKey: 'battle-victory:battle-1',
+      status: 'PENDING',
+      sourceType: 'BATTLE_VICTORY',
+      sourceId: 'battle-1',
+      playerId: 1,
+      pendingRewardSnapshot: snapshot,
+      createdAt: '2026-04-22T00:00:00.000Z',
+    });
+    expect(isRewardLedgerEntry(ledger)).toBe(true);
+  });
+
+  it('creates a canonical applied ledger entry from an applied pending reward snapshot', () => {
+    const intent = createBattleVictoryRewardIntent(1, createBattle());
+    const snapshot = {
+      ...createPendingRewardSnapshot(intent!, createTrophyActions(), '2026-04-22T00:00:00.000Z'),
+      status: 'APPLIED' as const,
+      selectedActionCode: 'skin_beast' as const,
+      appliedResult: {
+        baseRewardApplied: true,
+        inventoryDelta: {
+          usualShards: 2,
+          leather: 1,
+        },
+        skillUps: [
+          {
+            skillCode: 'gathering.skinning' as const,
+            experienceBefore: 0,
+            experienceAfter: 1,
+            rankBefore: 0,
+            rankAfter: 0,
+          },
+        ],
+        statUps: [],
+        schoolUps: [],
+      },
+      updatedAt: '2026-04-22T00:01:00.000Z',
+    };
+
+    const ledger = createAppliedPendingRewardLedgerEntry(snapshot, '2026-04-22T00:01:00.000Z');
+
+    expect(ledger).toMatchObject({
+      schemaVersion: 1,
+      ledgerKey: 'battle-victory:battle-1',
+      status: 'APPLIED',
+      sourceType: 'BATTLE_VICTORY',
+      sourceId: 'battle-1',
+      playerId: 1,
+      pendingRewardSnapshot: snapshot,
+      appliedAt: '2026-04-22T00:01:00.000Z',
+    });
+    expect(isRewardLedgerEntry(ledger)).toBe(true);
+  });
+
+  it('rejects pending reward ledger entries with mismatched snapshot state', () => {
+    const intent = createBattleVictoryRewardIntent(1, createBattle());
+    const snapshot = createPendingRewardSnapshot(intent!, createTrophyActions(), '2026-04-22T00:00:00.000Z');
+    const ledger = createPendingRewardLedgerEntry(snapshot);
+
+    expect(isRewardLedgerEntry({
+      ...ledger,
+      status: 'APPLIED',
+    })).toBe(false);
   });
 
   it('builds a versioned battle snapshot contract for persisted battle state', () => {
