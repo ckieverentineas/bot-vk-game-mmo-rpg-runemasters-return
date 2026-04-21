@@ -450,6 +450,7 @@ const createPrismaMock = () => {
     rewardLedgerRecord: {
       create: vi.fn(),
       findUnique: vi.fn(),
+      findMany: vi.fn(),
       updateMany: vi.fn(),
     },
     commandIntentRecord: {
@@ -474,6 +475,7 @@ const createPrismaMock = () => {
     battleSession: {
       findFirst: vi.fn(),
       findUnique: vi.fn(),
+      findMany: vi.fn(),
       create: vi.fn(),
       updateMany: vi.fn(),
       delete: vi.fn(),
@@ -833,6 +835,121 @@ describe('PrismaGameRepository release hardening', () => {
     expect(result.appliedResult).toEqual(appliedResult);
     expect(tx.rewardLedgerRecord.updateMany).not.toHaveBeenCalled();
     expect(tx.playerSkill.upsert).not.toHaveBeenCalled();
+  });
+
+  it('recovers missing pending rewards for completed victories', async () => {
+    const { repository, tx } = createPrismaMock();
+    const completedBattle = createBattleView({
+      enemy: {
+        ...createBattleView().enemy,
+        kind: 'slime',
+        lootTable: {
+          herb: 2,
+          essence: 1,
+        },
+      },
+    });
+    const completedBattleRow = createBattleRow({
+      status: 'COMPLETED',
+      result: 'VICTORY',
+      rewardsSnapshot: JSON.stringify(completedBattle.rewards),
+      enemySnapshot: JSON.stringify(completedBattle.enemy),
+      updatedAt: new Date('2026-04-22T00:02:00.000Z'),
+    });
+
+    tx.battleSession.findMany.mockResolvedValue([completedBattleRow]);
+    tx.rewardLedgerRecord.findUnique.mockResolvedValue(null);
+    tx.rewardLedgerRecord.create.mockResolvedValue({});
+
+    const result = await repository.recoverPendingRewardsOnStart();
+
+    expect(result).toEqual({
+      scanned: 1,
+      recovered: 1,
+      skipped: 0,
+    });
+    expect(tx.battleSession.findMany).toHaveBeenCalledWith({
+      where: {
+        status: 'COMPLETED',
+        result: 'VICTORY',
+      },
+      orderBy: {
+        updatedAt: 'asc',
+      },
+    });
+    expect(tx.rewardLedgerRecord.findUnique).toHaveBeenCalledWith({
+      where: {
+        ledgerKey: 'battle-victory:battle-1',
+      },
+    });
+    expect(tx.rewardLedgerRecord.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        playerId: 1,
+        ledgerKey: 'battle-victory:battle-1',
+        sourceType: 'BATTLE_VICTORY',
+        sourceId: 'battle-1',
+        status: 'PENDING',
+        appliedAt: null,
+      }),
+    });
+
+    const ledgerSnapshot = JSON.parse(String(tx.rewardLedgerRecord.create.mock.calls[0]?.[0]?.data?.entrySnapshot));
+    expect(ledgerSnapshot).toMatchObject({
+      status: 'PENDING',
+      pendingRewardSnapshot: {
+        createdAt: '2026-04-22T00:02:00.000Z',
+        trophyActions: [
+          expect.objectContaining({
+            code: 'gather_slime',
+            reward: {
+              inventoryDelta: {
+                herb: 2,
+                essence: 1,
+              },
+              skillPoints: [
+                {
+                  skillCode: 'gathering.reagent_gathering',
+                  points: 1,
+                },
+              ],
+            },
+          }),
+          expect.objectContaining({
+            code: 'claim_all',
+            reward: {
+              inventoryDelta: {
+                herb: 2,
+                essence: 1,
+              },
+              skillPoints: [],
+            },
+          }),
+        ],
+      },
+    });
+  });
+
+  it('skips completed victories that already have a reward ledger', async () => {
+    const { repository, tx } = createPrismaMock();
+
+    tx.battleSession.findMany.mockResolvedValue([
+      createBattleRow({
+        status: 'COMPLETED',
+        result: 'VICTORY',
+        rewardsSnapshot: JSON.stringify(createBattleView().rewards),
+        updatedAt: new Date('2026-04-22T00:02:00.000Z'),
+      }),
+    ]);
+    tx.rewardLedgerRecord.findUnique.mockResolvedValue(createPendingRewardLedgerRecord());
+
+    const result = await repository.recoverPendingRewardsOnStart();
+
+    expect(result).toEqual({
+      scanned: 1,
+      recovered: 0,
+      skipped: 1,
+    });
+    expect(tx.rewardLedgerRecord.create).not.toHaveBeenCalled();
   });
 
   it('creates new players without fresh legacy stat points', async () => {

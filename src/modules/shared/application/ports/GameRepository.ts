@@ -95,6 +95,12 @@ export interface CollectPendingRewardResult {
   readonly appliedResult: PendingRewardAppliedResultSnapshot;
 }
 
+export interface RecoverPendingRewardsResult {
+  readonly scanned: number;
+  readonly recovered: number;
+  readonly skipped: number;
+}
+
 export interface CommandIntentReplayResult<TResult = PlayerState> {
   readonly status: 'APPLIED' | 'PENDING';
   readonly result?: TResult;
@@ -135,6 +141,7 @@ export interface GameRepository {
   ): Promise<TResult>;
   applyPlayerSkillExperience(playerId: number, gains: readonly PlayerSkillPointGain[]): Promise<PlayerState>;
   collectPendingReward(playerId: number, ledgerKey: string, actionCode: TrophyActionCode): Promise<CollectPendingRewardResult>;
+  recoverPendingRewardsOnStart(): Promise<RecoverPendingRewardsResult>;
   saveExplorationState(
     playerId: number,
     state: Pick<PlayerState, 'locationLevel' | 'highestLocationLevel' | 'victoryStreak' | 'defeatStreak' | 'tutorialState'>,

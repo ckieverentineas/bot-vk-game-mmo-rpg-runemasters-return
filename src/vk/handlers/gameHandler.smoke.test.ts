@@ -224,6 +224,13 @@ const createServices = (): AppServices => {
       returnRecapShown: vi.fn().mockResolvedValue(undefined),
       postSessionNextGoalShown: vi.fn().mockResolvedValue(undefined),
     } as unknown as GameTelemetry,
+    recoverPendingRewardsOnStart: {
+      execute: vi.fn().mockResolvedValue({
+        scanned: 0,
+        recovered: 0,
+        skipped: 0,
+      }),
+    } as unknown as AppServices['recoverPendingRewardsOnStart'],
     registerPlayer: {
       execute: vi.fn().mockResolvedValue({
         player: tutorialPlayer,

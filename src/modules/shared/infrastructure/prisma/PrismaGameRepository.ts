@@ -61,6 +61,7 @@ import type {
   GameCommandIntentKey,
   GameRepository,
   RecordInventoryDeltaResultOptions,
+  RecoverPendingRewardsResult,
   SaveBattleOptions,
   SaveExplorationOptions,
   SaveRuneCursorOptions,
@@ -196,6 +197,38 @@ const resolvePendingRewardTrophyActionRewards = (
     lootTable,
   }, action));
 };
+
+const createPendingRewardLedgerForBattle = (
+  playerId: number,
+  battle: BattleView,
+  createdAt: string,
+): PendingRewardLedgerEntryV1 | null => {
+  const rewardIntent = createBattleVictoryRewardIntent(playerId, battle);
+
+  if (!rewardIntent) {
+    return null;
+  }
+
+  const trophyActions = resolveTrophyActions(battle.enemy);
+  const pendingRewardSnapshot = createPendingRewardSnapshot(
+    rewardIntent,
+    trophyActions,
+    createdAt,
+    resolvePendingRewardTrophyActionRewards(battle.enemy, trophyActions),
+  );
+
+  return createPendingRewardLedgerEntry(pendingRewardSnapshot);
+};
+
+const mapPendingRewardLedgerCreateData = (rewardLedger: PendingRewardLedgerEntryV1) => ({
+  playerId: rewardLedger.playerId,
+  ledgerKey: rewardLedger.ledgerKey,
+  sourceType: rewardLedger.sourceType,
+  sourceId: rewardLedger.sourceId,
+  status: rewardLedger.status,
+  entrySnapshot: stringifyJson(rewardLedger, '{}'),
+  appliedAt: null,
+});
 
 const defaultBattlePlayerSnapshot = (playerId: number): BattleView['player'] => ({
   playerId,
@@ -1005,6 +1038,68 @@ export class PrismaGameRepository implements GameRepository {
         ledgerKey: appliedLedger.ledgerKey,
         selectedActionCode: action.code,
         appliedResult,
+      };
+    });
+  }
+
+  public async recoverPendingRewardsOnStart(): Promise<RecoverPendingRewardsResult> {
+    return this.prisma.$transaction(async (tx) => {
+      const completedVictories = await tx.battleSession.findMany({
+        where: {
+          status: 'COMPLETED',
+          result: 'VICTORY',
+        },
+        orderBy: {
+          updatedAt: 'asc',
+        },
+      });
+
+      let recovered = 0;
+      let skipped = 0;
+
+      for (const battleRecord of completedVictories) {
+        const battle = this.mapBattle(battleRecord);
+        const rewardLedger = createPendingRewardLedgerForBattle(
+          battle.playerId,
+          battle,
+          battleRecord.updatedAt.toISOString(),
+        );
+
+        if (!rewardLedger) {
+          skipped += 1;
+          continue;
+        }
+
+        const existingReward = await tx.rewardLedgerRecord.findUnique({
+          where: {
+            ledgerKey: rewardLedger.ledgerKey,
+          },
+        });
+
+        if (existingReward) {
+          skipped += 1;
+          continue;
+        }
+
+        try {
+          await tx.rewardLedgerRecord.create({
+            data: mapPendingRewardLedgerCreateData(rewardLedger),
+          });
+          recovered += 1;
+        } catch (error) {
+          if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+            skipped += 1;
+            continue;
+          }
+
+          throw error;
+        }
+      }
+
+      return {
+        scanned: completedVictories.length,
+        recovered,
+        skipped,
       };
     });
   }
@@ -2096,15 +2191,12 @@ export class PrismaGameRepository implements GameRepository {
       }
 
       if (rewardIntent) {
-        const createdAt = new Date();
-        const trophyActions = resolveTrophyActions(battle.enemy);
-        const pendingRewardSnapshot = createPendingRewardSnapshot(
-          rewardIntent,
-          trophyActions,
-          createdAt.toISOString(),
-          resolvePendingRewardTrophyActionRewards(battle.enemy, trophyActions),
-        );
-        const rewardLedger = createPendingRewardLedgerEntry(pendingRewardSnapshot);
+        const rewardLedger = createPendingRewardLedgerForBattle(playerId, battle, new Date().toISOString());
+
+        if (!rewardLedger) {
+          throw new AppError('battle_reward_missing', 'РќРµР»СЊР·СЏ Р·Р°РІРµСЂС€РёС‚СЊ РїРѕР±РµРґРЅС‹Р№ Р±РѕР№ Р±РµР· Р·Р°С„РёРєСЃРёСЂРѕРІР°РЅРЅРѕР№ РЅР°РіСЂР°РґС‹.');
+        }
+
         const novicePath = getSchoolNovicePathDefinitionForEnemy(battle.enemy.code);
         const battleSchoolCode = battle.player.runeLoadout?.schoolCode
           ?? getSchoolDefinitionForArchetype(battle.player.runeLoadout?.archetypeCode)?.code
@@ -2122,15 +2214,7 @@ export class PrismaGameRepository implements GameRepository {
           && hadTargetRarityBefore === false;
 
         await tx.rewardLedgerRecord.create({
-          data: {
-            playerId,
-            ledgerKey: rewardLedger.ledgerKey,
-            sourceType: rewardLedger.sourceType,
-            sourceId: rewardLedger.sourceId,
-            status: rewardLedger.status,
-            entrySnapshot: stringifyJson(rewardLedger, '{}'),
-            appliedAt: null,
-          },
+          data: mapPendingRewardLedgerCreateData(rewardLedger),
         });
 
         await tx.gameLog.create({

@@ -15,6 +15,12 @@ export const bootstrap = async (): Promise<BootstrappedApp> => {
   await connectDatabase();
 
   const services = createAppServices();
+  const recoveredRewards = await services.recoverPendingRewardsOnStart.execute();
+
+  if (recoveredRewards.scanned > 0) {
+    Logger.info('Pending reward recovery completed', recoveredRewards);
+  }
+
   const handler = new GameHandler(services);
   const vk = createVkBot();
 
