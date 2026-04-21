@@ -11,11 +11,35 @@ export type MaterialField = 'leather' | 'bone' | 'herb' | 'essence' | 'metal' | 
 export type InventoryField = ShardField | MaterialField;
 export type AbilityKind = 'ACTIVE' | 'PASSIVE';
 export type AbilityTarget = 'SELF' | 'ENEMY' | 'BATTLEFIELD';
+export type PlayerSkillCategory = 'combat' | 'defence' | 'gathering' | 'rune';
+export type GatheringSkillCode =
+  | 'gathering.skinning'
+  | 'gathering.reagent_gathering'
+  | 'gathering.essence_extraction';
+export type CombatSkillCode =
+  | 'combat.striking'
+  | 'combat.guard';
+export type DefenceSkillCode = 'defence.endurance';
+export type RuneSkillCode =
+  | 'rune.active_use'
+  | 'rune.preparation';
+export type PlayerSkillCode = GatheringSkillCode | CombatSkillCode | DefenceSkillCode | RuneSkillCode;
 
 export interface SchoolMasteryView {
   schoolCode: string;
   experience: number;
   rank: number;
+}
+
+export interface PlayerSkillView {
+  skillCode: PlayerSkillCode;
+  experience: number;
+  rank: number;
+}
+
+export interface PlayerSkillPointGain {
+  skillCode: PlayerSkillCode;
+  points: number;
 }
 
 export interface StatBlock {
@@ -91,6 +115,7 @@ export interface PlayerState {
   tutorialState: TutorialState;
   inventory: InventoryView;
   schoolMasteries?: SchoolMasteryView[];
+  skills?: PlayerSkillView[];
   runes: RuneView[];
   createdAt: string;
   updatedAt: string;

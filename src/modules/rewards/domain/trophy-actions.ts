@@ -1,4 +1,11 @@
-import type { InventoryDelta, InventoryField, InventoryLoot, MaterialField } from '../../../shared/types/game';
+import type {
+  InventoryDelta,
+  InventoryField,
+  InventoryLoot,
+  MaterialField,
+  PlayerSkillCode,
+  PlayerSkillPointGain,
+} from '../../../shared/types/game';
 
 export type TrophyActionCode =
   | 'claim_all'
@@ -6,15 +13,10 @@ export type TrophyActionCode =
   | 'gather_slime'
   | 'extract_essence';
 
-export type TrophySkillCode =
-  | 'gathering.skinning'
-  | 'gathering.reagent_gathering'
-  | 'gathering.essence_extraction';
-
 export interface TrophyActionDefinition {
   readonly code: TrophyActionCode;
   readonly label: string;
-  readonly skillCodes: readonly TrophySkillCode[];
+  readonly skillCodes: readonly PlayerSkillCode[];
   readonly visibleRewardFields: readonly InventoryField[];
 }
 
@@ -28,10 +30,7 @@ export interface TrophyActionRewardEnemyContext extends TrophyActionEnemyContext
   readonly lootTable: InventoryLoot;
 }
 
-export interface TrophyActionSkillPoints {
-  readonly skillCode: TrophySkillCode;
-  readonly points: number;
-}
+export type TrophyActionSkillPoints = PlayerSkillPointGain;
 
 export interface TrophyActionReward {
   readonly actionCode: TrophyActionCode;
