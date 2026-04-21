@@ -40,6 +40,7 @@
 - `ExploreLocation` теперь может вернуть standalone exploration scene вместо боя: domain resolver выбирает outcome шага исследования, а VK handler только рендерит готовый результат без transport-owned игровых правил;
 - exploration outcome logic вынесена в [`src/modules/exploration/domain/exploration-outcome.ts`](src/modules/exploration/domain/exploration-outcome.ts): use-case теперь оркестрирует replay/persistence, а не собирает encounter plan вручную;
 - battle state UI теперь показывает игрока и врага симметричными блоками: имя, HP-bar, mana-bar и короткую строку боевых статов;
+- HP/mana шкалы в battle state UI стали цветными: здоровье меняет цвет по уровню риска, мана остаётся синей;
 - battle keyboard теперь повторяет тот же язык, что и state-блок: кнопка защиты показывает прирост щита, рунный навык показывает КД/нехватку маны, а пустая рунная кнопка скрыта;
 - command-intent rail получил общий `recordCommandIntentResult`, чтобы replay-safe команды могли сохранять не только мутации игрока или battle creation, но и чистые outcome-сцены без отдельной persistence-сущности;
 - типобезопасный telemetry adapter [`RepositoryGameTelemetry`](src/modules/shared/infrastructure/telemetry/RepositoryGameTelemetry.ts) поверх существующего `GameLog` rail для semantic-событий UX и loadout flow;

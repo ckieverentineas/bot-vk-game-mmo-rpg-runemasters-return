@@ -420,13 +420,32 @@ export const renderRuneScreen = (player: PlayerState, acquisitionSummary?: Acqui
 
 export const renderAltar = (player: PlayerState, acquisitionSummary?: AcquisitionSummaryView | null): string => renderRuneScreen(player, acquisitionSummary);
 
-const renderMeter = (current: number, max: number, width = 10): string => {
+const meterEmptySegment = '⬛';
+
+const renderMeter = (current: number, max: number, width: number, filledSegment: string): string => {
   if (max <= 0) {
-    return '░'.repeat(width);
+    return meterEmptySegment.repeat(width);
   }
 
   const filled = Math.max(0, Math.min(width, Math.round((current / max) * width)));
-  return `${'█'.repeat(filled)}${'░'.repeat(width - filled)}`;
+  return `${filledSegment.repeat(filled)}${meterEmptySegment.repeat(width - filled)}`;
+};
+
+const resolveHealthMeterSegment = (current: number, max: number): string => {
+  if (max <= 0) {
+    return '🟥';
+  }
+
+  const ratio = current / max;
+  if (ratio <= 0.25) {
+    return '🟥';
+  }
+
+  if (ratio <= 0.5) {
+    return '🟨';
+  }
+
+  return '🟩';
 };
 
 const renderBattleActorStats = (actor: Pick<StatBlock, 'attack' | 'defence' | 'magicDefence' | 'dexterity' | 'intelligence'>): string => (
@@ -449,9 +468,9 @@ const renderBattleActorBlock = (
   },
   options: { guardPoints?: number } = {},
 ): string => {
-  const healthLine = `❤️ ${renderMeter(actor.currentHealth, actor.maxHealth)} ${actor.currentHealth}/${actor.maxHealth} HP`;
+  const healthLine = `❤️ ${renderMeter(actor.currentHealth, actor.maxHealth, 10, resolveHealthMeterSegment(actor.currentHealth, actor.maxHealth))} ${actor.currentHealth}/${actor.maxHealth} HP`;
   const manaLine = typeof actor.currentMana === 'number' && typeof actor.maxMana === 'number'
-    ? `🔷 ${renderMeter(actor.currentMana, actor.maxMana, 6)} ${actor.currentMana}/${actor.maxMana} маны`
+    ? `🔷 ${renderMeter(actor.currentMana, actor.maxMana, 6, '🟦')} ${actor.currentMana}/${actor.maxMana} маны`
     : null;
   const guardLine = options.guardPoints && options.guardPoints > 0
     ? ` · 🛡️ щит ${options.guardPoints}`
