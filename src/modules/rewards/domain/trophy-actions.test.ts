@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { resolveTrophyActions } from './trophy-actions';
+import { resolveTrophyActionReward, resolveTrophyActions } from './trophy-actions';
 
 describe('resolveTrophyActions', () => {
   it('always offers a fallback claim action', () => {
@@ -63,5 +63,104 @@ describe('resolveTrophyActions', () => {
         visibleRewardFields: [],
       },
     ]);
+  });
+
+  it('models fallback collection as ordinary material loot without skill progress', () => {
+    const [claimAll] = resolveTrophyActions({ kind: 'unknown' });
+
+    expect(resolveTrophyActionReward({
+      kind: 'unknown',
+      isElite: false,
+      isBoss: false,
+      lootTable: {
+        leather: 2,
+        bone: 1,
+      },
+    }, claimAll!)).toEqual({
+      actionCode: 'claim_all',
+      inventoryDelta: {
+        leather: 2,
+        bone: 1,
+      },
+      skillPoints: [],
+    });
+  });
+
+  it('models skinning as beast material loot and skinning skill progress', () => {
+    const [skinning] = resolveTrophyActions({ kind: 'wolf' });
+
+    expect(resolveTrophyActionReward({
+      kind: 'wolf',
+      isElite: true,
+      isBoss: false,
+      lootTable: {
+        leather: 2,
+        bone: 1,
+        herb: 3,
+      },
+    }, skinning!)).toEqual({
+      actionCode: 'skin_beast',
+      inventoryDelta: {
+        leather: 2,
+        bone: 1,
+      },
+      skillPoints: [
+        {
+          skillCode: 'gathering.skinning',
+          points: 2,
+        },
+      ],
+    });
+  });
+
+  it('models slime gathering as reagent loot only when the enemy can drop it', () => {
+    const [gatherSlime] = resolveTrophyActions({ kind: 'slime' });
+
+    expect(resolveTrophyActionReward({
+      kind: 'slime',
+      isElite: false,
+      isBoss: false,
+      lootTable: {
+        herb: 1,
+        leather: 1,
+      },
+    }, gatherSlime!)).toEqual({
+      actionCode: 'gather_slime',
+      inventoryDelta: {
+        herb: 1,
+      },
+      skillPoints: [
+        {
+          skillCode: 'gathering.reagent_gathering',
+          points: 1,
+        },
+      ],
+    });
+  });
+
+  it('models boss trophy actions with stronger skill point rewards', () => {
+    const [extractEssence] = resolveTrophyActions({ kind: 'spirit' });
+
+    expect(resolveTrophyActionReward({
+      kind: 'spirit',
+      isElite: true,
+      isBoss: true,
+      lootTable: {
+        essence: 2,
+        crystal: 1,
+        metal: 3,
+      },
+    }, extractEssence!)).toEqual({
+      actionCode: 'extract_essence',
+      inventoryDelta: {
+        essence: 2,
+      },
+      skillPoints: [
+        {
+          skillCode: 'gathering.essence_extraction',
+          points: 4,
+        },
+      ],
+    });
   });
 });

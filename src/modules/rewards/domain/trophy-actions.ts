@@ -1,4 +1,4 @@
-import type { InventoryField } from '../../../shared/types/game';
+import type { InventoryDelta, InventoryField, InventoryLoot, MaterialField } from '../../../shared/types/game';
 
 export type TrophyActionCode =
   | 'claim_all'
@@ -21,6 +21,25 @@ export interface TrophyActionDefinition {
 export interface TrophyActionEnemyContext {
   readonly kind: string;
 }
+
+export interface TrophyActionRewardEnemyContext extends TrophyActionEnemyContext {
+  readonly isElite: boolean;
+  readonly isBoss: boolean;
+  readonly lootTable: InventoryLoot;
+}
+
+export interface TrophyActionSkillPoints {
+  readonly skillCode: TrophySkillCode;
+  readonly points: number;
+}
+
+export interface TrophyActionReward {
+  readonly actionCode: TrophyActionCode;
+  readonly inventoryDelta: InventoryDelta;
+  readonly skillPoints: readonly TrophyActionSkillPoints[];
+}
+
+const materialFields: readonly MaterialField[] = ['leather', 'bone', 'herb', 'essence', 'metal', 'crystal'];
 
 const claimAllAction: TrophyActionDefinition = {
   code: 'claim_all',
@@ -76,3 +95,68 @@ export const resolveTrophyActions = (enemy: TrophyActionEnemyContext): readonly 
   const contextualActions = trophyActionsByEnemyKind[enemy.kind] ?? [];
   return [...contextualActions, claimAllAction];
 };
+
+const isMaterialField = (field: InventoryField): field is MaterialField => (
+  materialFields.includes(field as MaterialField)
+);
+
+const collectPositiveLoot = (
+  lootTable: InventoryLoot,
+  fields: readonly InventoryField[],
+): InventoryDelta => fields.reduce<InventoryDelta>((delta, field) => {
+  if (!isMaterialField(field)) {
+    return delta;
+  }
+
+  const amount = lootTable[field];
+  if (amount === undefined || amount <= 0) {
+    return delta;
+  }
+
+  return {
+    ...delta,
+    [field]: amount,
+  };
+}, {});
+
+const collectAllPositiveLoot = (lootTable: InventoryLoot): InventoryDelta => (
+  Object.entries(lootTable).reduce<InventoryDelta>((delta, [field, amount]) => {
+    if (amount === undefined || amount <= 0 || !isMaterialField(field as InventoryField)) {
+      return delta;
+    }
+
+    return {
+      ...delta,
+      [field]: amount,
+    };
+  }, {})
+);
+
+const resolveTrophySkillPoints = (
+  enemy: TrophyActionRewardEnemyContext,
+  action: TrophyActionDefinition,
+): readonly TrophyActionSkillPoints[] => {
+  if (action.skillCodes.length === 0) {
+    return [];
+  }
+
+  const eliteBonus = enemy.isElite ? 1 : 0;
+  const bossBonus = enemy.isBoss ? 2 : 0;
+  const points = 1 + eliteBonus + bossBonus;
+
+  return action.skillCodes.map((skillCode) => ({
+    skillCode,
+    points,
+  }));
+};
+
+export const resolveTrophyActionReward = (
+  enemy: TrophyActionRewardEnemyContext,
+  action: TrophyActionDefinition,
+): TrophyActionReward => ({
+  actionCode: action.code,
+  inventoryDelta: action.code === 'claim_all'
+    ? collectAllPositiveLoot(enemy.lootTable)
+    : collectPositiveLoot(enemy.lootTable, action.visibleRewardFields),
+  skillPoints: resolveTrophySkillPoints(enemy, action),
+});
