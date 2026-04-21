@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import type { BiomeView } from '../../../shared/types/game';
 import {
@@ -94,6 +94,21 @@ describe('resolveStandaloneExplorationEvent', () => {
     });
 
     expect(event).toBeNull();
+  });
+
+  it('uses a visible standalone scene chance outside the tutorial', () => {
+    const rollPercentage = vi.fn().mockReturnValue(false);
+    const event = resolveStandaloneExplorationEvent({
+      biome: createBiome(),
+      currentSchoolCode: null,
+      locationLevel: 1,
+    }, {
+      rollPercentage,
+      pickOne: (items) => items[0]!,
+    });
+
+    expect(event).toBeNull();
+    expect(rollPercentage).toHaveBeenCalledWith(40);
   });
 
   it('can return a standalone non-combat scene outside the tutorial', () => {

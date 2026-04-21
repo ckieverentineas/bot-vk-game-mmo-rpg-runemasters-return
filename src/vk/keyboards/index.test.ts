@@ -303,6 +303,7 @@ describe('profile keyboard', () => {
 
     expect(mainMenuLabels).toContain('⚔️ Исследовать');
     expect(runeLabels).not.toContain('⚔️ Проверить школу');
+    expect(battleResultLabels).toContain('⚔️ Исследовать');
     expect(battleResultLabels).not.toContain('⚔️ Проверить школу');
   });
 
@@ -421,14 +422,14 @@ describe('profile keyboard', () => {
 
     const location = mainMenuPayloads.find((payload) => payload.command === 'локация');
     const mainExplore = mainMenuPayloads.find((payload) => payload.command === 'исследовать');
-    const newBattle = battleResultPayloads.find((payload) => payload.command === 'исследовать');
+    const battleResultExplore = battleResultPayloads.find((payload) => payload.command === 'исследовать');
 
     expect(location?.intentId).toEqual(expect.any(String));
     expect(location?.stateKey).toEqual(expect.any(String));
     expect(mainExplore?.intentId).toEqual(expect.any(String));
     expect(mainExplore?.stateKey).toEqual(expect.any(String));
-    expect(newBattle?.intentId).toEqual(expect.any(String));
-    expect(newBattle?.stateKey).toEqual(expect.any(String));
+    expect(battleResultExplore?.intentId).toEqual(expect.any(String));
+    expect(battleResultExplore?.stateKey).toEqual(expect.any(String));
   });
 
   it('adds intent metadata to battle action buttons', () => {

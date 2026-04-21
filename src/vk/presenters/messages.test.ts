@@ -396,7 +396,7 @@ describe('messages school-first onboarding framing', () => {
     }));
 
     expect(message).toContain('🎯 Следующая цель: одержите ещё 2 победы школой Пламени');
-    expect(message).toContain('👉 Дальше: нажмите «⚔️ Новый бой».');
+    expect(message).toContain('👉 Дальше: нажмите «⚔️ Исследовать».');
   });
 
   it('keeps defeat follow-up supportive and without pressure wording', () => {
@@ -406,7 +406,7 @@ describe('messages school-first onboarding framing', () => {
       log: ['💥 Поражение.'],
     }), createPlayer({ tutorialState: 'SKIPPED', runes: [createEquippedRune()] }));
 
-    expect(message).toContain('🎯 Следующая цель: проверьте «🔮 Руны» и текущую школу или начните новый бой снова.');
+    expect(message).toContain('🎯 Следующая цель: проверьте «🔮 Руны» и текущую школу или спокойно продолжите исследование снова.');
     expect(message).toContain('👉 Дальше: нажмите «🔮 Руны».');
   });
 
@@ -448,7 +448,7 @@ describe('messages school-first onboarding framing', () => {
     expect(renderReturnRecap(player)).toContain('🧭 Дальше: нажмите «⚔️ Исследовать».');
     expect(renderMainMenu(player)).toContain('👉 Сделать шаг: нажмите «⚔️ Исследовать».');
     expect(renderRuneScreen(player)).not.toContain('Проверить школу');
-    expect(renderBattle(createBattle(), player)).toContain('👉 Дальше: нажмите «⚔️ Новый бой».');
+    expect(renderBattle(createBattle(), player)).toContain('👉 Дальше: нажмите «⚔️ Исследовать».');
   });
 
   it('guides the player to equip the school seal after the miniboss reward if the rare rune is still in reserve', () => {

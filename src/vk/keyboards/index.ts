@@ -16,8 +16,10 @@ import {
   buildReturnToAdventureIntentStateKey,
   buildSkipTutorialIntentStateKey,
 } from '../../modules/exploration/application/command-intent-state';
-import { buildPlayerNextGoalView } from '../../modules/player/application/read-models/next-goal';
-import { buildBattleResultNextGoalView } from '../../modules/player/application/read-models/next-goal';
+import {
+  buildBattleResultNextGoalView,
+  buildPlayerNextGoalView,
+} from '../../modules/player/application/read-models/next-goal';
 import {
   getEquippedRune,
   getRuneEquippedSlot,
@@ -166,9 +168,9 @@ const createBattleActionLayout = (battle: BattleView): KeyboardLayout => {
 const createBattleResultLayout = (battle: BattleView, player?: PlayerState): KeyboardLayout => {
   const exploreStateKey = player ? buildExploreLocationIntentStateKey(player) : undefined;
   const nextGoal = player ? buildBattleResultNextGoalView(battle, player) : null;
-  const exploreLabel = nextGoal?.primaryAction === 'new_battle'
+  const exploreLabel = nextGoal?.primaryAction === 'explore'
     ? nextGoal.primaryActionLabel
-    : '⚔️ Новый бой';
+    : resolveSchoolContinuationLabel(player, '⚔️ Исследовать');
 
   return [
   battle.rewards?.droppedRune || nextGoal?.primaryAction === 'open_runes'

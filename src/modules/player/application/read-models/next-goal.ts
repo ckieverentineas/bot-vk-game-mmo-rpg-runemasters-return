@@ -27,7 +27,7 @@ export type NextGoalType =
   | 'equip_dropped_rune'
   | 'review_runes_after_defeat';
 
-export type NextGoalPrimaryAction = 'tutorial_battle' | 'explore' | 'open_runes' | 'new_battle';
+export type NextGoalPrimaryAction = 'tutorial_battle' | 'explore' | 'open_runes';
 
 export interface NextGoalView {
   readonly goalType: NextGoalType;
@@ -48,8 +48,6 @@ const resolvePrimaryActionLabel = (action: NextGoalPrimaryAction): string => {
       return '⚔️ Учебный бой';
     case 'open_runes':
       return '🔮 Руны';
-    case 'new_battle':
-      return '⚔️ Новый бой';
     case 'explore':
     default:
       return '⚔️ Исследовать';
@@ -294,9 +292,9 @@ export const buildBattleResultNextGoalView = (
     return createGoalView(
       'review_runes_after_defeat',
       'open_runes',
-      'проверьте «🔮 Руны» и текущую школу или начните новый бой снова',
+      'проверьте «🔮 Руны» и текущую школу или спокойно продолжите исследование снова',
       {
-        whyText: 'Так вы спокойнее подготовитесь к следующему бою без лишнего давления.',
+        whyText: 'Так вы спокойнее подготовитесь к следующей встрече без лишнего давления.',
       },
     );
   }
@@ -304,22 +302,13 @@ export const buildBattleResultNextGoalView = (
   if (!player) {
     return createGoalView(
       'push_higher_threat',
-      'new_battle',
-      'начните «⚔️ Новый бой» и продолжайте усиливать сборку',
+      'explore',
+      'исследуйте маршрут дальше и продолжайте усиливать сборку',
       {
         whyText: 'Сейчас полезнее искать следующую полезную руну и расширять сборку.',
       },
     );
   }
 
-  const nextGoal = buildPlayerNextGoalView(player);
-  const keepsCustomExploreLabel = nextGoal.primaryAction === 'explore'
-    && nextGoal.primaryActionLabel !== resolvePrimaryActionLabel('explore');
-  return {
-    ...nextGoal,
-    primaryAction: nextGoal.primaryAction === 'explore' ? 'new_battle' : nextGoal.primaryAction,
-    primaryActionLabel: nextGoal.primaryAction === 'explore'
-      ? keepsCustomExploreLabel ? nextGoal.primaryActionLabel : resolvePrimaryActionLabel('new_battle')
-      : nextGoal.primaryActionLabel,
-  };
+  return buildPlayerNextGoalView(player);
 };

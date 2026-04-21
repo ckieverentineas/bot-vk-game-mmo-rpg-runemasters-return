@@ -49,6 +49,7 @@ interface ExplorationSceneDefinition extends Omit<ExplorationSceneView, 'directo
 }
 
 const noExplorationSceneEffect: ExplorationSceneEffect = { kind: 'none' };
+const standaloneExplorationEventChancePercent = 40;
 
 const inventoryFindEffect = (delta: InventoryDelta, line: string): ExplorationSceneEffect => ({
   kind: 'inventory_delta',
@@ -276,7 +277,7 @@ export const resolveStandaloneExplorationEvent = (
   context: ExplorationEventContext,
   random: Pick<GameRandom, 'rollPercentage' | 'pickOne'>,
 ): ExplorationSceneView | null => {
-  if (context.biome.code === 'initium' || !random.rollPercentage(25)) {
+  if (context.biome.code === 'initium' || !random.rollPercentage(standaloneExplorationEventChancePercent)) {
     return null;
   }
 

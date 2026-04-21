@@ -391,7 +391,7 @@ describe('next goal read-model', () => {
     const goal = buildBattleResultNextGoalView(createBattle(), createPlayer({ victories: 3 }));
 
     expect(goal?.goalType).toBe('hunt_school_elite');
-    expect(goal?.primaryActionLabel).toBe('⚔️ Новый бой');
+    expect(goal?.primaryActionLabel).toBe('⚔️ Исследовать');
     expect(goal?.objectiveText).toContain('разыщите Пепельную ведунью');
   });
 
@@ -418,7 +418,7 @@ describe('next goal read-model', () => {
     }));
 
     expect(goal?.goalType).toBe('reach_next_school_mastery');
-    expect(goal?.primaryActionLabel).toBe('⚔️ Новый бой');
+    expect(goal?.primaryActionLabel).toBe('⚔️ Исследовать');
     expect(goal?.objectiveText).toContain('одержите ещё 2 победы школой Пламени');
   });
 

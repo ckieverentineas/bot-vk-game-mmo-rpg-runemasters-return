@@ -42,6 +42,7 @@
 - `resource_find` exploration scene теперь может выдавать малую material-находку через exact-once inventory result: инвентарь меняется в той же command-intent транзакции, что и канонический ответ события, поэтому retry не дублирует награду;
 - пул `resource_find` расширен несколькими ранними находками (`трава`, `кожа`, `кость`, `металл`) с наградой ровно `+1`, чтобы non-combat exploration был разнообразнее, но не подменял основной рост через бои, руны и школы;
 - `Мастера` теперь дают короткие директорские строки не только в боевых encounter'ах, но и в standalone exploration-сценах: передышки, находки, опасные знаки, школьные следы и trial-master сцены получают честный PvE-framing без новой persistence-модели и без FOMO-давления;
+- standalone exploration-сцены теперь чаще появляются вне tutorial-биома (`40%` вместо прежнего редкого ролла), чтобы маршрут ощущался исследованием с разными исходами, а не почти гарантированным боем;
 - exploration outcome logic вынесена в [`src/modules/exploration/domain/exploration-outcome.ts`](src/modules/exploration/domain/exploration-outcome.ts): use-case теперь оркестрирует replay/persistence, а не собирает encounter plan вручную;
 - battle state UI теперь показывает игрока и врага симметричными блоками: имя, HP-bar, mana-bar и короткую строку боевых статов;
 - HP/mana шкалы в battle state UI стали цветными: здоровье меняет цвет по уровню риска, мана остаётся синей;
@@ -63,6 +64,7 @@
 - второй слот больше не является player-facing “поддержкой”: две стартовые руны равноправно дают полные статы, пассивы и активные действия в бою;
 - telemetry `loadout_changed` больше не использует primary/support changeType: новое событие пишет нейтральный `equip_rune` / `unequip_rune` и 1-based `slotNumber`, чтобы будущие 3+ слоты не ломали модель;
 - battle result теперь использует актуальный `PlayerState`, чтобы следующий шаг после боя не расходился с `return recap` и `main menu`;
+- завершённый бой снова ведёт игрока через общий CTA `⚔️ Исследовать`, поэтому post-battle loop не выглядит отдельной кнопкой “нового боя” поверх exploration resolver;
 - battle result и крафт руны теперь могут объяснить, что именно дала новая награда или unlock, а не оставлять игрока наедине с названием предмета;
 - ранний encounter intro теперь может подсказывать, какая школа особенно хорошо отвечает на конкретный элитный pressure pattern, вместо немого появления врага без tactical framing;
 - `RegisterPlayer`, `EquipCurrentRune`, `UnequipCurrentRune` и `GameHandler` теперь пишут telemetry v1 события `onboarding_started`, `loadout_changed`, `return_recap_shown` и `post_session_next_goal_shown` после committed transition или реально показанного экрана;
