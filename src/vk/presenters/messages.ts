@@ -24,6 +24,7 @@ import { resolveDefendGuardGain } from '../../modules/combat/domain/battle-tacti
 import { describeRuneContent } from '../../modules/runes/domain/rune-abilities';
 import { buildRuneCollectionPage } from '../../modules/runes/domain/rune-collection';
 import { getRuneSchoolPresentation, listSchoolDefinitions } from '../../modules/runes/domain/rune-schools';
+import type { ExplorationSceneView } from '../../modules/world/domain/exploration-events';
 import type { BattleView, PlayerState, RuneView, StatBlock } from '../../shared/types/game';
 
 const formatStatBlock = (stats: StatBlock): string => [
@@ -352,6 +353,18 @@ export const renderLocation = (player: PlayerState): string => [
     ? `🛡️ После поражений подряд (${player.defeatStreak}) враги становятся слабее, чтобы следующий бой читался спокойнее.`
     : `🔥 Серия побед подряд: ${player.victoryStreak}`,
   ...renderNextGoalSummary(buildPlayerNextGoalView(player)),
+].join('\n');
+
+export const renderExplorationEvent = (event: ExplorationSceneView, player: PlayerState): string => [
+  '🧭 Исследование',
+  '',
+  event.title,
+  event.description,
+  '',
+  event.outcomeLine,
+  event.nextStepLine,
+  '',
+  ...renderNextGoalSummary(buildPlayerNextGoalView(player), '👉 Продолжить'),
 ].join('\n');
 
 export const renderRuneScreen = (player: PlayerState, acquisitionSummary?: AcquisitionSummaryView | null): string => {

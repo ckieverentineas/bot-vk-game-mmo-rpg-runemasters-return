@@ -37,6 +37,7 @@ import { createBattleVictoryRewardIntent } from '../../domain/contracts/reward-i
 import type {
   CreateBattleOptions,
   FinalizeBattleResult,
+  GameCommandIntentKey,
   GameRepository,
   SaveBattleOptions,
   SaveExplorationOptions,
@@ -58,7 +59,7 @@ const playerInclude = {
 
 type PlayerRecord = Prisma.PlayerGetPayload<{ include: typeof playerInclude }>;
 type TransactionClient = Prisma.TransactionClient;
-type CommandIntentKey = 'CRAFT_RUNE' | 'REROLL_RUNE_STAT' | 'DESTROY_RUNE' | 'EQUIP_RUNE' | 'UNEQUIP_RUNE' | 'MOVE_RUNE_CURSOR' | 'SELECT_RUNE_PAGE_SLOT' | 'ENTER_TUTORIAL_MODE' | 'SKIP_TUTORIAL' | 'RETURN_TO_ADVENTURE' | 'EXPLORE_LOCATION' | 'BATTLE_ATTACK' | 'BATTLE_DEFEND' | 'BATTLE_RUNE_SKILL';
+type CommandIntentKey = GameCommandIntentKey;
 
 type PersistedBattleState = Pick<BattleView, 'status' | 'turnOwner' | 'player' | 'enemy' | 'log' | 'result' | 'rewards' | 'actionRevision'>;
 
@@ -593,6 +594,25 @@ export class PrismaGameRepository implements GameRepository {
         resultSnapshot: stringifyJson(result, '{}'),
       },
     });
+  }
+
+  public async recordCommandIntentResult<TResult>(
+    playerId: number,
+    commandKey: GameCommandIntentKey,
+    intentId: string | undefined,
+    intentStateKey: string | undefined,
+    currentStateKey: string | undefined,
+    result: TResult,
+  ): Promise<TResult> {
+    return this.prisma.$transaction((tx) => this.runWithCommandIntent(
+      tx,
+      playerId,
+      commandKey,
+      intentId,
+      intentStateKey,
+      currentStateKey,
+      async () => result,
+    ));
   }
 
   public async deletePlayerByVkId(vkId: number, expectedUpdatedAt?: string): Promise<void> {

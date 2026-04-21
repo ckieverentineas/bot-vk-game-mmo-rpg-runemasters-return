@@ -48,6 +48,7 @@
 - [x] Support-slot уже открывается через mastery milestone и остаётся bounded breadth без второй боевой кнопки.
 - [x] Existing-player return flow уже получил `return recap v1` без guilt/FOMO copy.
 - [x] `main menu`, `return recap`, `rune hub` и `battle result` уже используют единый school-aware next-goal слой.
+- [x] Исследование уже умеет выбирать исход шага: бой или standalone PvE-событие без FOMO и без создания `BattleSession`.
 - [x] Есть reward duplication rails, stale-action rejection, command-intent dedupe и concurrency coverage для critical flows.
 - [x] Есть content validation, smoke tests, release preflight и telemetry v1 baseline.
 
@@ -72,6 +73,7 @@
   - [x] Ясно показывать, что именно игрок получил от новой редкости, новой руны или нового unlock'а.
   - [x] Дать compact combat clarity block на активном ходу: текущее состояние боя + school-aware hint без новой боевой системы.
   - [x] Добавить FOMO-safe слой `Мастеров испытаний` для PvE encounter framing без таймеров, streak'ов, ручной раздачи силы и live-ops давления.
+  - [x] Добавить exploration outcome resolver, который может вернуть бой или отдельную non-combat сцену без награды за срочность.
   - [ ] Доказать через playtests и telemetry, что первый school payoff приходит быстро и читаемо.
   - [ ] Не расширять scope в social / PvP / live-ops, пока этот slice не доказан.
 

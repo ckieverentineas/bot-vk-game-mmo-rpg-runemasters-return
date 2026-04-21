@@ -3,7 +3,11 @@
 import type { AppServices } from '../../app/composition-root';
 import type { CraftRuneResultView } from '../../modules/runes/application/use-cases/CraftRune';
 import type { BattleActionResultView } from '../../modules/combat/application/use-cases/PerformBattleAction';
-import type { ExploreLocationReplayResult } from '../../modules/exploration/application/use-cases/ExploreLocation';
+import {
+  type ExploreLocationEventResult,
+  type ExploreLocationReplayResult,
+  isExploreLocationEventResult,
+} from '../../modules/exploration/application/use-cases/ExploreLocation';
 import { getSchoolNovicePathDefinitionForEnemy } from '../../modules/player/domain/school-novice-path';
 import type { ReturnToAdventureReplayResult } from '../../modules/exploration/application/use-cases/ReturnToAdventure';
 import type { SkipTutorialReplayResult } from '../../modules/exploration/application/use-cases/SkipTutorial';
@@ -31,6 +35,7 @@ import {
 import {
   renderAltar,
   renderBattle,
+  renderExplorationEvent,
   renderInventory,
   renderLocation,
   renderMainMenu,
@@ -55,6 +60,7 @@ import {
 
 type ReplyKeyboard = ReturnType<typeof createMainMenuKeyboard>;
 type BattleReplyState = BattleView | BattleActionResultView | ExploreLocationReplayResult;
+type ExplorationReplyState = BattleReplyState | ExploreLocationEventResult;
 type RuneHubReplyState = PlayerState | CraftRuneResultView;
 type TutorialRouteReplyState = PlayerState | SkipTutorialReplayResult | ReturnToAdventureReplayResult;
 
@@ -299,8 +305,8 @@ export class GameHandler {
 
   public async exploreNewBattle(ctx: Context, vkId: number, context: CommandIntentContext): Promise<void> {
     const routeState = toRouteState(context);
-    const battle = await this.services.exploreLocation.execute(vkId, routeState.intentId, routeState.stateKey, routeState.intentSource);
-    await this.replyWithBattle(ctx, battle, vkId);
+    const result = await this.services.exploreLocation.execute(vkId, routeState.intentId, routeState.stateKey, routeState.intentSource);
+    await this.replyWithExplorationResult(ctx, result, vkId);
   }
 
   public async executeBattleAction(
@@ -410,6 +416,15 @@ export class GameHandler {
   public async replyWithRuneHub(ctx: Context, state: RuneHubReplyState): Promise<void> {
     const result = normalizeRuneHubReplyState(state);
     await this.reply(ctx, renderRuneScreen(result.player, result.acquisitionSummary), createRuneKeyboard(result.player));
+  }
+
+  private async replyWithExplorationResult(ctx: Context, state: ExplorationReplyState, vkId?: number): Promise<void> {
+    if (isExploreLocationEventResult(state)) {
+      await this.reply(ctx, renderExplorationEvent(state.event, state.player), createMainMenuKeyboard(state.player));
+      return;
+    }
+
+    await this.replyWithBattle(ctx, state, vkId);
   }
 
   private async replyWithBattle(ctx: Context, state: BattleReplyState, vkId?: number): Promise<void> {

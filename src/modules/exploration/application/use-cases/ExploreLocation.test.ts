@@ -226,7 +226,7 @@ describe('ExploreLocation', () => {
     );
   });
 
-  it('can add a non-combat exploration event before the generated battle', async () => {
+  it('can add a path episode before the generated battle', async () => {
     const player = createPlayer({ tutorialState: 'SKIPPED', locationLevel: 1 });
     const repository = {
       findPlayerByVkId: vi.fn().mockResolvedValue(player),
@@ -242,7 +242,9 @@ describe('ExploreLocation', () => {
     } as unknown as GameRepository;
     const random: GameRandom = {
       nextInt: vi.fn().mockReturnValue(1),
-      rollPercentage: vi.fn().mockReturnValue(true),
+      rollPercentage: vi.fn()
+        .mockReturnValueOnce(false)
+        .mockReturnValueOnce(true),
       pickOne: vi.fn(<T>(items: readonly T[]) => items[0]!),
     };
     const worldCatalog = createWorldCatalog({
@@ -260,6 +262,56 @@ describe('ExploreLocation', () => {
 
     expect(battle.log[0]).toContain('на вас выходит');
     expect(battle.log.some((entry) => entry.includes('Путевой эпизод'))).toBe(true);
+  });
+
+  it('can resolve a standalone exploration event without creating a battle', async () => {
+    const player = createPlayer({ tutorialState: 'SKIPPED', locationLevel: 1 });
+    const stateKey = buildExploreLocationIntentStateKey(player);
+    const repository = {
+      findPlayerByVkId: vi.fn().mockResolvedValue(player),
+      getCommandIntentResult: vi.fn().mockResolvedValue(null),
+      getActiveBattle: vi.fn().mockResolvedValue(null),
+      recordCommandIntentResult: vi.fn(async (
+        _playerId: number,
+        _commandKey: string,
+        _intentId: string | undefined,
+        _intentStateKey: string | undefined,
+        _currentStateKey: string | undefined,
+        result: unknown,
+      ) => result),
+      createBattle: vi.fn(),
+    } as unknown as GameRepository;
+    const random: GameRandom = {
+      nextInt: vi.fn().mockReturnValue(1),
+      rollPercentage: vi.fn().mockReturnValue(true),
+      pickOne: vi.fn(<T>(items: readonly T[]) => items[0]!),
+    };
+    const worldCatalog = createWorldCatalog({
+      findBiomeForLocationLevel: vi.fn().mockReturnValue({
+        ...createBiome(),
+        code: 'dark-forest',
+        name: 'Тёмный лес',
+        minLevel: 1,
+        maxLevel: 15,
+      }),
+    });
+    const useCase = new ExploreLocation(repository, worldCatalog, random);
+
+    const result = await useCase.execute(player.vkId, 'intent-explore-scene-1', stateKey, 'payload');
+
+    expect('event' in result && result.event.title).toContain('Тихая передышка');
+    expect(repository.createBattle).not.toHaveBeenCalled();
+    expect(repository.recordCommandIntentResult).toHaveBeenCalledWith(
+      player.playerId,
+      'EXPLORE_LOCATION',
+      'intent-explore-scene-1',
+      stateKey,
+      stateKey,
+      expect.objectContaining({
+        event: expect.objectContaining({ code: 'quiet-rest' }),
+        player,
+      }),
+    );
   });
 
   it('returns the canonical replay result before encounter generation for legacy text', async () => {
@@ -365,7 +417,9 @@ describe('ExploreLocation', () => {
     });
     const random: GameRandom = {
       nextInt: vi.fn().mockReturnValue(1),
-      rollPercentage: vi.fn().mockReturnValue(true),
+      rollPercentage: vi.fn()
+        .mockReturnValueOnce(false)
+        .mockReturnValueOnce(true),
       pickOne: vi.fn((items: readonly MobTemplateView[]) => items[0]),
     };
     const telemetry = createTelemetry();
@@ -442,7 +496,9 @@ describe('ExploreLocation', () => {
     });
     const random: GameRandom = {
       nextInt: vi.fn().mockReturnValue(1),
-      rollPercentage: vi.fn().mockReturnValue(true),
+      rollPercentage: vi.fn()
+        .mockReturnValueOnce(false)
+        .mockReturnValueOnce(true),
       pickOne: vi.fn((items: readonly MobTemplateView[]) => items[0]),
     };
     const telemetry = createTelemetry();
@@ -515,7 +571,9 @@ describe('ExploreLocation', () => {
     });
     const random: GameRandom = {
       nextInt: vi.fn().mockReturnValue(1),
-      rollPercentage: vi.fn().mockReturnValue(true),
+      rollPercentage: vi.fn()
+        .mockReturnValueOnce(false)
+        .mockReturnValueOnce(true),
       pickOne: vi.fn((items: readonly MobTemplateView[]) => items[0]),
     };
     const telemetry = createTelemetry();
@@ -660,7 +718,9 @@ describe('ExploreLocation', () => {
     });
     const random: GameRandom = {
       nextInt: vi.fn().mockReturnValue(1),
-      rollPercentage: vi.fn().mockReturnValue(true),
+      rollPercentage: vi.fn()
+        .mockReturnValueOnce(false)
+        .mockReturnValueOnce(true),
       pickOne: vi.fn((items: readonly MobTemplateView[]) => items[0]),
     };
     const telemetry = createTelemetry();
@@ -740,7 +800,9 @@ describe('ExploreLocation', () => {
     });
     const random: GameRandom = {
       nextInt: vi.fn().mockReturnValue(1),
-      rollPercentage: vi.fn().mockReturnValue(true),
+      rollPercentage: vi.fn()
+        .mockReturnValueOnce(false)
+        .mockReturnValueOnce(true),
       pickOne: vi.fn((items: readonly MobTemplateView[]) => items[0]),
     };
     const telemetry = createTelemetry();
@@ -821,7 +883,9 @@ describe('ExploreLocation', () => {
     });
     const random: GameRandom = {
       nextInt: vi.fn().mockReturnValue(1),
-      rollPercentage: vi.fn().mockReturnValue(true),
+      rollPercentage: vi.fn()
+        .mockReturnValueOnce(false)
+        .mockReturnValueOnce(true),
       pickOne: vi.fn((items: readonly MobTemplateView[]) => items[0]),
     };
     const telemetry = createTelemetry();

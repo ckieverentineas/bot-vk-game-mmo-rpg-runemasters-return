@@ -20,7 +20,11 @@ import type { GameRandom } from '../../../shared/application/ports/GameRandom';
 import type { GameRepository } from '../../../shared/application/ports/GameRepository';
 import type { WorldCatalog } from '../../../world/application/ports/WorldCatalog';
 import { buildEnemySnapshot, describeEncounter, pickEncounterTemplate, resolveInitialTurnOwner } from '../../../world/domain/enemy-scaling';
-import { resolveExplorationEventLine } from '../../../world/domain/exploration-events';
+import {
+  type ExplorationSceneView,
+  resolveExplorationEventLine,
+  resolveStandaloneExplorationEvent,
+} from '../../../world/domain/exploration-events';
 import { resolveGameMasterEncounterLine } from '../../../world/domain/game-master-director';
 import { Logger } from '../../../../utils/logger';
 
@@ -30,6 +34,30 @@ export interface ExploreLocationReplayResult {
   readonly battle: BattleView;
   readonly replayed: true;
 }
+
+export interface ExploreLocationEventResult {
+  readonly event: ExplorationSceneView;
+  readonly player: PlayerState;
+  readonly replayed?: true;
+}
+
+export type ExploreLocationResult = BattleView | ExploreLocationReplayResult | ExploreLocationEventResult;
+
+export const isExploreLocationEventResult = (result: unknown): result is ExploreLocationEventResult => (
+  typeof result === 'object' && result !== null && 'event' in result
+);
+
+const markExploreLocationReplay = (result: ExploreLocationResult): ExploreLocationReplayResult | ExploreLocationEventResult => {
+  if (isExploreLocationEventResult(result)) {
+    return { ...result, replayed: true };
+  }
+
+  if ('battle' in result) {
+    return { battle: result.battle, replayed: true };
+  }
+
+  return { battle: result, replayed: true };
+};
 
 export class ExploreLocation {
   public constructor(
@@ -44,7 +72,7 @@ export class ExploreLocation {
     intentId?: string,
     intentStateKey?: string,
     intentSource: CommandIntentSource = null,
-  ): Promise<BattleView | ExploreLocationReplayResult> {
+  ): Promise<ExploreLocationResult> {
     const player = await requirePlayerByVkId(this.repository, vkId);
     const commandKey = 'EXPLORE_LOCATION' as const;
     const scopedIntent = intentSource === 'legacy_text'
@@ -52,14 +80,14 @@ export class ExploreLocation {
       : resolveCommandIntent(intentId, intentStateKey, intentSource, intentSource === null);
 
     if (scopedIntent?.intentId) {
-      const replay = await this.repository.getCommandIntentResult<BattleView>(
+      const replay = await this.repository.getCommandIntentResult<ExploreLocationResult>(
         player.playerId,
         scopedIntent.intentId,
         [commandKey],
         scopedIntent.intentStateKey,
       );
       if (replay?.status === 'APPLIED' && replay.result) {
-        return { battle: replay.result, replayed: true };
+        return markExploreLocationReplay(replay.result);
       }
 
       if (replay?.status === 'PENDING') {
@@ -68,13 +96,13 @@ export class ExploreLocation {
     }
 
     if (intentSource === 'legacy_text' && intentId) {
-      const replay = await this.repository.getCommandIntentResult<BattleView>(
+      const replay = await this.repository.getCommandIntentResult<ExploreLocationResult>(
         player.playerId,
         intentId,
         [commandKey],
       );
       if (replay?.status === 'APPLIED' && replay.result) {
-        return { battle: replay.result, replayed: true };
+        return markExploreLocationReplay(replay.result);
       }
 
       if (replay?.status === 'PENDING') {
@@ -124,6 +152,19 @@ export class ExploreLocation {
     const biome = this.worldCatalog.findBiomeForLocationLevel(locationLevel);
     if (!biome) {
       throw new AppError('biome_not_found', 'Для текущего уровня локации не найден биом.');
+    }
+
+    const standaloneEvent = resolveStandaloneExplorationEvent({
+      biome,
+      currentSchoolCode,
+      locationLevel,
+    }, this.random);
+
+    if (standaloneEvent) {
+      return this.persistExplorationEventResult(currentPlayer, {
+        event: standaloneEvent,
+        player: currentPlayer,
+      }, commandOptions);
     }
 
     const templates = this.worldCatalog.listMobTemplatesForBiome(biome.code);
@@ -187,6 +228,26 @@ export class ExploreLocation {
     }
 
     return battle;
+  }
+
+  private async persistExplorationEventResult(
+    player: PlayerState,
+    result: ExploreLocationEventResult,
+    commandOptions: {
+      readonly commandKey: 'EXPLORE_LOCATION';
+      readonly intentId?: string;
+      readonly intentStateKey?: string;
+      readonly currentStateKey?: string;
+    },
+  ): Promise<ExploreLocationEventResult> {
+    return this.repository.recordCommandIntentResult(
+      player.playerId,
+      commandOptions.commandKey,
+      commandOptions.intentId,
+      commandOptions.intentStateKey,
+      commandOptions.currentStateKey,
+      result,
+    );
   }
 
   private async trackTutorialPathChosen(player: PlayerState, battle: BattleView): Promise<void> {

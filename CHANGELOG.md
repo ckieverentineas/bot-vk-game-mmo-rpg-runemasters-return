@@ -37,6 +37,8 @@
 - `content:validate` теперь содержит hard completeness gate для shipped school packages, чтобы 4 стартовые школы не уходили в релиз с тихим drift между identity, encounter hooks и reward/chase wiring;
 - active battle теперь показывает compact combat clarity block с текущим состоянием боя и school-aware tactical hint, чтобы игроку было проще читать следующий meaningful ход без перегруза интерфейса;
 - в бою появилась медленная регенерация маны при возврате хода игроку: рунные действия реже запираются насовсем, но ресурс всё ещё ограничен максимальной маной battle snapshot'а;
+- `ExploreLocation` теперь может вернуть standalone exploration scene вместо боя: domain resolver выбирает outcome шага исследования, а VK handler только рендерит готовый результат без transport-owned игровых правил;
+- command-intent rail получил общий `recordCommandIntentResult`, чтобы replay-safe команды могли сохранять не только мутации игрока или battle creation, но и чистые outcome-сцены без отдельной persistence-сущности;
 - типобезопасный telemetry adapter [`RepositoryGameTelemetry`](src/modules/shared/infrastructure/telemetry/RepositoryGameTelemetry.ts) поверх существующего `GameLog` rail для semantic-событий UX и loadout flow;
 - тесты на canonical next-goal read-model в [`src/modules/player/application/read-models/next-goal.test.ts`](src/modules/player/application/read-models/next-goal.test.ts).
 

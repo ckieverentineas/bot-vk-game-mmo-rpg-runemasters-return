@@ -206,6 +206,14 @@ src/
 
 Дополнительно ранняя версия сложности теперь меньше переоценивает `intelligence` и `magicDefence`, пока в бою нет полноценной магической action loop.
 
+### 7.4. Exploration outcome resolver
+
+`ExploreLocation` больше не обязан всегда создавать `BattleSession`: после выбора биома и school context он спрашивает `resolveStandaloneExplorationEvent()` и либо возвращает `ExploreLocationEventResult`, либо продолжает обычную генерацию encounter.
+
+`src/vk/handlers/GameHandler` различает результат только по типу и рендерит сцену через `renderExplorationEvent()`. Transport не решает, будет ли бой, отдых, находка маршрута или school-aware подсказка.
+
+Standalone-сцены сохраняются через `recordCommandIntentResult()` поверх command-intent rail, поэтому повтор того же `исследовать` intent возвращает тот же outcome. В текущем v1 эти сцены не выдают силу и не меняют экономику: это pacing/readability слой без FOMO.
+
 ### 7.5. Мастера испытаний
 
 `src/modules/world/domain/game-master-director.ts` добавляет чистый PvE framing для важных encounters:

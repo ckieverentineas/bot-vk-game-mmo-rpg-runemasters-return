@@ -472,6 +472,31 @@ describe('GameHandler smoke', () => {
     expect(services.exploreLocation.execute).toHaveBeenCalledWith(1001, 'legacy-text:2000000001:1001:93:исследовать', undefined, 'legacy_text');
   });
 
+  it('показывает отдельное событие исследования без боевой клавиатуры', async () => {
+    const services = createServices();
+    vi.mocked(services.exploreLocation.execute).mockResolvedValueOnce({
+      event: {
+        code: 'quiet-rest',
+        title: '🌿 Тихая передышка',
+        description: 'Вы находите сухой уступ под корнями.',
+        outcomeLine: 'Боя нет: экспедиция получает паузу без скрытого давления.',
+        nextStepLine: 'Когда будете готовы, можно снова двинуться глубже.',
+      },
+      player: createPlayer({ tutorialState: 'SKIPPED', locationLevel: 1 }),
+    } as never);
+    const handler = new GameHandler(services);
+    const ctx = createFakeContext({ command: 'исследовать', intentId: 'intent-scene-1', stateKey: 'state-scene-1' });
+
+    await handler.handle(ctx as never);
+
+    const replies = getReplyCalls(ctx);
+    expect(replies[0]?.message).toContain('🧭 Исследование');
+    expect(replies[0]?.message).toContain('Тихая передышка');
+    expect(replies[0]?.message).toContain('Боя нет');
+    expect(replies[0]?.message).not.toContain('Действия:');
+    expect(JSON.stringify(replies[0]?.keyboard)).toContain('Исследовать');
+  });
+
   it('выводит server-owned legacy intent для текстового входа в обучение', async () => {
     const services = createServices();
     const handler = new GameHandler(services);
