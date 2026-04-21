@@ -182,7 +182,7 @@ npm run check
 VK_TOKEN=your_vk_group_token_here
 # Optional. Если пусто, бот сам определит id группы через VK API.
 VK_GROUP_ID=
-DATABASE_URL="file:./prisma/dev.db"
+DATABASE_URL="file:./dev.db"
 GAME_STARTING_LEVEL=1
 GAME_STARTING_USUAL_SHARDS=25
 GAME_STARTING_UNUSUAL_SHARDS=10

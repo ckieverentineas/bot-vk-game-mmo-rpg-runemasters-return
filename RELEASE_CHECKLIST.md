@@ -1,85 +1,96 @@
 # Release Checklist
 
-## Локальная поставка
+Используйте этот файл как gate перед релизом. Если пункт не проходит, релиз не считается готовым.
 
-Используйте этот чек-лист перед каждым релизом или крупной поставкой контента.
+## Перед проверками
 
-1. Обновить рабочую ветку и убедиться, что релизные документы синхронизированы:
-   - `README.md`
-   - `CHANGELOG.md`
-   - `PLAN.md`
-   - `ARCHITECTURE.md`, если менялись архитектурные границы
-2. Установить зависимости на чистом окружении или убедиться, что lock-файл актуален:
-   - `npm ci`
-3. Сгенерировать Prisma client:
-   - `npm run db:generate`
-4. Прогнать единый технический пайплайн:
-   - `npm run check`
-5. Проверить релизный статус и версию:
-   - `npm run release:status`
-6. Прогнать релизный preflight:
-   - `npm run release:preflight`
-7. Проверить, что changelog, release summary и unified evidence report отражают пользовательские изменения:
-   - `npm run release:summary`
-   - `npm run release:evidence`
-   - `docs/testing/release-evidence-report.md` (локальный generated artifact, не обязательный checked-in файл)
-8. Если менялись reward-bearing или battle-mutation rails, сверить:
-   - `docs/platform/command-intent-rules.md`
-   - `docs/platform/retry-handling-rules.md`
-   - `docs/platform/rng-authority-rules.md`
-   - `docs/platform/persistence-versioning-rules.md`
-   - `docs/qa/reward-duplication-matrix.md`
-   - `docs/testing/concurrency-critical-use-cases.md`
-9. Если менялись onboarding / return / economy decision flows, синхронизировать `docs/telemetry/telemetry-plan.md`.
-10. Если менялись content package contracts или validator expectations, синхронизировать `docs/content/content-pipeline-plan.md` и `docs/content/validator-scope.md`.
-11. Если менялись social/PvP reward loops или circle contribution flows, вручную пройти `docs/qa/alt-account-guild-pvp-abuse-checklist.md`.
-12. Если менялся player-facing combat/rune UX, вручную пройти smoke-путь:
-    - регистрация → учебный бой;
-    - welcome/tutorial copy явно объясняет путь `базовая атака -> первая руна -> школа рун`;
-    - tutorial reward → открыть руны → надеть первую активную руну → применить рунное действие в бою;
-    - завершённый бой показывает `🎯 Следующая цель`, а не только механический возврат к кнопке;
-    - existing-player `начать` / `пропустить обучение` / `в приключения` показывают короткий return recap без давления и without-FOMO phrasing;
-    - `main menu`, `return recap`, `rune hub` и `battle result` не расходятся по ближайшей school-вехе или следующему шагу;
-    - rune hub показывает ближайшую mastery-веху или payoff свободного рунного слота без превращения экрана в длинную системную простыню;
-    - в следующем бою пережить телеграфируемый тяжёлый удар через `защиту`;
-    - отдельно проверить бой против врага с guard-break intent: `защита` не должна выглядеть правильным ответом на этот телеграф;
-    - отдельно проверить, что стартовые школы реально различаются: Пламя давит сильнее, Твердь усиливает защиту, Прорицание лучше наказывает телеграфы;
-    - после победы следующий CTA ведёт в `⚔️ Исследовать`, а не обходит exploration resolver отдельным “новым боем”;
-    - боевой outcome исследования сначала показывает встречу с врагом, кнопки `⚔️ В бой` / `💨 Отступить` и понятный шанс отступления;
-    - rune hub: page navigation, slot selection, equip, craft, reroll, destroy.
+1. Убедиться, что рабочая ветка чистая или все изменения понятны:
 
-## CI-зеркало
+```bash
+git status --short --branch
+```
 
-GitHub Actions workflow `/.github/workflows/ci.yml` повторяет релизный минимум автоматически:
+2. Если Git ругается на `dubious ownership`, настроить `safe.directory` или запускать релизные команды в среде, где Git доступен. `release:status` не должен показывать `0.00` только из-за ошибки чтения истории.
 
-1. `npm ci`
-2. `npm run db:generate`
-3. `npm run check`
-4. `npm run release:preflight`
+3. Остановить запущенного бота перед Prisma-командами. На Windows живой бот может держать `query_engine-windows.dll.node` и ломать `npm run db:generate` через `EPERM`.
 
-Если CI не проходит, релиз не считается готовым.
+4. Для production SQLite сделать backup базы до любых schema/data операций.
+
+## Технический gate
+
+В чистом или предсказуемом окружении:
+
+```bash
+npm ci
+npm run db:generate
+npm run check
+npm run release:status
+npm run release:summary
+npm run release:preflight
+```
+
+Ожидания:
+
+- `db:generate` проходит без `EPERM`;
+- `check` проходит полностью: typecheck, content validation, build, tests;
+- `release:status` показывает правдоподобное число коммитов и версию;
+- `release:summary` не расходится с `CHANGELOG.md`;
+- `release:preflight` проходит и не скрывает ошибки документов или контента.
+
+## Runtime evidence gate
+
+После ручного playtest:
+
+```bash
+npm run release:school-evidence
+npm run release:evidence
+```
+
+Релиз не готов, если evidence verdict остаётся `insufficient_evidence`.
+
+Минимально нужно подтвердить:
+
+- onboarding стартует и ведёт к понятному первому маршруту;
+- `исследовать` может дать событие или встречу без внезапного броска в бой;
+- встреча показывает выбор `В бой` / `Отступить`;
+- бой читаемо показывает игрока, врага, ману, последние события и намерение врага;
+- `защита` и guard-break не выглядят одинаково правильным ответом;
+- победа возвращает к `Исследовать`, а не к отдельному обходному `Новый бой`;
+- rune hub позволяет выбрать, надеть, снять, создать, перековать и распылить руну;
+- две стартовые руны работают как равноправные слоты;
+- school-first path по Пламени, Тверди, Бури и Прорицанию проходит до понятной school-награды и следующего шага;
+- reward ledger не даёт duplicate reward на retry/replay;
+- command intent не допускает double spend на craft/reroll/equip hot paths.
+
+## Документы
+
+Перед релизом должны быть синхронизированы:
+
+- `README.md` — что есть в текущем runtime;
+- `QUICKSTART.md` — как поднять и проверить проект;
+- `PLAN.md` — что готово, что не доказано, что отложено;
+- `CHANGELOG.md` — что изменилось для игрока и релиза;
+- `ARCHITECTURE.md` — только если менялись границы модулей, persistence, replay-safety или контракты.
+
+Generated reports в `docs/testing/*-evidence-report.md` можно хранить локально как артефакты конкретного прогона, но они не заменяют `PLAN.md` и `CHANGELOG.md`.
+
+## Production handoff
+
+Перед выкладкой зафиксировать:
+
+- где лежит `.env`;
+- какой `DATABASE_URL` используется;
+- где находится SQLite backup;
+- какой командой запускается процесс;
+- где читать logs;
+- как остановить бота;
+- как откатить build и базу.
 
 ## Минимальный критерий готовности
 
-- все команды из чек-листа завершились успешно;
-- контентная валидация зелёная;
-- school ↔ archetype content wiring не имеет drift и проходит через `content:validate`;
-- shipped 4-school baseline проходит package completeness gate в `content:validate`, а не держится только на manual review;
-- регрессионные тесты не находят дублей наград, отрицательных остатков инвентаря и повторного создания активного боя;
-- critical concurrency lane не находит stale overwrite, duplicate reward apply и double-spend на battle/rune hot paths;
-- versioned battle/loadout/reward contracts имеют compatibility fixtures и безопасный fallback policy;
-- player-state hydration имеет checked-in current / legacy / future fixtures и проходит repository hydration tests;
-- telemetry plan обновлён, если менялись onboarding clarity, return recap, economy signals или exploit-sensitive flows;
-- `release:evidence` собран и не противоречит manual playtest/evidence pass по onboarding coverage, school payoff, return recap и next-goal clarity;
-- school-aware next goal не расходится между `main menu`, `return recap`, `rune hub` и `battle result`;
-- alt-account / circle collusion / async PvP abuse checklist пройден, если менялись social/PvP reward loops или circle contribution flows;
-- command-intent rules обновлены, если менялись replay-safe keyboard mutation semantics;
-- content pipeline plan и validator scope обновлены, если менялись content package expectations;
-- rune hub позволяет выбрать нужную руну без one-by-one browsing через page/slot flow;
-- encounter choice перед боем не позволяет обычные боевые действия до выбора `В бой` или `Отступить`;
-- ранний бой остаётся читаемым и не выглядит как guaranteed loss для нового персонажа;
-- рунное действие корректно тратит ману, уходит в откат и переживает re-entry без рассинхрона;
-- `защита` и enemy intent не создают stale-state рассинхрон и понятны игроку по battle UI;
-- оба enemy intent (`тяжёлый удар` и `guard-break`) различимы по UI и реально ведут к разным правильным ответам игрока;
-- документация обновлена;
-- версия из `npm run release:status` соответствует changelog-записи.
+- technical gate зелёный;
+- runtime evidence gate зелёный;
+- версия и changelog согласованы;
+- документация не спорит с runtime;
+- production handoff записан;
+- cut/deferred scope из `PLAN.md` не попал в релиз случайно.
