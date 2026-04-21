@@ -671,7 +671,7 @@ describe('messages school-first onboarding framing', () => {
     expect(message).toContain('🔥 Пламя: враг уже просел');
   });
 
-  it('shows enough recent battle events to keep the player action visible', () => {
+  it('shows the full battle log while it remains short enough to read', () => {
     const message = renderBattle(createBattle({
       status: 'ACTIVE',
       result: null,
@@ -686,11 +686,38 @@ describe('messages school-first onboarding framing', () => {
     }));
 
     expect(message).toContain('Ход событий');
+    expect(message).toContain('• 🗺️ Тёмный лес: на вас выходит обычный враг Синий слизень.');
     expect(message).toContain('• 🧭 Путевой эпизод: вы находите свежие следы.');
     expect(message).toContain('• 🌀 Импульс углей прожигает Синий слизень на 8 урона.');
     expect(message).toContain('• ⚠️ Синий слизень готовит «Кислотный прорыв». Защита на следующий ход сработает хуже обычного.');
     expect(message).toContain('• 💙 Рунный фокус: +1 маны.');
-    expect(message).not.toContain('• 🗺️ Тёмный лес');
+  });
+
+  it('compacts long battle logs without losing the opening and latest events', () => {
+    const message = renderBattle(createBattle({
+      status: 'ACTIVE',
+      result: null,
+      rewards: null,
+      log: [
+        '🗺️ Тёмный лес: на вас выходит обычный враг Синий слизень.',
+        '🧭 Путевой эпизод: вы находите свежие следы.',
+        '⚔️ Вы наносите 4 урона врагу Синий слизень.',
+        '⚠️ Синий слизень готовит «Кислотный прорыв».',
+        '💙 Рунный фокус: +1 маны.',
+        '🌀 Импульс углей прожигает Синий слизень на 8 урона.',
+        '🛡️ Защита смягчает удар на 2 урона.',
+        '👾 Синий слизень бьёт и наносит 1 урона.',
+        '⚔️ Вы наносите 5 урона врагу Синий слизень.',
+        '🏆 Победа!',
+      ],
+    }));
+
+    expect(message).toContain('• 🗺️ Тёмный лес: на вас выходит обычный враг Синий слизень.');
+    expect(message).toContain('… ещё 2 события выше');
+    expect(message).not.toContain('• 🧭 Путевой эпизод: вы находите свежие следы.');
+    expect(message).not.toContain('• ⚔️ Вы наносите 4 урона врагу Синий слизень.');
+    expect(message).toContain('• ⚠️ Синий слизень готовит «Кислотный прорыв».');
+    expect(message).toContain('• 🏆 Победа!');
   });
 
   it('shows an echo-specific combat clarity hint around revealed intent', () => {

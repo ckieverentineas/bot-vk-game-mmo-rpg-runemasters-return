@@ -571,14 +571,62 @@ const renderBattleNextGoal = (battle: BattleView, player?: PlayerState): string[
   ];
 };
 
-const recentBattleLogLimit = 4;
+type BattleLogPresentationLine =
+  | { readonly kind: 'entry'; readonly text: string }
+  | { readonly kind: 'omission'; readonly omittedCount: number };
 
-const selectRecentBattleLogLines = (log: readonly string[]): readonly string[] => (
-  log.length > 0 ? log.slice(-recentBattleLogLimit) : ['Пока без событий.']
-);
+const visibleBattleLogEntryLimit = 8;
+const leadingBattleLogEntryCount = 1;
+
+const formatBattleEventWord = (count: number): string => {
+  const mod10 = count % 10;
+  const mod100 = count % 100;
+
+  if (mod10 === 1 && mod100 !== 11) {
+    return 'событие';
+  }
+
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) {
+    return 'события';
+  }
+
+  return 'событий';
+};
+
+const toBattleLogEntryLine = (text: string): BattleLogPresentationLine => ({
+  kind: 'entry',
+  text,
+});
+
+const selectBattleLogLines = (log: readonly string[]): readonly BattleLogPresentationLine[] => {
+  if (log.length === 0) {
+    return [toBattleLogEntryLine('Пока без событий.')];
+  }
+
+  if (log.length <= visibleBattleLogEntryLimit) {
+    return log.map(toBattleLogEntryLine);
+  }
+
+  const trailingEntryCount = visibleBattleLogEntryLimit - leadingBattleLogEntryCount;
+  const omittedCount = log.length - visibleBattleLogEntryLimit;
+
+  return [
+    ...log.slice(0, leadingBattleLogEntryCount).map(toBattleLogEntryLine),
+    { kind: 'omission', omittedCount },
+    ...log.slice(-trailingEntryCount).map(toBattleLogEntryLine),
+  ];
+};
+
+const renderBattleLogLine = (line: BattleLogPresentationLine): string => {
+  if (line.kind === 'omission') {
+    return `… ещё ${line.omittedCount} ${formatBattleEventWord(line.omittedCount)} выше`;
+  }
+
+  return `• ${line.text}`;
+};
 
 export const renderBattle = (battle: BattleView, player?: PlayerState, acquisitionSummary?: AcquisitionSummaryView | null): string => {
-  const latestLogLines = selectRecentBattleLogLines(battle.log);
+  const battleLogLines = selectBattleLogLines(battle.log);
   const clarity = buildBattleClarityView(battle);
   const enemyIntentLine = renderBattleEnemyIntent(battle);
   const battleStateLine = battle.status === 'ACTIVE'
@@ -625,7 +673,7 @@ export const renderBattle = (battle: BattleView, player?: PlayerState, acquisiti
         ]
       : []),
     'Ход событий',
-    ...latestLogLines.map((entry) => `• ${entry}`),
+    ...battleLogLines.map(renderBattleLogLine),
     ...rewardLines,
     ...renderAcquisitionSummary(acquisitionSummary),
     ...postSessionLines,
