@@ -75,6 +75,7 @@ const materializePlayerRecordFixture = (fileName: string) => {
       rank: 0,
       updatedAt: new Date(fixture.updatedAt),
     })),
+    skills: [],
     runes: fixture.runes.map((rune) => ({
       id: rune.id,
       playerId: fixture.playerId,
@@ -147,6 +148,7 @@ const createPlayerRecord = () => ({
     updatedAt: new Date('2026-04-12T00:00:00.000Z'),
   },
   schoolMasteries: [],
+  skills: [],
   runes: [],
 });
 
@@ -376,6 +378,10 @@ const createPrismaMock = () => {
     playerSchoolMastery: {
       upsert: vi.fn(),
     },
+    playerSkill: {
+      findMany: vi.fn(),
+      upsert: vi.fn(),
+    },
     battleSession: {
       findFirst: vi.fn(),
       findUnique: vi.fn(),
@@ -465,6 +471,75 @@ describe('PrismaGameRepository release hardening', () => {
     expect(player?.activeBattleId).toBeNull();
     expect(player?.unlockedRuneSlotCount).toBe(2);
     expect(player?.highestLocationLevel).toBe(3);
+  });
+
+  it('persists player skill experience gains and returns hydrated skills', async () => {
+    const { repository, tx } = createPrismaMock();
+    const updatedPlayer = {
+      ...createPlayerRecord(),
+      skills: [
+        {
+          playerId: 1,
+          skillCode: 'gathering.skinning',
+          experience: 100,
+          rank: 1,
+          updatedAt: new Date('2026-04-12T00:00:00.000Z'),
+        },
+      ],
+    };
+
+    tx.playerSkill.findMany.mockResolvedValue([
+      {
+        playerId: 1,
+        skillCode: 'gathering.skinning',
+        experience: 99,
+        rank: 0,
+        updatedAt: new Date('2026-04-12T00:00:00.000Z'),
+      },
+    ]);
+    tx.playerSkill.upsert.mockResolvedValue({});
+    tx.player.findUnique.mockResolvedValue(updatedPlayer);
+
+    const player = await repository.applyPlayerSkillExperience(1, [
+      {
+        skillCode: 'gathering.skinning',
+        points: 1,
+      },
+    ]);
+
+    expect(tx.playerSkill.findMany).toHaveBeenCalledWith({
+      where: {
+        playerId: 1,
+        skillCode: {
+          in: ['gathering.skinning'],
+        },
+      },
+    });
+    expect(tx.playerSkill.upsert).toHaveBeenCalledWith({
+      where: {
+        playerId_skillCode: {
+          playerId: 1,
+          skillCode: 'gathering.skinning',
+        },
+      },
+      update: {
+        experience: 100,
+        rank: 1,
+      },
+      create: {
+        playerId: 1,
+        skillCode: 'gathering.skinning',
+        experience: 100,
+        rank: 1,
+      },
+    });
+    expect(player.skills).toEqual([
+      {
+        skillCode: 'gathering.skinning',
+        experience: 100,
+        rank: 1,
+      },
+    ]);
   });
 
   it('creates new players without fresh legacy stat points', async () => {

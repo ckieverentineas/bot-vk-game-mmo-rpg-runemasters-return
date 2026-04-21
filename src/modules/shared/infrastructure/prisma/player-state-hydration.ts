@@ -1,5 +1,13 @@
 import { gameBalance } from '../../../../config/game-balance';
-import type { InventoryView, PlayerState, RuneRarity, RuneView, StatBlock } from '../../../../shared/types/game';
+import type {
+  InventoryView,
+  PlayerSkillCode,
+  PlayerSkillView,
+  PlayerState,
+  RuneRarity,
+  RuneView,
+  StatBlock,
+} from '../../../../shared/types/game';
 import { parseJson } from '../../../../shared/utils/json';
 import {
   DEFAULT_UNLOCKED_RUNE_SLOT_COUNT,
@@ -11,6 +19,7 @@ import {
   listMissingStarterSchoolMasteries,
   resolveUnlockedRuneSlotCountFromSchoolMasteries,
 } from '../../../player/domain/school-mastery';
+import { createPlayerSkillView, isPlayerSkillCode } from '../../../player/domain/player-skills';
 
 const validTutorialStates: readonly PlayerState['tutorialState'][] = ['ACTIVE', 'SKIPPED', 'COMPLETED'];
 
@@ -38,6 +47,10 @@ export interface PersistedPlayerStateHydrationInput {
   readonly inventory?: Partial<InventoryView> | null;
   readonly schoolMasteries?: readonly {
     readonly schoolCode: string;
+    readonly experience: number;
+  }[];
+  readonly skills?: readonly {
+    readonly skillCode: string;
     readonly experience: number;
   }[];
   readonly runes: readonly {
@@ -138,10 +151,18 @@ const normalizeCurrentRuneIndex = (requestedIndex: number | null | undefined, ru
   return Math.min(normalized, runeCount - 1);
 };
 
+const normalizePlayerSkills = (
+  skills: PersistedPlayerStateHydrationInput['skills'],
+): PlayerSkillView[] => (skills ?? [])
+  .filter((entry): entry is { readonly skillCode: PlayerSkillCode; readonly experience: number } => isPlayerSkillCode(entry.skillCode))
+  .map((entry) => createPlayerSkillView(entry.skillCode, clampNonNegativeInteger(entry.experience, 0)))
+  .sort((left, right) => left.skillCode.localeCompare(right.skillCode));
+
 export const hydratePlayerStateFromPersistence = (
   persisted: PersistedPlayerStateHydrationInput,
 ): PlayerState => {
   const runes = normalizeRunes(persisted.runes);
+  const skills = normalizePlayerSkills(persisted.skills);
   const schoolMasteries = [
     ...((persisted.schoolMasteries ?? []).map((entry) => createSchoolMasteryView(entry.schoolCode, clampNonNegativeInteger(entry.experience, 0)))),
   ];
@@ -156,7 +177,7 @@ export const hydratePlayerStateFromPersistence = (
     clampNonNegativeInteger(persisted.progress?.highestLocationLevel, gameBalance.world.introLocationLevel),
   );
 
-  return {
+  const player: PlayerState = {
     userId: persisted.userId,
     vkId: persisted.vkId,
     playerId: persisted.playerId,
@@ -185,4 +206,11 @@ export const hydratePlayerStateFromPersistence = (
     createdAt: persisted.createdAt,
     updatedAt: persisted.updatedAt,
   };
+
+  return skills.length > 0
+    ? {
+        ...player,
+        skills,
+      }
+    : player;
 };

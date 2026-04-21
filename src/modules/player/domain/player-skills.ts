@@ -1,4 +1,4 @@
-import type { PlayerSkillCategory, PlayerSkillCode } from '../../../shared/types/game';
+import type { PlayerSkillCategory, PlayerSkillCode, PlayerSkillView } from '../../../shared/types/game';
 
 export interface PlayerSkillDefinition {
   readonly code: PlayerSkillCode;
@@ -58,6 +58,9 @@ const playerSkillDefinitions: readonly PlayerSkillDefinition[] = [
   },
 ];
 
+const maxPlayerSkillRank = 1;
+const playerSkillThresholds = [0, 100] as const;
+
 export const listPlayerSkillDefinitions = (): readonly PlayerSkillDefinition[] => playerSkillDefinitions;
 
 export const listPlayerSkillCodes = (): readonly PlayerSkillCode[] => (
@@ -67,3 +70,34 @@ export const listPlayerSkillCodes = (): readonly PlayerSkillCode[] => (
 export const getPlayerSkillDefinition = (skillCode: string | null | undefined): PlayerSkillDefinition | null => (
   playerSkillDefinitions.find((definition) => definition.code === skillCode) ?? null
 );
+
+export const isPlayerSkillCode = (skillCode: string | null | undefined): skillCode is PlayerSkillCode => (
+  getPlayerSkillDefinition(skillCode) !== null
+);
+
+export const resolvePlayerSkillRank = (experience: number): number => {
+  if (experience < playerSkillThresholds[1]) {
+    return 0;
+  }
+
+  return maxPlayerSkillRank;
+};
+
+export const createPlayerSkillView = (skillCode: PlayerSkillCode, experience = 0): PlayerSkillView => {
+  const normalizedExperience = Math.max(0, Math.floor(Number.isFinite(experience) ? experience : 0));
+
+  return {
+    skillCode,
+    experience: normalizedExperience,
+    rank: resolvePlayerSkillRank(normalizedExperience),
+  };
+};
+
+export const applyPlayerSkillExperience = (
+  current: PlayerSkillView | null,
+  skillCode: PlayerSkillCode,
+  experienceGain: number,
+): PlayerSkillView => {
+  const normalizedGain = Math.max(0, Math.floor(Number.isFinite(experienceGain) ? experienceGain : 0));
+  return createPlayerSkillView(skillCode, (current?.experience ?? 0) + normalizedGain);
+};

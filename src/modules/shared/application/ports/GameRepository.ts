@@ -2,6 +2,7 @@ import type {
   BattleView,
   CreateBattleInput,
   InventoryDelta,
+  PlayerSkillPointGain,
   PlayerState,
   RuneDraft,
   RuneRarity,
@@ -123,6 +124,7 @@ export interface GameRepository {
     options: RecordInventoryDeltaResultOptions,
     buildResult: (player: PlayerState) => TResult,
   ): Promise<TResult>;
+  applyPlayerSkillExperience(playerId: number, gains: readonly PlayerSkillPointGain[]): Promise<PlayerState>;
   saveExplorationState(
     playerId: number,
     state: Pick<PlayerState, 'locationLevel' | 'highestLocationLevel' | 'victoryStreak' | 'defeatStreak' | 'tutorialState'>,

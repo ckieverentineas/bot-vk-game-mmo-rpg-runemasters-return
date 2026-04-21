@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 
 import type { PlayerSkillPointGain, PlayerSkillView } from '../../../shared/types/game';
 import {
+  applyPlayerSkillExperience,
+  createPlayerSkillView,
   getPlayerSkillDefinition,
   listPlayerSkillCodes,
   listPlayerSkillDefinitions,
@@ -49,5 +51,15 @@ describe('player skills', () => {
       description: 'Практика боевого применения активных рунных навыков.',
     });
     expect(getPlayerSkillDefinition('unknown.skill')).toBeNull();
+  });
+
+  it('applies skill experience and promotes rank at the first threshold', () => {
+    const next = applyPlayerSkillExperience(createPlayerSkillView('gathering.skinning', 99), 'gathering.skinning', 1);
+
+    expect(next).toEqual({
+      skillCode: 'gathering.skinning',
+      experience: 100,
+      rank: 1,
+    });
   });
 });

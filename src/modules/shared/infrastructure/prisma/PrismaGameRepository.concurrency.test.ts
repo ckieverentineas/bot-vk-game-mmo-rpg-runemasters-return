@@ -159,6 +159,7 @@ describe.sequential('PrismaGameRepository concurrency rails', () => {
     await prisma.battleSession.deleteMany();
     await prisma.rune.deleteMany();
     await prisma.playerInventory.deleteMany();
+    await prisma.playerSkill.deleteMany();
     await prisma.playerSchoolMastery.deleteMany();
     await prisma.playerProgress.deleteMany();
     await prisma.player.deleteMany();
@@ -189,6 +190,33 @@ describe.sequential('PrismaGameRepository concurrency rails', () => {
 
     expect(player.level).toBe(env.game.startingLevel);
     expect(player.schoolMasteries?.length).toBeGreaterThan(0);
+  });
+
+  it('persists player skills in the canonical player state', async () => {
+    const player = await createPlayer(2997);
+
+    const updated = await repository.applyPlayerSkillExperience(player.playerId, [
+      {
+        skillCode: 'gathering.skinning',
+        points: 100,
+      },
+    ]);
+    const reloaded = await repository.findPlayerById(player.playerId);
+
+    expect(updated.skills).toEqual([
+      {
+        skillCode: 'gathering.skinning',
+        experience: 100,
+        rank: 1,
+      },
+    ]);
+    expect(reloaded?.skills).toEqual(updated.skills);
+    expect(await prisma.playerSkill.count({
+      where: {
+        playerId: player.playerId,
+        skillCode: 'gathering.skinning',
+      },
+    })).toBe(1);
   });
 
   it('treats parallel delete confirmations for one intent as one destructive action', async () => {

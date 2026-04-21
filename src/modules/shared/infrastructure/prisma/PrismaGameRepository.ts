@@ -8,6 +8,8 @@ import type {
   BattleView,
   CreateBattleInput,
   InventoryDelta,
+  PlayerSkillCode,
+  PlayerSkillPointGain,
   PlayerState,
   RuneDraft,
   RuneRarity,
@@ -29,6 +31,7 @@ import {
   resolveBattleSchoolMasteryRewardGain,
   resolveUnlockedRuneSlotCountFromSchoolMasteries,
 } from '../../../player/domain/school-mastery';
+import { applyPlayerSkillExperience as applyPlayerSkillExperienceDomain } from '../../../player/domain/player-skills';
 import { getSchoolNovicePathDefinitionForEnemy, hasRuneOfSchoolAtLeastRarity } from '../../../player/domain/school-novice-path';
 import { getSchoolDefinitionForArchetype } from '../../../runes/domain/rune-schools';
 import { hydratePlayerStateFromPersistence } from './player-state-hydration';
@@ -52,6 +55,7 @@ const playerInclude = {
   progress: true,
   inventory: true,
   schoolMasteries: true,
+  skills: true,
   runes: {
     orderBy: {
       createdAt: 'asc' as const,
@@ -88,6 +92,18 @@ const buildInventoryAvailabilityWhere = (playerId: number, delta: InventoryDelta
 
   return where;
 };
+
+const aggregatePlayerSkillPointGains = (
+  gains: readonly PlayerSkillPointGain[],
+): ReadonlyMap<PlayerSkillCode, number> => gains.reduce<Map<PlayerSkillCode, number>>((result, gain) => {
+  const points = Number.isFinite(gain.points) ? Math.floor(gain.points) : 0;
+  if (points <= 0) {
+    return result;
+  }
+
+  result.set(gain.skillCode, (result.get(gain.skillCode) ?? 0) + points);
+  return result;
+}, new Map<PlayerSkillCode, number>());
 
 const defaultBattlePlayerSnapshot = (playerId: number): BattleView['player'] => ({
   playerId,
@@ -635,6 +651,66 @@ export class PrismaGameRepository implements GameRepository {
         return buildResult(updatedPlayer);
       },
     ));
+  }
+
+  public async applyPlayerSkillExperience(
+    playerId: number,
+    gains: readonly PlayerSkillPointGain[],
+  ): Promise<PlayerState> {
+    return this.prisma.$transaction(async (tx) => {
+      const aggregatedGains = aggregatePlayerSkillPointGains(gains);
+
+      if (aggregatedGains.size === 0) {
+        return this.mapPlayer(await this.requirePlayerRecord(tx, playerId));
+      }
+
+      const skillCodes = [...aggregatedGains.keys()];
+      const persistedSkills = await tx.playerSkill.findMany({
+        where: {
+          playerId,
+          skillCode: {
+            in: skillCodes,
+          },
+        },
+      });
+      const persistedSkillsByCode = new Map(persistedSkills.map((skill) => [skill.skillCode, skill]));
+
+      for (const [skillCode, points] of aggregatedGains) {
+        const currentSkill = persistedSkillsByCode.get(skillCode);
+        const nextSkill = applyPlayerSkillExperienceDomain(
+          currentSkill
+            ? {
+                skillCode,
+                experience: currentSkill.experience,
+                rank: currentSkill.rank,
+              }
+            : null,
+          skillCode,
+          points,
+        );
+
+        await tx.playerSkill.upsert({
+          where: {
+            playerId_skillCode: {
+              playerId,
+              skillCode,
+            },
+          },
+          update: {
+            experience: nextSkill.experience,
+            rank: nextSkill.rank,
+          },
+          create: {
+            playerId,
+            skillCode,
+            experience: nextSkill.experience,
+            rank: nextSkill.rank,
+          },
+        });
+      }
+
+      return this.mapPlayer(await this.requirePlayerRecord(tx, playerId));
+    });
   }
 
   public async deletePlayerByVkId(vkId: number, expectedUpdatedAt?: string): Promise<void> {
@@ -1886,6 +1962,10 @@ export class PrismaGameRepository implements GameRepository {
         : null,
       schoolMasteries: player.schoolMasteries.map((entry) => ({
         schoolCode: entry.schoolCode,
+        experience: entry.experience,
+      })),
+      skills: player.skills.map((entry) => ({
+        skillCode: entry.skillCode,
         experience: entry.experience,
       })),
       runes: player.runes.map((rune) => ({

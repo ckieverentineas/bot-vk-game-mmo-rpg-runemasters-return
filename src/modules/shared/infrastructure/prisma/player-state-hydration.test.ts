@@ -42,4 +42,28 @@ describe('hydratePlayerStateFromPersistence', () => {
     expect(player.inventory.unusualShards).toBe(2);
     expect(player.inventory.crystal).toBe(0);
   });
+
+  it('hydrates persisted player skills and filters unknown future skill codes', () => {
+    const player = hydratePlayerStateFromPersistence({
+      ...readFixture('player-state-current.json'),
+      skills: [
+        {
+          skillCode: 'gathering.skinning',
+          experience: 100,
+        },
+        {
+          skillCode: 'unknown.future_skill',
+          experience: 999,
+        },
+      ],
+    });
+
+    expect(player.skills).toEqual([
+      {
+        skillCode: 'gathering.skinning',
+        experience: 100,
+        rank: 1,
+      },
+    ]);
+  });
 });
