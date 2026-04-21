@@ -26,20 +26,17 @@
 ## Что не считаем доказанным
 
 - School-first path по всем четырём школам не считается release-proven, пока не пройден ручной playtest и `release:evidence` не перестал возвращать `insufficient_evidence`.
-- Версия релиза не считается надёжной, пока `release:status` может молча показывать `0.00` при ошибке Git safe-directory.
-- Prisma client generation не считается закрытым gate, пока `npm run db:generate` падает на Windows `EPERM` при запущенном боте или заблокированном Prisma engine.
+- Версия релиза требует продуктового решения: commit-based tooling показывает `1.03`, а `package.json` всё ещё живёт в npm-semver формате `2.0.0`.
 - Production database rollout не считается оформленным, пока нет явной процедуры backup + migration/deploy для SQLite.
 
 ## Ближайший порядок работ
 
-1. Остановить запущенного бота и повторить `npm run db:generate`.
-2. Если `db:generate` всё ещё падает на `EPERM`, закрыть процессы `node.exe`, очистить временные Prisma engine файлы после остановки процессов и повторить генерацию.
-3. Починить release version/status: Git-ошибка не должна превращаться в `0` коммитов, а версия должна быть согласована между `package.json`, changelog и commit-based политикой.
-4. Прогнать технический gate: `npm run db:generate`, `npm run check`, `npm run release:preflight`.
-5. Пройти ручной playtest: onboarding, encounter choice, fight/flee, rune hub, две руны, craft/reroll/destroy, четыре school paths.
-6. Собрать `npm run release:school-evidence` и `npm run release:evidence`; если verdict всё ещё `insufficient_evidence`, релиз не готов.
-7. После evidence pass обновить `README.md`, `CHANGELOG.md`, `PLAN.md` и при необходимости `ARCHITECTURE.md` / `RELEASE_CHECKLIST.md`.
-8. Подготовить минимальный ops-runbook: где `.env`, где SQLite DB, как запускается production-процесс, где логи и как откатываться.
+1. Решить, как связать публичную commit-based версию `1.03` с npm-semver в `package.json`.
+2. Прогнать technical gate после остановки бота: `npm run db:generate`, `npm run check`, `npm run release:preflight`.
+3. Пройти ручной playtest: onboarding, encounter choice, fight/flee, rune hub, две руны, craft/reroll/destroy, четыре school paths.
+4. Собрать `npm run release:school-evidence` и `npm run release:evidence`; если verdict всё ещё `insufficient_evidence`, релиз не готов.
+5. После evidence pass обновить `README.md`, `CHANGELOG.md`, `PLAN.md` и при необходимости `ARCHITECTURE.md` / `RELEASE_CHECKLIST.md`.
+6. Подготовить минимальный ops-runbook: где `.env`, где SQLite DB, как запускается production-процесс, где логи и как откатываться.
 
 ## Отложено или вырезано из релиза
 

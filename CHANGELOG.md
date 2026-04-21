@@ -59,6 +59,7 @@
 ### Changed
 
 - documentation reset: `PLAN.md`, `QUICKSTART.md` и `RELEASE_CHECKLIST.md` теперь описывают фактический runtime, текущие release blockers и недоказанные evidence-gate пункты вместо устаревших stat allocation / DB seed сценариев;
+- `release:status`, `release:summary` и `release:preflight` больше не превращают ошибку чтения Git-истории в ложную версию `0.00`; commit count читается от корня проекта с одноразовым `safe.directory`, а некорректный вывод Git теперь падает явно;
 - `PLAN.md` переписан как короткая актуальная карта текущих решений, ближайших шагов и cut/defer list; shipped-история остаётся в `CHANGELOG.md`, а старые support-slot review помечены как superseded вместо активных источников правды;
 - `return recap`, главное меню, rune hub и завершённый бой теперь показывают не абстрактный следующий шаг, а ближайшую school-веху или ближайший loadout payoff без guilt/FOMO тона;
 - rune hub теперь явно показывает ближайшую mastery-веху и её payoff, если игрок уже идёт к unlock'у школы или ближайшему loadout payoff;
