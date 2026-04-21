@@ -24,6 +24,7 @@ git status --short --branch
 npm ci
 npm run db:generate
 npm run check
+npm run release:local-playtest
 npm run release:status
 npm run release:summary
 npm run release:preflight
@@ -33,13 +34,14 @@ npm run release:preflight
 
 - `db:generate` проходит без `EPERM`;
 - `check` проходит полностью: typecheck, content validation, build, tests;
+- `release:local-playtest` проходит два first-session сценария: legacy text и keyboard payload с `stateKey`;
 - `release:status` показывает правдоподобное число коммитов и player-facing версию игры;
 - `release:summary` не расходится с `CHANGELOG.md`;
 - `release:preflight` проходит и не скрывает ошибки документов или контента.
 
 ## Runtime evidence gate
 
-После ручного playtest:
+Автоматический `release:local-playtest` доказывает только первый путь: новый игрок, обучение, учебный бой, первая руна, выбор, экипировка и профиль. После него всё равно нужен ручной playtest длинных веток:
 
 ```bash
 npm run release:school-evidence

@@ -30,6 +30,7 @@
 - `Прорицание` теперь имеет первый полный ранний school path: `Слепой авгур` как novice elite, `Хранитель предзнамений` как school miniboss и targeted `RARE` payoff на уже существующих intent rails;
 - tooling slice `release:school-evidence` теперь умеет собирать единый markdown-отчёт по school-first telemetry funnel из `GameLog`, чтобы baseline по 4 школам можно было оценивать не вручную по сырым логам;
 - tooling slice `release:evidence` теперь собирает unified markdown-отчёт по runtime evidence: onboarding coverage, school payoff, next-goal/return clarity и QA/exploit guardrails в одном release review артефакте;
+- tooling slice `release:local-playtest` теперь прогоняет first-session smoke на реальном `GameHandler` и SQLite в двух режимах: legacy text и keyboard payload с актуальными `stateKey`;
 - telemetry baseline теперь закрывает и ранний onboarding funnel: `tutorial_path_chosen`, `first_school_presented` и `first_school_committed` дают evidence между `onboarding_started` и первым school payoff;
 - установка первого знака школы теперь сразу даёт compact payoff recap в rune hub, а следующий бой сильнее подсказывает, как именно проверить новый стиль этой школы на практике;
 - VK UX после первого знака школы теперь ведёт игрока обычным CTA `⚔️ Исследовать`, чтобы школьная проверка не выглядела отдельным обязательным режимом и могла проходить через общий exploration resolver;

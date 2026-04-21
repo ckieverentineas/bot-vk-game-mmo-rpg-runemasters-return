@@ -21,7 +21,7 @@
 - Player-facing support-slot модель вырезана.
 - Рост персонажа смещён к школам, mastery, рунам и будущей ветке мастера, а не к старой раздаче stat points за уровни.
 - Есть защита от повторных наград, отрицательных остатков инвентаря, stale battle overwrite и повторного применения command intent.
-- Есть smoke/regression/concurrency tests и release tooling для content validation, summary, evidence и preflight.
+- Есть smoke/regression/concurrency tests и release tooling для content validation, локального first-session playtest, summary, evidence и preflight.
 
 ## Что не считаем доказанным
 
@@ -31,8 +31,8 @@
 
 ## Ближайший порядок работ
 
-1. Прогнать technical gate после остановки бота: `npm run db:generate`, `npm run check`, `npm run release:preflight`.
-2. Пройти ручной playtest: onboarding, encounter choice, fight/flee, rune hub, две руны, craft/reroll/destroy, четыре school paths.
+1. Прогнать technical gate после остановки бота: `npm run db:generate`, `npm run check`, `npm run release:local-playtest`, `npm run release:preflight`.
+2. Пройти ручной playtest поверх автоматического first-session smoke: onboarding, encounter choice, fight/flee, rune hub, две руны, craft/reroll/destroy, четыре school paths.
 3. Собрать `npm run release:school-evidence` и `npm run release:evidence`; если verdict всё ещё `insufficient_evidence`, релиз не готов.
 4. После evidence pass обновить `README.md`, `CHANGELOG.md`, `PLAN.md` и при необходимости `ARCHITECTURE.md` / `RELEASE_CHECKLIST.md`.
 5. Подготовить минимальный ops-runbook: где `.env`, где SQLite DB, как запускается production-процесс, где логи и как откатываться.

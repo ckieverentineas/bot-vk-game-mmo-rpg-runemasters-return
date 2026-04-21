@@ -95,6 +95,7 @@ Runemasters Return — VK MMO RPG на TypeScript с модульным игро
 - `docs/testing/school-path-playtest-v1.md` — ручной playtest/evidence pass для school-first vertical slice по Пламени, Тверди, Бури и Прорицанию;
 - `npm run release:school-evidence` — узкий markdown-отчёт по school-first telemetry funnel из `GameLog` для ручного school-path pass;
 - `npm run release:evidence` — unified release evidence report из `GameLog` за последние 7 дней по умолчанию; собирает school payoff, onboarding coverage, next-goal/return clarity и QA/exploit signals в одном markdown-срезе и пишет локальный `docs/testing/release-evidence-report.md`;
+- `npm run release:local-playtest` — локальный first-session smoke через реальный `GameHandler` и SQLite: legacy text и keyboard payload проходят старт, обучение, бой, первую руну, экипировку и профиль без VK API;
 - `src/modules/runes/domain/rune-collection.ts` — paging helper'ы рунной коллекции поверх существующего `currentRuneIndex` без новой persistence-схемы;
 - `src/tooling/release` — правила версионирования, content validation, unified evidence/preflight-проверка и скрипты `npm run content:validate` / `npm run release:status` / `npm run release:evidence` / `npm run release:preflight`;
 - `src/vk/handlers/gameHandler.smoke.test.ts` — smoke-проверки пользовательских сценариев через transport orchestration без реального VK API;
@@ -200,6 +201,7 @@ npm run test
 npm run check
 npm run release:status
 npm run release:summary
+npm run release:local-playtest
 npm run release:evidence
 npm run release:preflight
 npm run db:generate
@@ -304,6 +306,7 @@ npm run db:studio
 - `npm run content:validate` проверяет file-first мир, рунный контент и базовый баланс до сборки и релиза;
 - текущий статус можно посмотреть через `npm run release:status`;
 - `npm run release:summary` собирает краткое release summary из git-истории относительно последней changelog-записи;
+- `npm run release:local-playtest` создаёт синтетических игроков и проверяет first-session route через legacy text и payload-кнопки с актуальными `stateKey`;
 - `npm run release:evidence` собирает единый markdown-отчёт по runtime evidence для onboarding coverage, school payoff, return recap, next-goal и QA/exploit rails; по умолчанию берёт окно последних 7 дней и при необходимости поддерживает `--since`, `--until`, `--days`, `--output`; date-only `--since/--until` трактуются как UTC-границы календарного дня;
 - перед выкладкой изменений стоит прогонять `npm run release:preflight`, чтобы проверить документацию, релизные рельсы и остановить релиз при пропущенных или пустых обязательных файлах;
 - `.github/workflows/ci.yml` повторяет минимальный релизный пайплайн в CI;
