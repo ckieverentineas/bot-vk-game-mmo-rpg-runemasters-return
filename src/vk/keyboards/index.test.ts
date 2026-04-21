@@ -175,6 +175,7 @@ const collectPayloads = (
 
 const collectLabels = (
   keyboard:
+    | ReturnType<typeof createBattleKeyboard>
     | ReturnType<typeof createBattleResultKeyboard>
     | ReturnType<typeof createMainMenuKeyboard>
     | ReturnType<typeof createRuneKeyboard>,
@@ -434,5 +435,52 @@ describe('profile keyboard', () => {
     expect(defend?.stateKey).toEqual(expect.any(String));
     expect(skill?.intentId).toEqual(expect.any(String));
     expect(skill?.stateKey).toEqual(expect.any(String));
+  });
+
+  it('keeps battle action labels aligned with the battle state block', () => {
+    const labels = collectLabels(createBattleKeyboard(createBattle()));
+
+    expect(labels).toContain('⚔️ Атака');
+    expect(labels).toContain('🛡️ Защита (+2 щит)');
+    expect(labels).toContain('🌀 Пульс Пламени');
+  });
+
+  it('shows rune skill availability directly on the battle keyboard', () => {
+    const cooldownLabels = collectLabels(createBattleKeyboard(createBattle({
+      player: {
+        ...createBattle().player,
+        runeLoadout: {
+          ...createBattle().player.runeLoadout!,
+          activeAbility: {
+            ...createBattle().player.runeLoadout!.activeAbility!,
+            currentCooldown: 2,
+          },
+        },
+      },
+    })));
+    const lowManaLabels = collectLabels(createBattleKeyboard(createBattle({
+      player: {
+        ...createBattle().player,
+        currentMana: 1,
+      },
+    })));
+
+    expect(cooldownLabels).toContain('🌀 Пульс Пламени · КД 2');
+    expect(lowManaLabels).toContain('🌀 Пульс Пламени · нужно 3 маны');
+  });
+
+  it('does not show a dead rune action button without an active rune skill', () => {
+    const labels = collectLabels(createBattleKeyboard(createBattle({
+      player: {
+        ...createBattle().player,
+        runeLoadout: {
+          ...createBattle().player.runeLoadout!,
+          activeAbility: null,
+        },
+      },
+    })));
+
+    expect(labels).not.toContain('🔮 Рунное действие');
+    expect(labels.some((label) => label.startsWith('🌀'))).toBe(false);
   });
 });

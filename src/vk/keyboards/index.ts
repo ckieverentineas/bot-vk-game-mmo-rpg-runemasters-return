@@ -4,6 +4,7 @@ import { Keyboard } from 'vk-io';
 
 import { gameBalance } from '../../config/game-balance';
 import { buildBattleActionIntentStateKey } from '../../modules/combat/application/command-intent-state';
+import { resolveDefendGuardGain } from '../../modules/combat/domain/battle-tactics';
 import {
   buildEnterTutorialModeIntentStateKey,
   buildExploreLocationIntentStateKey,
@@ -108,18 +109,18 @@ const createProfileLayout = (_player?: PlayerState): KeyboardLayout => [[
   { label: '🗑️ Удалить персонажа', command: gameCommands.deletePlayer, color: Keyboard.NEGATIVE_COLOR },
 ]];
 
-const createBattleSkillButton = (battle: BattleView): KeyboardButtonDefinition => {
+const createBattleSkillButton = (battle: BattleView): KeyboardButtonDefinition | null => {
   const activeAbility = battle.player.runeLoadout?.activeAbility ?? null;
-  const stateKey = buildBattleActionIntentStateKey(battle, 'RUNE_SKILL');
   if (!activeAbility) {
-    return { label: '🔮 Рунное действие', command: gameCommands.skills, color: Keyboard.SECONDARY_COLOR, intentScoped: true, stateKey };
+    return null;
   }
 
+  const stateKey = buildBattleActionIntentStateKey(battle, 'RUNE_SKILL');
   const isReady = activeAbility.currentCooldown <= 0 && battle.player.currentMana >= activeAbility.manaCost;
   const labelSuffix = activeAbility.currentCooldown > 0
     ? ` · КД ${activeAbility.currentCooldown}`
     : battle.player.currentMana < activeAbility.manaCost
-      ? ` · ${activeAbility.manaCost} маны`
+      ? ` · нужно ${activeAbility.manaCost} маны`
       : '';
 
   return {
@@ -129,6 +130,18 @@ const createBattleSkillButton = (battle: BattleView): KeyboardButtonDefinition =
     intentScoped: true,
     stateKey,
   };
+};
+
+const createBattleActionLayout = (battle: BattleView): KeyboardLayout => {
+  const skillButton = createBattleSkillButton(battle);
+
+  return [
+    [
+      { label: '⚔️ Атака', command: gameCommands.attack, color: Keyboard.POSITIVE_COLOR, intentScoped: true, stateKey: buildBattleActionIntentStateKey(battle, 'ATTACK') },
+      { label: `🛡️ Защита (+${resolveDefendGuardGain(battle.player)} щит)`, command: gameCommands.defend, color: Keyboard.PRIMARY_COLOR, intentScoped: true, stateKey: buildBattleActionIntentStateKey(battle, 'DEFEND') },
+    ],
+    ...(skillButton ? [[skillButton]] : []),
+  ];
 };
 
 const createBattleResultLayout = (battle: BattleView, player?: PlayerState): KeyboardLayout => {
@@ -272,13 +285,7 @@ export const createDeleteConfirmationKeyboard = (player: PlayerState): KeyboardB
   [{ label: '◀ Оставить персонажа', command: gameCommands.profile, color: Keyboard.SECONDARY_COLOR }],
 ]);
 
-export const createBattleKeyboard = (battle: BattleView): KeyboardBuilder => buildKeyboard([
-  [
-    { label: '⚔️ Атака', command: gameCommands.attack, color: Keyboard.POSITIVE_COLOR, intentScoped: true, stateKey: buildBattleActionIntentStateKey(battle, 'ATTACK') },
-    { label: '🛡️ Защита', command: gameCommands.defend, color: Keyboard.PRIMARY_COLOR, intentScoped: true, stateKey: buildBattleActionIntentStateKey(battle, 'DEFEND') },
-  ],
-  [createBattleSkillButton(battle)],
-]);
+export const createBattleKeyboard = (battle: BattleView): KeyboardBuilder => buildKeyboard(createBattleActionLayout(battle));
 
 export const createBattleResultKeyboard = (battle: BattleView, player?: PlayerState): KeyboardBuilder => buildKeyboard(createBattleResultLayout(battle, player));
 
