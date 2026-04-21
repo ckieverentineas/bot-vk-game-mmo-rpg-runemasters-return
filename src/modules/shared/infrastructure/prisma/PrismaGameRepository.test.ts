@@ -1058,12 +1058,19 @@ describe('PrismaGameRepository release hardening', () => {
     expect(tx.rewardLedgerRecord.create).not.toHaveBeenCalled();
   });
 
-  it('creates a reward ledger entry for the canonical victory reward', async () => {
+  it('creates a pending reward ledger entry for the canonical victory reward', async () => {
     const { repository, tx } = createPrismaMock();
+    const battleView = createBattleView({
+      enemy: {
+        ...createBattleView().enemy,
+        kind: 'wolf',
+      },
+    });
     const persistedBattle = createBattleRow({
       status: 'COMPLETED',
       result: 'VICTORY',
-      rewardsSnapshot: JSON.stringify(createBattleView().rewards),
+      rewardsSnapshot: JSON.stringify(battleView.rewards),
+      enemyKind: 'wolf',
     });
 
     tx.battleSession.updateMany.mockResolvedValue({ count: 1 });
@@ -1073,7 +1080,7 @@ describe('PrismaGameRepository release hardening', () => {
     tx.playerInventory.update.mockResolvedValue({});
     tx.battleSession.findFirst.mockResolvedValue(persistedBattle);
 
-    const finalized = await repository.finalizeBattle(1, createBattleView());
+    const finalized = await repository.finalizeBattle(1, battleView);
 
     expect(finalized.battle.status).toBe('COMPLETED');
     expect(tx.rewardLedgerRecord.create).toHaveBeenCalledWith({
@@ -1082,8 +1089,38 @@ describe('PrismaGameRepository release hardening', () => {
         ledgerKey: 'battle-victory:battle-1',
         sourceType: 'BATTLE_VICTORY',
         sourceId: 'battle-1',
-        status: 'APPLIED',
+        status: 'PENDING',
+        appliedAt: null,
       }),
+    });
+    const ledgerSnapshot = JSON.parse(String(tx.rewardLedgerRecord.create.mock.calls[0]?.[0]?.data?.entrySnapshot));
+    expect(ledgerSnapshot).toMatchObject({
+      schemaVersion: 1,
+      ledgerKey: 'battle-victory:battle-1',
+      status: 'PENDING',
+      sourceType: 'BATTLE_VICTORY',
+      sourceId: 'battle-1',
+      playerId: 1,
+      pendingRewardSnapshot: {
+        schemaVersion: 1,
+        intentId: 'battle-victory:battle-1',
+        status: 'PENDING',
+        sourceType: 'BATTLE_VICTORY',
+        sourceId: 'battle-1',
+        playerId: 1,
+        selectedActionCode: null,
+        appliedResult: null,
+        trophyActions: [
+          expect.objectContaining({
+            code: 'skin_beast',
+            skillCodes: ['gathering.skinning'],
+            visibleRewardFields: ['leather', 'bone'],
+          }),
+          expect.objectContaining({
+            code: 'claim_all',
+          }),
+        ],
+      },
     });
     expect(tx.gameLog.create).toHaveBeenCalledWith({
       data: expect.objectContaining({

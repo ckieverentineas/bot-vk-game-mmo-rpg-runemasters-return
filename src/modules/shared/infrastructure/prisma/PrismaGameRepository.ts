@@ -33,10 +33,12 @@ import {
 } from '../../../player/domain/school-mastery';
 import { applyPlayerSkillExperience as applyPlayerSkillExperienceDomain } from '../../../player/domain/player-skills';
 import { getSchoolNovicePathDefinitionForEnemy, hasRuneOfSchoolAtLeastRarity } from '../../../player/domain/school-novice-path';
+import { createPendingRewardSnapshot } from '../../../rewards/domain/pending-reward-snapshot';
+import { resolveTrophyActions } from '../../../rewards/domain/trophy-actions';
 import { getSchoolDefinitionForArchetype } from '../../../runes/domain/rune-schools';
 import { hydratePlayerStateFromPersistence } from './player-state-hydration';
 import { buildLoadoutSnapshotFromBattle, isLoadoutSnapshot, projectBattleRuneLoadout, type LoadoutSnapshot } from '../../domain/contracts/loadout-snapshot';
-import { createAppliedRewardLedgerEntry } from '../../domain/contracts/reward-ledger';
+import { createPendingRewardLedgerEntry } from '../../domain/contracts/reward-ledger';
 import { createBattleVictoryRewardIntent } from '../../domain/contracts/reward-intent';
 import type {
   CreateBattleOptions,
@@ -1800,8 +1802,13 @@ export class PrismaGameRepository implements GameRepository {
       }
 
       if (rewardIntent) {
-        const appliedAt = new Date();
-        const rewardLedger = createAppliedRewardLedgerEntry(rewardIntent, appliedAt.toISOString());
+        const createdAt = new Date();
+        const pendingRewardSnapshot = createPendingRewardSnapshot(
+          rewardIntent,
+          resolveTrophyActions(battle.enemy),
+          createdAt.toISOString(),
+        );
+        const rewardLedger = createPendingRewardLedgerEntry(pendingRewardSnapshot);
         const novicePath = getSchoolNovicePathDefinitionForEnemy(battle.enemy.code);
         const battleSchoolCode = battle.player.runeLoadout?.schoolCode
           ?? getSchoolDefinitionForArchetype(battle.player.runeLoadout?.archetypeCode)?.code
@@ -1826,7 +1833,7 @@ export class PrismaGameRepository implements GameRepository {
             sourceId: rewardLedger.sourceId,
             status: rewardLedger.status,
             entrySnapshot: stringifyJson(rewardLedger, '{}'),
-            appliedAt,
+            appliedAt: null,
           },
         });
 

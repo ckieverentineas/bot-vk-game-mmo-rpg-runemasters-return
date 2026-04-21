@@ -390,6 +390,18 @@ describe.sequential('PrismaGameRepository concurrency rails', () => {
         playerId: player.playerId,
       },
     });
+    const rewardLedger = await prisma.rewardLedgerRecord.findFirst({
+      where: {
+        playerId: player.playerId,
+      },
+    });
+    const rewardLedgerSnapshot = JSON.parse(rewardLedger?.entrySnapshot ?? '{}') as {
+      status?: string;
+      pendingRewardSnapshot?: {
+        status?: string;
+        trophyActions?: Array<{ code?: string }>;
+      };
+    };
 
     const runeCount = await prisma.rune.count({
       where: {
@@ -398,6 +410,14 @@ describe.sequential('PrismaGameRepository concurrency rails', () => {
     });
 
     expect(rewardLedgerCount).toBe(1);
+    expect(rewardLedger?.status).toBe('PENDING');
+    expect(rewardLedger?.appliedAt).toBeNull();
+    expect(rewardLedgerSnapshot.status).toBe('PENDING');
+    expect(rewardLedgerSnapshot.pendingRewardSnapshot?.status).toBe('PENDING');
+    expect(rewardLedgerSnapshot.pendingRewardSnapshot?.trophyActions?.map((action) => action.code)).toEqual([
+      'gather_slime',
+      'claim_all',
+    ]);
     expect(runeCount).toBe(1);
   });
 
