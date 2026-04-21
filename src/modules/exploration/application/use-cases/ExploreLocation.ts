@@ -20,6 +20,7 @@ import type { GameRandom } from '../../../shared/application/ports/GameRandom';
 import type { GameRepository } from '../../../shared/application/ports/GameRepository';
 import type { WorldCatalog } from '../../../world/application/ports/WorldCatalog';
 import { buildEnemySnapshot, describeEncounter, pickEncounterTemplate, resolveInitialTurnOwner } from '../../../world/domain/enemy-scaling';
+import { resolveGameMasterEncounterLine } from '../../../world/domain/game-master-director';
 import { Logger } from '../../../../utils/logger';
 
 import { buildExploreLocationIntentStateKey } from '../command-intent-state';
@@ -139,6 +140,13 @@ export class ExploreLocation {
     const playerStats = derivePlayerStats(currentPlayer);
     const enemy = buildEnemySnapshot(template, locationLevel);
     const turnOwner = resolveInitialTurnOwner(playerStats.dexterity, enemy.dexterity);
+    const encounterLine = describeEncounter(biome, enemy, currentSchoolCode);
+    const gameMasterLine = resolveGameMasterEncounterLine({
+      biome,
+      enemy,
+      currentSchoolCode,
+      locationLevel,
+    });
     const battle = await this.repository.createBattle(currentPlayer.playerId, {
       status: 'ACTIVE',
       battleType: 'PVE',
@@ -149,7 +157,7 @@ export class ExploreLocation {
       turnOwner,
       player: buildBattlePlayerSnapshot(currentPlayer.playerId, vkId, playerStats, currentPlayer),
       enemy,
-      log: [describeEncounter(biome, enemy, currentSchoolCode)],
+      log: gameMasterLine ? [`${encounterLine} ${gameMasterLine}`] : [encounterLine],
       result: null,
       rewards: null,
     }, turnOwner === 'PLAYER' ? commandOptions : undefined);

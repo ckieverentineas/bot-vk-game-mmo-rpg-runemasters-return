@@ -99,6 +99,7 @@ src/
 - выбор биома;
 - scaling мобов;
 - описание encounter и формирование snapshot врага.
+- FOMO-safe PvE adventure director для authored framing важных встреч без таймеров, streak'ов и ручной раздачи силы.
 
 ### `modules/shared`
 
@@ -204,6 +205,16 @@ src/
 Это даёт мягкий recovery после смертей и автоматический рост давления при уверенном прогрессе.
 
 Дополнительно ранняя версия сложности теперь меньше переоценивает `intelligence` и `magicDefence`, пока в бою нет полноценной магической action loop.
+
+### 7.5. Мастера испытаний
+
+`src/modules/world/domain/game-master-director.ts` добавляет чистый PvE framing для важных encounters:
+
+- tutorial cue для первого учебного боя;
+- school-aware cue для elite/boss проверок;
+- общий build-check cue для boss-встреч без привязки к школе.
+
+Этот слой не хранит состояние, не выдаёт награды, не зависит от календаря и не является live-ops системой. Его задача — усилить читаемость сцены и тактического вопроса, не создавая FOMO.
 
 Следующий progression slice также меняет акцент growth-системы:
 

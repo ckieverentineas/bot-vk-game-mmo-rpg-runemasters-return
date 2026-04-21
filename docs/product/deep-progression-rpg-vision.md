@@ -309,6 +309,27 @@ Runemasters Return в long-horizon виде — это **PvE-first social build-
 
 ## 5. Pillar 3 — Dynamic exploration, karma/alignment, consequential narratives
 
+## 5.0. Game Master / adventure director boundary
+
+Game Master слой допустим только как **PvE adventure director**, а не как live-ops pressure system.
+
+Его роль:
+
+- подсвечивать, почему текущий бой или маршрут важен;
+- подбирать encounter framing под школу, регион и состояние героя;
+- помогать игроку читать тактическое испытание без внешней вики;
+- усиливать ощущение, что мир отвечает на стиль игры.
+
+Жёсткие ограничения:
+
+- не использовать limited-time power rewards;
+- не давить фразами вида “зайди сегодня или потеряешь”;
+- не привязывать силу к streak'ам, календарю или расписанию;
+- не подменять core PvE loop внешней ручной модерацией;
+- не выдавать эксклюзивную силу через ручные GM-события.
+
+Безопасная 1.0-форма: **Мастера испытаний** как authored/algorithmic framing для PvE-сцен. Они объясняют бой, школу и следующий tactical ask, но не создают FOMO, не меняют экономику и не требуют новой social/live-ops системы.
+
 ## 5.1. Exploration framework
 
 Каждый регион имеет постоянные state-переменные:
