@@ -7,8 +7,21 @@ import {
   getPlayerSkillDefinition,
   resolveNextPlayerSkillThreshold,
 } from '../../modules/player/domain/player-skills';
-import type { PlayerState, StatBlock } from '../../shared/types/game';
+import type { PlayerSkillCode, PlayerState, StatBlock } from '../../shared/types/game';
 import { renderSchoolMasteryLine } from './player-progress-formatting';
+
+const playerSkillRankLabels = ['Новичок', 'Практик'] as const;
+
+const playerSkillRankSubjects: Readonly<Record<PlayerSkillCode, string>> = {
+  'gathering.skinning': 'свежевания',
+  'gathering.reagent_gathering': 'сбора реагентов',
+  'gathering.essence_extraction': 'извлечения эссенции',
+  'combat.striking': 'боевых ударов',
+  'combat.guard': 'стойки',
+  'defence.endurance': 'выносливости',
+  'rune.active_use': 'активных рун',
+  'rune.preparation': 'подготовки рун',
+};
 
 const formatStatBlock = (stats: StatBlock): string => [
   `❤️ Здоровье: ${stats.health}`,
@@ -19,14 +32,42 @@ const formatStatBlock = (stats: StatBlock): string => [
   `🧠 Интеллект: ${stats.intelligence}`,
 ].join('\n');
 
+const formatPlayerSkillRank = (skill: NonNullable<PlayerState['skills']>[number]): string => {
+  const rankLabel = playerSkillRankLabels[skill.rank] ?? playerSkillRankLabels[playerSkillRankLabels.length - 1];
+  const rankSubject = playerSkillRankSubjects[skill.skillCode];
+
+  return `${rankLabel} ${rankSubject}`;
+};
+
+const formatPlayerSkillProgressHint = (skill: NonNullable<PlayerState['skills']>[number]): string => {
+  const nextThreshold = resolveNextPlayerSkillThreshold(skill.rank);
+  if (nextThreshold === null) {
+    return 'ранг закреплён';
+  }
+
+  if (skill.experience <= 0) {
+    return 'практики пока нет';
+  }
+
+  const progressRatio = skill.experience / nextThreshold;
+  if (progressRatio >= 0.75) {
+    return 'близко к следующему рангу';
+  }
+
+  if (progressRatio >= 0.35) {
+    return 'уверенная практика';
+  }
+
+  return 'первые успехи';
+};
+
 const formatPlayerSkillProgress = (skill: NonNullable<PlayerState['skills']>[number]): string => {
   const definition = getPlayerSkillDefinition(skill.skillCode);
-  const nextThreshold = resolveNextPlayerSkillThreshold(skill.rank);
-  const progress = nextThreshold === null
-    ? `${skill.experience} опыта`
-    : `${skill.experience}/${nextThreshold}`;
 
-  return `${definition?.title ?? skill.skillCode}: ранг ${skill.rank} · ${progress}`;
+  return [
+    `${definition?.title ?? skill.skillCode}: ${formatPlayerSkillRank(skill)}`,
+    formatPlayerSkillProgressHint(skill),
+  ].join(' · ');
 };
 
 const renderPlayerSkillsBlock = (player: PlayerState): readonly string[] => {

@@ -451,8 +451,10 @@ describe('messages school-first onboarding framing', () => {
     }));
 
     expect(message).toContain('Навыки:');
-    expect(message).toContain('Свежевание: ранг 1 · 100 опыта');
-    expect(message).toContain('Извлечение эссенции: ранг 0 · 1/100');
+    expect(message).toContain('Свежевание: Практик свежевания · ранг закреплён');
+    expect(message).toContain('Извлечение эссенции: Новичок извлечения эссенции · первые успехи');
+    expect(message).not.toContain('ранг 1 · 100 опыта');
+    expect(message).not.toContain('ранг 0 · 1/100');
   });
 
   it('keeps the profile explicit when action-based skills are still empty', () => {

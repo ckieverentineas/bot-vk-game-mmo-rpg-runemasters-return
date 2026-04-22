@@ -292,12 +292,19 @@ chance = clamp(baseChance * enemyDifficulty / max(1, skillValue), minChance, max
 Для хранения лучше использовать integer points:
 
 ```text
-display value = points / 100
+diagnostic value = points / 100
 320 points -> 3.20
 342 points -> 3.42
 ```
 
 Это позволяет давать маленький рост без floating-point шума.
+
+Player-facing decision:
+
+- профиль и обычные статусные экраны показывают ранг навыка, а не точное число вроде `3.42`;
+- пример стабильной строки: `Свежевание: Новичок свежевания · первые успехи`;
+- точные integer points остаются внутренним состоянием, debug/evidence detail и основой будущих threshold-правил;
+- если экрану нужен прогресс до следующего ранга, он должен быть качественным (`первые успехи`, `уверенная практика`, `близко к следующему рангу`), без сырых `1/100`.
 
 Правило diminishing returns:
 
@@ -425,7 +432,7 @@ display value = points / 100
 +1 кость
 
 Навык:
-Свежевание: 3.20 -> 3.42
+Свежевание: Новичок свежевания · первые успехи
 
 [🔮 Руны]
 [⚔️ Исследовать дальше]
@@ -511,25 +518,29 @@ display value = points / 100
 13. Done: `test: prevent duplicate trophy action rewards`
 14. Done: `test: add local playtest for pending trophy reward`
 15. Done: `feat: show skills in profile`
-16. Next: `feat: add skinning skill growth depth`
-17. Next: `feat: add reagent gathering skill growth depth`
-18. Next: `feat: add essence extraction skill growth depth`
-19. Later: `feat: add hidden drop pools by school`
-20. Later: `feat: unlock trophy actions by skill thresholds`
-21. Later: `feat: connect rune school behavior to school growth`
-22. Later: `feat: connect combat behavior to stat growth`
-23. Later: `docs: update OBT tester guide for action progression`
+16. Done: `feat: add skinning skill growth depth`
+17. Done: `feat: add reagent gathering skill growth depth`
+18. Done: `feat: add essence extraction skill growth depth`
+19. Done: `docs: define skill display style`
+20. Later: `feat: add hidden drop pools by school`
+21. Later: `feat: unlock trophy actions by skill thresholds`
+22. Later: `feat: connect rune school behavior to school growth`
+23. Later: `feat: connect combat behavior to stat growth`
+24. Later: `docs: update OBT tester guide for action progression`
 
 ---
 
-## 14. Open Product Questions
+## 14. Product Decisions and Open Questions
 
-Перед глубоким внедрением надо решить:
+Resolved:
 
-1. Показываем ли игроку точные числа навыков (`3.42`) или ранги (`Новичок свежевания`)?
-2. Может ли игрок иметь несколько pending rewards или только одну активную?
-3. Нужно ли действие `Позже`, если оно может запутать first-session flow?
-4. Должны ли скрытые действия быть видимыми как `???`, или вообще не показываться без условия?
-5. Нужны ли инструменты профессий: нож, сосуд, резец, рунный фокус?
-6. Должны ли навыки влиять на шанс дропа сразу или сначала только на unlock кнопок?
-7. Какой минимум этой системы нужен до ОБТ, а что лучше оставить post-OBT?
+1. Skill display style: player-facing profile/status copy uses rank labels (`Новичок свежевания`), while exact points stay internal/debug/evidence-only.
+
+Перед глубоким внедрением ещё надо решить:
+
+1. Может ли игрок иметь несколько pending rewards или только одну активную?
+2. Нужно ли действие `Позже`, если оно может запутать first-session flow?
+3. Должны ли скрытые действия быть видимыми как `???`, или вообще не показываться без условия?
+4. Нужны ли инструменты профессий: нож, сосуд, резец, рунный фокус?
+5. Должны ли навыки влиять на шанс дропа сразу или сначала только на unlock кнопок?
+6. Какой минимум этой системы нужен до ОБТ, а что лучше оставить post-OBT?
