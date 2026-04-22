@@ -1,16 +1,8 @@
 ﻿import type { Context } from 'vk-io';
 
 import type { AppServices } from '../../app/composition-root';
-import { getSchoolNovicePathDefinitionForEnemy } from '../../modules/player/domain/school-novice-path';
 import type { ReturnToAdventureReplayResult } from '../../modules/exploration/application/use-cases/ReturnToAdventure';
 import type { SkipTutorialReplayResult } from '../../modules/exploration/application/use-cases/SkipTutorial';
-import {
-  type AcquisitionSummaryView,
-} from '../../modules/player/application/read-models/acquisition-summary';
-import { buildBattleResultNextGoalView, buildPlayerNextGoalView } from '../../modules/player/application/read-models/next-goal';
-import { buildPlayerSchoolRecognitionView } from '../../modules/player/application/read-models/school-recognition';
-import { getEquippedRune } from '../../modules/player/domain/player-stats';
-import { getSchoolDefinitionForArchetype } from '../../modules/runes/domain/rune-schools';
 import { AppError, isAppError } from '../../shared/domain/AppError';
 import type { BattleActionType, BattleView, PlayerState } from '../../shared/types/game';
 import { Logger } from '../../utils/logger';
@@ -31,12 +23,12 @@ import {
   recoverableCommandErrorCodes,
   recoveryRules,
 } from './gameCommandRecovery';
+import { GameHandlerTelemetry } from './gameHandlerTelemetry';
 import type { TrophyActionCode } from '../../modules/rewards/domain/trophy-actions';
 import {
   replyWithBattle as sendBattle,
   replyWithExplorationResult as sendExplorationResult,
   resolveBattleReplyKeyboard,
-  type BattleReplyTelemetry,
   type BattleReplyState,
   type ExplorationReplyState,
 } from './responders/battleReplyFlow';
@@ -78,7 +70,11 @@ const normalizeTutorialRouteReplyState = (state: TutorialRouteReplyState): { pla
 );
 
 export class GameHandler {
-  public constructor(public readonly services: AppServices) {}
+  private readonly handlerTelemetry: GameHandlerTelemetry;
+
+  public constructor(public readonly services: AppServices) {
+    this.handlerTelemetry = new GameHandlerTelemetry(services.telemetry);
+  }
 
   public async handle(ctx: Context): Promise<void> {
     const vkId = this.resolveVkId(ctx);
@@ -217,7 +213,7 @@ export class GameHandler {
     await sendWelcome(ctx, result.player, result.created);
 
     if (!result.created) {
-      await this.trackReturnRecapShown(result.player, 'start_existing');
+      await this.handlerTelemetry.trackReturnRecapShown(result.player, 'start_existing');
     }
   }
 
@@ -245,7 +241,7 @@ export class GameHandler {
       routeState.intentSource,
     ));
     await sendReturnRecap(ctx, result.player);
-    await this.trackReturnRecapShown(result.player, entrySurface);
+    await this.handlerTelemetry.trackReturnRecapShown(result.player, entrySurface);
   }
 
   public async exploreNewBattle(ctx: Context, vkId: number, context: CommandIntentContext): Promise<void> {
@@ -309,7 +305,7 @@ export class GameHandler {
     const player = await this.services.getRuneCollection.execute(vkId);
     await this.replyWithRuneList(ctx, player);
     if (trackSchoolNoviceOpen) {
-      await this.trackSchoolNoviceRuneHubOpen(player);
+      await this.handlerTelemetry.trackSchoolNoviceRuneHubOpen(player);
     }
   }
 
@@ -317,7 +313,7 @@ export class GameHandler {
     const player = await this.services.getRuneCollection.execute(vkId);
     await this.replyWithRuneDetail(ctx, player);
     if (trackSchoolNoviceOpen) {
-      await this.trackSchoolNoviceRuneHubOpen(player);
+      await this.handlerTelemetry.trackSchoolNoviceRuneHubOpen(player);
     }
   }
 
@@ -388,23 +384,12 @@ export class GameHandler {
     await sendRuneRerollMenu(ctx, player);
   }
 
-  private createBattleReplyTelemetry(): BattleReplyTelemetry {
-    return {
-      trackFirstSchoolPresented: (player, acquisitionSummary) => (
-        this.trackFirstSchoolPresented(player, acquisitionSummary)
-      ),
-      trackPostSessionNextGoalShown: (player, battle) => (
-        this.trackPostSessionNextGoalShown(player, battle)
-      ),
-    };
-  }
-
   private async replyWithExplorationResult(ctx: Context, state: ExplorationReplyState, vkId?: number): Promise<void> {
-    await sendExplorationResult(ctx, this.services, state, this.createBattleReplyTelemetry(), vkId);
+    await sendExplorationResult(ctx, this.services, state, this.handlerTelemetry.createBattleReplyTelemetry(), vkId);
   }
 
   private async replyWithBattle(ctx: Context, state: BattleReplyState, vkId?: number): Promise<void> {
-    await sendBattle(ctx, this.services, state, this.createBattleReplyTelemetry(), vkId);
+    await sendBattle(ctx, this.services, state, this.handlerTelemetry.createBattleReplyTelemetry(), vkId);
   }
 
   public async safeGetActiveBattle(vkId: number): Promise<BattleView | null> {
@@ -428,110 +413,4 @@ export class GameHandler {
   public async reply(ctx: Context, message: string, keyboard: ReplyKeyboard): Promise<void> {
     await ctx.reply(message, { keyboard });
   }
-
-  private async trackReturnRecapShown(
-    player: PlayerState,
-    entrySurface: 'start_existing' | 'skip_tutorial' | 'return_to_adventure',
-  ): Promise<void> {
-    const nextGoal = buildPlayerNextGoalView(player);
-    await this.safeTrack(async () => {
-      await this.services.telemetry.returnRecapShown(player.userId, {
-        entrySurface,
-        hasEquippedRune: getEquippedRune(player) !== null,
-        currentSchoolCode: getSchoolDefinitionForArchetype(getEquippedRune(player)?.archetypeCode)?.code ?? null,
-        nextStepType: nextGoal.goalType,
-      });
-    });
-  }
-
-  private async trackPostSessionNextGoalShown(player: PlayerState, battle: BattleView): Promise<void> {
-    const nextGoal = buildBattleResultNextGoalView(battle, player);
-    if (!nextGoal || !battle.result || battle.result === 'FLED') {
-      return;
-    }
-
-    const battleOutcome = battle.result;
-    const battleSchoolCode = battle.player.runeLoadout?.schoolCode
-      ?? getSchoolDefinitionForArchetype(battle.player.runeLoadout?.archetypeCode)?.code
-      ?? null;
-    const novicePath = getSchoolNovicePathDefinitionForEnemy(battle.enemy.code);
-    const isSchoolNoviceElite = novicePath !== null && novicePath.schoolCode === battleSchoolCode;
-
-    await this.safeTrack(async () => {
-      await this.services.telemetry.postSessionNextGoalShown(player.userId, {
-        battleOutcome,
-        hadRuneDrop: battle.rewards?.droppedRune != null,
-        suggestedGoalType: nextGoal.goalType,
-        enemyCode: battle.enemy.code,
-        battleSchoolCode,
-        isSchoolNoviceElite,
-      });
-    });
-  }
-
-  private async trackFirstSchoolPresented(
-    player: PlayerState,
-    acquisitionSummary: AcquisitionSummaryView | null | undefined,
-  ): Promise<void> {
-    const recognition = buildPlayerSchoolRecognitionView(player);
-    const selectedRune = player.runes[player.currentRuneIndex] ?? player.runes[0] ?? null;
-    const firstRuneSchoolCode = getSchoolDefinitionForArchetype(selectedRune?.archetypeCode)?.code ?? null;
-
-    const schoolPresentation = acquisitionSummary?.kind === 'school_trial_completed'
-      ? {
-        schoolCode: recognition?.schoolCode ?? null,
-        presentationReason: 'school_trial_completed' as const,
-      }
-      : acquisitionSummary?.kind === 'new_rune' && player.runes.length === 1
-        ? {
-          schoolCode: firstRuneSchoolCode,
-          presentationReason: 'first_rune_reward' as const,
-        }
-        : null;
-
-    const schoolCode = schoolPresentation?.schoolCode;
-    if (!schoolPresentation || !schoolCode) {
-      return;
-    }
-
-    await this.safeTrack(async () => {
-      await this.services.telemetry.firstSchoolPresented(player.userId, {
-        schoolCode,
-        presentationSurface: 'battle_result',
-        presentationReason: schoolPresentation.presentationReason,
-      });
-    });
-  }
-
-  private async trackSchoolNoviceRuneHubOpen(player: PlayerState): Promise<void> {
-    const recognition = buildPlayerSchoolRecognitionView(player);
-    const nextGoal = buildPlayerNextGoalView(player);
-
-    if (!recognition || recognition.signEquipped || nextGoal.goalType !== 'equip_school_sign') {
-      return;
-    }
-
-    await this.safeTrack(async () => {
-      await this.services.telemetry.schoolNoviceFollowUpActionTaken(player.userId, {
-        schoolCode: recognition.schoolCode,
-        currentGoalType: nextGoal.goalType,
-        actionType: 'open_runes',
-        signEquipped: false,
-        usedSchoolSign: false,
-        battleId: null,
-        enemyCode: null,
-      });
-    });
-  }
-
-  private async safeTrack(operation: () => Promise<void>): Promise<void> {
-    try {
-      await operation();
-    } catch (error) {
-      Logger.warn('Telemetry logging failed', error);
-    }
-  }
 }
-
-
-

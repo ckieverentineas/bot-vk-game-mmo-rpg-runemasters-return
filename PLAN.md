@@ -43,7 +43,8 @@
 - Presenter-декомпозиция VK-экранов разнесена по сценариям: `rewardMessages.ts`, `runeMessages.ts`, `battleMessages.ts`, `homeMessages.ts`, `profileMessages.ts` и `explorationMessages.ts` держат свои flow, а `message-formatting.ts` / `player-progress-formatting.ts` — общие чистые formatter'ы.
 - Handler-декомпозиция продолжена: `gameCommandRoutes.ts` стал агрегатором, `routes/*CommandRoutes.ts` держат core/tutorial/battle/rune/reward маршруты, а `gameCommandRecovery.ts` — recoverable stale/retry/battle/rune контексты.
 - Responder-декомпозиция продолжена: `responders/homeReplyFlow.ts`, `runeReplyFlow.ts`, `rewardReplyFlow.ts` и `battleReplyFlow.ts` держат рендер/клавиатуры home/profile/location экранов, рун, pending trophy rewards, battle result и exploration result, а `GameHandler` делегирует им reply-flow.
-- Следующие безопасные кандидаты: вынести оставшуюся telemetry-адаптацию или точечно разбирать `PrismaGameRepository` через мапперы и persistence helpers, оставляя `GameHandler` тонким orchestrator'ом поверх use-case и responder слоёв.
+- `gameHandlerTelemetry.ts` держит transport-level telemetry payloads для return recap, school presentation, rune hub follow-up и post-session next-goal событий, оставляя `GameHandler` тонким orchestrator'ом поверх use-case и responder слоёв.
+- Следующий безопасный кандидат: точечно разбирать `PrismaGameRepository` через мапперы и persistence helpers, без механического распила транзакционных replay/concurrency rails.
 - `PrismaGameRepository` не распиливать механически: сначала выделять чистые мапперы, snapshot hydration и reward/battle persistence helpers с тестами на replay/concurrency.
 
 ## Ближайший порядок работ
