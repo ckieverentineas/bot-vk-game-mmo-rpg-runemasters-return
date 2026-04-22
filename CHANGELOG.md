@@ -16,6 +16,7 @@
 
 - player skill foundation для action-based progression: типы навыков, persistence `PlayerSkill`, доменный resolver шанса роста и применение skill experience через repository;
 - pending trophy reward vertical slice: versioned pending reward snapshot, `RewardLedgerRecord` rail для `PENDING -> APPLIED`, создание pending-награды после победы, выбор trophy action при сборе и безопасный replay уже собранного результата;
+- player-facing trophy card после победы и команда `добыча` / `награды`: игрок видит закреплённую базовую награду, варианты обработки трофея и ledger-scoped кнопки, а `начать` / `исследовать` возвращают к несобранной добыче вместо потери контекста;
 - action-specific trophy rewards теперь моделируются от `enemy.kind` и `lootTable`: `skin_beast`, `gather_slime`, `extract_essence` и fallback `claim_all` могут давать материалы и skill points без повторного начисления базовой победной награды;
 - bootstrap recovery [`RecoverPendingRewardsOnStart`](src/modules/rewards/application/use-cases/RecoverPendingRewardsOnStart.ts) восстанавливает отсутствующие pending reward ledger-записи для уже завершённых победных боёв до регистрации VK handlers;
 - единый school-aware next-goal read-model в [`src/modules/player/application/read-models/next-goal.ts`](src/modules/player/application/read-models/next-goal.ts), чтобы `main menu`, `return recap`, `rune hub` и `battle result` опирались на одну и ту же ближайшую school-веху;

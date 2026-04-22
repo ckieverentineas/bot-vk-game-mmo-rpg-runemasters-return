@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { createAppServices, type AppServices } from '../../app/composition-root';
+import type { CollectPendingRewardView } from '../../modules/rewards/application/use-cases/CollectPendingReward';
+import type { PendingRewardView } from '../../modules/shared/application/ports/GameRepository';
 import type { GameTelemetry } from '../../modules/shared/application/ports/GameTelemetry';
 import { AppError } from '../../shared/domain/AppError';
 import type { BattleView, PlayerState } from '../../shared/types/game';
@@ -162,6 +164,55 @@ const createBattle = (overrides: Partial<BattleView> = {}): BattleView => ({
   ...overrides,
 });
 
+const createPendingReward = (): PendingRewardView => ({
+  ledgerKey: 'battle-victory:battle-1',
+  source: {
+    battleId: 'battle-1',
+    enemyCode: 'forest-wolf',
+    enemyName: 'Лесной волк',
+    enemyKind: 'wolf',
+  },
+  snapshot: {
+    schemaVersion: 1,
+    intentId: 'battle-victory:battle-1',
+    sourceType: 'BATTLE_VICTORY',
+    sourceId: 'battle-1',
+    playerId: 1,
+    status: 'PENDING',
+    baseReward: {
+      experience: 14,
+      gold: 5,
+      shards: { USUAL: 2 },
+      droppedRune: null,
+    },
+    trophyActions: [
+      {
+        code: 'skin_beast',
+        label: '🔪 Свежевать',
+        skillCodes: ['gathering.skinning'],
+        visibleRewardFields: ['leather', 'bone'],
+        reward: {
+          inventoryDelta: { leather: 2, bone: 1 },
+          skillPoints: [{ skillCode: 'gathering.skinning', points: 1 }],
+        },
+      },
+      {
+        code: 'claim_all',
+        label: '🎒 Забрать добычу',
+        skillCodes: [],
+        visibleRewardFields: [],
+        reward: {
+          inventoryDelta: { leather: 2, bone: 1 },
+          skillPoints: [],
+        },
+      },
+    ],
+    selectedActionCode: null,
+    appliedResult: null,
+    createdAt: '2026-04-22T00:00:00.000Z',
+  },
+});
+
 const createServices = (): AppServices => {
   const basePlayer = createPlayer();
   const tutorialPlayer = createPlayer({ locationLevel: 0, tutorialState: 'ACTIVE' });
@@ -231,6 +282,15 @@ const createServices = (): AppServices => {
         skipped: 0,
       }),
     } as unknown as AppServices['recoverPendingRewardsOnStart'],
+    getPendingReward: {
+      execute: vi.fn().mockResolvedValue({
+        player: basePlayer,
+        pendingReward: null,
+      }),
+    } as unknown as AppServices['getPendingReward'],
+    collectPendingReward: {
+      execute: vi.fn(),
+    } as unknown as AppServices['collectPendingReward'],
     registerPlayer: {
       execute: vi.fn().mockResolvedValue({
         player: tutorialPlayer,
@@ -328,6 +388,27 @@ describe('GameHandler smoke', () => {
       entrySurface: 'start_existing',
       nextStepType: 'get_first_rune',
     }));
+  });
+
+  it('возвращает существующего игрока к несобранной добыче по команде start', async () => {
+    const services = createServices();
+    const pendingReward = createPendingReward();
+    vi.mocked(services.registerPlayer.execute).mockResolvedValueOnce({
+      player: createPlayer({ tutorialState: 'SKIPPED', locationLevel: 1 }),
+      created: false,
+    });
+    vi.mocked(services.getPendingReward.execute).mockResolvedValueOnce({
+      player: createPlayer({ tutorialState: 'SKIPPED', locationLevel: 1 }),
+      pendingReward,
+    });
+    const handler = new GameHandler(services);
+    const ctx = createFakeContext({ command: 'начать' });
+
+    await handler.handle(ctx as never);
+
+    expect(getReplyCalls(ctx)[0]?.message).toContain('🏁 Добыча после победы');
+    expect(getReplyCalls(ctx)[0]?.message).toContain('Лесной волк повержен');
+    expect(services.telemetry.returnRecapShown).not.toHaveBeenCalled();
   });
 
   it('оставляет tutorial keyboard для вернувшегося игрока с активным обучением', async () => {
@@ -477,6 +558,22 @@ describe('GameHandler smoke', () => {
     await handler.handle(ctx as never);
 
     expect(services.exploreLocation.execute).toHaveBeenCalledWith(1001, 'legacy-text:2000000001:1001:93:исследовать', undefined, 'legacy_text');
+  });
+
+  it('возвращает к несобранной добыче вместо нового исследования', async () => {
+    const services = createServices();
+    const pendingReward = createPendingReward();
+    vi.mocked(services.getPendingReward.execute).mockResolvedValueOnce({
+      player: createPlayer({ tutorialState: 'SKIPPED', locationLevel: 1 }),
+      pendingReward,
+    });
+    const handler = new GameHandler(services);
+    const ctx = createFakeContext({ command: 'исследовать' });
+
+    await handler.handle(ctx as never);
+
+    expect(getReplyCalls(ctx)[0]?.message).toContain('🏁 Добыча после победы');
+    expect(services.exploreLocation.execute).not.toHaveBeenCalled();
   });
 
   it('показывает отдельное событие исследования без боевой клавиатуры', async () => {
@@ -643,6 +740,88 @@ describe('GameHandler smoke', () => {
     expect(services.performBattleAction.execute).toHaveBeenCalledWith(1001, 'ATTACK', 'intent-battle-1', 'state-battle-1', 'payload');
     expect(getReplyCalls(ctx)[0]?.message).toContain('🏁 Победа');
     expect(getReplyCalls(ctx)[0]?.message).toContain('🎯 Следующая цель: разыщите Пепельную ведунью');
+  });
+
+  it('после победы показывает карточку несобранной добычи', async () => {
+    const services = createServices();
+    const player = createPlayer({ tutorialState: 'SKIPPED', locationLevel: 1 });
+    const pendingReward = createPendingReward();
+    vi.mocked(services.performBattleAction.execute).mockResolvedValueOnce({
+      battle: createBattle({
+        status: 'COMPLETED',
+        result: 'VICTORY',
+        rewards: {
+          experience: 14,
+          gold: 5,
+          shards: { USUAL: 2 },
+          droppedRune: null,
+        },
+        enemy: {
+          ...createBattle().enemy,
+          currentHealth: 0,
+        },
+      }),
+      player,
+      acquisitionSummary: {
+        kind: 'slot_unlock',
+        title: 'Открыт новый слот рун',
+        changeLine: 'Сборка стала шире.',
+        nextStepLine: 'Откройте «🔮 Руны» и выберите слот.',
+      },
+    });
+    vi.mocked(services.getPendingReward.execute).mockResolvedValueOnce({
+      player,
+      pendingReward,
+    });
+    const handler = new GameHandler(services);
+    const ctx = createFakeContext({ command: 'атака', intentId: 'intent-battle-loot-1', stateKey: 'state-battle-loot-1' });
+
+    await handler.handle(ctx as never);
+
+    expect(services.getPendingReward.execute).toHaveBeenCalledWith(1001);
+    expect(getReplyCalls(ctx)[0]?.message).toContain('🏁 Добыча после победы');
+    expect(getReplyCalls(ctx)[0]?.message).toContain('Лесной волк повержен');
+    expect(getReplyCalls(ctx)[0]?.message).toContain('✨ Что изменилось: Открыт новый слот рун.');
+    expect(getReplyCalls(ctx)[0]?.message).toContain('🔪 Свежевать');
+  });
+
+  it('обрабатывает выбранное действие трофея', async () => {
+    const services = createServices();
+    const pendingReward = createPendingReward();
+    vi.mocked(services.collectPendingReward.execute).mockResolvedValueOnce({
+      player: createPlayer({ tutorialState: 'SKIPPED', locationLevel: 1 }),
+      playerBeforeCollect: createPlayer({ tutorialState: 'SKIPPED', locationLevel: 1 }),
+      pendingReward,
+      ledgerKey: 'battle-victory:battle-1',
+      selectedActionCode: 'skin_beast',
+      appliedResult: {
+        baseRewardApplied: true,
+        inventoryDelta: {
+          leather: 2,
+          bone: 1,
+        },
+        skillUps: [
+          {
+            skillCode: 'gathering.skinning',
+            experienceBefore: 0,
+            experienceAfter: 1,
+            rankBefore: 0,
+            rankAfter: 0,
+          },
+        ],
+        statUps: [],
+        schoolUps: [],
+      },
+    } satisfies CollectPendingRewardView);
+    const handler = new GameHandler(services);
+    const ctx = createFakeContext({ command: 'свежевать', intentId: 'intent-trophy-1', stateKey: 'battle-victory:battle-1' });
+
+    await handler.handle(ctx as never);
+
+    expect(services.collectPendingReward.execute).toHaveBeenCalledWith(1001, 'skin_beast', 'battle-victory:battle-1');
+    expect(getReplyCalls(ctx)[0]?.message).toContain('🔪 Свежевать');
+    expect(getReplyCalls(ctx)[0]?.message).toContain('Получено: +2 кожа · +1 кость.');
+    expect(getReplyCalls(ctx)[0]?.message).toContain('Свежевание: 0 → 1');
   });
 
   it('показывает impact recap в результате боя, если награда реально меняет сборку', async () => {

@@ -60,6 +60,8 @@ import type {
   FinalizeBattleResult,
   GameCommandIntentKey,
   GameRepository,
+  PendingRewardSourceView,
+  PendingRewardView,
   RecordInventoryDeltaResultOptions,
   RecoverPendingRewardsResult,
   SaveBattleOptions,
@@ -143,6 +145,12 @@ const isAppliedPendingRewardLedgerEntryForCollection = (
   ledger: RewardLedgerEntry,
 ): ledger is AppliedPendingRewardLedgerEntryV1 => (
   ledger.status === 'APPLIED' && 'pendingRewardSnapshot' in ledger
+);
+
+const isPendingRewardLedgerEntryForView = (
+  ledger: RewardLedgerEntry,
+): ledger is PendingRewardLedgerEntryV1 => (
+  ledger.status === 'PENDING' && 'pendingRewardSnapshot' in ledger
 );
 
 const findPendingRewardTrophyAction = (
@@ -957,6 +965,35 @@ export class PrismaGameRepository implements GameRepository {
 
       return this.mapPlayer(await this.requirePlayerRecord(tx, playerId));
     });
+  }
+
+  public async findPendingReward(playerId: number): Promise<PendingRewardView | null> {
+    const record = await this.prisma.rewardLedgerRecord.findFirst({
+      where: {
+        playerId,
+        status: 'PENDING',
+      },
+      orderBy: {
+        createdAt: 'asc',
+      },
+    });
+
+    if (!record) {
+      return null;
+    }
+
+    const ledger = parseRewardLedgerEntrySnapshot(record.entrySnapshot);
+    this.ensureCollectableRewardLedger(ledger, playerId, record.ledgerKey);
+
+    if (!isPendingRewardLedgerEntryForView(ledger)) {
+      return null;
+    }
+
+    return {
+      ledgerKey: ledger.ledgerKey,
+      source: await this.findPendingRewardSource(ledger),
+      snapshot: ledger.pendingRewardSnapshot,
+    };
   }
 
   public async collectPendingReward(
@@ -2298,6 +2335,31 @@ export class PrismaGameRepository implements GameRepository {
     }
 
     return player;
+  }
+
+  private async findPendingRewardSource(ledger: PendingRewardLedgerEntryV1): Promise<PendingRewardSourceView | null> {
+    if (ledger.sourceType !== 'BATTLE_VICTORY') {
+      return null;
+    }
+
+    const battleRecord = await this.prisma.battleSession.findUnique({
+      where: {
+        id: ledger.sourceId,
+      },
+    });
+
+    if (!battleRecord) {
+      return null;
+    }
+
+    const battle = this.mapBattle(battleRecord);
+
+    return {
+      battleId: battle.id,
+      enemyCode: battle.enemyCode,
+      enemyName: battle.enemy.name,
+      enemyKind: battle.enemy.kind,
+    };
   }
 
   private mapPlayer(player: PlayerRecord): PlayerState {

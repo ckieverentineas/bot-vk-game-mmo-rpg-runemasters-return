@@ -10,6 +10,8 @@ import { SkipTutorial } from '../modules/exploration/application/use-cases/SkipT
 import { DeletePlayer } from '../modules/player/application/use-cases/DeletePlayer';
 import { GetPlayerProfile } from '../modules/player/application/use-cases/GetPlayerProfile';
 import { RegisterPlayer } from '../modules/player/application/use-cases/RegisterPlayer';
+import { CollectPendingReward } from '../modules/rewards/application/use-cases/CollectPendingReward';
+import { GetPendingReward } from '../modules/rewards/application/use-cases/GetPendingReward';
 import { RecoverPendingRewardsOnStart } from '../modules/rewards/application/use-cases/RecoverPendingRewardsOnStart';
 import { CraftRune } from '../modules/runes/application/use-cases/CraftRune';
 import { DestroyCurrentRune } from '../modules/runes/application/use-cases/DestroyCurrentRune';
@@ -28,6 +30,8 @@ import type { GameTelemetry } from '../modules/shared/application/ports/GameTele
 export interface AppServices {
   telemetry: GameTelemetry;
   recoverPendingRewardsOnStart: RecoverPendingRewardsOnStart;
+  getPendingReward: GetPendingReward;
+  collectPendingReward: CollectPendingReward;
   registerPlayer: RegisterPlayer;
   deletePlayer: DeletePlayer;
   getPlayerProfile: GetPlayerProfile;
@@ -58,6 +62,8 @@ export const createAppServices = (): AppServices => {
   return {
     telemetry,
     recoverPendingRewardsOnStart: new RecoverPendingRewardsOnStart(repository),
+    getPendingReward: new GetPendingReward(repository),
+    collectPendingReward: new CollectPendingReward(repository),
     registerPlayer: new RegisterPlayer(repository, telemetry),
     deletePlayer: new DeletePlayer(repository),
     getPlayerProfile: new GetPlayerProfile(repository),

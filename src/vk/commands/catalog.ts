@@ -1,4 +1,5 @@
 import type { StatKey } from '../../shared/types/game';
+import type { TrophyActionCode } from '../../modules/rewards/domain/trophy-actions';
 import { runeCollectionPageSize } from '../../modules/runes/domain/rune-collection';
 
 export const gameCommands = {
@@ -12,6 +13,11 @@ export const gameCommands = {
   skipTutorial: 'пропустить обучение',
   returnToAdventure: 'в приключения',
   explore: 'исследовать',
+  pendingReward: 'добыча',
+  collectAllReward: 'забрать добычу',
+  skinBeastReward: 'свежевать',
+  gatherSlimeReward: 'собрать слизь',
+  extractEssenceReward: 'извлечь эссенцию',
   engageBattle: 'в бой',
   fleeBattle: 'отступить',
   attack: 'атака',
@@ -68,6 +74,11 @@ type RuneSlotCommand =
   | typeof gameCommands.selectRuneSlot3
   | typeof gameCommands.selectRuneSlot4
   | typeof gameCommands.selectRuneSlot5;
+type TrophyActionCommand =
+  | typeof gameCommands.collectAllReward
+  | typeof gameCommands.skinBeastReward
+  | typeof gameCommands.gatherSlimeReward
+  | typeof gameCommands.extractEssenceReward;
 
 type RuneCursorDelta = number;
 
@@ -97,11 +108,28 @@ const runePageSlotCommandMap = {
   [gameCommands.selectRuneSlot5]: 4,
 } satisfies Readonly<Record<RuneSlotCommand, 0 | 1 | 2 | 3 | 4>>;
 
+const trophyActionCommandMap = {
+  [gameCommands.collectAllReward]: 'claim_all',
+  [gameCommands.skinBeastReward]: 'skin_beast',
+  [gameCommands.gatherSlimeReward]: 'gather_slime',
+  [gameCommands.extractEssenceReward]: 'extract_essence',
+} satisfies Readonly<Record<TrophyActionCommand, TrophyActionCode>>;
+
+const trophyActionCodeCommandMap = {
+  claim_all: gameCommands.collectAllReward,
+  skin_beast: gameCommands.skinBeastReward,
+  gather_slime: gameCommands.gatherSlimeReward,
+  extract_essence: gameCommands.extractEssenceReward,
+} satisfies Readonly<Record<TrophyActionCode, TrophyActionCommand>>;
+
 export const commandAliases: Readonly<Record<string, GameCommand>> = {
   'меню': gameCommands.backToMenu,
   'удалить перса': gameCommands.deletePlayer,
   'обучение': gameCommands.location,
   'в мир': gameCommands.returnToAdventure,
+  'награды': gameCommands.pendingReward,
+  'трофеи': gameCommands.pendingReward,
+  'лут': gameCommands.pendingReward,
   'проверить школу': gameCommands.explore,
   'испытать знак': gameCommands.explore,
   'бой': gameCommands.engageBattle,
@@ -147,4 +175,16 @@ export const resolveRunePageSlotCommand = (command: string): 0 | 1 | 2 | 3 | 4 |
 
   return runePageSlotCommandMap[command];
 };
+
+export const resolveTrophyActionCommand = (command: string): TrophyActionCode | null => {
+  if (!hasOwn(trophyActionCommandMap, command)) {
+    return null;
+  }
+
+  return trophyActionCommandMap[command];
+};
+
+export const resolveTrophyActionCodeCommand = (actionCode: TrophyActionCode): TrophyActionCommand => (
+  trophyActionCodeCommandMap[actionCode]
+);
 

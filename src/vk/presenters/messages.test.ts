@@ -3,14 +3,18 @@ import { describe, expect, it } from 'vitest';
 import type { BattleView, PlayerState, RuneDraft } from '../../shared/types/game';
 import {
   renderBattle,
+  renderCollectedPendingReward,
   renderExplorationEvent,
   renderLocation,
   renderMainMenu,
+  renderPendingReward,
   renderReturnRecap,
   renderRuneDetailScreen,
   renderRuneScreen,
   renderWelcome,
 } from './messages';
+import type { PendingRewardView } from '../../modules/shared/application/ports/GameRepository';
+import type { CollectPendingRewardView } from '../../modules/rewards/application/use-cases/CollectPendingReward';
 
 const createPlayer = (overrides: Partial<PlayerState> = {}): PlayerState => ({
   userId: 1,
@@ -178,6 +182,56 @@ const createBattle = (overrides: Partial<BattleView> = {}): BattleView => ({
   },
   createdAt: '2026-04-12T00:00:00.000Z',
   updatedAt: '2026-04-12T00:00:00.000Z',
+  ...overrides,
+});
+
+const createPendingReward = (overrides: Partial<PendingRewardView> = {}): PendingRewardView => ({
+  ledgerKey: 'battle-victory:battle-1',
+  source: {
+    battleId: 'battle-1',
+    enemyCode: 'forest-wolf',
+    enemyName: 'Лесной волк',
+    enemyKind: 'wolf',
+  },
+  snapshot: {
+    schemaVersion: 1,
+    intentId: 'battle-victory:battle-1',
+    sourceType: 'BATTLE_VICTORY',
+    sourceId: 'battle-1',
+    playerId: 1,
+    status: 'PENDING',
+    baseReward: {
+      experience: 14,
+      gold: 5,
+      shards: { USUAL: 2 },
+      droppedRune: null,
+    },
+    trophyActions: [
+      {
+        code: 'skin_beast',
+        label: '🔪 Свежевать',
+        skillCodes: ['gathering.skinning'],
+        visibleRewardFields: ['leather', 'bone'],
+        reward: {
+          inventoryDelta: { leather: 2, bone: 1 },
+          skillPoints: [{ skillCode: 'gathering.skinning', points: 1 }],
+        },
+      },
+      {
+        code: 'claim_all',
+        label: '🎒 Забрать добычу',
+        skillCodes: [],
+        visibleRewardFields: [],
+        reward: {
+          inventoryDelta: { leather: 2, bone: 1 },
+          skillPoints: [],
+        },
+      },
+    ],
+    selectedActionCode: null,
+    appliedResult: null,
+    createdAt: '2026-04-22T00:00:00.000Z',
+  },
   ...overrides,
 });
 
@@ -809,5 +863,47 @@ describe('messages school-first onboarding framing', () => {
 
     expect(message).toContain('✨ Что изменилось: Испытание школы пройдено.');
     expect(message).toContain('👉 Дальше: Откройте «🔮 Руны», наденьте первый знак школы');
+  });
+
+  it('renders a pending trophy card with meaningful action previews', () => {
+    const message = renderPendingReward(createPendingReward());
+
+    expect(message).toContain('🏁 Добыча после победы');
+    expect(message).toContain('Лесной волк повержен');
+    expect(message).toContain('Боевая награда уже закреплена: +14 опыта · +5 пыли · +2 обычные осколки.');
+    expect(message).toContain('🔪 Свежевать — +2 кожа · +1 кость; Свежевание.');
+    expect(message).toContain('🎒 Забрать добычу — +2 кожа · +1 кость; без роста навыка.');
+  });
+
+  it('renders collected trophy results and the next player goal', () => {
+    const result: CollectPendingRewardView = {
+      player: createPlayer({ tutorialState: 'SKIPPED', locationLevel: 1 }),
+      playerBeforeCollect: createPlayer({ tutorialState: 'SKIPPED', locationLevel: 1 }),
+      pendingReward: createPendingReward(),
+      ledgerKey: 'battle-victory:battle-1',
+      selectedActionCode: 'skin_beast',
+      appliedResult: {
+        baseRewardApplied: true,
+        inventoryDelta: { leather: 2, bone: 1 },
+        skillUps: [
+          {
+            skillCode: 'gathering.skinning',
+            experienceBefore: 3,
+            experienceAfter: 4,
+            rankBefore: 0,
+            rankAfter: 0,
+          },
+        ],
+        statUps: [],
+        schoolUps: [],
+      },
+    };
+
+    const message = renderCollectedPendingReward(result);
+
+    expect(message).toContain('🔪 Свежевать');
+    expect(message).toContain('Получено: +2 кожа · +1 кость.');
+    expect(message).toContain('Свежевание: 3 → 4');
+    expect(message).toContain('👉 Дальше: нажмите «⚔️ Исследовать».');
   });
 });

@@ -4,7 +4,13 @@ import type { RunePageSlot } from '../../modules/runes/domain/rune-collection';
 import type { StatKey } from '../../shared/types/game';
 import type { AppError } from '../../shared/domain/AppError';
 import { isAppError } from '../../shared/domain/AppError';
-import { gameCommands, resolveRuneCursorDeltaCommand, resolveRunePageSlotCommand, resolveRuneStatRerollCommand } from '../commands/catalog';
+import {
+  gameCommands,
+  resolveRuneCursorDeltaCommand,
+  resolveRunePageSlotCommand,
+  resolveRuneStatRerollCommand,
+  resolveTrophyActionCommand,
+} from '../commands/catalog';
 import {
   createEntryKeyboard,
   createProfileKeyboard,
@@ -156,6 +162,11 @@ export const config: Readonly<Partial<Record<GameCommandType, StaticCommandHandl
       context,
     );
   },
+  [gameCommands.pendingReward]: (handler, ctx, vkId) => handler.showPendingReward(ctx, vkId),
+  [gameCommands.collectAllReward]: (handler, ctx, vkId, context) => handler.collectPendingReward(ctx, vkId, 'claim_all', context),
+  [gameCommands.skinBeastReward]: (handler, ctx, vkId, context) => handler.collectPendingReward(ctx, vkId, 'skin_beast', context),
+  [gameCommands.gatherSlimeReward]: (handler, ctx, vkId, context) => handler.collectPendingReward(ctx, vkId, 'gather_slime', context),
+  [gameCommands.extractEssenceReward]: (handler, ctx, vkId, context) => handler.collectPendingReward(ctx, vkId, 'extract_essence', context),
   [gameCommands.explore]: (handler, ctx, vkId, context) => handler.exploreNewBattle(ctx, vkId, context),
   [gameCommands.engageBattle]: (handler, ctx, vkId, context) => handler.executeBattleAction(ctx, vkId, 'ENGAGE', context),
   [gameCommands.fleeBattle]: (handler, ctx, vkId, context) => handler.executeBattleAction(ctx, vkId, 'FLEE', context),
@@ -214,6 +225,12 @@ export const dynamicCommandConfig = [
         context.intentSource,
       );
       await handler.reply(ctx, renderAltar(player), createRuneRerollKeyboard(player));
+    },
+  ),
+  createDynamicCommandRoute(
+    resolveTrophyActionCommand,
+    async (handler, ctx, vkId, actionCode, context) => {
+      await handler.collectPendingReward(ctx, vkId, actionCode, context);
     },
   ),
 ] satisfies readonly DynamicCommandRoute[];

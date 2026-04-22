@@ -8,7 +8,10 @@ import type {
   RuneRarity,
   StatBlock,
 } from '../../../../shared/types/game';
-import type { PendingRewardAppliedResultSnapshot } from '../../../rewards/domain/pending-reward-snapshot';
+import type {
+  PendingRewardAppliedResultSnapshot,
+  PendingRewardOpenSnapshotV1,
+} from '../../../rewards/domain/pending-reward-snapshot';
 import type { TrophyActionCode } from '../../../rewards/domain/trophy-actions';
 
 export type RuneLoadoutCommandIntentKey = 'EQUIP_RUNE' | 'UNEQUIP_RUNE';
@@ -95,6 +98,19 @@ export interface CollectPendingRewardResult {
   readonly appliedResult: PendingRewardAppliedResultSnapshot;
 }
 
+export interface PendingRewardSourceView {
+  readonly battleId: string;
+  readonly enemyCode: string;
+  readonly enemyName: string;
+  readonly enemyKind: string;
+}
+
+export interface PendingRewardView {
+  readonly ledgerKey: string;
+  readonly source: PendingRewardSourceView | null;
+  readonly snapshot: PendingRewardOpenSnapshotV1;
+}
+
 export interface RecoverPendingRewardsResult {
   readonly scanned: number;
   readonly recovered: number;
@@ -140,6 +156,7 @@ export interface GameRepository {
     buildResult: (player: PlayerState) => TResult,
   ): Promise<TResult>;
   applyPlayerSkillExperience(playerId: number, gains: readonly PlayerSkillPointGain[]): Promise<PlayerState>;
+  findPendingReward(playerId: number): Promise<PendingRewardView | null>;
   collectPendingReward(playerId: number, ledgerKey: string, actionCode: TrophyActionCode): Promise<CollectPendingRewardResult>;
   recoverPendingRewardsOnStart(): Promise<RecoverPendingRewardsResult>;
   saveExplorationState(

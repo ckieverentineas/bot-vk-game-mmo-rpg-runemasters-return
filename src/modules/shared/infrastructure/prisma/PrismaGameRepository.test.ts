@@ -449,6 +449,7 @@ const createPrismaMock = () => {
     },
     rewardLedgerRecord: {
       create: vi.fn(),
+      findFirst: vi.fn(),
       findUnique: vi.fn(),
       findMany: vi.fn(),
       updateMany: vi.fn(),
@@ -631,6 +632,54 @@ describe('PrismaGameRepository release hardening', () => {
         rank: 1,
       },
     ]);
+  });
+
+  it('finds a pending reward with battle source context', async () => {
+    const { repository, tx } = createPrismaMock();
+    const pendingRecord = createPendingRewardLedgerRecord();
+    const enemySnapshot = {
+      ...createBattleView().enemy,
+      code: 'forest-wolf',
+      name: 'Лесной волк',
+      kind: 'wolf',
+    };
+
+    tx.rewardLedgerRecord.findFirst.mockResolvedValue(pendingRecord);
+    tx.battleSession.findUnique.mockResolvedValue(createBattleRow({
+      enemyCode: 'forest-wolf',
+      enemyName: 'Лесной волк',
+      enemySnapshot: JSON.stringify(enemySnapshot),
+    }));
+
+    const result = await repository.findPendingReward(1);
+
+    expect(tx.rewardLedgerRecord.findFirst).toHaveBeenCalledWith({
+      where: {
+        playerId: 1,
+        status: 'PENDING',
+      },
+      orderBy: {
+        createdAt: 'asc',
+      },
+    });
+    expect(tx.battleSession.findUnique).toHaveBeenCalledWith({
+      where: {
+        id: 'battle-1',
+      },
+    });
+    expect(result).toMatchObject({
+      ledgerKey: 'battle-victory:battle-1',
+      source: {
+        battleId: 'battle-1',
+        enemyCode: 'forest-wolf',
+        enemyName: 'Лесной волк',
+        enemyKind: 'wolf',
+      },
+      snapshot: {
+        status: 'PENDING',
+        sourceId: 'battle-1',
+      },
+    });
   });
 
   it('collects a pending reward with the selected trophy action', async () => {

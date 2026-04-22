@@ -21,6 +21,7 @@ import {
   buildBattleResultNextGoalView,
   buildPlayerNextGoalView,
 } from '../../modules/player/application/read-models/next-goal';
+import type { PendingRewardView } from '../../modules/shared/application/ports/GameRepository';
 import {
   getEquippedRune,
   getRuneEquippedSlot,
@@ -45,7 +46,7 @@ import {
 } from '../../modules/runes/domain/rune-collection';
 import type { BattleView, PlayerState } from '../../shared/types/game';
 import type { GameCommand } from '../commands/catalog';
-import { gameCommands } from '../commands/catalog';
+import { gameCommands, resolveTrophyActionCodeCommand } from '../commands/catalog';
 
 type KeyboardBuilder = ReturnType<typeof Keyboard.builder>;
 type KeyboardColor =
@@ -208,6 +209,23 @@ const createBattleResultLayout = (battle: BattleView, player?: PlayerState): Key
     { label: '👤 Профиль', command: gameCommands.profile, color: Keyboard.PRIMARY_COLOR },
     { label: '◀ Главное меню', command: gameCommands.backToMenu, color: Keyboard.SECONDARY_COLOR },
   ],
+  ];
+};
+
+const createPendingRewardLayout = (pendingReward: PendingRewardView): KeyboardLayout => {
+  const actionRows = pendingReward.snapshot.trophyActions.map((action) => [{
+    label: action.label,
+    command: resolveTrophyActionCodeCommand(action.code),
+    color: action.code === 'claim_all' ? Keyboard.SECONDARY_COLOR : Keyboard.POSITIVE_COLOR,
+    intentScoped: true,
+    stateKey: pendingReward.ledgerKey,
+  }] as const);
+
+  return [
+    ...actionRows,
+    [
+      { label: '◀ Главное меню', command: gameCommands.backToMenu, color: Keyboard.SECONDARY_COLOR },
+    ],
   ];
 };
 
@@ -378,6 +396,8 @@ export const createDeleteConfirmationKeyboard = (player: PlayerState): KeyboardB
 export const createBattleKeyboard = (battle: BattleView): KeyboardBuilder => buildKeyboard(createBattleActionLayout(battle));
 
 export const createBattleResultKeyboard = (battle: BattleView, player?: PlayerState): KeyboardBuilder => buildKeyboard(createBattleResultLayout(battle, player));
+
+export const createPendingRewardKeyboard = (pendingReward: PendingRewardView): KeyboardBuilder => buildKeyboard(createPendingRewardLayout(pendingReward));
 
 export const createRuneKeyboard = (player?: PlayerState): KeyboardBuilder => buildKeyboard(createRuneListLayout(player));
 

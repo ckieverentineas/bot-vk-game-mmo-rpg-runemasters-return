@@ -27,6 +27,7 @@ import {
   createDeleteConfirmationKeyboard,
   createEntryKeyboard,
   createMainMenuKeyboard,
+  createPendingRewardKeyboard,
   createProfileKeyboard,
   createRuneDetailKeyboard,
   createRuneKeyboard,
@@ -36,10 +37,12 @@ import {
 import {
   renderAltar,
   renderBattle,
+  renderCollectedPendingReward,
   renderExplorationEvent,
   renderInventory,
   renderLocation,
   renderMainMenu,
+  renderPendingReward,
   renderProfile,
   renderReturnRecap,
   renderRuneDetailScreen,
@@ -59,6 +62,7 @@ import {
   type CommandIntentContext,
   type StaticCommandHandler,
 } from './gameCommandRoutes';
+import type { TrophyActionCode } from '../../modules/rewards/domain/trophy-actions';
 
 type ReplyKeyboard = ReturnType<typeof createMainMenuKeyboard>;
 type BattleReplyState = BattleView | BattleActionResultView | ExploreLocationReplayResult;
@@ -263,6 +267,10 @@ export class GameHandler {
 
   public async startGame(ctx: Context, vkId: number): Promise<void> {
     const result = await this.services.registerPlayer.execute(vkId);
+    if (!result.created && await this.replyWithPendingRewardIfAny(ctx, result.player)) {
+      return;
+    }
+
     const keyboard = result.created || result.player.tutorialState === 'ACTIVE'
       ? createTutorialKeyboard(result.player)
       : createMainMenuKeyboard(result.player);
@@ -306,9 +314,38 @@ export class GameHandler {
   }
 
   public async exploreNewBattle(ctx: Context, vkId: number, context: CommandIntentContext): Promise<void> {
+    if (await this.replyWithPendingRewardIfAny(ctx, await this.services.getPlayerProfile.execute(vkId))) {
+      return;
+    }
+
     const routeState = toRouteState(context);
     const result = await this.services.exploreLocation.execute(vkId, routeState.intentId, routeState.stateKey, routeState.intentSource);
     await this.replyWithExplorationResult(ctx, result, vkId);
+  }
+
+  public async showPendingReward(ctx: Context, vkId: number): Promise<void> {
+    const result = await this.services.getPendingReward.execute(vkId);
+
+    if (!result.pendingReward) {
+      await this.reply(
+        ctx,
+        ['Сейчас нет несобранной добычи.', '', renderMainMenu(result.player)].join('\n'),
+        createMainMenuKeyboard(result.player),
+      );
+      return;
+    }
+
+    await this.reply(ctx, renderPendingReward(result.pendingReward), createPendingRewardKeyboard(result.pendingReward));
+  }
+
+  public async collectPendingReward(
+    ctx: Context,
+    vkId: number,
+    actionCode: TrophyActionCode,
+    context: CommandIntentContext,
+  ): Promise<void> {
+    const result = await this.services.collectPendingReward.execute(vkId, actionCode, context.stateKey ?? undefined);
+    await this.reply(ctx, renderCollectedPendingReward(result), createMainMenuKeyboard(result.player));
   }
 
   public async executeBattleAction(
@@ -453,6 +490,20 @@ export class GameHandler {
     const player = result.player ?? (vkId === undefined
       ? null
       : await this.services.getPlayerProfile.execute(vkId));
+
+    if (battle.result === 'VICTORY' && player) {
+      const pendingReward = await this.services.getPendingReward.execute(player.vkId);
+      if (pendingReward.pendingReward) {
+        await this.reply(
+          ctx,
+          renderPendingReward(pendingReward.pendingReward, result.acquisitionSummary),
+          createPendingRewardKeyboard(pendingReward.pendingReward),
+        );
+        await this.trackFirstSchoolPresented(player, result.acquisitionSummary);
+        return;
+      }
+    }
+
     await this.reply(ctx, renderBattle(battle, player ?? undefined, result.acquisitionSummary), createBattleResultKeyboard(battle, player ?? undefined));
 
     if (player) {
@@ -481,6 +532,17 @@ export class GameHandler {
 
   public async reply(ctx: Context, message: string, keyboard: ReplyKeyboard): Promise<void> {
     await ctx.reply(message, { keyboard });
+  }
+
+  private async replyWithPendingRewardIfAny(ctx: Context, player: PlayerState): Promise<boolean> {
+    const result = await this.services.getPendingReward.execute(player.vkId);
+
+    if (!result.pendingReward) {
+      return false;
+    }
+
+    await this.reply(ctx, renderPendingReward(result.pendingReward), createPendingRewardKeyboard(result.pendingReward));
+    return true;
   }
 
   private async trackReturnRecapShown(

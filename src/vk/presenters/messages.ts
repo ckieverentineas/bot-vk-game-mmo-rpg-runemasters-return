@@ -22,11 +22,14 @@ import {
   buildBattleResultNextGoalView,
   buildPlayerNextGoalView,
 } from '../../modules/player/application/read-models/next-goal';
+import type { CollectPendingRewardView } from '../../modules/rewards/application/use-cases/CollectPendingReward';
 import { buildPlayerSchoolRecognitionView } from '../../modules/player/application/read-models/school-recognition';
 import { resolveDefendGuardGain } from '../../modules/combat/domain/battle-tactics';
 import { describeRuneContent } from '../../modules/runes/domain/rune-abilities';
 import { buildRuneCollectionPage } from '../../modules/runes/domain/rune-collection';
 import { getRuneSchoolPresentation, listSchoolDefinitions } from '../../modules/runes/domain/rune-schools';
+import { getPlayerSkillDefinition } from '../../modules/player/domain/player-skills';
+import type { PendingRewardView } from '../../modules/shared/application/ports/GameRepository';
 import {
   getExplorationSceneEffectLine,
   type ExplorationSceneView,
@@ -102,6 +105,27 @@ const formatRuneStatDetails = (stats: StatBlock): string[] => {
     : ['Бонусы: нет'];
 };
 
+const inventoryFieldLabels = {
+  USUAL: 'обычные осколки',
+  UNUSUAL: 'необычные осколки',
+  RARE: 'редкие осколки',
+  EPIC: 'эпические осколки',
+  LEGENDARY: 'легендарные осколки',
+  MYTHICAL: 'мифические осколки',
+  usualShards: 'обычные осколки',
+  unusualShards: 'необычные осколки',
+  rareShards: 'редкие осколки',
+  epicShards: 'эпические осколки',
+  legendaryShards: 'легендарные осколки',
+  mythicalShards: 'мифические осколки',
+  leather: 'кожа',
+  bone: 'кость',
+  herb: 'трава',
+  essence: 'эссенция',
+  metal: 'металл',
+  crystal: 'кристалл',
+} as const;
+
 const formatRuneAbilityDetails = (runeContent: ReturnType<typeof describeRuneContent>): string[] => [
   ...(runeContent.activeAbilities.length > 0
     ? ['Активный навык:', ...runeContent.activeAbilities.map(formatActiveAbilityDetails)]
@@ -134,6 +158,83 @@ const renderNextGoalSummary = (
 
 const renderSchoolFirstLoopLine = (): string => 'Путь первого входа: базовая атака → первая боевая руна → школа рун → новый стиль боя.';
 const renderSchoolFirstRarityLine = (): string => 'Сначала первая руна открывает школу рун, а новая редкость позже расширяет сборку.';
+
+const formatInventoryDelta = (delta: Record<string, number | undefined>): string => {
+  const parts = Object.entries(delta)
+    .filter(([, amount]) => amount !== undefined && amount > 0)
+    .map(([field, amount]) => {
+      const label = inventoryFieldLabels[field as keyof typeof inventoryFieldLabels] ?? field;
+      return `+${amount} ${label}`;
+    });
+
+  return parts.length > 0 ? parts.join(' · ') : 'без дополнительных материалов';
+};
+
+const formatBaseRewardLine = (pendingReward: PendingRewardView): string => {
+  const { baseReward } = pendingReward.snapshot;
+  const parts = [
+    `+${baseReward.experience} опыта`,
+    `+${baseReward.gold} пыли`,
+    formatInventoryDelta(baseReward.shards),
+    baseReward.droppedRune ? `руна: ${baseReward.droppedRune.name}` : null,
+  ].filter((part): part is string => Boolean(part) && part !== 'без дополнительных материалов');
+
+  return parts.join(' · ');
+};
+
+const formatSkillTitles = (skillCodes: readonly string[]): string => {
+  const titles = skillCodes
+    .map((skillCode) => getPlayerSkillDefinition(skillCode)?.title ?? skillCode);
+
+  return titles.length > 0 ? titles.join(', ') : 'без роста навыка';
+};
+
+const formatTrophyActionPreview = (action: PendingRewardView['snapshot']['trophyActions'][number]): string => {
+  const rewardLine = action.reward ? formatInventoryDelta(action.reward.inventoryDelta) : 'добыча без предпросмотра';
+  return `${action.label} — ${rewardLine}; ${formatSkillTitles(action.skillCodes)}.`;
+};
+
+export const renderPendingReward = (
+  pendingReward: PendingRewardView,
+  acquisitionSummary?: AcquisitionSummaryView | null,
+): string => {
+  const sourceLine = pendingReward.source
+    ? `${pendingReward.source.enemyName} повержен. Можно быстро забрать добычу или обработать трофей.`
+    : 'Победа уже зафиксирована. Можно быстро забрать добычу или обработать трофей.';
+
+  return [
+    '🏁 Добыча после победы',
+    '',
+    sourceLine,
+    `Боевая награда уже закреплена: ${formatBaseRewardLine(pendingReward)}.`,
+    ...renderAcquisitionSummary(acquisitionSummary),
+    'Выберите одно действие для трофея. Повтор кнопки не даст награду второй раз.',
+    '',
+    'Доступные действия:',
+    ...pendingReward.snapshot.trophyActions.map(formatTrophyActionPreview),
+  ].join('\n');
+};
+
+export const renderCollectedPendingReward = (result: CollectPendingRewardView): string => {
+  const selectedAction = result.pendingReward.snapshot.trophyActions.find((action) => action.code === result.selectedActionCode);
+  const skillLines = result.appliedResult.skillUps.map((skillUp) => {
+    const title = getPlayerSkillDefinition(skillUp.skillCode)?.title ?? skillUp.skillCode;
+    return `${title}: ${skillUp.experienceBefore} → ${skillUp.experienceAfter}`;
+  });
+  const sourceLine = result.pendingReward.source
+    ? `Трофей обработан: ${result.pendingReward.source.enemyName}.`
+    : 'Трофей обработан.';
+
+  return [
+    selectedAction?.label ?? '🎒 Добыча собрана',
+    '',
+    sourceLine,
+    `Получено: ${formatInventoryDelta(result.appliedResult.inventoryDelta)}.`,
+    ...(skillLines.length > 0 ? ['', 'Навыки:', ...skillLines] : []),
+    '',
+    ...renderNextGoalSummary(buildPlayerNextGoalView(result.player), '👉 Дальше'),
+  ].join('\n');
+};
 
 const renderSchoolMasteryLine = (player: PlayerState): string => {
   if (player.runes.length === 0) {

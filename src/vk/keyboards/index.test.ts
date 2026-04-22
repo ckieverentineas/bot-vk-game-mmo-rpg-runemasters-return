@@ -6,12 +6,14 @@ import {
   createBattleResultKeyboard,
   createDeleteConfirmationKeyboard,
   createMainMenuKeyboard,
+  createPendingRewardKeyboard,
   createProfileKeyboard,
   createRuneDetailKeyboard,
   createRuneKeyboard,
   createTutorialKeyboard,
 } from './index';
 import { gameCommands } from '../commands/catalog';
+import type { PendingRewardView } from '../../modules/shared/application/ports/GameRepository';
 
 const createPlayer = (overrides: Partial<PlayerState> = {}): PlayerState => ({
   userId: 1,
@@ -143,6 +145,47 @@ const createBattle = (overrides: Partial<BattleView> = {}): BattleView => ({
   ...overrides,
 });
 
+const createPendingReward = (): PendingRewardView => ({
+  ledgerKey: 'battle-victory:battle-1',
+  source: {
+    battleId: 'battle-1',
+    enemyCode: 'forest-wolf',
+    enemyName: 'Лесной волк',
+    enemyKind: 'wolf',
+  },
+  snapshot: {
+    schemaVersion: 1,
+    intentId: 'battle-victory:battle-1',
+    sourceType: 'BATTLE_VICTORY',
+    sourceId: 'battle-1',
+    playerId: 1,
+    status: 'PENDING',
+    baseReward: {
+      experience: 14,
+      gold: 5,
+      shards: { USUAL: 2 },
+      droppedRune: null,
+    },
+    trophyActions: [
+      {
+        code: 'skin_beast',
+        label: '🔪 Свежевать',
+        skillCodes: ['gathering.skinning'],
+        visibleRewardFields: ['leather', 'bone'],
+      },
+      {
+        code: 'claim_all',
+        label: '🎒 Забрать добычу',
+        skillCodes: [],
+        visibleRewardFields: [],
+      },
+    ],
+    selectedActionCode: null,
+    appliedResult: null,
+    createdAt: '2026-04-22T00:00:00.000Z',
+  },
+});
+
 interface SerializedButtonPayload {
   readonly command: string;
   readonly intentId?: string;
@@ -162,6 +205,7 @@ const collectPayloads = (
     | ReturnType<typeof createBattleResultKeyboard>
     | ReturnType<typeof createDeleteConfirmationKeyboard>
     | ReturnType<typeof createMainMenuKeyboard>
+    | ReturnType<typeof createPendingRewardKeyboard>
     | ReturnType<typeof createProfileKeyboard>
     | ReturnType<typeof createRuneDetailKeyboard>
     | ReturnType<typeof createRuneKeyboard>
@@ -181,6 +225,7 @@ const collectLabels = (
     | ReturnType<typeof createBattleKeyboard>
     | ReturnType<typeof createBattleResultKeyboard>
     | ReturnType<typeof createMainMenuKeyboard>
+    | ReturnType<typeof createPendingRewardKeyboard>
     | ReturnType<typeof createRuneDetailKeyboard>
     | ReturnType<typeof createRuneKeyboard>,
 ): string[] => {
@@ -193,6 +238,17 @@ const collectLabels = (
 };
 
 describe('profile keyboard', () => {
+  it('turns pending reward actions into ledger-scoped trophy buttons', () => {
+    const keyboard = createPendingRewardKeyboard(createPendingReward());
+    const labels = collectLabels(keyboard);
+    const payloads = collectPayloads(keyboard);
+
+    expect(labels).toContain('🔪 Свежевать');
+    expect(labels).toContain('🎒 Забрать добычу');
+    expect(payloads.find((payload) => payload.command === gameCommands.skinBeastReward)?.stateKey).toBe('battle-victory:battle-1');
+    expect(payloads.find((payload) => payload.command === gameCommands.collectAllReward)?.stateKey).toBe('battle-victory:battle-1');
+  });
+
   it('keeps profile keyboard focused on navigation and delete confirmation', () => {
     const payloads = collectPayloads(createProfileKeyboard(createPlayer()));
 

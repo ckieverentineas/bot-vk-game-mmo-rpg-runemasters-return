@@ -473,20 +473,20 @@ display value = points / 100
 
 ## 12. Current Implementation Slice
 
-Первый backend vertical slice уже собран маленькими replay-safe шагами:
+Первый playable vertical slice уже собран маленькими replay-safe шагами:
 
 - trophy action rewards моделируются отдельно от базовой победной награды;
 - `PlayerSkill` и skill types существуют в persistence и домене;
 - pending reward snapshot хранит доступные trophy actions и action-specific reward preview;
 - победа создаёт `PENDING` reward ledger в базе;
+- после победы игрок видит отдельную trophy card с доступными действиями;
+- `начать`, `исследовать` и отдельная команда `добыча` возвращают к несобранной награде;
 - выбранное trophy action собирается exact-once и переводит ledger в `APPLIED`;
 - `claim_all` даёт быстрый безопасный сбор без skill progress;
 - bootstrap восстанавливает отсутствующие pending reward ledger-записи для уже завершённых победных боёв.
 
 Что всё ещё не входит:
 
-- отдельная player-facing trophy card после победы;
-- возврат к pending reward card из `начать` / `исследовать`;
 - hidden school pools;
 - unlock действий по skill thresholds;
 - action-based stat growth;
@@ -506,18 +506,18 @@ display value = points / 100
 8. Done: `feat: collect pending reward with selected action`
 9. Done: `feat: add claim all trophy action`
 10. Done: `feat: recover pending rewards on start`
-11. Next: `feat: show pending reward collection prompt after victory`
-12. Next: `feat: return to pending reward from start and explore`
-13. Next: `test: prevent duplicate trophy action rewards`
-14. Next: `feat: add skinning skill growth`
-15. Next: `feat: add reagent gathering skill growth`
-16. Next: `feat: add essence extraction skill growth`
-17. Next: `feat: show skills in profile`
-18. Later: `feat: add hidden drop pools by school`
-19. Later: `feat: unlock trophy actions by skill thresholds`
-20. Later: `feat: connect rune school behavior to school growth`
-21. Later: `feat: connect combat behavior to stat growth`
-22. Later: `test: add local playtest for pending trophy reward`
+11. Done: `feat: show pending reward collection prompt after victory`
+12. Done: `feat: return to pending reward from start and explore`
+13. Done: `test: prevent duplicate trophy action rewards`
+14. Next: `test: add local playtest for pending trophy reward`
+15. Next: `feat: show skills in profile`
+16. Later: `feat: add skinning skill growth depth`
+17. Later: `feat: add reagent gathering skill growth depth`
+18. Later: `feat: add essence extraction skill growth depth`
+19. Later: `feat: add hidden drop pools by school`
+20. Later: `feat: unlock trophy actions by skill thresholds`
+21. Later: `feat: connect rune school behavior to school growth`
+22. Later: `feat: connect combat behavior to stat growth`
 23. Later: `docs: update OBT tester guide for action progression`
 
 ---
