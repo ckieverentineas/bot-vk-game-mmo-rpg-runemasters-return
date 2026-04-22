@@ -1,6 +1,18 @@
 import type { BattleActionType, BattleRuneActionSnapshot, BattleView, PlayerState } from '../../shared/types/game';
 import { type GameCommand, gameCommands } from '../../vk/commands/catalog';
 
+const requiredSchoolNoviceEvidenceCodes = ['ember', 'stone'] as const;
+const requiredSchoolRuneHubFollowUpCodes = ['stone'] as const;
+
+type RequiredSchoolNoviceEvidenceCode = typeof requiredSchoolNoviceEvidenceCodes[number];
+type SchoolEvidenceCounts = Readonly<Record<RequiredSchoolNoviceEvidenceCode, number>>;
+
+interface LocalPlaytestSchoolEvidenceSummary {
+  readonly noviceEliteCounts: SchoolEvidenceCounts;
+  readonly alignedRewardCounts: SchoolEvidenceCounts;
+  readonly runeHubFollowUpCounts: SchoolEvidenceCounts;
+}
+
 export interface LocalPlaytestPayload {
   readonly command?: string;
   readonly intentId?: string;
@@ -40,6 +52,7 @@ export interface LocalPlaytestTranscriptEntry {
 
 export interface LocalPlaytestLogEntry {
   readonly action: string;
+  readonly details?: string | Readonly<Record<string, unknown>> | null;
 }
 
 export interface LocalPlaytestSummaryInput {
@@ -77,6 +90,9 @@ export interface LocalPlaytestSummary {
   readonly equippedRuneCount: number;
   readonly runes: readonly LocalPlaytestRuneSummary[];
   readonly logCounts: Readonly<Record<string, number>>;
+  readonly schoolNoviceEliteEvidenceCounts: SchoolEvidenceCounts;
+  readonly schoolNoviceAlignedRewardCounts: SchoolEvidenceCounts;
+  readonly schoolNoviceRuneHubFollowUpCounts: SchoolEvidenceCounts;
   readonly suspiciousReplyCount: number;
   readonly trophyCollectionReplyCount: number;
   readonly questBookReplyCount: number;
@@ -191,6 +207,82 @@ const countLogsByAction = (logs: readonly LocalPlaytestLogEntry[]): Record<strin
   }, {})
 );
 
+const parseLogDetails = (details: LocalPlaytestLogEntry['details']): Readonly<Record<string, unknown>> => {
+  if (!details) {
+    return {};
+  }
+
+  if (typeof details !== 'string') {
+    return details;
+  }
+
+  try {
+    const parsed = JSON.parse(details);
+    return parsed && typeof parsed === 'object'
+      ? parsed as Readonly<Record<string, unknown>>
+      : {};
+  } catch {
+    return {};
+  }
+};
+
+const createSchoolEvidenceCounts = (): Record<RequiredSchoolNoviceEvidenceCode, number> => ({
+  ember: 0,
+  stone: 0,
+});
+
+const isRequiredSchoolNoviceEvidenceCode = (value: unknown): value is RequiredSchoolNoviceEvidenceCode => (
+  typeof value === 'string' && (requiredSchoolNoviceEvidenceCodes as readonly string[]).includes(value)
+);
+
+const incrementSchoolEvidenceCount = (
+  counts: Record<RequiredSchoolNoviceEvidenceCode, number>,
+  schoolCode: unknown,
+): void => {
+  if (isRequiredSchoolNoviceEvidenceCode(schoolCode)) {
+    counts[schoolCode] += 1;
+  }
+};
+
+const summarizeSchoolEvidence = (
+  logs: readonly LocalPlaytestLogEntry[],
+): LocalPlaytestSchoolEvidenceSummary => {
+  const noviceEliteCounts = createSchoolEvidenceCounts();
+  const alignedRewardCounts = createSchoolEvidenceCounts();
+  const runeHubFollowUpCounts = createSchoolEvidenceCounts();
+
+  for (const log of logs) {
+    const details = parseLogDetails(log.details);
+
+    if (log.action === 'school_novice_elite_encounter_started') {
+      incrementSchoolEvidenceCount(noviceEliteCounts, details.schoolCode);
+      continue;
+    }
+
+    if (
+      log.action === 'reward_claim_applied'
+      && details.isSchoolNoviceAligned === true
+      && details.noviceTargetRewardRarity === 'UNUSUAL'
+    ) {
+      incrementSchoolEvidenceCount(alignedRewardCounts, details.novicePathSchoolCode);
+      continue;
+    }
+
+    if (
+      log.action === 'school_novice_follow_up_action_taken'
+      && details.actionType === 'open_runes'
+    ) {
+      incrementSchoolEvidenceCount(runeHubFollowUpCounts, details.schoolCode);
+    }
+  }
+
+  return {
+    noviceEliteCounts,
+    alignedRewardCounts,
+    runeHubFollowUpCounts,
+  };
+};
+
 const summarizeRunes = (player: PlayerState): readonly LocalPlaytestRuneSummary[] => (
   player.runes.map((rune) => ({
     name: rune.name,
@@ -203,6 +295,7 @@ const summarizeRunes = (player: PlayerState): readonly LocalPlaytestRuneSummary[
 
 export const buildLocalPlaytestSummary = (input: LocalPlaytestSummaryInput): LocalPlaytestSummary => {
   const equippedRuneCount = input.player.runes.filter((rune) => rune.isEquipped).length;
+  const schoolEvidence = summarizeSchoolEvidence(input.logs);
 
   return {
     scenarioName: input.scenarioName,
@@ -220,6 +313,9 @@ export const buildLocalPlaytestSummary = (input: LocalPlaytestSummaryInput): Loc
     equippedRuneCount,
     runes: summarizeRunes(input.player),
     logCounts: countLogsByAction(input.logs),
+    schoolNoviceEliteEvidenceCounts: schoolEvidence.noviceEliteCounts,
+    schoolNoviceAlignedRewardCounts: schoolEvidence.alignedRewardCounts,
+    schoolNoviceRuneHubFollowUpCounts: schoolEvidence.runeHubFollowUpCounts,
     suspiciousReplyCount: input.transcript.filter((entry) => isSuspiciousReply(entry.reply)).length,
     trophyCollectionReplyCount: input.transcript.filter((entry) => isTrophyCollectionReply(entry.reply)).length,
     questBookReplyCount: input.transcript.filter((entry) => isQuestBookReply(entry.reply)).length,
@@ -230,7 +326,6 @@ export const buildLocalPlaytestSummary = (input: LocalPlaytestSummaryInput): Loc
 
 export const listLocalPlaytestFailures = (summary: LocalPlaytestSummary): readonly string[] => {
   const failures: string[] = [];
-  const schoolNoviceEliteEvidenceCount = summary.logCounts.school_novice_elite_encounter_started ?? 0;
 
   if (summary.activeBattleStillOpen) {
     failures.push(`${summary.scenarioName}: active battle is still open`);
@@ -276,8 +371,20 @@ export const listLocalPlaytestFailures = (summary: LocalPlaytestSummary): readon
     failures.push(`${summary.scenarioName}: quest reward replay was not checked`);
   }
 
-  if (schoolNoviceEliteEvidenceCount < 1) {
-    failures.push(`${summary.scenarioName}: expected school novice elite evidence`);
+  for (const schoolCode of requiredSchoolNoviceEvidenceCodes) {
+    if (summary.schoolNoviceEliteEvidenceCounts[schoolCode] < 1) {
+      failures.push(`${summary.scenarioName}: expected ${schoolCode} school novice elite evidence`);
+    }
+
+    if (summary.schoolNoviceAlignedRewardCounts[schoolCode] < 1) {
+      failures.push(`${summary.scenarioName}: expected ${schoolCode} school novice aligned reward evidence`);
+    }
+  }
+
+  for (const schoolCode of requiredSchoolRuneHubFollowUpCodes) {
+    if (summary.schoolNoviceRuneHubFollowUpCounts[schoolCode] < 1) {
+      failures.push(`${summary.scenarioName}: expected ${schoolCode} school novice rune hub follow-up`);
+    }
   }
 
   return failures;

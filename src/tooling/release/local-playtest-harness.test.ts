@@ -129,6 +129,11 @@ const createPlayer = (overrides: Partial<PlayerState> = {}): PlayerState => ({
   ...overrides,
 });
 
+const createLog = (action: string, details: Record<string, unknown> = {}) => ({
+  action,
+  details: JSON.stringify(details),
+});
+
 describe('local playtest harness', () => {
   it('creates legacy text contexts with stable message metadata', async () => {
     const context = createLocalPlaytestContext({
@@ -269,7 +274,22 @@ describe('local playtest harness', () => {
       ],
       logs: [
         { action: 'player_registered' },
-        { action: 'school_novice_elite_encounter_started' },
+        createLog('school_novice_elite_encounter_started', { schoolCode: 'ember' }),
+        createLog('reward_claim_applied', {
+          isSchoolNoviceAligned: true,
+          novicePathSchoolCode: 'ember',
+          noviceTargetRewardRarity: 'UNUSUAL',
+        }),
+        createLog('school_novice_elite_encounter_started', { schoolCode: 'stone' }),
+        createLog('reward_claim_applied', {
+          isSchoolNoviceAligned: true,
+          novicePathSchoolCode: 'stone',
+          noviceTargetRewardRarity: 'UNUSUAL',
+        }),
+        createLog('school_novice_follow_up_action_taken', {
+          schoolCode: 'stone',
+          actionType: 'open_runes',
+        }),
       ],
       questRewardReplaySafe: true,
     });
@@ -294,7 +314,11 @@ describe('local playtest harness', () => {
       'payload: expected a quest book reply',
       'payload: expected a quest reward claim reply',
       'payload: quest reward replay was not checked',
-      'payload: expected school novice elite evidence',
+      'payload: expected ember school novice elite evidence',
+      'payload: expected ember school novice aligned reward evidence',
+      'payload: expected stone school novice elite evidence',
+      'payload: expected stone school novice aligned reward evidence',
+      'payload: expected stone school novice rune hub follow-up',
     ]);
   });
 
@@ -317,11 +341,15 @@ describe('local playtest harness', () => {
       'payload: expected a quest book reply',
       'payload: expected a quest reward claim reply',
       'payload: quest reward replay was not safe',
-      'payload: expected school novice elite evidence',
+      'payload: expected ember school novice elite evidence',
+      'payload: expected ember school novice aligned reward evidence',
+      'payload: expected stone school novice elite evidence',
+      'payload: expected stone school novice aligned reward evidence',
+      'payload: expected stone school novice rune hub follow-up',
     ]);
   });
 
-  it('reports missing school novice elite evidence', () => {
+  it('reports missing school novice path evidence', () => {
     const summary = buildLocalPlaytestSummary({
       scenarioName: 'payload',
       vkId: 1001,
@@ -339,8 +367,58 @@ describe('local playtest harness', () => {
       questRewardReplaySafe: true,
     });
 
-    expect(listLocalPlaytestFailures(summary)).toEqual([
-      'payload: expected school novice elite evidence',
+    const normalizedSummary = {
+      ...summary,
+      trophyCollectionReplyCount: 1,
+      questBookReplyCount: 1,
+      questRewardClaimReplyCount: 1,
+    };
+
+    expect(listLocalPlaytestFailures(normalizedSummary)).toEqual([
+      'payload: expected ember school novice elite evidence',
+      'payload: expected ember school novice aligned reward evidence',
+      'payload: expected stone school novice elite evidence',
+      'payload: expected stone school novice aligned reward evidence',
+      'payload: expected stone school novice rune hub follow-up',
+    ]);
+  });
+
+  it('reports missing stone school novice path evidence', () => {
+    const summary = buildLocalPlaytestSummary({
+      scenarioName: 'payload',
+      vkId: 1001,
+      player: createPlayer(),
+      activeBattle: null,
+      pendingRewardOpen: false,
+      transcript: [
+        { label: 'collect-skin-beast', command: gameCommands.skinBeastReward, payload: null, reply: 'РўСЂРѕС„РµР№ СЂР°Р·РѕР±СЂР°РЅ: Training Wisp.\nР’ СЃСѓРјРєРµ: +1 СЌСЃСЃРµРЅС†РёСЏ.' },
+        { label: 'quest-book', command: gameCommands.questBook, payload: null, reply: 'рџ“њ РљРЅРёРіР° РїСѓС‚РµР№\n\nРџСЂРѕР±СѓР¶РґРµРЅРёРµ РџСѓСЃС‚РѕРіРѕ РјР°СЃС‚РµСЂР° В· рџЋЃ РќР°РіСЂР°РґР° Р¶РґС‘С‚' },
+        { label: 'quest-claim-awakening', command: gameCommands.claimQuestReward, payload: null, reply: 'рџ“њ Р—Р°РїРёСЃСЊ Р·Р°РєСЂС‹С‚Р°\n\nР’ СЃСѓРјРєРµ: +1 РѕР±С‹С‡РЅС‹Р№ РѕСЃРєРѕР»РѕРє.' },
+        { label: 'quest-claim-awakening-replay', command: gameCommands.claimQuestReward, payload: null, reply: 'рџ“њ Р—Р°РїРёСЃСЊ СѓР¶Рµ Р·Р°РєСЂС‹С‚Р°\n\nРќРѕРІР°СЏ РґРѕР±С‹С‡Р° РЅРµ РґРѕР±Р°РІР»СЏР»Р°СЃСЊ.' },
+        { label: 'profile', command: gameCommands.profile, payload: null, reply: 'profile' },
+      ],
+      logs: [
+        createLog('school_novice_elite_encounter_started', { schoolCode: 'ember' }),
+        createLog('reward_claim_applied', {
+          isSchoolNoviceAligned: true,
+          novicePathSchoolCode: 'ember',
+          noviceTargetRewardRarity: 'UNUSUAL',
+        }),
+      ],
+      questRewardReplaySafe: true,
+    });
+
+    const normalizedSummary = {
+      ...summary,
+      trophyCollectionReplyCount: 1,
+      questBookReplyCount: 1,
+      questRewardClaimReplyCount: 1,
+    };
+
+    expect(listLocalPlaytestFailures(normalizedSummary)).toEqual([
+      'payload: expected stone school novice elite evidence',
+      'payload: expected stone school novice aligned reward evidence',
+      'payload: expected stone school novice rune hub follow-up',
     ]);
   });
 
@@ -367,7 +445,11 @@ describe('local playtest harness', () => {
       'payload: expected a quest book reply',
       'payload: expected a quest reward claim reply',
       'payload: quest reward replay was not checked',
-      'payload: expected school novice elite evidence',
+      'payload: expected ember school novice elite evidence',
+      'payload: expected ember school novice aligned reward evidence',
+      'payload: expected stone school novice elite evidence',
+      'payload: expected stone school novice aligned reward evidence',
+      'payload: expected stone school novice rune hub follow-up',
     ]);
   });
 });
