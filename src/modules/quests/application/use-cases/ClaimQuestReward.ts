@@ -9,7 +9,9 @@ import {
   type QuestView,
 } from '../read-models/quest-book';
 import {
+  buildQuestRewardEconomyTelemetryPayload,
   buildQuestTelemetryPayload,
+  trackEconomyTransactionTelemetry,
   trackQuestTelemetry,
 } from '../quest-telemetry';
 
@@ -55,6 +57,14 @@ export class ClaimQuestReward {
 
     if (!updatedQuest) {
       throw new AppError('quest_not_found', 'Эта запись выпала из книги путей. Откройте книгу заново.');
+    }
+
+    if (claim.claimed) {
+      await trackEconomyTransactionTelemetry(
+        this.telemetry,
+        claim.player.userId,
+        buildQuestRewardEconomyTelemetryPayload(quest.code, claim.reward, claim.player.level),
+      );
     }
 
     await this.trackQuestReward(

@@ -67,6 +67,13 @@ export class RepositoryGameTelemetry implements GameTelemetry {
     await this.log(userId, 'post_session_next_goal_shown', payload);
   }
 
+  public async economyTransactionCommitted(
+    userId: number,
+    payload: Parameters<GameTelemetry['economyTransactionCommitted']>[1],
+  ): Promise<void> {
+    await this.log(userId, 'economy_transaction_committed', payload);
+  }
+
   public async questBookOpened(
     userId: number,
     payload: Parameters<GameTelemetry['questBookOpened']>[1],

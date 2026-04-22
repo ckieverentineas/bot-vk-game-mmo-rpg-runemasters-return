@@ -60,6 +60,7 @@ const createRepository = (player = createPlayer(), claimedQuestCodes: readonly s
 } as unknown as GameRepository);
 
 const createTelemetry = () => ({
+  economyTransactionCommitted: vi.fn().mockResolvedValue(undefined),
   questRewardClaimed: vi.fn().mockResolvedValue(undefined),
   questRewardReplayed: vi.fn().mockResolvedValue(undefined),
   questRewardNotReady: vi.fn().mockResolvedValue(undefined),
@@ -89,6 +90,15 @@ describe('ClaimQuestReward', () => {
       readyToClaimCount: 0,
       claimedCount: 1,
     });
+    expect(telemetry.economyTransactionCommitted).toHaveBeenCalledWith(1, {
+      transactionType: 'reward_claim',
+      sourceType: 'QUEST_REWARD',
+      sourceId: 'awakening_empty_master',
+      resourceDustDelta: 5,
+      resourceShardsDelta: 1,
+      runeDelta: 0,
+      playerLevel: 1,
+    });
   });
 
   it('does not apply a reward that is already in the claimed ledger', async () => {
@@ -99,6 +109,7 @@ describe('ClaimQuestReward', () => {
     expect(repository.claimQuestReward).not.toHaveBeenCalled();
     expect(result.claimedNow).toBe(false);
     expect(result.quest.status).toBe('CLAIMED');
+    expect(telemetry.economyTransactionCommitted).not.toHaveBeenCalled();
     expect(telemetry.questRewardReplayed).toHaveBeenCalledWith(1, {
       playerId: 1,
       questCode: 'awakening_empty_master',
@@ -117,6 +128,7 @@ describe('ClaimQuestReward', () => {
       .rejects.toMatchObject({ code: 'quest_not_ready' });
 
     expect(repository.claimQuestReward).not.toHaveBeenCalled();
+    expect(telemetry.economyTransactionCommitted).not.toHaveBeenCalled();
     expect(telemetry.questRewardNotReady).toHaveBeenCalledWith(1, {
       playerId: 1,
       questCode: 'awakening_empty_master',
@@ -136,5 +148,20 @@ describe('ClaimQuestReward', () => {
         claimedNow: true,
         book: { claimedCount: 1 },
       });
+  });
+
+  it('still returns a claimed quest when economy telemetry logging fails after persistence', async () => {
+    const repository = createRepository();
+    const telemetry = createTelemetry();
+    telemetry.economyTransactionCommitted.mockRejectedValueOnce(new Error('telemetry offline'));
+
+    await expect(createUseCase(repository, telemetry).execute(1001, 'awakening_empty_master'))
+      .resolves.toMatchObject({
+        claimedNow: true,
+        book: { claimedCount: 1 },
+      });
+
+    expect(telemetry.economyTransactionCommitted).toHaveBeenCalled();
+    expect(telemetry.questRewardClaimed).toHaveBeenCalled();
   });
 });

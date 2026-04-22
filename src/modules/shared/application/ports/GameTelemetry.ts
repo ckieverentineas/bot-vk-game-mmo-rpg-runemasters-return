@@ -2,6 +2,8 @@ import type { RuneRarity, TutorialState } from '../../../../shared/types/game';
 import type { NextGoalType } from '../../../player/application/read-models/next-goal';
 
 export type QuestTelemetryStatus = 'READY_TO_CLAIM' | 'IN_PROGRESS' | 'CLAIMED';
+export type EconomyTransactionType = 'reward_claim';
+export type EconomyTransactionSourceType = 'QUEST_REWARD';
 
 export interface QuestTelemetryPayload {
   readonly playerId: number;
@@ -9,6 +11,16 @@ export interface QuestTelemetryPayload {
   readonly questStatus: QuestTelemetryStatus | null;
   readonly readyToClaimCount: number;
   readonly claimedCount: number;
+}
+
+export interface EconomyTransactionTelemetryPayload {
+  readonly transactionType: EconomyTransactionType;
+  readonly sourceType: EconomyTransactionSourceType;
+  readonly sourceId: string;
+  readonly resourceDustDelta: number;
+  readonly resourceShardsDelta: number;
+  readonly runeDelta: number;
+  readonly playerLevel: number;
 }
 
 export interface GameTelemetry {
@@ -98,6 +110,10 @@ export interface GameTelemetry {
       readonly battleSchoolCode: string | null;
       readonly isSchoolNoviceElite: boolean;
     },
+  ): Promise<void>;
+  economyTransactionCommitted(
+    userId: number,
+    payload: EconomyTransactionTelemetryPayload,
   ): Promise<void>;
   questBookOpened(userId: number, payload: QuestTelemetryPayload): Promise<void>;
   questRewardClaimed(userId: number, payload: QuestTelemetryPayload): Promise<void>;
