@@ -471,6 +471,10 @@ const runQuestBookChecks = async (runtime: LocalPlaytestRuntime): Promise<void> 
   ]);
 };
 
+const runReturnRecapCheck = async (runtime: LocalPlaytestRuntime): Promise<void> => {
+  await runCommand(runtime, 'returning-start', gameCommands.start);
+};
+
 const runFirstSessionScenario = async (runtime: LocalPlaytestRuntime): Promise<LocalPlaytestSummary> => {
   console.log(`\n=== Local playtest: ${runtime.scenarioName} ===`);
   console.log(`Synthetic vkId: ${runtime.vkId}`);
@@ -522,6 +526,8 @@ const runFirstSessionScenario = async (runtime: LocalPlaytestRuntime): Promise<L
   for (const path of schoolNoviceEvidencePaths) {
     await runSchoolNoviceEvidencePath(runtime, path);
   }
+
+  await runReturnRecapCheck(runtime);
 
   const player = await getPlayer(runtime);
   const activeBattle = await getActiveBattle(runtime);

@@ -243,6 +243,7 @@ describe('local playtest harness', () => {
         { action: 'player_registered' },
         { action: 'player_registered' },
         { action: 'first_school_committed' },
+        createLog('return_recap_shown', { nextStepType: 'equip_school_sign' }),
       ],
       questRewardReplaySafe: true,
     });
@@ -250,7 +251,10 @@ describe('local playtest harness', () => {
     expect(summary.logCounts).toEqual({
       player_registered: 2,
       first_school_committed: 1,
+      return_recap_shown: 1,
     });
+    expect(summary.returnRecapShownCount).toBe(1);
+    expect(summary.returnRecapNextStepTypes).toEqual(['equip_school_sign']);
     expect(summary.suspiciousReplyCount).toBe(1);
     expect(summary.trophyCollectionReplyCount).toBe(0);
     expect(summary.questBookReplyCount).toBe(2);
@@ -302,6 +306,7 @@ describe('local playtest harness', () => {
           schoolCode: 'stone',
           actionType: 'open_runes',
         }),
+        createLog('return_recap_shown', { nextStepType: 'equip_school_sign' }),
       ],
       questRewardReplaySafe: true,
     });
@@ -326,6 +331,7 @@ describe('local playtest harness', () => {
       'payload: expected a quest book reply',
       'payload: expected a quest reward claim reply',
       'payload: quest reward replay was not checked',
+      'payload: expected return recap evidence',
       'payload: expected ember school novice elite evidence',
       'payload: expected ember school novice aligned reward evidence',
       'payload: expected stone school novice elite evidence',
@@ -357,6 +363,7 @@ describe('local playtest harness', () => {
       'payload: expected a quest book reply',
       'payload: expected a quest reward claim reply',
       'payload: quest reward replay was not safe',
+      'payload: expected return recap evidence',
       'payload: expected ember school novice elite evidence',
       'payload: expected ember school novice aligned reward evidence',
       'payload: expected stone school novice elite evidence',
@@ -395,6 +402,7 @@ describe('local playtest harness', () => {
     };
 
     expect(listLocalPlaytestFailures(normalizedSummary)).toEqual([
+      'payload: expected return recap evidence',
       'payload: expected ember school novice elite evidence',
       'payload: expected ember school novice aligned reward evidence',
       'payload: expected stone school novice elite evidence',
@@ -452,6 +460,7 @@ describe('local playtest harness', () => {
     };
 
     expect(listLocalPlaytestFailures(normalizedSummary)).toEqual([
+      'payload: expected return recap evidence',
       'payload: expected stone school novice elite evidence',
       'payload: expected stone school novice aligned reward evidence',
       'payload: expected stone school novice rune hub follow-up',
@@ -501,6 +510,7 @@ describe('local playtest harness', () => {
     };
 
     expect(listLocalPlaytestFailures(normalizedSummary)).toEqual([
+      'payload: expected return recap evidence',
       'payload: expected gale school novice elite evidence',
       'payload: expected gale school novice aligned reward evidence',
     ]);
@@ -549,6 +559,7 @@ describe('local playtest harness', () => {
     };
 
     expect(listLocalPlaytestFailures(normalizedSummary)).toEqual([
+      'payload: expected return recap evidence',
       'payload: expected echo school novice elite evidence',
       'payload: expected echo school novice aligned reward evidence',
     ]);
@@ -577,6 +588,7 @@ describe('local playtest harness', () => {
       'payload: expected a quest book reply',
       'payload: expected a quest reward claim reply',
       'payload: quest reward replay was not checked',
+      'payload: expected return recap evidence',
       'payload: expected ember school novice elite evidence',
       'payload: expected ember school novice aligned reward evidence',
       'payload: expected stone school novice elite evidence',

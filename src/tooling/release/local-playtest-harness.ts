@@ -3,6 +3,7 @@ import { type GameCommand, gameCommands } from '../../vk/commands/catalog';
 
 const requiredSchoolNoviceEvidenceCodes = ['ember', 'stone', 'gale', 'echo'] as const;
 const requiredSchoolRuneHubFollowUpCodes = ['stone'] as const;
+const requiredReturnRecapNextStepType = 'equip_school_sign';
 
 type RequiredSchoolNoviceEvidenceCode = typeof requiredSchoolNoviceEvidenceCodes[number];
 type SchoolEvidenceCounts = Readonly<Record<RequiredSchoolNoviceEvidenceCode, number>>;
@@ -11,6 +12,11 @@ interface LocalPlaytestSchoolEvidenceSummary {
   readonly noviceEliteCounts: SchoolEvidenceCounts;
   readonly alignedRewardCounts: SchoolEvidenceCounts;
   readonly runeHubFollowUpCounts: SchoolEvidenceCounts;
+}
+
+interface LocalPlaytestReturnRecapSummary {
+  readonly shownCount: number;
+  readonly nextStepTypes: readonly string[];
 }
 
 export interface LocalPlaytestPayload {
@@ -98,6 +104,8 @@ export interface LocalPlaytestSummary {
   readonly questBookReplyCount: number;
   readonly questRewardClaimReplyCount: number;
   readonly questRewardReplaySafe: boolean | null;
+  readonly returnRecapShownCount: number;
+  readonly returnRecapNextStepTypes: readonly string[];
 }
 
 export interface LocalPlaytestBattleCommand {
@@ -285,6 +293,31 @@ const summarizeSchoolEvidence = (
   };
 };
 
+const summarizeReturnRecapEvidence = (
+  logs: readonly LocalPlaytestLogEntry[],
+): LocalPlaytestReturnRecapSummary => {
+  const nextStepTypes = new Set<string>();
+  let shownCount = 0;
+
+  for (const log of logs) {
+    if (log.action !== 'return_recap_shown') {
+      continue;
+    }
+
+    const details = parseLogDetails(log.details);
+    shownCount += 1;
+
+    if (typeof details.nextStepType === 'string' && details.nextStepType.trim().length > 0) {
+      nextStepTypes.add(details.nextStepType.trim());
+    }
+  }
+
+  return {
+    shownCount,
+    nextStepTypes: [...nextStepTypes].sort((left, right) => left.localeCompare(right)),
+  };
+};
+
 const summarizeRunes = (player: PlayerState): readonly LocalPlaytestRuneSummary[] => (
   player.runes.map((rune) => ({
     name: rune.name,
@@ -298,6 +331,7 @@ const summarizeRunes = (player: PlayerState): readonly LocalPlaytestRuneSummary[
 export const buildLocalPlaytestSummary = (input: LocalPlaytestSummaryInput): LocalPlaytestSummary => {
   const equippedRuneCount = input.player.runes.filter((rune) => rune.isEquipped).length;
   const schoolEvidence = summarizeSchoolEvidence(input.logs);
+  const returnRecapEvidence = summarizeReturnRecapEvidence(input.logs);
 
   return {
     scenarioName: input.scenarioName,
@@ -323,6 +357,8 @@ export const buildLocalPlaytestSummary = (input: LocalPlaytestSummaryInput): Loc
     questBookReplyCount: input.transcript.filter((entry) => isQuestBookReply(entry.reply)).length,
     questRewardClaimReplyCount: input.transcript.filter((entry) => isQuestRewardClaimReply(entry.reply)).length,
     questRewardReplaySafe: input.questRewardReplaySafe ?? null,
+    returnRecapShownCount: returnRecapEvidence.shownCount,
+    returnRecapNextStepTypes: returnRecapEvidence.nextStepTypes,
   };
 };
 
@@ -371,6 +407,12 @@ export const listLocalPlaytestFailures = (summary: LocalPlaytestSummary): readon
 
   if (summary.scenarioName === 'payload' && summary.questRewardReplaySafe === null) {
     failures.push(`${summary.scenarioName}: quest reward replay was not checked`);
+  }
+
+  if (summary.returnRecapShownCount < 1) {
+    failures.push(`${summary.scenarioName}: expected return recap evidence`);
+  } else if (!summary.returnRecapNextStepTypes.includes(requiredReturnRecapNextStepType)) {
+    failures.push(`${summary.scenarioName}: expected return recap next step ${requiredReturnRecapNextStepType}`);
   }
 
   for (const schoolCode of requiredSchoolNoviceEvidenceCodes) {

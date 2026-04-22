@@ -1,35 +1,35 @@
 # Release Evidence Report
 
-Сгенерировано: 2026-04-22T13:46:12.085Z
-Запрошенное окно: 2026-04-15T13:46:12.054Z → 2026-04-22T13:46:12.054Z
-Окно evidence: 2026-04-20T13:13:31.588Z → 2026-04-22T13:45:57.000Z
-Уникальных игроков в выборке: 44
+Сгенерировано: 2026-04-22T13:53:40.885Z
+Запрошенное окно: 2026-04-15T13:53:40.854Z → 2026-04-22T13:53:40.854Z
+Окно evidence: 2026-04-20T13:13:31.588Z → 2026-04-22T13:53:26.241Z
+Уникальных игроков в выборке: 46
 
 ## Evidence verdict
 
 - Статус: `warn`
 - `first_school_committed` покрывает не все first-school reveal случаи, поэтому onboarding commit funnel ещё неполный.
 - После novice payoff игроки не доводят знак до сборки: Пламя, Твердь, Буря, Прорицание.
-- В текущем окне нет `return_recap_shown`, поэтому return clarity пока не подтверждена evidence pass.
+- `return_recap_shown` пока не показывает follow-up proxy после экрана возврата.
 
 ## Sample health
 
 | Сигнал | Событий | Уникальных игроков |
 | --- | --- | --- |
-| `onboarding_started` | 44 | 44 |
-| `tutorial_path_chosen` | 44 | 44 |
-| `loadout_changed` | 42 | 41 |
-| `first_school_presented` | 106 | 44 |
-| `first_school_committed` | 41 | 41 |
-| `school_novice_elite_encounter_started` | 62 | 20 |
-| `school_novice_follow_up_action_taken` | 60 | 41 |
-| `return_recap_shown` | 0 | 0 |
+| `onboarding_started` | 46 | 46 |
+| `tutorial_path_chosen` | 46 | 46 |
+| `loadout_changed` | 44 | 43 |
+| `first_school_presented` | 116 | 46 |
+| `first_school_committed` | 43 | 43 |
+| `school_novice_elite_encounter_started` | 70 | 22 |
+| `school_novice_follow_up_action_taken` | 64 | 43 |
+| `return_recap_shown` | 2 | 2 |
 | `post_session_next_goal_shown` | 7 | 5 |
-| `reward_claim_applied` | 108 | 44 |
-| `economy_transaction_committed` | 2 | 2 |
-| `quest_book_opened` | 32 | 32 |
-| `quest_reward_claimed` | 32 | 32 |
-| `quest_reward_replayed` | 16 | 16 |
+| `reward_claim_applied` | 118 | 46 |
+| `economy_transaction_committed` | 4 | 4 |
+| `quest_book_opened` | 34 | 34 |
+| `quest_reward_claimed` | 34 | 34 |
+| `quest_reward_replayed` | 17 | 17 |
 | `quest_reward_not_ready` | 0 | 0 |
 | `battle_stale_action_rejected` | 0 | 0 |
 
@@ -37,15 +37,15 @@
 
 | Tutorial state | Событий | Уникальных игроков |
 | --- | --- | --- |
-| ACTIVE | 44 | 44 |
+| ACTIVE | 46 | 46 |
 
 | Path choice | Событий | Уникальных игроков |
 | --- | --- | --- |
-| continue_tutorial | 44 | 44 |
+| continue_tutorial | 46 | 46 |
 
 | Школа | First presented | First committed |
 | --- | --- | --- |
-| Пламя | 44 | 41 |
+| Пламя | 46 | 43 |
 | Твердь | 0 | 0 |
 | Буря | 0 | 0 |
 | Прорицание | 0 | 0 |
@@ -56,19 +56,19 @@
 
 | Школа | Novice elite | UNUSUAL reward | Open runes | Equip sign | Follow-up battle | RARE seal | Latest event |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| Пламя | 20 | 20 | 0 | 41 | 1 | 0 | 2026-04-22T13:45:51.190Z |
-| Твердь | 16 | 16 | 16 | 0 | 0 | 0 | 2026-04-22T13:45:53.665Z |
-| Буря | 14 | 14 | 0 | 0 | 0 | 0 | 2026-04-22T13:45:54.876Z |
-| Прорицание | 12 | 12 | 0 | 0 | 0 | 0 | 2026-04-22T13:45:56.713Z |
+| Пламя | 22 | 22 | 0 | 43 | 1 | 0 | 2026-04-22T13:53:20.213Z |
+| Твердь | 18 | 18 | 18 | 0 | 0 | 0 | 2026-04-22T13:53:22.712Z |
+| Буря | 16 | 16 | 0 | 0 | 0 | 0 | 2026-04-22T13:53:23.954Z |
+| Прорицание | 14 | 14 | 0 | 0 | 0 | 0 | 2026-04-22T13:53:25.575Z |
 
 ## Post-payoff loadout engagement
 
 | Школа | Aligned reward | Open runes after reward | Equip sign after reward | Loadout change after reward | Next battle after reward | RARE seal |
 | --- | --- | --- | --- | --- | --- | --- |
-| Пламя | 20 | 0 | 0 | 0 | 0 | 0 |
-| Твердь | 16 | 16 | 0 | 0 | 0 | 0 |
-| Буря | 14 | 0 | 0 | 0 | 0 | 0 |
-| Прорицание | 12 | 0 | 0 | 0 | 0 | 0 |
+| Пламя | 22 | 0 | 0 | 0 | 0 | 0 |
+| Твердь | 18 | 18 | 0 | 0 | 0 | 0 |
+| Буря | 16 | 0 | 0 | 0 | 0 | 0 |
+| Прорицание | 14 | 0 | 0 | 0 | 0 | 0 |
 
 ## Post-session next-goal health
 
@@ -79,22 +79,24 @@
 
 ## Return recap health
 
-_Нет данных в текущем окне._
+| Next step | Shown | Без руны | С руной | Follow-up users |
+| --- | --- | --- | --- | --- |
+| equip_school_sign | 2 | 0 | 2 | 0 |
 
 ## Quest book funnel
 
 | Quest signal | Events | Unique users | Quest codes | Latest event |
 | --- | --- | --- | --- | --- |
-| `quest_book_opened` | 32 | 32 | none | 2026-04-22T13:45:48.930Z |
-| `quest_reward_claimed` | 32 | 32 | awakening_empty_master | 2026-04-22T13:45:49.282Z |
-| `quest_reward_replayed` | 16 | 16 | awakening_empty_master | 2026-04-22T13:45:49.405Z |
+| `quest_book_opened` | 34 | 34 | none | 2026-04-22T13:53:17.911Z |
+| `quest_reward_claimed` | 34 | 34 | awakening_empty_master | 2026-04-22T13:53:18.326Z |
+| `quest_reward_replayed` | 17 | 17 | awakening_empty_master | 2026-04-22T13:53:18.462Z |
 | `quest_reward_not_ready` | 0 | 0 | none | none |
 
 ## Economy health
 
 | Transaction | Source | Events | Unique users | Dust delta | Shards delta | Rune delta | Source IDs | Latest event |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| reward_claim | QUEST_REWARD | 2 | 2 | 10 | 2 | 0 | awakening_empty_master | 2026-04-22T13:45:49.176Z |
+| reward_claim | QUEST_REWARD | 4 | 4 | 20 | 4 | 0 | awakening_empty_master | 2026-04-22T13:53:18.203Z |
 
 ## QA / exploit guardrails
 
