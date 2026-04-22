@@ -65,6 +65,44 @@ describe('resolveTrophyActions', () => {
     ]);
   });
 
+  it('offers an ember hidden trophy action for the ash seer when ember is equipped', () => {
+    expect(resolveTrophyActions({
+      kind: 'mage',
+      code: 'ash-seer',
+      equippedSchoolCode: 'ember',
+    })).toEqual([
+      {
+        code: 'draw_ember_sign',
+        label: '🔥 Вытянуть знак Пламени',
+        skillCodes: ['gathering.essence_extraction'],
+        visibleRewardFields: ['essence'],
+      },
+      {
+        code: 'extract_essence',
+        label: '🔮 Разобрать фокус',
+        skillCodes: ['gathering.essence_extraction'],
+        visibleRewardFields: ['essence'],
+      },
+      {
+        code: 'claim_all',
+        label: '🎒 Забрать добычу',
+        skillCodes: [],
+        visibleRewardFields: [],
+      },
+    ]);
+  });
+
+  it('keeps the ember hidden trophy action locked without the ember school', () => {
+    expect(resolveTrophyActions({
+      kind: 'mage',
+      code: 'ash-seer',
+      equippedSchoolCode: 'stone',
+    }).map((action) => action.code)).toEqual([
+      'extract_essence',
+      'claim_all',
+    ]);
+  });
+
   it('models fallback collection as ordinary material loot without skill progress', () => {
     const [claimAll] = resolveTrophyActions({ kind: 'unknown' });
 
@@ -214,6 +252,37 @@ describe('resolveTrophyActions', () => {
         {
           skillCode: 'gathering.essence_extraction',
           points: 1,
+        },
+      ],
+    });
+  });
+
+  it('resolves the ember hidden trophy reward before the pending snapshot is persisted', () => {
+    const [drawEmberSign] = resolveTrophyActions({
+      kind: 'mage',
+      code: 'ash-seer',
+      equippedSchoolCode: 'ember',
+    });
+
+    expect(resolveTrophyActionReward({
+      kind: 'mage',
+      code: 'ash-seer',
+      equippedSchoolCode: 'ember',
+      isElite: true,
+      isBoss: false,
+      lootTable: {
+        herb: 2,
+        essence: 1,
+      },
+    }, drawEmberSign!)).toEqual({
+      actionCode: 'draw_ember_sign',
+      inventoryDelta: {
+        essence: 2,
+      },
+      skillPoints: [
+        {
+          skillCode: 'gathering.essence_extraction',
+          points: 2,
         },
       ],
     });

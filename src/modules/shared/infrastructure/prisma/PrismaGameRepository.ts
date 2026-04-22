@@ -42,7 +42,12 @@ import {
   type PendingRewardTrophyActionSnapshot,
 } from '../../../rewards/domain/pending-reward-snapshot';
 import { resolveTrophyActionReward, resolveTrophyActions } from '../../../rewards/domain/trophy-actions';
-import type { TrophyActionCode, TrophyActionDefinition, TrophyActionReward } from '../../../rewards/domain/trophy-actions';
+import type {
+  TrophyActionCode,
+  TrophyActionDefinition,
+  TrophyActionEnemyContext,
+  TrophyActionReward,
+} from '../../../rewards/domain/trophy-actions';
 import { getSchoolDefinitionForArchetype } from '../../../runes/domain/rune-schools';
 import { buildLoadoutSnapshotFromBattle } from '../../domain/contracts/loadout-snapshot';
 import {
@@ -185,10 +190,23 @@ const buildPendingRewardInventoryDelta = (
   action.reward ? { ...action.reward.inventoryDelta } : {}
 );
 
+const resolveBattlePlayerSchoolCode = (battle: BattleView): string | null => (
+  battle.player.runeLoadout?.schoolCode
+  ?? getSchoolDefinitionForArchetype(battle.player.runeLoadout?.archetypeCode)?.code
+  ?? null
+);
+
+const createTrophyActionEnemyContext = (battle: BattleView): TrophyActionEnemyContext => ({
+  kind: battle.enemy.kind,
+  code: battle.enemy.code,
+  equippedSchoolCode: resolveBattlePlayerSchoolCode(battle),
+});
+
 const resolvePendingRewardTrophyActionRewards = (
-  enemy: BattleView['enemy'],
+  battle: BattleView,
   actions: readonly TrophyActionDefinition[],
 ): readonly TrophyActionReward[] => {
+  const { enemy } = battle;
   const lootTable = enemy.lootTable;
 
   if (!lootTable) {
@@ -196,7 +214,7 @@ const resolvePendingRewardTrophyActionRewards = (
   }
 
   return actions.map((action) => resolveTrophyActionReward({
-    kind: enemy.kind,
+    ...createTrophyActionEnemyContext(battle),
     isElite: enemy.isElite,
     isBoss: enemy.isBoss,
     lootTable,
@@ -214,12 +232,12 @@ const createPendingRewardLedgerForBattle = (
     return null;
   }
 
-  const trophyActions = resolveTrophyActions(battle.enemy);
+  const trophyActions = resolveTrophyActions(createTrophyActionEnemyContext(battle));
   const pendingRewardSnapshot = createPendingRewardSnapshot(
     rewardIntent,
     trophyActions,
     createdAt,
-    resolvePendingRewardTrophyActionRewards(battle.enemy, trophyActions),
+    resolvePendingRewardTrophyActionRewards(battle, trophyActions),
   );
 
   return createPendingRewardLedgerEntry(pendingRewardSnapshot);
@@ -2166,9 +2184,7 @@ export class PrismaGameRepository implements GameRepository {
         }
 
         const novicePath = getSchoolNovicePathDefinitionForEnemy(battle.enemy.code);
-        const battleSchoolCode = battle.player.runeLoadout?.schoolCode
-          ?? getSchoolDefinitionForArchetype(battle.player.runeLoadout?.archetypeCode)?.code
-          ?? null;
+        const battleSchoolCode = resolveBattlePlayerSchoolCode(battle);
         const rewardRune = rewardIntent.payload.droppedRune;
         const rewardRuneSchoolCode = getSchoolDefinitionForArchetype(rewardRune?.archetypeCode)?.code ?? null;
         const hadTargetRarityBefore = novicePath

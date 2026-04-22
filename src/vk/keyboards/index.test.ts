@@ -264,6 +264,32 @@ describe('profile keyboard', () => {
     expect(serializeKeyboard(createMainMenuKeyboard(createPlayer())).isInline).toBe(false);
   });
 
+  it('turns ember hidden trophy actions into ledger-scoped trophy buttons', () => {
+    const pendingReward = createPendingReward();
+    const keyboard = createPendingRewardKeyboard({
+      ...pendingReward,
+      snapshot: {
+        ...pendingReward.snapshot,
+        trophyActions: [
+          {
+            code: 'draw_ember_sign',
+            label: '🔥 Вытянуть знак Пламени',
+            skillCodes: ['gathering.essence_extraction'],
+            visibleRewardFields: ['essence'],
+          },
+          ...pendingReward.snapshot.trophyActions,
+        ],
+      },
+    });
+    const labels = collectLabels(keyboard);
+    const payloads = collectPayloads(keyboard);
+
+    expect(gameCommands.drawEmberSignReward).toBe('вытянуть знак');
+    expect(labels).toContain('🔥 Вытянуть знак Пламени');
+    expect(payloads.find((payload) => payload.command === gameCommands.drawEmberSignReward)?.stateKey)
+      .toBe('battle-victory:battle-1');
+  });
+
   it('keeps profile keyboard focused on navigation and delete confirmation', () => {
     const payloads = collectPayloads(createProfileKeyboard(createPlayer()));
 

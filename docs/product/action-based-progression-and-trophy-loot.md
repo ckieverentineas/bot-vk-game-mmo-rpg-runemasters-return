@@ -490,11 +490,12 @@ Player-facing decision:
 - `начать`, `исследовать` и отдельная команда `добыча` возвращают к несобранной награде;
 - выбранное trophy action собирается exact-once и переводит ledger в `APPLIED`;
 - `claim_all` даёт быстрый безопасный сбор без skill progress;
+- первый hidden school pool добавляет `🔥 Вытянуть знак Пламени` для `ash-seer`, если экипирована школа Пламени; reward preview фиксируется в pending snapshot как +2 essence и рост `gathering.essence_extraction`;
 - bootstrap восстанавливает отсутствующие pending reward ledger-записи для уже завершённых победных боёв.
 
 Что всё ещё не входит:
 
-- hidden school pools;
+- hidden school pools за пределами первого Ember / ash-seer среза;
 - unlock действий по skill thresholds;
 - action-based stat growth;
 - глубокая роль навыков в профиле, сборке и будущих unlock'ах.
@@ -522,11 +523,12 @@ Player-facing decision:
 17. Done: `feat: add reagent gathering skill growth depth`
 18. Done: `feat: add essence extraction skill growth depth`
 19. Done: `docs: define skill display style`
-20. Later: `feat: add hidden drop pools by school`
-21. Later: `feat: unlock trophy actions by skill thresholds`
-22. Later: `feat: connect rune school behavior to school growth`
-23. Later: `feat: connect combat behavior to stat growth`
-24. Later: `docs: update OBT tester guide for action progression`
+20. Done: `feat: add ember hidden trophy pool`
+21. Later: `feat: expand hidden drop pools by school`
+22. Later: `feat: unlock trophy actions by skill thresholds`
+23. Later: `feat: connect rune school behavior to school growth`
+24. Later: `feat: connect combat behavior to stat growth`
+25. Later: `docs: update OBT tester guide for action progression`
 
 ---
 

@@ -11,7 +11,8 @@ export type TrophyActionCode =
   | 'claim_all'
   | 'skin_beast'
   | 'gather_slime'
-  | 'extract_essence';
+  | 'extract_essence'
+  | 'draw_ember_sign';
 
 export interface TrophyActionDefinition {
   readonly code: TrophyActionCode;
@@ -22,6 +23,8 @@ export interface TrophyActionDefinition {
 
 export interface TrophyActionEnemyContext {
   readonly kind: string;
+  readonly code?: string | null;
+  readonly equippedSchoolCode?: string | null;
 }
 
 export interface TrophyActionRewardEnemyContext extends TrophyActionEnemyContext {
@@ -45,6 +48,13 @@ const claimAllAction: TrophyActionDefinition = {
   label: '🎒 Забрать добычу',
   skillCodes: [],
   visibleRewardFields: [],
+};
+
+const drawEmberSignAction: TrophyActionDefinition = {
+  code: 'draw_ember_sign',
+  label: '🔥 Вытянуть знак Пламени',
+  skillCodes: ['gathering.essence_extraction'],
+  visibleRewardFields: ['essence'],
 };
 
 const trophyActionsByEnemyKind: Readonly<Record<string, readonly TrophyActionDefinition[]>> = {
@@ -90,9 +100,20 @@ const trophyActionsByEnemyKind: Readonly<Record<string, readonly TrophyActionDef
   ],
 };
 
+const resolveHiddenTrophyActions = (
+  enemy: TrophyActionEnemyContext,
+): readonly TrophyActionDefinition[] => {
+  if (enemy.code === 'ash-seer' && enemy.equippedSchoolCode === 'ember') {
+    return [drawEmberSignAction];
+  }
+
+  return [];
+};
+
 export const resolveTrophyActions = (enemy: TrophyActionEnemyContext): readonly TrophyActionDefinition[] => {
+  const hiddenActions = resolveHiddenTrophyActions(enemy);
   const contextualActions = trophyActionsByEnemyKind[enemy.kind] ?? [];
-  return [...contextualActions, claimAllAction];
+  return [...hiddenActions, ...contextualActions, claimAllAction];
 };
 
 const isMaterialField = (field: InventoryField): field is MaterialField => (
@@ -191,18 +212,46 @@ const applyEssenceExtractionRewardVariation = (
   };
 };
 
+const applyEmberHiddenRewardVariation = (
+  enemy: TrophyActionRewardEnemyContext,
+  action: TrophyActionDefinition,
+  inventoryDelta: InventoryDelta,
+): InventoryDelta => {
+  if (
+    action.code !== 'draw_ember_sign'
+    || enemy.code !== 'ash-seer'
+    || enemy.equippedSchoolCode !== 'ember'
+  ) {
+    return inventoryDelta;
+  }
+
+  const essence = inventoryDelta.essence ?? 0;
+  if (essence <= 0) {
+    return inventoryDelta;
+  }
+
+  return {
+    ...inventoryDelta,
+    essence: essence + 1,
+  };
+};
+
 const applyTrophyRewardVariations = (
   enemy: TrophyActionRewardEnemyContext,
   action: TrophyActionDefinition,
   inventoryDelta: InventoryDelta,
 ): InventoryDelta => (
-  applyEssenceExtractionRewardVariation(
+  applyEmberHiddenRewardVariation(
     enemy,
     action,
-    applyReagentGatheringRewardVariation(
+    applyEssenceExtractionRewardVariation(
       enemy,
       action,
-      applySkinningRewardVariation(enemy, action, inventoryDelta),
+      applyReagentGatheringRewardVariation(
+        enemy,
+        action,
+        applySkinningRewardVariation(enemy, action, inventoryDelta),
+      ),
     ),
   )
 );

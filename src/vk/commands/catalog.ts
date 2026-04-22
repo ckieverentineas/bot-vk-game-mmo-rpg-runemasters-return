@@ -20,6 +20,7 @@ export const gameCommands = {
   skinBeastReward: 'свежевать',
   gatherSlimeReward: 'собрать слизь',
   extractEssenceReward: 'извлечь эссенцию',
+  drawEmberSignReward: 'вытянуть знак',
   engageBattle: 'в бой',
   fleeBattle: 'отступить',
   attack: 'атака',
@@ -80,7 +81,8 @@ type TrophyActionCommand =
   | typeof gameCommands.collectAllReward
   | typeof gameCommands.skinBeastReward
   | typeof gameCommands.gatherSlimeReward
-  | typeof gameCommands.extractEssenceReward;
+  | typeof gameCommands.extractEssenceReward
+  | typeof gameCommands.drawEmberSignReward;
 
 type RuneCursorDelta = number;
 
@@ -115,6 +117,7 @@ const trophyActionCommandMap = {
   [gameCommands.skinBeastReward]: 'skin_beast',
   [gameCommands.gatherSlimeReward]: 'gather_slime',
   [gameCommands.extractEssenceReward]: 'extract_essence',
+  [gameCommands.drawEmberSignReward]: 'draw_ember_sign',
 } satisfies Readonly<Record<TrophyActionCommand, TrophyActionCode>>;
 
 const trophyActionCodeCommandMap = {
@@ -122,6 +125,7 @@ const trophyActionCodeCommandMap = {
   skin_beast: gameCommands.skinBeastReward,
   gather_slime: gameCommands.gatherSlimeReward,
   extract_essence: gameCommands.extractEssenceReward,
+  draw_ember_sign: gameCommands.drawEmberSignReward,
 } satisfies Readonly<Record<TrophyActionCode, TrophyActionCommand>>;
 
 export const commandAliases: Readonly<Record<string, GameCommand>> = {

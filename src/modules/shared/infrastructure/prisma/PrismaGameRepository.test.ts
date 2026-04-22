@@ -322,6 +322,21 @@ const createTrophyActions = (): readonly TrophyActionDefinition[] => [
   },
 ];
 
+const createEmberHiddenTrophyActions = (): readonly TrophyActionDefinition[] => [
+  {
+    code: 'draw_ember_sign',
+    label: '🔥 Вытянуть знак Пламени',
+    skillCodes: ['gathering.essence_extraction'],
+    visibleRewardFields: ['essence'],
+  },
+  {
+    code: 'claim_all',
+    label: 'Claim all',
+    skillCodes: [],
+    visibleRewardFields: [],
+  },
+];
+
 const createPendingRewardLedgerRecord = () => {
   const pendingSnapshot = createPendingRewardSnapshot(
     createRewardIntent(),
@@ -883,6 +898,79 @@ describe('PrismaGameRepository release hardening', () => {
     expect(result.selectedActionCode).toBe('skin_beast');
     expect(result.appliedResult).toEqual(appliedResult);
     expect(tx.rewardLedgerRecord.updateMany).not.toHaveBeenCalled();
+    expect(tx.playerSkill.upsert).not.toHaveBeenCalled();
+  });
+
+  it('replays an already applied ember hidden trophy reward without rerolling it', async () => {
+    const { repository, tx } = createPrismaMock();
+    const createdAt = '2026-04-22T00:00:00.000Z';
+    const appliedAt = '2026-04-22T00:01:00.000Z';
+    const pendingSnapshot = createPendingRewardSnapshot(
+      createRewardIntent(),
+      createEmberHiddenTrophyActions(),
+      createdAt,
+      [
+        {
+          actionCode: 'draw_ember_sign',
+          inventoryDelta: {
+            essence: 2,
+          },
+          skillPoints: [
+            {
+              skillCode: 'gathering.essence_extraction',
+              points: 2,
+            },
+          ],
+        },
+      ],
+    );
+    const pendingLedger = createPendingRewardLedgerEntry(pendingSnapshot);
+    const appliedResult: PendingRewardAppliedResultSnapshot = {
+      baseRewardApplied: true,
+      inventoryDelta: {
+        essence: 2,
+      },
+      skillUps: [
+        {
+          skillCode: 'gathering.essence_extraction',
+          experienceBefore: 0,
+          experienceAfter: 2,
+          rankBefore: 0,
+          rankAfter: 0,
+        },
+      ],
+      statUps: [],
+      schoolUps: [],
+    };
+    const appliedLedger = createAppliedPendingRewardLedgerEntry({
+      ...pendingLedger.pendingRewardSnapshot,
+      status: 'APPLIED',
+      selectedActionCode: 'draw_ember_sign',
+      appliedResult,
+      updatedAt: appliedAt,
+    }, appliedAt);
+
+    tx.rewardLedgerRecord.findUnique.mockResolvedValue({
+      id: 'reward-ledger-row-1',
+      playerId: 1,
+      ledgerKey: appliedLedger.ledgerKey,
+      sourceType: appliedLedger.sourceType,
+      sourceId: appliedLedger.sourceId,
+      status: 'APPLIED',
+      entrySnapshot: JSON.stringify(appliedLedger),
+      appliedAt: new Date(appliedAt),
+      createdAt: new Date(createdAt),
+      updatedAt: new Date(appliedAt),
+    });
+    tx.player.findUnique.mockResolvedValue(createPlayerRecord());
+
+    const result = await repository.collectPendingReward(1, 'battle-victory:battle-1', 'claim_all');
+
+    expect(result.ledgerKey).toBe('battle-victory:battle-1');
+    expect(result.selectedActionCode).toBe('draw_ember_sign');
+    expect(result.appliedResult).toEqual(appliedResult);
+    expect(tx.rewardLedgerRecord.updateMany).not.toHaveBeenCalled();
+    expect(tx.playerInventory.updateMany).not.toHaveBeenCalled();
     expect(tx.playerSkill.upsert).not.toHaveBeenCalled();
   });
 
@@ -1585,6 +1673,87 @@ describe('PrismaGameRepository release hardening', () => {
       data: expect.objectContaining({
         action: 'reward_claim_applied',
       }),
+    });
+  });
+
+  it('adds the ember hidden trophy action to ash seer pending rewards when ember is equipped', async () => {
+    const { repository, tx } = createPrismaMock();
+    const battleView = createBattleView({
+      enemyCode: 'ash-seer',
+      player: {
+        ...createBattleView().player,
+        runeLoadout: {
+          runeId: 'rune-ember-1',
+          runeName: 'Руна Пламени',
+          archetypeCode: 'ember',
+          archetypeName: 'Штурм',
+          schoolCode: 'ember',
+          passiveAbilityCodes: ['ember_heart'],
+          activeAbility: {
+            code: 'ember_pulse',
+            name: 'Импульс углей',
+            manaCost: 3,
+            cooldownTurns: 2,
+            currentCooldown: 0,
+          },
+        },
+      },
+      enemy: {
+        ...createBattleView().enemy,
+        code: 'ash-seer',
+        name: 'Пепельная ведунья',
+        kind: 'mage',
+        isElite: true,
+        lootTable: {
+          herb: 2,
+          essence: 1,
+        },
+      },
+    });
+    const persistedBattle = createBattleRow({
+      status: 'COMPLETED',
+      result: 'VICTORY',
+      enemyCode: 'ash-seer',
+      enemyName: 'Пепельная ведунья',
+      rewardsSnapshot: JSON.stringify(battleView.rewards),
+      enemySnapshot: JSON.stringify(battleView.enemy),
+    });
+
+    tx.battleSession.updateMany.mockResolvedValue({ count: 1 });
+    tx.player.findUnique.mockResolvedValue(createPlayerRecord());
+    tx.player.update.mockResolvedValue({});
+    tx.playerProgress.update.mockResolvedValue({});
+    tx.playerInventory.update.mockResolvedValue({});
+    tx.battleSession.findFirst.mockResolvedValue(persistedBattle);
+
+    await repository.finalizeBattle(1, battleView);
+
+    const ledgerSnapshot = JSON.parse(String(tx.rewardLedgerRecord.create.mock.calls[0]?.[0]?.data?.entrySnapshot));
+    const trophyActions = ledgerSnapshot.pendingRewardSnapshot.trophyActions as Array<{
+      readonly code: string;
+      readonly reward?: unknown;
+    }>;
+
+    expect(trophyActions.map((action) => action.code)).toEqual([
+      'draw_ember_sign',
+      'extract_essence',
+      'claim_all',
+    ]);
+    expect(trophyActions.find((action) => action.code === 'draw_ember_sign')).toMatchObject({
+      code: 'draw_ember_sign',
+      skillCodes: ['gathering.essence_extraction'],
+      visibleRewardFields: ['essence'],
+      reward: {
+        inventoryDelta: {
+          essence: 2,
+        },
+        skillPoints: [
+          {
+            skillCode: 'gathering.essence_extraction',
+            points: 2,
+          },
+        ],
+      },
     });
   });
 

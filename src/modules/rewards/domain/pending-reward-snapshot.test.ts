@@ -35,6 +35,21 @@ const trophyActions: readonly TrophyActionDefinition[] = [
   },
 ];
 
+const emberHiddenTrophyActions: readonly TrophyActionDefinition[] = [
+  {
+    code: 'draw_ember_sign',
+    label: '🔥 Вытянуть знак Пламени',
+    skillCodes: ['gathering.essence_extraction'],
+    visibleRewardFields: ['essence'],
+  },
+  {
+    code: 'claim_all',
+    label: '🎒 Забрать добычу',
+    skillCodes: [],
+    visibleRewardFields: [],
+  },
+];
+
 describe('pending reward snapshots', () => {
   it('creates a versioned pending snapshot from a reward intent and trophy actions', () => {
     const snapshot = createPendingRewardSnapshot(
@@ -115,6 +130,55 @@ describe('pending reward snapshots', () => {
           },
           skillPoints: [],
         },
+      },
+    ]);
+    expect(isPendingRewardSnapshot(snapshot)).toBe(true);
+  });
+
+  it('accepts ember hidden trophy rewards as canonical pending snapshot data', () => {
+    const snapshot = createPendingRewardSnapshot(
+      createRewardIntent(),
+      emberHiddenTrophyActions,
+      '2026-04-22T00:00:00.000Z',
+      [
+        {
+          actionCode: 'draw_ember_sign',
+          inventoryDelta: {
+            essence: 2,
+          },
+          skillPoints: [
+            {
+              skillCode: 'gathering.essence_extraction',
+              points: 2,
+            },
+          ],
+        },
+      ],
+    );
+
+    expect(snapshot.trophyActions).toEqual([
+      {
+        code: 'draw_ember_sign',
+        label: '🔥 Вытянуть знак Пламени',
+        skillCodes: ['gathering.essence_extraction'],
+        visibleRewardFields: ['essence'],
+        reward: {
+          inventoryDelta: {
+            essence: 2,
+          },
+          skillPoints: [
+            {
+              skillCode: 'gathering.essence_extraction',
+              points: 2,
+            },
+          ],
+        },
+      },
+      {
+        code: 'claim_all',
+        label: '🎒 Забрать добычу',
+        skillCodes: [],
+        visibleRewardFields: [],
       },
     ]);
     expect(isPendingRewardSnapshot(snapshot)).toBe(true);
