@@ -20,6 +20,10 @@ export type QuestCode =
   | 'second_rune_silence'
   | 'first_pattern'
   | 'craft_after_battle'
+  | 'forest_second_shadow'
+  | 'five_battle_marks'
+  | 'deep_forest_campfire'
+  | 'forgotten_cave_mouth'
   | 'ember_finishing_spark'
   | 'ember_light_fear'
   | 'ember_ash_seal'
@@ -81,6 +85,13 @@ const gatheringSkillCodes = [
   'gathering.essence_extraction',
 ] satisfies readonly PlayerSkillCode[];
 
+const worldTrailMilestones = {
+  forestSecondShadow: 3,
+  fiveBattleMarks: 5,
+  deepForestCampfire: 10,
+  forgottenCaveMouth: 16,
+} as const;
+
 const isGatheringSkillCode = (skillCode: PlayerSkillCode): boolean => (
   (gatheringSkillCodes as readonly PlayerSkillCode[]).includes(skillCode)
 );
@@ -121,6 +132,14 @@ const highestGatheringSkillExperience = (player: PlayerState): number => (
       .filter((skill) => isGatheringSkillCode(skill.skillCode))
       .map((skill) => skill.experience),
   )
+);
+
+const highestLocationProgress = (player: PlayerState, required: number): QuestProgress => (
+  clampProgress(player.highestLocationLevel, required)
+);
+
+const mobsKilledProgress = (player: PlayerState, required: number): QuestProgress => (
+  clampProgress(player.mobsKilled, required)
 );
 
 const resolveSchoolQuestProgress = (
@@ -444,6 +463,54 @@ const questDefinitions: readonly QuestDefinition[] = [
       inventoryDelta: { leather: 1, bone: 1 },
     },
     progress: (player) => clampProgress(highestGatheringSkillExperience(player), 1),
+  },
+  {
+    code: 'forest_second_shadow',
+    icon: '🌲',
+    title: 'Вторая тень леса',
+    story: 'Тёмный лес перестаёт быть стеной: между стволами появляется направление.',
+    objective: 'Дойти до 3-го следа Тёмного леса.',
+    reward: {
+      gold: 10,
+      inventoryDelta: { herb: 1 },
+    },
+    progress: (player) => highestLocationProgress(player, worldTrailMilestones.forestSecondShadow),
+  },
+  {
+    code: 'five_battle_marks',
+    icon: '⚔️',
+    title: 'Пять отметин дороги',
+    story: 'Пять схваток уже не шум. Это карта, написанная пылью на сапогах.',
+    objective: 'Победить 5 врагов на дороге.',
+    reward: {
+      gold: 12,
+      inventoryDelta: { usualShards: 2 },
+    },
+    progress: (player) => mobsKilledProgress(player, worldTrailMilestones.fiveBattleMarks),
+  },
+  {
+    code: 'deep_forest_campfire',
+    icon: '🔥',
+    title: 'Костёр среди чащи',
+    story: 'Когда след уходит глубже, огонь перестаёт быть привалом и становится знаком возврата.',
+    objective: 'Дойти до 10-го следа Тёмного леса.',
+    reward: {
+      gold: 16,
+      inventoryDelta: { leather: 1, bone: 1 },
+    },
+    progress: (player) => highestLocationProgress(player, worldTrailMilestones.deepForestCampfire),
+  },
+  {
+    code: 'forgotten_cave_mouth',
+    icon: '🕳️',
+    title: 'Устье забытых пещер',
+    story: 'Лес отпускает мастера к камню. Внизу уже слышно, как мир меняет голос.',
+    objective: 'Дойти до 16-го следа и открыть Забытые пещеры.',
+    reward: {
+      gold: 20,
+      inventoryDelta: { unusualShards: 1, crystal: 1 },
+    },
+    progress: (player) => highestLocationProgress(player, worldTrailMilestones.forgottenCaveMouth),
   },
   ...schoolQuestDefinitions,
 ];

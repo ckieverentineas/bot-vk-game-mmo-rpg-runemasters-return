@@ -171,6 +171,64 @@ describe('buildQuestBookView', () => {
     expect(statuses.get('craft_after_battle')).toBe('IN_PROGRESS');
   });
 
+  it('adds world trail chapter from exploration state', () => {
+    const player = createPlayer({
+      highestLocationLevel: 16,
+      mobsKilled: 5,
+    });
+
+    const book = buildQuestBookView(player, []);
+    const statuses = new Map(book.quests.map((quest) => [quest.code, quest.status]));
+    const progresses = new Map(book.quests.map((quest) => [quest.code, quest.progress]));
+    const worldTrailChapter: Readonly<Record<string, QuestStatus>> = {
+      forest_second_shadow: 'READY_TO_CLAIM',
+      five_battle_marks: 'READY_TO_CLAIM',
+      deep_forest_campfire: 'READY_TO_CLAIM',
+      forgotten_cave_mouth: 'READY_TO_CLAIM',
+    };
+
+    expect(book.quests.map((quest) => quest.code)).toEqual(expect.arrayContaining(Object.keys(worldTrailChapter)));
+    for (const [questCode, status] of Object.entries(worldTrailChapter)) {
+      expect(statuses.get(questCode)).toBe(status);
+    }
+    expect(progresses.get('deep_forest_campfire')).toEqual({
+      current: 10,
+      required: 10,
+      completed: true,
+    });
+    expect(progresses.get('forgotten_cave_mouth')).toEqual({
+      current: 16,
+      required: 16,
+      completed: true,
+    });
+  });
+
+  it('keeps world trail entries in progress until the state reaches their milestones', () => {
+    const player = createPlayer({
+      highestLocationLevel: 2,
+      mobsKilled: 4,
+    });
+
+    const book = buildQuestBookView(player, []);
+    const statuses = new Map(book.quests.map((quest) => [quest.code, quest.status]));
+    const progresses = new Map(book.quests.map((quest) => [quest.code, quest.progress]));
+
+    expect(statuses.get('forest_second_shadow')).toBe('IN_PROGRESS');
+    expect(statuses.get('five_battle_marks')).toBe('IN_PROGRESS');
+    expect(statuses.get('deep_forest_campfire')).toBe('IN_PROGRESS');
+    expect(statuses.get('forgotten_cave_mouth')).toBe('IN_PROGRESS');
+    expect(progresses.get('forest_second_shadow')).toEqual({
+      current: 2,
+      required: 3,
+      completed: false,
+    });
+    expect(progresses.get('five_battle_marks')).toEqual({
+      current: 4,
+      required: 5,
+      completed: false,
+    });
+  });
+
   it('adds school chapters from mastery and school rune state', () => {
     const player = createPlayer({
       schoolMasteries: [

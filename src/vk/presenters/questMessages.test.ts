@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
 import type { PlayerState } from '../../shared/types/game';
-import type {
-  QuestBookView,
-  QuestView,
+import { emptyInventory } from '../../modules/player/domain/player-stats';
+import {
+  buildQuestBookView,
+  type QuestBookView,
+  type QuestView,
 } from '../../modules/quests/application/read-models/quest-book';
 import { renderQuestBook } from './questMessages';
 
@@ -20,6 +22,41 @@ const createQuest = (overrides: Partial<QuestView>): QuestView => ({
     completed: false,
   },
   status: 'IN_PROGRESS',
+  ...overrides,
+});
+
+const createPlayer = (overrides: Partial<PlayerState> = {}): PlayerState => ({
+  userId: 1,
+  vkId: 1001,
+  playerId: 1,
+  level: 1,
+  experience: 0,
+  gold: 0,
+  baseStats: {
+    health: 30,
+    attack: 5,
+    defence: 2,
+    magicDefence: 1,
+    dexterity: 1,
+    intelligence: 1,
+  },
+  locationLevel: 1,
+  currentRuneIndex: 0,
+  unlockedRuneSlotCount: 2,
+  activeBattleId: null,
+  victories: 0,
+  victoryStreak: 0,
+  defeats: 0,
+  defeatStreak: 0,
+  mobsKilled: 0,
+  highestLocationLevel: 1,
+  tutorialState: 'COMPLETED',
+  inventory: emptyInventory(),
+  schoolMasteries: [],
+  skills: [],
+  runes: [],
+  createdAt: '2026-04-22T00:00:00.000Z',
+  updatedAt: '2026-04-22T00:00:00.000Z',
   ...overrides,
 });
 
@@ -111,5 +148,23 @@ describe('renderQuestBook', () => {
     expect(message).not.toContain('Прогресс:');
     expect(message).not.toContain('квест выполнен');
     expect(message).not.toContain('система выдала');
+  });
+
+  it('renders world trail entries as path records', () => {
+    const book = buildQuestBookView(createPlayer({
+      highestLocationLevel: 3,
+      mobsKilled: 2,
+    }), []);
+
+    const message = renderQuestBook(book);
+
+    expect(message).toContain('Вторая тень леса');
+    expect(message).toContain('След: Дойти до 3-го следа Тёмного леса.');
+    expect(message).toContain('Пять отметин дороги');
+    expect(message).toContain('Отметка пути: 2/5.');
+    expect(message).toContain('Костёр среди чащи');
+    expect(message).toContain('Отметка пути: 3/10.');
+    expect(message).not.toContain('locationLevel');
+    expect(message).not.toContain('mobsKilled');
   });
 });
