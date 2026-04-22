@@ -509,7 +509,7 @@ display value = points / 100
 11. Done: `feat: show pending reward collection prompt after victory`
 12. Done: `feat: return to pending reward from start and explore`
 13. Done: `test: prevent duplicate trophy action rewards`
-14. Next: `test: add local playtest for pending trophy reward`
+14. Done: `test: add local playtest for pending trophy reward`
 15. Next: `feat: show skills in profile`
 16. Later: `feat: add skinning skill growth depth`
 17. Later: `feat: add reagent gathering skill growth depth`

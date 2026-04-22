@@ -23,7 +23,7 @@ export const mobSeed = [
     baseExperience: 6,
     baseGold: 2,
     runeDropChance: 10,
-    lootTable: { herb: 1 },
+    lootTable: { essence: 1 },
     attackText: 'касается искрой',
   },
   {

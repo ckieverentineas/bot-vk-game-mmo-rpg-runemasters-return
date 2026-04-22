@@ -34,7 +34,7 @@ export class RuneFactory {
     const statPool = createArchetypeStatPool(archetype.code);
     const rune = applyRuneArchetype({
       ...emptyStats(),
-      name: `${profile.title} руна ${school?.runeTitle ?? archetype.name}`,
+      name: `${profile.title} ${school?.runeTitle ?? archetype.name}`,
       rarity,
       isEquipped: false,
     }, archetype.code);

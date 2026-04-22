@@ -47,6 +47,7 @@ export interface LocalPlaytestSummaryInput {
   readonly vkId: number;
   readonly player: PlayerState;
   readonly activeBattle: BattleView | null;
+  readonly pendingRewardOpen?: boolean;
   readonly transcript: readonly LocalPlaytestTranscriptEntry[];
   readonly logs: readonly LocalPlaytestLogEntry[];
 }
@@ -70,11 +71,13 @@ export interface LocalPlaytestSummary {
   readonly defeats: number;
   readonly activeBattleId: string | null;
   readonly activeBattleStillOpen: boolean;
+  readonly pendingRewardOpen: boolean;
   readonly runeCount: number;
   readonly equippedRuneCount: number;
   readonly runes: readonly LocalPlaytestRuneSummary[];
   readonly logCounts: Readonly<Record<string, number>>;
   readonly suspiciousReplyCount: number;
+  readonly trophyCollectionReplyCount: number;
 }
 
 export interface LocalPlaytestBattleCommand {
@@ -165,6 +168,10 @@ const isSuspiciousReply = (reply: string): boolean => (
   suspiciousReplyMarkers.some((marker) => reply.includes(marker))
 );
 
+const isTrophyCollectionReply = (reply: string): boolean => (
+  reply.includes('Трофей обработан') || reply.includes('Добыча собрана')
+);
+
 const countLogsByAction = (logs: readonly LocalPlaytestLogEntry[]): Record<string, number> => (
   logs.reduce<Record<string, number>>((counts, log) => {
     counts[log.action] = (counts[log.action] ?? 0) + 1;
@@ -196,11 +203,13 @@ export const buildLocalPlaytestSummary = (input: LocalPlaytestSummaryInput): Loc
     defeats: input.player.defeats,
     activeBattleId: input.player.activeBattleId,
     activeBattleStillOpen: input.activeBattle !== null || input.player.activeBattleId !== null,
+    pendingRewardOpen: input.pendingRewardOpen ?? false,
     runeCount: input.player.runes.length,
     equippedRuneCount,
     runes: summarizeRunes(input.player),
     logCounts: countLogsByAction(input.logs),
     suspiciousReplyCount: input.transcript.filter((entry) => isSuspiciousReply(entry.reply)).length,
+    trophyCollectionReplyCount: input.transcript.filter((entry) => isTrophyCollectionReply(entry.reply)).length,
   };
 };
 
@@ -211,8 +220,16 @@ export const listLocalPlaytestFailures = (summary: LocalPlaytestSummary): readon
     failures.push(`${summary.scenarioName}: active battle is still open`);
   }
 
+  if (summary.pendingRewardOpen) {
+    failures.push(`${summary.scenarioName}: pending trophy reward is still open`);
+  }
+
   if (summary.victories < 1) {
     failures.push(`${summary.scenarioName}: expected at least one victory`);
+  }
+
+  if (summary.victories >= 1 && summary.trophyCollectionReplyCount < 1) {
+    failures.push(`${summary.scenarioName}: expected a trophy reward collection reply`);
   }
 
   if (summary.runeCount < 1) {

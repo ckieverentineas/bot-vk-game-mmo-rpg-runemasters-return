@@ -5,8 +5,9 @@ import { prisma } from '../../database/client';
 import { buildBattleActionIntentStateKey } from '../../modules/combat/application/command-intent-state';
 import { buildEnterTutorialModeIntentStateKey, buildExploreLocationIntentStateKey } from '../../modules/exploration/application/command-intent-state';
 import { buildEquipIntentStateKey, buildSelectRunePageSlotIntentStateKey } from '../../modules/runes/application/command-intent-state';
+import type { PendingRewardView } from '../../modules/shared/application/ports/GameRepository';
 import type { BattleView, PlayerState } from '../../shared/types/game';
-import { gameCommands } from '../../vk/commands/catalog';
+import { gameCommands, resolveTrophyActionCodeCommand } from '../../vk/commands/catalog';
 import { GameHandler } from '../../vk/handlers/gameHandler';
 import {
   buildLocalPlaytestSummary,
@@ -113,6 +114,11 @@ const getActiveBattle = async (runtime: LocalPlaytestRuntime): Promise<BattleVie
   }
 };
 
+const getPendingReward = async (runtime: LocalPlaytestRuntime): Promise<PendingRewardView | null> => {
+  const result = await runtime.services.getPendingReward.execute(runtime.vkId);
+  return result.pendingReward;
+};
+
 const fightUntilFinished = async (runtime: LocalPlaytestRuntime): Promise<void> => {
   for (let turn = 1; turn <= maxBattleTurns; turn += 1) {
     const battle = await getActiveBattle(runtime);
@@ -126,6 +132,28 @@ const fightUntilFinished = async (runtime: LocalPlaytestRuntime): Promise<void> 
       : undefined;
     await runCommand(runtime, `battle-${turn}`, battleCommand.command, stateKey);
   }
+};
+
+const collectPendingRewardIfAny = async (runtime: LocalPlaytestRuntime): Promise<void> => {
+  const pendingReward = await getPendingReward(runtime);
+
+  if (!pendingReward) {
+    return;
+  }
+
+  const selectedAction = pendingReward.snapshot.trophyActions.find((action) => action.code !== 'claim_all')
+    ?? pendingReward.snapshot.trophyActions[0];
+
+  if (!selectedAction) {
+    throw new Error('Pending reward has no trophy actions.');
+  }
+
+  await runCommand(
+    runtime,
+    `collect-${selectedAction.code}`,
+    resolveTrophyActionCodeCommand(selectedAction.code),
+    pendingReward.ledgerKey,
+  );
 };
 
 const runFirstSessionScenario = async (runtime: LocalPlaytestRuntime): Promise<LocalPlaytestSummary> => {
@@ -151,6 +179,7 @@ const runFirstSessionScenario = async (runtime: LocalPlaytestRuntime): Promise<L
   );
 
   await fightUntilFinished(runtime);
+  await collectPendingRewardIfAny(runtime);
   await runCommand(runtime, 'rune-hub', gameCommands.runeCollection);
 
   const runeListPlayer = await getPlayer(runtime);
@@ -176,6 +205,7 @@ const runFirstSessionScenario = async (runtime: LocalPlaytestRuntime): Promise<L
 
   const player = await getPlayer(runtime);
   const activeBattle = await getActiveBattle(runtime);
+  const pendingReward = await getPendingReward(runtime);
   const logs = await prisma.gameLog.findMany({
     where: { userId: player.userId },
     orderBy: { createdAt: 'asc' },
@@ -187,6 +217,7 @@ const runFirstSessionScenario = async (runtime: LocalPlaytestRuntime): Promise<L
     vkId: runtime.vkId,
     player,
     activeBattle,
+    pendingRewardOpen: pendingReward !== null,
     transcript: runtime.transcript,
     logs,
   });

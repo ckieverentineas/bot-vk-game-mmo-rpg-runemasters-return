@@ -44,6 +44,7 @@ describe('RuneFactory rarity rails', () => {
     const rune = RuneFactory.create(1, 'UNUSUAL', 'ember');
 
     expect(rune.archetypeCode).toBe('ember');
+    expect(rune.name).toBe('Необычная руна Пламени');
     expect(rune.activeAbilityCodes).toEqual(['ember_pulse']);
   });
 

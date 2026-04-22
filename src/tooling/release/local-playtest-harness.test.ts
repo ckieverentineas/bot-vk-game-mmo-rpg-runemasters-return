@@ -243,6 +243,7 @@ describe('local playtest harness', () => {
       first_school_committed: 1,
     });
     expect(summary.suspiciousReplyCount).toBe(1);
+    expect(summary.trophyCollectionReplyCount).toBe(0);
   });
 
   it('reports no failures for the completed first-session path', () => {
@@ -251,11 +252,32 @@ describe('local playtest harness', () => {
       vkId: 1001,
       player: createPlayer(),
       activeBattle: null,
-      transcript: [{ label: 'profile', command: gameCommands.profile, payload: null, reply: 'profile' }],
+      pendingRewardOpen: false,
+      transcript: [
+        { label: 'collect-skin-beast', command: gameCommands.skinBeastReward, payload: null, reply: 'Трофей обработан: Training Wisp.' },
+        { label: 'profile', command: gameCommands.profile, payload: null, reply: 'profile' },
+      ],
       logs: [{ action: 'player_registered' }],
     });
 
     expect(listLocalPlaytestFailures(summary)).toEqual([]);
+  });
+
+  it('reports an unfinished trophy reward after a victory', () => {
+    const summary = buildLocalPlaytestSummary({
+      scenarioName: 'payload',
+      vkId: 1001,
+      player: createPlayer(),
+      activeBattle: null,
+      pendingRewardOpen: true,
+      transcript: [{ label: 'profile', command: gameCommands.profile, payload: null, reply: 'profile' }],
+      logs: [{ action: 'player_registered' }],
+    });
+
+    expect(listLocalPlaytestFailures(summary)).toEqual([
+      'payload: pending trophy reward is still open',
+      'payload: expected a trophy reward collection reply',
+    ]);
   });
 
   it('reports release-blocking failures from the completed first-session path', () => {
