@@ -91,6 +91,7 @@
 - battle/exploration reply-flow вынесен из `GameHandler` в `src/vk/handlers/responders/battleReplyFlow.ts`, а telemetry callbacks передаются responder'у через отдельный handler telemetry-компонент;
 - home/profile/location reply-flow вынесен в `src/vk/handlers/responders/homeReplyFlow.ts`, чтобы старт, возврат, профиль, инвентарь и удаление персонажа собирались одним сценарным responder-компонентом;
 - screen/battle telemetry payloads вынесены из `GameHandler` в `src/vk/handlers/gameHandlerTelemetry.ts`, чтобы обработчик не смешивал маршруты VK-команд с расчётом school/next-goal analytics;
+- Prisma player/battle hydration мапперы вынесены из `PrismaGameRepository` в `src/modules/shared/infrastructure/prisma/prisma-game-mappers.ts`, не затрагивая транзакционные replay/concurrency rails;
 - карточка руны теперь даёт одну кнопку `надеть`: выбранная руна автоматически занимает первый свободный слот, без выбора слота игроком;
 - второй слот больше не является player-facing “поддержкой”: две стартовые руны равноправно дают полные статы, пассивы и активные действия в бою;
 - telemetry `loadout_changed` больше не использует primary/support changeType: новое событие пишет нейтральный `equip_rune` / `unequip_rune` и 1-based `slotNumber`, чтобы будущие 3+ слоты не ломали модель;

@@ -44,7 +44,8 @@
 - Handler-декомпозиция продолжена: `gameCommandRoutes.ts` стал агрегатором, `routes/*CommandRoutes.ts` держат core/tutorial/battle/rune/reward маршруты, а `gameCommandRecovery.ts` — recoverable stale/retry/battle/rune контексты.
 - Responder-декомпозиция продолжена: `responders/homeReplyFlow.ts`, `runeReplyFlow.ts`, `rewardReplyFlow.ts` и `battleReplyFlow.ts` держат рендер/клавиатуры home/profile/location экранов, рун, pending trophy rewards, battle result и exploration result, а `GameHandler` делегирует им reply-flow.
 - `gameHandlerTelemetry.ts` держит transport-level telemetry payloads для return recap, school presentation, rune hub follow-up и post-session next-goal событий, оставляя `GameHandler` тонким orchestrator'ом поверх use-case и responder слоёв.
-- Следующий безопасный кандидат: точечно разбирать `PrismaGameRepository` через мапперы и persistence helpers, без механического распила транзакционных replay/concurrency rails.
+- `prisma-game-mappers.ts` держит чистые Prisma → runtime мапперы для player/battle records; `PrismaGameRepository` оставляет у себя транзакции, replay receipts, reward ledger и CAS-обновления.
+- Следующий безопасный кандидат: выносить reward/battle persistence helpers малыми срезами, без механического распила транзакционных replay/concurrency rails.
 - `PrismaGameRepository` не распиливать механически: сначала выделять чистые мапперы, snapshot hydration и reward/battle persistence helpers с тестами на replay/concurrency.
 
 ## Ближайший порядок работ

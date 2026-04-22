@@ -274,6 +274,7 @@ Standalone-сцены сохраняются через `recordCommandIntentResu
 - stale active-battle mutation логируется как `battle_stale_action_rejected`, а critical concurrency cases зафиксированы в `docs/testing/concurrency-critical-use-cases.md`.
 - battle persistence versioning и checked-in fixtures теперь описаны отдельно в `docs/platform/persistence-versioning-rules.md`, чтобы rollback/fallback policy не оставалась “в коде по умолчанию”.
 - player-state hydration теперь тоже вынесена в один compatibility-safe helper [`src/modules/shared/infrastructure/prisma/player-state-hydration.ts`](src/modules/shared/infrastructure/prisma/player-state-hydration.ts), чтобы `Player`, `PlayerProgress`, `PlayerInventory`, `Rune` и `PlayerSchoolMastery` не склеивались в runtime через разрозненные fallback'и.
+- Prisma player/battle record mapping живёт в [`src/modules/shared/infrastructure/prisma/prisma-game-mappers.ts`](src/modules/shared/infrastructure/prisma/prisma-game-mappers.ts): `PrismaGameRepository` держит транзакции, CAS/replay и запись state, а чистая гидрация runtime view вынесена отдельно.
 
 ### 8.6. Telemetry semantics
 

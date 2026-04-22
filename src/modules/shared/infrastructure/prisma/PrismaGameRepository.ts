@@ -15,7 +15,7 @@ import type {
   RuneRarity,
   StatBlock,
 } from '../../../../shared/types/game';
-import { buildBattleSnapshot, isBattleSnapshot, type BattleSnapshot } from '../../domain/contracts/battle-snapshot';
+import { buildBattleSnapshot } from '../../domain/contracts/battle-snapshot';
 import {
   DEFAULT_UNLOCKED_RUNE_SLOT_COUNT,
   getEquippedRune,
@@ -43,8 +43,7 @@ import {
 import { resolveTrophyActionReward, resolveTrophyActions } from '../../../rewards/domain/trophy-actions';
 import type { TrophyActionCode, TrophyActionDefinition, TrophyActionReward } from '../../../rewards/domain/trophy-actions';
 import { getSchoolDefinitionForArchetype } from '../../../runes/domain/rune-schools';
-import { hydratePlayerStateFromPersistence } from './player-state-hydration';
-import { buildLoadoutSnapshotFromBattle, isLoadoutSnapshot, projectBattleRuneLoadout, type LoadoutSnapshot } from '../../domain/contracts/loadout-snapshot';
+import { buildLoadoutSnapshotFromBattle } from '../../domain/contracts/loadout-snapshot';
 import {
   createAppliedPendingRewardLedgerEntry,
   createPendingRewardLedgerEntry,
@@ -69,21 +68,13 @@ import type {
   SaveRuneCursorOptions,
   SaveRuneLoadoutOptions,
 } from '../../application/ports/GameRepository';
+import {
+  mapBattleRecord,
+  mapPlayerRecord,
+  playerInclude,
+  type PlayerRecord,
+} from './prisma-game-mappers';
 
-const playerInclude = {
-  user: true,
-  progress: true,
-  inventory: true,
-  schoolMasteries: true,
-  skills: true,
-  runes: {
-    orderBy: {
-      createdAt: 'asc' as const,
-    },
-  },
-} satisfies Prisma.PlayerInclude;
-
-type PlayerRecord = Prisma.PlayerGetPayload<{ include: typeof playerInclude }>;
 type TransactionClient = Prisma.TransactionClient;
 type CommandIntentKey = GameCommandIntentKey;
 
@@ -238,56 +229,6 @@ const mapPendingRewardLedgerCreateData = (rewardLedger: PendingRewardLedgerEntry
   appliedAt: null,
 });
 
-const defaultBattlePlayerSnapshot = (playerId: number): BattleView['player'] => ({
-  playerId,
-  name: 'Рунный мастер',
-  attack: 0,
-  defence: 0,
-  magicDefence: 0,
-  dexterity: 0,
-  intelligence: 0,
-  maxHealth: 1,
-  currentHealth: 1,
-  maxMana: 0,
-  currentMana: 0,
-  runeLoadout: null,
-  supportRuneLoadout: null,
-  guardPoints: 0,
-});
-
-const defaultBattleEnemySnapshot = (enemyCode: string): BattleView['enemy'] => ({
-  code: enemyCode,
-  name: 'Неизвестный враг',
-  kind: 'enemy',
-  isElite: false,
-  isBoss: false,
-  attack: 1,
-  defence: 0,
-  magicDefence: 0,
-  dexterity: 0,
-  intelligence: 0,
-  maxHealth: 1,
-  currentHealth: 1,
-  maxMana: 0,
-  currentMana: 0,
-  experienceReward: 0,
-  goldReward: 0,
-  runeDropChance: 0,
-  attackText: 'атакует',
-  intent: null,
-  hasUsedSignatureMove: false,
-});
-
-interface ParsedLoadoutSnapshot {
-  readonly snapshot: LoadoutSnapshot | null;
-  readonly fallbackToBattleSnapshot: boolean;
-}
-
-interface ParsedBattleSnapshot {
-  readonly snapshot: BattleSnapshot | null;
-  readonly fallbackToLegacyColumns: boolean;
-}
-
 interface CurrentRuneLoadoutState {
   readonly currentRuneIndex: number;
   readonly unlockedRuneSlotCount: number;
@@ -296,70 +237,6 @@ interface CurrentRuneLoadoutState {
   readonly equippedRuneIdsBySlot: readonly (string | null)[];
   readonly runeIds: readonly string[];
 }
-
-const parsePersistedLoadoutSnapshot = (value: string | null): ParsedLoadoutSnapshot => {
-  if (!value) {
-    return {
-      snapshot: null,
-      fallbackToBattleSnapshot: false,
-    };
-  }
-
-  let parsed: unknown;
-
-  try {
-    parsed = JSON.parse(value);
-  } catch {
-    return {
-      snapshot: null,
-      fallbackToBattleSnapshot: true,
-    };
-  }
-
-  if (!isLoadoutSnapshot(parsed)) {
-    return {
-      snapshot: null,
-      fallbackToBattleSnapshot: true,
-    };
-  }
-
-  return {
-    snapshot: parsed,
-    fallbackToBattleSnapshot: false,
-  };
-};
-
-const parsePersistedBattleSnapshot = (value: string | null): ParsedBattleSnapshot => {
-  if (!value) {
-    return {
-      snapshot: null,
-      fallbackToLegacyColumns: false,
-    };
-  }
-
-  let parsed: unknown;
-
-  try {
-    parsed = JSON.parse(value);
-  } catch {
-    return {
-      snapshot: null,
-      fallbackToLegacyColumns: true,
-    };
-  }
-
-  if (!isBattleSnapshot(parsed)) {
-    return {
-      snapshot: null,
-      fallbackToLegacyColumns: true,
-    };
-  }
-
-  return {
-    snapshot: parsed,
-    fallbackToLegacyColumns: false,
-  };
-};
 
 const parseCommandIntentResultSnapshot = <T>(value: string): T => JSON.parse(value) as T;
 
@@ -409,45 +286,12 @@ const parseDeletePlayerReceiptSnapshot = (value: string): DeletePlayerReceiptSna
   return parsed;
 };
 
-const hydrateBattlePlayerSnapshot = (
-  playerId: number,
-  snapshot: BattleView['player'],
-  loadoutSnapshot: LoadoutSnapshot | null,
-): BattleView['player'] => {
-  const fallback = defaultBattlePlayerSnapshot(playerId);
-  const currentCooldown = snapshot.runeLoadout?.activeAbility?.currentCooldown ?? 0;
-  const normalizedLoadout = projectBattleRuneLoadout(
-    loadoutSnapshot ?? buildLoadoutSnapshotFromBattle(snapshot.runeLoadout ?? null),
-    currentCooldown,
-  );
-  const normalizedSupportLoadout = projectBattleRuneLoadout(
-    buildLoadoutSnapshotFromBattle(snapshot.supportRuneLoadout ?? null),
-    snapshot.supportRuneLoadout?.activeAbility?.currentCooldown ?? 0,
-  );
-
-  return {
-    ...fallback,
-    ...snapshot,
-    runeLoadout: normalizedLoadout,
-    supportRuneLoadout: normalizedSupportLoadout,
-    guardPoints: snapshot.guardPoints ?? fallback.guardPoints,
-  };
-};
-
 const isStaleBattleMutation = (
   expectedRevision: number,
   currentBattle: { status: string; actionRevision: number },
 ): boolean => (
   currentBattle.status === 'ACTIVE'
   && currentBattle.actionRevision > expectedRevision
-);
-
-const shouldUseVersionedBattleSnapshot = (
-  snapshot: BattleSnapshot | null,
-  actionRevision: number,
-): snapshot is BattleSnapshot => (
-  snapshot !== null
-  && snapshot.actionRevision === actionRevision
 );
 
 const mapBattlePersistence = (battle: PersistedBattleState) => ({
@@ -726,7 +570,7 @@ export class PrismaGameRepository implements GameRepository {
     ledger: AppliedPendingRewardLedgerEntryV1,
   ): Promise<CollectPendingRewardResult> {
     return {
-      player: this.mapPlayer(await this.requirePlayerRecord(tx, playerId)),
+      player: mapPlayerRecord(await this.requirePlayerRecord(tx, playerId)),
       ledgerKey: ledger.ledgerKey,
       selectedActionCode: ledger.pendingRewardSnapshot.selectedActionCode,
       appliedResult: ledger.pendingRewardSnapshot.appliedResult,
@@ -841,7 +685,7 @@ export class PrismaGameRepository implements GameRepository {
       include: playerInclude,
     });
 
-    return player ? this.mapPlayer(player) : null;
+    return player ? mapPlayerRecord(player) : null;
   }
 
   public async findPlayerById(playerId: number): Promise<PlayerState | null> {
@@ -850,7 +694,7 @@ export class PrismaGameRepository implements GameRepository {
       include: playerInclude,
     });
 
-    return player ? this.mapPlayer(player) : null;
+    return player ? mapPlayerRecord(player) : null;
   }
 
   public async storeCommandIntentResult<TResult>(playerId: number, intentId: string, result: TResult): Promise<void> {
@@ -915,7 +759,7 @@ export class PrismaGameRepository implements GameRepository {
       const aggregatedGains = aggregatePlayerSkillPointGains(gains);
 
       if (aggregatedGains.size === 0) {
-        return this.mapPlayer(await this.requirePlayerRecord(tx, playerId));
+        return mapPlayerRecord(await this.requirePlayerRecord(tx, playerId));
       }
 
       const skillCodes = [...aggregatedGains.keys()];
@@ -963,7 +807,7 @@ export class PrismaGameRepository implements GameRepository {
         });
       }
 
-      return this.mapPlayer(await this.requirePlayerRecord(tx, playerId));
+      return mapPlayerRecord(await this.requirePlayerRecord(tx, playerId));
     });
   }
 
@@ -1071,7 +915,7 @@ export class PrismaGameRepository implements GameRepository {
       await this.persistPendingRewardSkillUps(tx, playerId, skillUps);
 
       return {
-        player: this.mapPlayer(await this.requirePlayerRecord(tx, playerId)),
+        player: mapPlayerRecord(await this.requirePlayerRecord(tx, playerId)),
         ledgerKey: appliedLedger.ledgerKey,
         selectedActionCode: action.code,
         appliedResult,
@@ -1095,7 +939,7 @@ export class PrismaGameRepository implements GameRepository {
       let skipped = 0;
 
       for (const battleRecord of completedVictories) {
-        const battle = this.mapBattle(battleRecord);
+        const battle = mapBattleRecord(battleRecord);
         const rewardLedger = createPendingRewardLedgerForBattle(
           battle.playerId,
           battle,
@@ -1351,7 +1195,7 @@ export class PrismaGameRepository implements GameRepository {
     }
 
     return {
-      player: this.mapPlayer(created.player),
+      player: mapPlayerRecord(created.player),
       created: true,
       recoveredFromRace: false,
     };
@@ -1451,7 +1295,7 @@ export class PrismaGameRepository implements GameRepository {
           });
         }
 
-        return this.mapPlayer(await this.requirePlayerRecord(tx, playerId));
+        return mapPlayerRecord(await this.requirePlayerRecord(tx, playerId));
       };
 
       if (options?.commandKey && options.intentId && options.intentStateKey) {
@@ -1501,7 +1345,7 @@ export class PrismaGameRepository implements GameRepository {
           });
         }
 
-        return this.mapPlayer(await this.requirePlayerRecord(tx, playerId));
+        return mapPlayerRecord(await this.requirePlayerRecord(tx, playerId));
       };
 
       if (options?.commandKey && options.intentId && options.intentStateKey) {
@@ -1552,11 +1396,11 @@ export class PrismaGameRepository implements GameRepository {
           || options?.expectedEquippedRuneId !== undefined
           || options?.expectedEquippedRuneIdsBySlot !== undefined
           || options?.expectedRuneIds !== undefined) {
-          currentPlayer = this.mapPlayer(await this.requirePlayerRecord(tx, playerId));
+          currentPlayer = mapPlayerRecord(await this.requirePlayerRecord(tx, playerId));
           this.assertExpectedRuneLoadoutState(currentPlayer, options);
         }
 
-        currentPlayer ??= this.mapPlayer(await this.requirePlayerRecord(tx, playerId));
+        currentPlayer ??= mapPlayerRecord(await this.requirePlayerRecord(tx, playerId));
 
         if (targetSlot >= getUnlockedRuneSlotCount(currentPlayer)) {
           throw new AppError('rune_slot_locked', 'Этот слот рун пока закрыт. Продвигайтесь дальше, чтобы открыть его.');
@@ -1586,7 +1430,7 @@ export class PrismaGameRepository implements GameRepository {
         }
 
         const updatedPlayer = await this.requirePlayerRecord(tx, playerId);
-        return this.mapPlayer(updatedPlayer);
+        return mapPlayerRecord(updatedPlayer);
       };
 
       if (options?.commandKey && options.intentId && options.intentStateKey) {
@@ -1661,7 +1505,7 @@ export class PrismaGameRepository implements GameRepository {
         });
 
         updatedPlayer = await this.requirePlayerRecord(tx, playerId);
-        return this.mapPlayer(updatedPlayer);
+        return mapPlayerRecord(updatedPlayer);
       });
     });
   }
@@ -1736,7 +1580,7 @@ export class PrismaGameRepository implements GameRepository {
         });
 
         const updatedPlayer = await this.requirePlayerRecord(tx, playerId);
-        return this.mapPlayer(updatedPlayer);
+        return mapPlayerRecord(updatedPlayer);
       });
     });
   }
@@ -1790,7 +1634,7 @@ export class PrismaGameRepository implements GameRepository {
         });
 
         const updatedPlayer = await this.requirePlayerRecord(tx, playerId);
-        return this.mapPlayer(updatedPlayer);
+        return mapPlayerRecord(updatedPlayer);
       });
     });
   }
@@ -1806,7 +1650,7 @@ export class PrismaGameRepository implements GameRepository {
   ): Promise<PlayerState> {
     const data = buildInventoryDeltaInput(delta);
     if (Object.keys(data).length === 0) {
-      return this.mapPlayer(await this.requirePlayerRecord(client, playerId));
+      return mapPlayerRecord(await this.requirePlayerRecord(client, playerId));
     }
 
     const updated = await client.playerInventory.updateMany({
@@ -1818,7 +1662,7 @@ export class PrismaGameRepository implements GameRepository {
       throw new AppError('inventory_underflow', 'Ресурсов уже не хватает. Вернитесь к текущей мастерской.');
     }
 
-    return this.mapPlayer(await this.requirePlayerRecord(client, playerId));
+    return mapPlayerRecord(await this.requirePlayerRecord(client, playerId));
   }
 
   public async createBattle(playerId: number, battle: CreateBattleInput, options?: CreateBattleOptions): Promise<BattleView> {
@@ -1838,7 +1682,7 @@ export class PrismaGameRepository implements GameRepository {
             data: { activeBattleId: existingBattle.id },
           });
 
-          return this.mapBattle(existingBattle);
+          return mapBattleRecord(existingBattle);
         }
 
         const persistedBattle = mapBattlePersistence(battle);
@@ -1878,7 +1722,7 @@ export class PrismaGameRepository implements GameRepository {
               data: { activeBattleId: fallbackBattle.id },
             });
             await tx.battleSession.delete({ where: { id: battleRow.id } });
-            return this.mapBattle(fallbackBattle);
+            return mapBattleRecord(fallbackBattle);
           }
 
           await tx.playerProgress.update({
@@ -1887,7 +1731,7 @@ export class PrismaGameRepository implements GameRepository {
           });
         }
 
-        return this.mapBattle(battleRow);
+        return mapBattleRecord(battleRow);
       };
 
       if (options?.commandKey && options.intentId && options.intentStateKey) {
@@ -1917,7 +1761,7 @@ export class PrismaGameRepository implements GameRepository {
       orderBy: { createdAt: 'desc' },
     });
 
-    return battle ? this.mapBattle(battle) : null;
+    return battle ? mapBattleRecord(battle) : null;
   }
 
   public async saveBattle(battle: BattleView, options?: SaveBattleOptions): Promise<BattleView> {
@@ -1962,7 +1806,7 @@ export class PrismaGameRepository implements GameRepository {
             await this.logStaleBattleMutation(tx, battle.playerId, battle, currentBattle.actionRevision);
           }
 
-          return this.mapBattle(currentBattle);
+          return mapBattleRecord(currentBattle);
         }
 
         const currentBattle = await tx.battleSession.findFirst({
@@ -1976,7 +1820,7 @@ export class PrismaGameRepository implements GameRepository {
           throw new AppError('battle_not_found', 'Текущая схватка уже рассеялась. Ищите новую встречу.');
         }
 
-        return this.mapBattle(currentBattle);
+        return mapBattleRecord(currentBattle);
       };
 
       if (options?.commandKey && options.intentId && options.intentStateKey) {
@@ -2009,7 +1853,7 @@ export class PrismaGameRepository implements GameRepository {
         if (existing) {
           const updatedPlayer = await this.requirePlayerRecord(tx, playerId);
           return {
-            player: this.mapPlayer(updatedPlayer),
+            player: mapPlayerRecord(updatedPlayer),
             battle: existing,
           };
         }
@@ -2058,20 +1902,20 @@ export class PrismaGameRepository implements GameRepository {
           await this.logStaleBattleMutation(tx, playerId, battle, currentBattle.actionRevision);
         }
 
-        const mappedBattle = this.mapBattle(currentBattle);
+        const mappedBattle = mapBattleRecord(currentBattle);
         if (options?.commandKey && options.intentId && options.intentStateKey) {
           await this.finalizeCommandIntent<BattleView>(tx, playerId, options.intentId, mappedBattle);
         }
 
         const updatedPlayer = await this.requirePlayerRecord(tx, playerId);
         return {
-          player: this.mapPlayer(updatedPlayer),
+          player: mapPlayerRecord(updatedPlayer),
           battle: mappedBattle,
         };
       }
 
       const player = await this.requirePlayerRecord(tx, playerId);
-      const currentPlayer = this.mapPlayer(player);
+      const currentPlayer = mapPlayerRecord(player);
       const rewardIntent = battle.result === 'VICTORY'
         ? createBattleVictoryRewardIntent(playerId, battle)
         : null;
@@ -2289,8 +2133,8 @@ export class PrismaGameRepository implements GameRepository {
       }
 
       const result = {
-        player: this.mapPlayer(updatedPlayer),
-        battle: this.mapBattle(finalizedBattle),
+        player: mapPlayerRecord(updatedPlayer),
+        battle: mapBattleRecord(finalizedBattle),
       };
 
       if (options?.commandKey && options.intentId && options.intentStateKey) {
@@ -2321,7 +2165,7 @@ export class PrismaGameRepository implements GameRepository {
       throw new AppError('player_not_found', 'Игрок не найден.');
     }
 
-    return this.mapPlayer(player);
+    return mapPlayerRecord(player);
   }
 
   private async requirePlayerRecord(client: TransactionClient | PrismaClient, playerId: number): Promise<PlayerRecord> {
@@ -2352,7 +2196,7 @@ export class PrismaGameRepository implements GameRepository {
       return null;
     }
 
-    const battle = this.mapBattle(battleRecord);
+    const battle = mapBattleRecord(battleRecord);
 
     return {
       battleId: battle.id,
@@ -2362,144 +2206,4 @@ export class PrismaGameRepository implements GameRepository {
     };
   }
 
-  private mapPlayer(player: PlayerRecord): PlayerState {
-    return hydratePlayerStateFromPersistence({
-      userId: player.userId,
-      vkId: player.user.vkId,
-      playerId: player.id,
-      level: player.level,
-      experience: player.experience,
-      gold: player.gold,
-      baseStats: {
-        health: player.baseHealth,
-        attack: player.baseAttack,
-        defence: player.baseDefence,
-        magicDefence: player.baseMagicDefence,
-        dexterity: player.baseDexterity,
-        intelligence: player.baseIntelligence,
-      },
-      progress: player.progress
-        ? {
-            locationLevel: player.progress.locationLevel,
-            currentRuneIndex: player.progress.currentRuneIndex,
-            unlockedRuneSlotCount: player.progress.unlockedRuneSlotCount,
-            activeBattleId: player.progress.activeBattleId,
-            tutorialState: player.progress.tutorialState,
-            victories: player.progress.victories,
-            victoryStreak: player.progress.victoryStreak,
-            defeats: player.progress.defeats,
-            defeatStreak: player.progress.defeatStreak,
-            mobsKilled: player.progress.mobsKilled,
-            highestLocationLevel: player.progress.highestLocationLevel,
-          }
-        : null,
-      inventory: player.inventory
-        ? {
-            usualShards: player.inventory.usualShards,
-            unusualShards: player.inventory.unusualShards,
-            rareShards: player.inventory.rareShards,
-            epicShards: player.inventory.epicShards,
-            legendaryShards: player.inventory.legendaryShards,
-            mythicalShards: player.inventory.mythicalShards,
-            leather: player.inventory.leather,
-            bone: player.inventory.bone,
-            herb: player.inventory.herb,
-            essence: player.inventory.essence,
-            metal: player.inventory.metal,
-            crystal: player.inventory.crystal,
-          }
-        : null,
-      schoolMasteries: player.schoolMasteries.map((entry) => ({
-        schoolCode: entry.schoolCode,
-        experience: entry.experience,
-      })),
-      skills: player.skills.map((entry) => ({
-        skillCode: entry.skillCode,
-        experience: entry.experience,
-      })),
-      runes: player.runes.map((rune) => ({
-        id: rune.id,
-        runeCode: rune.runeCode,
-        archetypeCode: rune.archetypeCode,
-        passiveAbilityCodes: rune.passiveAbilityCodes,
-        activeAbilityCodes: rune.activeAbilityCodes,
-        name: rune.name,
-        rarity: rune.rarity,
-        health: rune.health,
-        attack: rune.attack,
-        defence: rune.defence,
-        magicDefence: rune.magicDefence,
-        dexterity: rune.dexterity,
-        intelligence: rune.intelligence,
-        isEquipped: rune.isEquipped,
-        equippedSlot: rune.equippedSlot,
-        createdAt: rune.createdAt.toISOString(),
-      })),
-      createdAt: player.createdAt.toISOString(),
-      updatedAt: player.updatedAt.toISOString(),
-    });
-  }
-
-  private mapBattle(battle: {
-    id: string;
-    playerId: number;
-    status: string;
-    battleType: string;
-    actionRevision: number;
-    battleSnapshot?: string | null;
-    playerLoadoutSnapshot?: string | null;
-    locationLevel: number;
-    biomeCode: string;
-    enemyCode: string;
-    turnOwner: string;
-    playerSnapshot: string;
-    enemySnapshot: string;
-    log: string;
-    result: string | null;
-    rewardsSnapshot: string | null;
-    createdAt: Date;
-    updatedAt: Date;
-  }): BattleView {
-    const persistedBattleSnapshot = parsePersistedBattleSnapshot(battle.battleSnapshot ?? null);
-    const playerSnapshot = parseJson<BattleView['player']>(battle.playerSnapshot, defaultBattlePlayerSnapshot(battle.playerId));
-    const enemySnapshot = parseJson<BattleView['enemy']>(battle.enemySnapshot, defaultBattleEnemySnapshot(battle.enemyCode));
-    const battleLog = parseJson<BattleView['log']>(battle.log, []);
-    const rewardsSnapshot = parseJson<BattleView['rewards']>(battle.rewardsSnapshot, null);
-    const persistedLoadoutSnapshot = parsePersistedLoadoutSnapshot(battle.playerLoadoutSnapshot ?? null);
-
-    const battleSnapshot = shouldUseVersionedBattleSnapshot(persistedBattleSnapshot.snapshot, battle.actionRevision)
-      ? persistedBattleSnapshot.snapshot
-      : {
-      player: playerSnapshot,
-      enemy: enemySnapshot,
-      encounter: null,
-      log: battleLog,
-      result: battle.result as BattleView['result'],
-      rewards: rewardsSnapshot,
-    };
-
-    if (persistedLoadoutSnapshot.fallbackToBattleSnapshot && !battleSnapshot.player.runeLoadout) {
-      throw new AppError('loadout_snapshot_invalid', 'Рунная память боя повреждена. Ищите новую встречу.');
-    }
-
-    return {
-      id: battle.id,
-      playerId: battle.playerId,
-      status: battle.status as BattleView['status'],
-      battleType: battle.battleType as BattleView['battleType'],
-      actionRevision: battle.actionRevision,
-      locationLevel: battle.locationLevel,
-      biomeCode: battle.biomeCode,
-      enemyCode: battle.enemyCode,
-      turnOwner: battle.turnOwner as BattleView['turnOwner'],
-      player: hydrateBattlePlayerSnapshot(battle.playerId, battleSnapshot.player, persistedLoadoutSnapshot.snapshot),
-      enemy: battleSnapshot.enemy,
-      encounter: battleSnapshot.encounter ?? null,
-      log: battleSnapshot.log,
-      result: battleSnapshot.result,
-      rewards: battleSnapshot.rewards,
-      createdAt: battle.createdAt.toISOString(),
-      updatedAt: battle.updatedAt.toISOString(),
-    };
-  }
 }
