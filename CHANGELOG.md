@@ -102,6 +102,10 @@
 - `RegisterPlayer`, `EquipCurrentRune`, `UnequipCurrentRune` и `GameHandler` теперь пишут telemetry v1 события `onboarding_started`, `loadout_changed`, `return_recap_shown` и `post_session_next_goal_shown` после committed transition или реально показанного экрана;
 - runtime больше не читает биомы и шаблоны мобов из SQLite: world content стал file-first read-model'ю из `src/content/**`, а Prisma-схема очищена от таблиц статического контента.
 
+### Fixed
+
+- Повторная доставка legacy text `забрать награду` в `Книге путей` больше не выбирает следующую готовую запись: игрок получает тот же canonical claim result, а награда остаётся exact-once.
+
 ## [0.01] - 2026-04-11
 
 ### Commit
