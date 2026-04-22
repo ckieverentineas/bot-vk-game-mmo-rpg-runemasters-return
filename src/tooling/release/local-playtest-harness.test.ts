@@ -267,7 +267,10 @@ describe('local playtest harness', () => {
         { label: 'quest-claim-awakening-replay', command: gameCommands.claimQuestReward, payload: null, reply: '📜 Запись уже закрыта\n\nНовая добыча не добавлялась.' },
         { label: 'profile', command: gameCommands.profile, payload: null, reply: 'profile' },
       ],
-      logs: [{ action: 'player_registered' }],
+      logs: [
+        { action: 'player_registered' },
+        { action: 'school_novice_elite_encounter_started' },
+      ],
       questRewardReplaySafe: true,
     });
 
@@ -291,6 +294,7 @@ describe('local playtest harness', () => {
       'payload: expected a quest book reply',
       'payload: expected a quest reward claim reply',
       'payload: quest reward replay was not checked',
+      'payload: expected school novice elite evidence',
     ]);
   });
 
@@ -313,6 +317,30 @@ describe('local playtest harness', () => {
       'payload: expected a quest book reply',
       'payload: expected a quest reward claim reply',
       'payload: quest reward replay was not safe',
+      'payload: expected school novice elite evidence',
+    ]);
+  });
+
+  it('reports missing school novice elite evidence', () => {
+    const summary = buildLocalPlaytestSummary({
+      scenarioName: 'payload',
+      vkId: 1001,
+      player: createPlayer(),
+      activeBattle: null,
+      pendingRewardOpen: false,
+      transcript: [
+        { label: 'collect-skin-beast', command: gameCommands.skinBeastReward, payload: null, reply: 'Трофей разобран: Training Wisp.\nВ сумке: +1 эссенция.' },
+        { label: 'quest-book', command: gameCommands.questBook, payload: null, reply: '📜 Книга путей\n\nПробуждение Пустого мастера · 🎁 Награда ждёт' },
+        { label: 'quest-claim-awakening', command: gameCommands.claimQuestReward, payload: null, reply: '📜 Запись закрыта\n\nВ сумке: +1 обычный осколок.' },
+        { label: 'quest-claim-awakening-replay', command: gameCommands.claimQuestReward, payload: null, reply: '📜 Запись уже закрыта\n\nНовая добыча не добавлялась.' },
+        { label: 'profile', command: gameCommands.profile, payload: null, reply: 'profile' },
+      ],
+      logs: [{ action: 'player_registered' }],
+      questRewardReplaySafe: true,
+    });
+
+    expect(listLocalPlaytestFailures(summary)).toEqual([
+      'payload: expected school novice elite evidence',
     ]);
   });
 
@@ -339,6 +367,7 @@ describe('local playtest harness', () => {
       'payload: expected a quest book reply',
       'payload: expected a quest reward claim reply',
       'payload: quest reward replay was not checked',
+      'payload: expected school novice elite evidence',
     ]);
   });
 });

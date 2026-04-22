@@ -230,6 +230,7 @@ export const buildLocalPlaytestSummary = (input: LocalPlaytestSummaryInput): Loc
 
 export const listLocalPlaytestFailures = (summary: LocalPlaytestSummary): readonly string[] => {
   const failures: string[] = [];
+  const schoolNoviceEliteEvidenceCount = summary.logCounts.school_novice_elite_encounter_started ?? 0;
 
   if (summary.activeBattleStillOpen) {
     failures.push(`${summary.scenarioName}: active battle is still open`);
@@ -273,6 +274,10 @@ export const listLocalPlaytestFailures = (summary: LocalPlaytestSummary): readon
 
   if (summary.scenarioName === 'payload' && summary.questRewardReplaySafe === null) {
     failures.push(`${summary.scenarioName}: quest reward replay was not checked`);
+  }
+
+  if (schoolNoviceEliteEvidenceCount < 1) {
+    failures.push(`${summary.scenarioName}: expected school novice elite evidence`);
   }
 
   return failures;

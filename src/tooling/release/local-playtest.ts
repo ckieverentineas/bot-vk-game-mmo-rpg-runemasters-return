@@ -1,11 +1,16 @@
 import { randomUUID } from 'node:crypto';
 
 import { createAppServices, type AppServices } from '../../app/composition-root';
+import { gameContent } from '../../content/game-content';
+import { buildWorldCatalog } from '../../content/world';
 import { prisma } from '../../database/client';
 import { buildBattleActionIntentStateKey } from '../../modules/combat/application/command-intent-state';
 import { buildEnterTutorialModeIntentStateKey, buildExploreLocationIntentStateKey } from '../../modules/exploration/application/command-intent-state';
+import { ExploreLocation } from '../../modules/exploration/application/use-cases/ExploreLocation';
 import type { QuestCode } from '../../modules/quests/domain/quest-definitions';
 import { buildEquipIntentStateKey, buildSelectRunePageSlotIntentStateKey } from '../../modules/runes/application/command-intent-state';
+import { PrismaGameRepository } from '../../modules/shared/infrastructure/prisma/PrismaGameRepository';
+import type { GameRandom } from '../../modules/shared/application/ports/GameRandom';
 import type { PendingRewardView } from '../../modules/shared/application/ports/GameRepository';
 import type { BattleView, PlayerState } from '../../shared/types/game';
 import { gameCommands, resolveTrophyActionCodeCommand } from '../../vk/commands/catalog';
@@ -35,6 +40,7 @@ interface LocalPlaytestRuntime {
 
 const maxBattleTurns = 20;
 const awakeningQuestCode = 'awakening_empty_master' satisfies QuestCode;
+const emberNoviceEvidenceIntentIdPrefix = 'local-playtest:ember-novice-evidence';
 
 const inventoryFields = [
   'usualShards',
@@ -75,6 +81,12 @@ const createRuntime = (scenarioName: ScenarioName): LocalPlaytestRuntime => {
     questRewardReplaySafe: null,
   };
 };
+
+const createEmberNoviceEvidenceRandom = (): GameRandom => ({
+  nextInt: (_min: number, max: number): number => max,
+  rollPercentage: (chancePercent: number): boolean => chancePercent === 50,
+  pickOne: <T>(items: readonly T[]): T => items[0] as T,
+});
 
 const createPayload = (
   runtime: LocalPlaytestRuntime,
@@ -204,6 +216,125 @@ const collectPendingRewardIfAny = async (runtime: LocalPlaytestRuntime): Promise
   );
 };
 
+const prepareEmberNoviceEvidenceState = async (runtime: LocalPlaytestRuntime): Promise<PlayerState> => {
+  const player = await getPlayer(runtime);
+
+  await prisma.$transaction([
+    prisma.battleSession.deleteMany({ where: { playerId: player.playerId, status: 'ACTIVE' } }),
+    prisma.commandIntentRecord.deleteMany({
+      where: {
+        playerId: player.playerId,
+        intentId: { startsWith: emberNoviceEvidenceIntentIdPrefix },
+      },
+    }),
+    prisma.rune.deleteMany({ where: { playerId: player.playerId } }),
+    prisma.player.update({
+      where: { id: player.playerId },
+      data: {
+        level: 3,
+        experience: 0,
+        baseHealth: 60,
+        baseAttack: 18,
+        baseDefence: 10,
+        baseMagicDefence: 6,
+        baseDexterity: 8,
+        baseIntelligence: 6,
+      },
+    }),
+    prisma.playerProgress.update({
+      where: { playerId: player.playerId },
+      data: {
+        locationLevel: 3,
+        highestLocationLevel: 3,
+        currentRuneIndex: 0,
+        activeBattleId: null,
+        tutorialState: 'COMPLETED',
+        victories: Math.max(player.victories, 1),
+        victoryStreak: 4,
+        defeats: player.defeats,
+        defeatStreak: 0,
+        mobsKilled: player.mobsKilled,
+      },
+    }),
+    prisma.playerSchoolMastery.upsert({
+      where: {
+        playerId_schoolCode: {
+          playerId: player.playerId,
+          schoolCode: 'ember',
+        },
+      },
+      update: {
+        experience: 1,
+        rank: 0,
+      },
+      create: {
+        playerId: player.playerId,
+        schoolCode: 'ember',
+        experience: 1,
+        rank: 0,
+      },
+    }),
+    prisma.rune.create({
+      data: {
+        playerId: player.playerId,
+        runeCode: `local-playtest-ember-usual-${runtime.vkId}`,
+        archetypeCode: 'ember',
+        passiveAbilityCodes: JSON.stringify(['ember_heart']),
+        activeAbilityCodes: JSON.stringify(['ember_pulse']),
+        name: 'Обычная руна Пламени',
+        rarity: 'USUAL',
+        health: 2,
+        attack: 2,
+        defence: 0,
+        magicDefence: 0,
+        dexterity: 0,
+        intelligence: 0,
+        isEquipped: true,
+        equippedSlot: 0,
+      },
+    }),
+  ]);
+
+  return getPlayer(runtime);
+};
+
+const runEmberNoviceEvidencePath = async (runtime: LocalPlaytestRuntime): Promise<void> => {
+  const player = await prepareEmberNoviceEvidenceState(runtime);
+  const repository = new PrismaGameRepository(prisma);
+  const exploreLocation = new ExploreLocation(
+    repository,
+    buildWorldCatalog(gameContent.world),
+    createEmberNoviceEvidenceRandom(),
+    runtime.services.telemetry,
+  );
+  const intentId = `${emberNoviceEvidenceIntentIdPrefix}:${runtime.scenarioName}:${runtime.vkId}`;
+  const stateKey = buildExploreLocationIntentStateKey(player);
+  const battle = await exploreLocation.execute(runtime.vkId, intentId, stateKey, 'payload');
+
+  if ('event' in battle) {
+    throw new Error('Ember novice evidence path resolved an exploration event instead of a battle.');
+  }
+
+  const startedBattle = 'battle' in battle ? battle.battle : battle;
+  runtime.transcript.push({
+    label: 'ember-novice-evidence',
+    command: gameCommands.explore,
+    payload: {
+      command: gameCommands.explore,
+      intentId,
+      stateKey,
+    },
+    reply: startedBattle.log.join('\n'),
+  });
+
+  if (startedBattle.enemy.code !== 'ash-seer') {
+    throw new Error(`Ember novice evidence path expected ash-seer, got ${startedBattle.enemy.code}.`);
+  }
+
+  await fightUntilFinished(runtime);
+  await collectPendingRewardIfAny(runtime);
+};
+
 const runQuestBookChecks = async (runtime: LocalPlaytestRuntime): Promise<void> => {
   const questBookReply = await runCommand(runtime, 'quest-book', gameCommands.questBook);
   assertReplyIncludes(questBookReply, 'Quest book', [
@@ -291,6 +422,7 @@ const runFirstSessionScenario = async (runtime: LocalPlaytestRuntime): Promise<L
   );
 
   await runCommand(runtime, 'profile', gameCommands.profile);
+  await runEmberNoviceEvidencePath(runtime);
 
   const player = await getPlayer(runtime);
   const activeBattle = await getActiveBattle(runtime);
