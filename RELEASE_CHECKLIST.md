@@ -48,7 +48,9 @@ npm run release:school-evidence
 npm run release:evidence
 ```
 
-Релиз не готов, если evidence verdict остаётся `insufficient_evidence`.
+Релиз не готов, если evidence verdict остаётся `warn` или хуже без явного release-owner решения.
+
+Q-006 evidence snapshot: school novice trial + aligned `UNUSUAL` reward подтверждены для Пламени, Тверди, Бури и Прорицания. Оставшиеся runtime gaps находятся после novice payoff: equip sign/loadout engagement по школам и отсутствие `return_recap_shown` в текущем окне.
 
 Минимально нужно подтвердить:
 
@@ -60,7 +62,7 @@ npm run release:evidence
 - победа возвращает к `Исследовать`, а не к отдельному обходному `Новый бой`;
 - rune hub позволяет выбрать, надеть, снять, создать, перековать и распылить руну;
 - две стартовые руны работают как равноправные слоты;
-- school-first path по Пламени, Тверди, Бури и Прорицанию проходит до понятной school-награды и следующего шага;
+- school-first path по Пламени, Тверди, Бури и Прорицанию проходит до понятной school-награды, установки знака и следующего шага;
 - reward ledger не даёт duplicate reward на retry/replay;
 - command intent не допускает double spend на craft/reroll/equip hot paths.
 

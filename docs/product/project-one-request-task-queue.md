@@ -6,7 +6,7 @@
 - Created: `2026-04-22`
 - Current checkpoint: commit `fa19167 Document lore quest continuation completion`
 - Progress policy: one task = one request = one verification pass = one commit.
-- Active queue progress: `5/46 active task capsules closed`
+- Active queue progress: `6/46 active task capsules closed`
 - Deferred review progress: `0/10 review capsules closed`
 
 Этот документ нужен как рабочая очередь для чата. Когда звучит `дальше`, берётся первый незакрытый пункт из ближайшего приоритета, выполняется маленьким вертикальным срезом, проверяется и коммитится отдельно.
@@ -147,7 +147,7 @@ npm run release:preflight
 
 ### Q-006. Close school evidence verdict
 
-- Status: `next`
+- Status: `done`
 - Source: `PLAN.md`, `RELEASE_CHECKLIST.md`, `docs/testing/release-evidence-report.md`
 - Goal: перевести school-first slice из `insufficient_evidence` в доказанное состояние или честно зафиксировать оставшийся gap.
 - Scope:
@@ -159,7 +159,7 @@ npm run release:preflight
 
 ### Q-007. Write production handoff runbook
 
-- Status: `ready`
+- Status: `next`
 - Source: `RELEASE_CHECKLIST.md`
 - Goal: зафиксировать минимальный ops-runbook для `.env`, SQLite backup, запуска, логов и отката.
 - Scope:
