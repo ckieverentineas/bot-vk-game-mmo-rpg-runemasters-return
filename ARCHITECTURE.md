@@ -191,7 +191,7 @@ Handler-слой тоже режется по ролям: `gameCommandRoutes.ts`
 - параллельно в `BattleSession.playerLoadoutSnapshot` теперь живёт versioned `LoadoutSnapshot`, который переживает save/load независимо от cooldown/runtime-полей;
 - canonical reward write-path больше не опирается только на `battle.rewards`, а фиксирует `RewardIntent` и append-only `RewardLedger` для exact-once claim semantics.
 - `BattleSession.actionRevision` стал compare-and-swap guard для active battle mutations, чтобы stale branch не мог перезаписать более новый turn state.
-- `BattleSession.battleSnapshot` стал versioned envelope для mutable battle JSON, а legacy `playerSnapshot` / `enemySnapshot` / `log` / `rewardsSnapshot` остаются compatibility fallback до отдельного migration window; при rollback/new-runtime re-entry версия battle snapshot доверяется только если её `actionRevision` совпадает с revision строки.
+- `BattleSession.battleSnapshot` стал versioned envelope для mutable battle JSON, а legacy `playerSnapshot` / `enemySnapshot` / `log` / `rewardsSnapshot` остаются compatibility fallback до migration window, описанного в [`docs/platform/battle-fallback-retirement-policy.md`](docs/platform/battle-fallback-retirement-policy.md); при rollback/new-runtime re-entry версия battle snapshot доверяется только если её `actionRevision` совпадает с revision строки.
 
 Следующий shipped tactics layer добавляет ещё локальные боевые контракты внутри snapshot:
 

@@ -163,8 +163,7 @@ Still open:
 - no persisted `PlayerState` schema envelope exists, by design;
 - no Prisma migration or backfill is included in Q-036;
 - no broad migration harness exists beyond checked-in fixtures and repository tests;
-- `player-state-current.json` exists as a baseline fixture, but the next storage-affecting player-state slice should add an explicit current-fixture assertion beside the legacy/future assertions;
-- legacy battle fallback column retirement remains a separate policy decision.
+- `player-state-current.json` exists as a baseline fixture, but the next storage-affecting player-state slice should add an explicit current-fixture assertion beside the legacy/future assertions.
 
 ## Release rule
 

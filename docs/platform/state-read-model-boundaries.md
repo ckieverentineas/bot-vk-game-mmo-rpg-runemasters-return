@@ -11,7 +11,7 @@
 
 Gameplay state must have one clear owner. Screens, telemetry evidence, and helper projections may derive useful views from that owner, but they must not silently become a second truth.
 
-This policy closes the Phase 1 document-first sign-off for source-of-truth state vs derived read models. It does not close the separate legacy battle fallback retirement decision.
+This policy closes the Phase 1 document-first sign-off for source-of-truth state vs derived read models. Legacy battle fallback retirement is governed separately by `docs/platform/battle-fallback-retirement-policy.md`.
 
 ## Core rule
 
@@ -43,7 +43,7 @@ Current battle source-of-truth fields are:
 - versioned `BattleSnapshot`;
 - `actionRevision`;
 - encounter status and active battle pointer;
-- legacy `playerSnapshot`, `enemySnapshot`, `log`, and `rewardsSnapshot` fallback columns until a separate retirement policy lands.
+- legacy `playerSnapshot`, `enemySnapshot`, `log`, and `rewardsSnapshot` fallback columns until the migration window defined in `docs/platform/battle-fallback-retirement-policy.md`.
 
 The snapshot is persisted truth because the runtime must resume the same combat state across retry, restart, rollback, and stale-command paths. Battle readability helpers are separate read models.
 

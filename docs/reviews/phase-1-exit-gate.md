@@ -10,7 +10,7 @@
 - Gate verdict: `iterate`
 - Scope-lock verdict: `ship`
 
-Итог: **scope Vertical Slice зафиксирован**, risky breadth вынесена из ближайшего delivery order, но **Phase 1 exit gate ещё не считается полностью закрытым**, пока не добиты оставшиеся product lock и domain platform gaps.
+Итог: **scope Vertical Slice зафиксирован**, risky breadth вынесена из ближайшего delivery order, но **Phase 1 exit gate ещё не считается полностью закрытым**, пока не добит оставшийся product lock gap.
 
 Update after Q-035:
 
@@ -29,12 +29,18 @@ Update after Q-037:
 - policy формально разводит quest book, next goal, school mastery и battle snapshot boundaries без schema change;
 - gate verdict остаётся `iterate`, потому что school bible / overlap rules и legacy battle fallback retirement ещё открыты.
 
+Update after Q-038:
+
+- legacy battle fallback retirement policy закрыт документом `docs/platform/battle-fallback-retirement-policy.md`;
+- policy оставляет legacy battle columns как migration bridge до отдельного migration window с rollback-safety критериями;
+- gate verdict остаётся `iterate`, потому что school bible / overlap rules ещё открыты.
+
 ## Exit criteria summary
 
 | Exit criterion | Status | Decision | Evidence |
 |---|---|---|---|
 | Пиллары продукта согласованы и не конфликтуют друг с другом | `partial` | конфликтов в locked slice не осталось; rarity ladder v1 заморожен, school bible / overlap rules ещё открыты | `PLAN.md`, `README.md`, `docs/product/rarity-ladder-v1.md`, этот review |
-| Platform contracts готовы к Vertical Slice | `partial` | battle/loadout/reward/retry baseline, player-state versioning policy и source-of-truth/read-model split готовы; legacy battle fallback retirement ещё открыт | `ARCHITECTURE.md`, `docs/platform/player-state-versioning-policy.md`, `docs/platform/state-read-model-boundaries.md`, `docs/platform/*`, этот review |
+| Platform contracts готовы к Vertical Slice | `done` | battle/loadout/reward/retry baseline, player-state versioning policy, source-of-truth/read-model split и battle fallback retirement policy готовы | `ARCHITECTURE.md`, `docs/platform/player-state-versioning-policy.md`, `docs/platform/state-read-model-boundaries.md`, `docs/platform/battle-fallback-retirement-policy.md`, `docs/platform/*`, этот review |
 | Vertical Slice scope заперт и не расползается | `done` | committed scope сведён к одному доказуемому school-first PvE journey | этот review, `PLAN.md` |
 | High-risk out-of-scope вынесен из ближайшего delivery order | `done` | social-lite, PvP beyond locked slice и unsafe breadth явно вырезаны из near-term committed work | этот review, `PLAN.md` |
 
@@ -70,12 +76,12 @@ Update after Q-037:
 
 ### Not yet ready to mark fully green
 
-- named retirement policy for legacy battle fallback columns.
+No open domain-platform blocker remains for this gate after Q-038. The future battle fallback migration is implementation debt, not an unresolved policy decision.
 
 ### Accepted debt for this gate review
 
-- Эти gaps **не должны расширять Vertical Slice scope**.
-- Они **блокируют only full Phase 1 exit sign-off**, но не требуют нового platform feature burst прямо сейчас.
+- Оставшийся product gap **не должен расширять Vertical Slice scope**.
+- Он **блокирует only full Phase 1 exit sign-off**, но не требует нового platform feature burst прямо сейчас.
 - Следующий contract-oriented slice должен быть document-first, а не schema-first, если нет нового real runtime risk.
 
 ## Vertical Slice committed scope v1
@@ -127,8 +133,7 @@ Update after Q-037:
 
 - `11.1 Product lock`:
   - school bible / overlap rules.
-- `11.2 Domain platform`:
-  - legacy battle fallback retirement decision.
+- `11.2 Domain platform`: closed by Q-036, Q-037, and Q-038 docs-first policies.
 
 ### Must not reopen scope lock
 
@@ -145,6 +150,7 @@ Update after Q-037:
 - `ARCHITECTURE.md`
 - `docs/platform/player-state-versioning-policy.md`
 - `docs/platform/state-read-model-boundaries.md`
+- `docs/platform/battle-fallback-retirement-policy.md`
 - `docs/platform/persistence-versioning-rules.md`
 - `docs/platform/retry-handling-rules.md`
 - `docs/platform/command-intent-rules.md`
@@ -157,4 +163,4 @@ Update after Q-037:
 ## Decision summary
 
 - **Можно** считать scope lock для Vertical Slice v1 зафиксированным.
-- **Нельзя** считать Phase 1 exit gate полностью закрытым, пока school bible / overlap rules и legacy battle fallback retirement не доведены до explicit sign-off.
+- **Нельзя** считать Phase 1 exit gate полностью закрытым, пока school bible / overlap rules не доведены до explicit sign-off.

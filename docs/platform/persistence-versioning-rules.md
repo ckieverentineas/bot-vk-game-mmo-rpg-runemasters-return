@@ -16,6 +16,7 @@ Versioned persistence contracts must let the runtime distinguish between:
 - `BattleSnapshot` — versioned persisted JSON snapshot for mutable battle state (`player`, `enemy`, `log`, `result`, `rewards`).
 - `PlayerState` — normalized table aggregate with document-first versioning policy in `docs/platform/player-state-versioning-policy.md`, not a single versioned JSON envelope.
 - State/read-model boundary — document-first platform policy in `docs/platform/state-read-model-boundaries.md`.
+- Battle fallback retirement — document-first platform policy in `docs/platform/battle-fallback-retirement-policy.md`.
 
 ## Player-state hydration rules
 
@@ -44,6 +45,10 @@ Source-of-truth vs read-model policy: `docs/platform/state-read-model-boundaries
 - runtime trusts `battleSnapshot` only when its embedded `actionRevision` matches the row `actionRevision`; otherwise legacy columns win as the newer canonical fallback;
 - if `battleSnapshot` is missing, unreadable, or from a newer schema, repository falls back to legacy columns instead of silently dropping battle state;
 - rollback safety is preserved because older application versions can ignore the additive `battleSnapshot` column and continue reading legacy columns.
+
+Retirement policy: `docs/platform/battle-fallback-retirement-policy.md`.
+
+Current decision: legacy battle columns are a migration bridge, not a permanent target contract. They stay until a separate migration window proves snapshot completeness, validates existing rows, and closes rollback to pre-snapshot binaries.
 
 ## Compatibility fixture rules
 
@@ -75,5 +80,4 @@ Fixture meanings and open coverage gaps are documented in `docs/platform/player-
 
 - persisted `PlayerState` JSON-envelope schema is intentionally not introduced while player state remains a normalized table aggregate;
 - broader migration harness beyond current checked-in fixtures and hydration tests;
-- explicit current-fixture assertion for the next storage-affecting player-state slice;
-- future decision on whether legacy battle columns remain permanent fallback or are retired after a migration window.
+- explicit current-fixture assertion for the next storage-affecting player-state slice.
