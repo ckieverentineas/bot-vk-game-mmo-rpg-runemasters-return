@@ -17,6 +17,7 @@ Versioned persistence contracts must let the runtime distinguish between:
 - `PlayerState` — normalized table aggregate with document-first versioning policy in `docs/platform/player-state-versioning-policy.md`, not a single versioned JSON envelope.
 - State/read-model boundary — document-first platform policy in `docs/platform/state-read-model-boundaries.md`.
 - Battle fallback retirement — document-first platform policy in `docs/platform/battle-fallback-retirement-policy.md`.
+- Migration harness boundary — document-first platform policy in `docs/platform/migration-harness-boundaries.md`.
 
 ## Player-state hydration rules
 
@@ -68,16 +69,22 @@ Current fixtures live in `src/modules/shared/infrastructure/prisma/fixtures/`.
 
 Fixture meanings and open coverage gaps are documented in `docs/platform/player-state-versioning-policy.md`.
 
+## Migration harness boundary
+
+Minimal scan, dry-run, apply, verify, fixture, and acceptance-gate rules are documented in `docs/platform/migration-harness-boundaries.md`.
+
+Current decision: Q-039 does not add package scripts because no storage-affecting migration is being implemented. The next slice that changes existing persisted rows or retires fallback columns must add only the needed harness commands and prove their reports before release.
+
 ## Release rule
 
 - additive persistence change must ship with:
   - schema migration if storage changed;
   - repository hydration tests;
   - compatibility fixtures;
+  - migration harness commands and reports when existing rows need scan/backfill/retirement;
   - docs sync in `PLAN.md`, `ARCHITECTURE.md`, `CHANGELOG.md`, and `RELEASE_CHECKLIST.md` if release behavior changed.
 
 ## Still open after v1
 
 - persisted `PlayerState` JSON-envelope schema is intentionally not introduced while player state remains a normalized table aggregate;
-- broader migration harness beyond current checked-in fixtures and hydration tests;
 - explicit current-fixture assertion for the next storage-affecting player-state slice.

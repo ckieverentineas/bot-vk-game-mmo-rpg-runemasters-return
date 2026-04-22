@@ -4,7 +4,7 @@
 
 - Status: `document-first platform policy v1`
 - Scope: persisted player state hydration, compatibility boundaries, fixtures, and future versioning decisions.
-- Source references: `docs/platform/persistence-versioning-rules.md`, `docs/reviews/phase-1-exit-gate.md`.
+- Source references: `docs/platform/persistence-versioning-rules.md`, `docs/platform/migration-harness-boundaries.md`, `docs/reviews/phase-1-exit-gate.md`.
 
 ## Goal
 
@@ -42,6 +42,8 @@ Table-backed player state is versioned by:
 - explicit hydration rules in `src/modules/shared/infrastructure/prisma/player-state-hydration.ts`;
 - checked-in compatibility fixtures;
 - repository tests that prove current, legacy, and future-tolerant payloads can still hydrate.
+
+Migration harness boundaries for future storage-affecting changes are documented in `docs/platform/migration-harness-boundaries.md`.
 
 Do not add a `PlayerState.schemaVersion` field while the state remains a normalized table aggregate. A single version number would imply a single serialized contract that does not exist yet.
 
@@ -162,7 +164,7 @@ Still open:
 
 - no persisted `PlayerState` schema envelope exists, by design;
 - no Prisma migration or backfill is included in Q-036;
-- no broad migration harness exists beyond checked-in fixtures and repository tests;
+- reusable migration harness commands are not implemented until the first storage-affecting migration that needs them;
 - `player-state-current.json` exists as a baseline fixture, but the next storage-affecting player-state slice should add an explicit current-fixture assertion beside the legacy/future assertions.
 
 ## Release rule

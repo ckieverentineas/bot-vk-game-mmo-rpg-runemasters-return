@@ -5,7 +5,7 @@
 - Status: `document-first platform policy v1`
 - Scope: legacy battle JSON columns, rollback safety, migration window criteria, and retirement decision.
 - Runtime impact: no schema change, no Prisma migration, no repository behavior change.
-- Source references: `docs/platform/persistence-versioning-rules.md`, `docs/platform/state-read-model-boundaries.md`, `ARCHITECTURE.md`, `docs/reviews/phase-1-exit-gate.md`.
+- Source references: `docs/platform/persistence-versioning-rules.md`, `docs/platform/state-read-model-boundaries.md`, `docs/platform/migration-harness-boundaries.md`, `ARCHITECTURE.md`, `docs/reviews/phase-1-exit-gate.md`.
 
 ## Decision
 
@@ -88,7 +88,7 @@ A safe retirement should happen in separate commits or releases:
    - Add or confirm tests that prove snapshot and legacy fallback both hydrate.
 
 2. **Backfill and scan window**
-   - Add a non-destructive scan or dry-run migration.
+   - Add a non-destructive scan or dry-run migration that follows `docs/platform/migration-harness-boundaries.md`.
    - Backfill missing/invalid `battleSnapshot` rows only after the scan output is reviewed.
    - Keep legacy columns and dual-read behavior.
 
