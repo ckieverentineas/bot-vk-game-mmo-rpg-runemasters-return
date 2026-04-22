@@ -1,12 +1,6 @@
 ﻿import type { Context } from 'vk-io';
 
 import type { AppServices } from '../../app/composition-root';
-import type { BattleActionResultView } from '../../modules/combat/application/use-cases/PerformBattleAction';
-import {
-  type ExploreLocationEventResult,
-  type ExploreLocationReplayResult,
-  isExploreLocationEventResult,
-} from '../../modules/exploration/application/use-cases/ExploreLocation';
 import { getSchoolNovicePathDefinitionForEnemy } from '../../modules/player/domain/school-novice-path';
 import type { ReturnToAdventureReplayResult } from '../../modules/exploration/application/use-cases/ReturnToAdventure';
 import type { SkipTutorialReplayResult } from '../../modules/exploration/application/use-cases/SkipTutorial';
@@ -21,22 +15,17 @@ import { AppError, isAppError } from '../../shared/domain/AppError';
 import type { BattleActionType, BattleView, PlayerState } from '../../shared/types/game';
 import { Logger } from '../../utils/logger';
 import {
-  createBattleKeyboard,
-  createBattleResultKeyboard,
   createDeleteConfirmationKeyboard,
   createEntryKeyboard,
   createMainMenuKeyboard,
-  createPendingRewardKeyboard,
   createProfileKeyboard,
   createTutorialKeyboard,
 } from '../keyboards';
 import {
   renderBattle,
-  renderExplorationEvent,
   renderInventory,
   renderLocation,
   renderMainMenu,
-  renderPendingReward,
   renderProfile,
   renderReturnRecap,
   renderWelcome,
@@ -58,6 +47,14 @@ import {
 } from './gameCommandRecovery';
 import type { TrophyActionCode } from '../../modules/rewards/domain/trophy-actions';
 import {
+  replyWithBattle as sendBattle,
+  replyWithExplorationResult as sendExplorationResult,
+  resolveBattleReplyKeyboard,
+  type BattleReplyTelemetry,
+  type BattleReplyState,
+  type ExplorationReplyState,
+} from './responders/battleReplyFlow';
+import {
   replyWithCollectedPendingReward as sendCollectedPendingReward,
   replyWithPendingRewardIfAny as sendPendingRewardIfAny,
   replyWithPendingRewardScreen as sendPendingRewardScreen,
@@ -70,8 +67,6 @@ import {
 } from './responders/runeReplyFlow';
 
 type ReplyKeyboard = ReturnType<typeof createMainMenuKeyboard>;
-type BattleReplyState = BattleView | BattleActionResultView | ExploreLocationReplayResult;
-type ExplorationReplyState = BattleReplyState | ExploreLocationEventResult;
 type TutorialRouteReplyState = PlayerState | SkipTutorialReplayResult | ReturnToAdventureReplayResult;
 
 type TutorialRouteExecutor = (
@@ -97,21 +92,6 @@ const formatRuneCountLabel = (count: number): string => {
 
   return 'рун';
 };
-
-const normalizeBattleReplyState = (state: BattleReplyState): BattleActionResultView => (
-  'battle' in state
-    ? {
-      battle: state.battle,
-      player: 'player' in state ? state.player ?? null : null,
-      acquisitionSummary: 'acquisitionSummary' in state ? state.acquisitionSummary ?? null : null,
-      ...('replayed' in state && state.replayed === true ? { replayed: true as const } : {}),
-    }
-    : {
-        battle: state,
-        player: null,
-        acquisitionSummary: null,
-      }
-);
 
 const normalizeTutorialRouteReplyState = (state: TutorialRouteReplyState): { player: PlayerState; replayed: boolean } => (
   'player' in state
@@ -456,46 +436,23 @@ export class GameHandler {
     await sendRuneRerollMenu(ctx, player);
   }
 
-  private async replyWithExplorationResult(ctx: Context, state: ExplorationReplyState, vkId?: number): Promise<void> {
-    if (isExploreLocationEventResult(state)) {
-      await this.reply(ctx, renderExplorationEvent(state.event, state.player), createMainMenuKeyboard(state.player));
-      return;
-    }
+  private createBattleReplyTelemetry(): BattleReplyTelemetry {
+    return {
+      trackFirstSchoolPresented: (player, acquisitionSummary) => (
+        this.trackFirstSchoolPresented(player, acquisitionSummary)
+      ),
+      trackPostSessionNextGoalShown: (player, battle) => (
+        this.trackPostSessionNextGoalShown(player, battle)
+      ),
+    };
+  }
 
-    await this.replyWithBattle(ctx, state, vkId);
+  private async replyWithExplorationResult(ctx: Context, state: ExplorationReplyState, vkId?: number): Promise<void> {
+    await sendExplorationResult(ctx, this.services, state, this.createBattleReplyTelemetry(), vkId);
   }
 
   private async replyWithBattle(ctx: Context, state: BattleReplyState, vkId?: number): Promise<void> {
-    const result = normalizeBattleReplyState(state);
-    const battle = result.battle;
-    if (battle.status === 'ACTIVE') {
-      await this.reply(ctx, renderBattle(battle), this.resolveBattleKeyboard(battle));
-      return;
-    }
-
-    const player = result.player ?? (vkId === undefined
-      ? null
-      : await this.services.getPlayerProfile.execute(vkId));
-
-    if (battle.result === 'VICTORY' && player) {
-      const pendingReward = await this.services.getPendingReward.execute(player.vkId);
-      if (pendingReward.pendingReward) {
-        await this.reply(
-          ctx,
-          renderPendingReward(pendingReward.pendingReward, result.acquisitionSummary),
-          createPendingRewardKeyboard(pendingReward.pendingReward),
-        );
-        await this.trackFirstSchoolPresented(player, result.acquisitionSummary);
-        return;
-      }
-    }
-
-    await this.reply(ctx, renderBattle(battle, player ?? undefined, result.acquisitionSummary), createBattleResultKeyboard(battle, player ?? undefined));
-
-    if (player) {
-      await this.trackFirstSchoolPresented(player, result.acquisitionSummary);
-      await this.trackPostSessionNextGoalShown(player, battle);
-    }
+    await sendBattle(ctx, this.services, state, this.createBattleReplyTelemetry(), vkId);
   }
 
   public async safeGetActiveBattle(vkId: number): Promise<BattleView | null> {
@@ -507,7 +464,7 @@ export class GameHandler {
   }
 
   public resolveBattleKeyboard(battle: BattleView): ReplyKeyboard {
-    return battle.status === 'ACTIVE' ? createBattleKeyboard(battle) : createBattleResultKeyboard(battle);
+    return resolveBattleReplyKeyboard(battle);
   }
 
   private resolveErrorKeyboard(errorCode: string): ReplyKeyboard {
