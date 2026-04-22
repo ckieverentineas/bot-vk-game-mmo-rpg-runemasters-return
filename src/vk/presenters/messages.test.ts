@@ -798,7 +798,7 @@ describe('messages school-first onboarding framing', () => {
     expect(message).not.toContain('🎮 Действия:');
   });
 
-  it('shows the full battle log while it remains short enough to read', () => {
+  it('shows the full battle log newest-first while it remains short enough to read', () => {
     const message = renderBattle(createBattle({
       status: 'ACTIVE',
       result: null,
@@ -818,9 +818,12 @@ describe('messages school-first onboarding framing', () => {
     expect(message).toContain('• 🌀 Импульс углей прожигает Синий слизень на 8 урона.');
     expect(message).toContain('• ⚠️ Синий слизень готовит «Кислотный прорыв». Защита на следующий ход сработает хуже обычного.');
     expect(message).toContain('• 💙 Рунный фокус: +1 маны.');
+    expect(message.indexOf('• 💙 Рунный фокус: +1 маны.')).toBeLessThan(
+      message.indexOf('• 🗺️ Тёмный лес: на вас выходит обычный враг Синий слизень.'),
+    );
   });
 
-  it('compacts long battle logs without losing the opening and latest events', () => {
+  it('compacts long battle logs newest-first without losing the opening and latest events', () => {
     const message = renderBattle(createBattle({
       status: 'ACTIVE',
       result: null,
@@ -840,11 +843,14 @@ describe('messages school-first onboarding framing', () => {
     }));
 
     expect(message).toContain('• 🗺️ Тёмный лес: на вас выходит обычный враг Синий слизень.');
-    expect(message).toContain('… ещё 2 события выше');
+    expect(message).toContain('… ещё 2 события между свежими событиями и началом боя');
     expect(message).not.toContain('• 🧭 Путевой эпизод: вы находите свежие следы.');
     expect(message).not.toContain('• ⚔️ Вы наносите 4 урона врагу Синий слизень.');
     expect(message).toContain('• ⚠️ Синий слизень готовит «Кислотный прорыв».');
     expect(message).toContain('• 🏆 Победа!');
+    expect(message.indexOf('• 🏆 Победа!')).toBeLessThan(
+      message.indexOf('• 🗺️ Тёмный лес: на вас выходит обычный враг Синий слизень.'),
+    );
   });
 
   it('shows an echo-specific combat clarity hint around revealed intent', () => {

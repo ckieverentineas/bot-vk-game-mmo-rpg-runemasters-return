@@ -823,22 +823,22 @@ const selectBattleLogLines = (log: readonly string[]): readonly BattleLogPresent
   }
 
   if (log.length <= visibleBattleLogEntryLimit) {
-    return log.map(toBattleLogEntryLine);
+    return [...log].reverse().map(toBattleLogEntryLine);
   }
 
   const trailingEntryCount = visibleBattleLogEntryLimit - leadingBattleLogEntryCount;
   const omittedCount = log.length - visibleBattleLogEntryLimit;
 
   return [
-    ...log.slice(0, leadingBattleLogEntryCount).map(toBattleLogEntryLine),
+    ...log.slice(-trailingEntryCount).reverse().map(toBattleLogEntryLine),
     { kind: 'omission', omittedCount },
-    ...log.slice(-trailingEntryCount).map(toBattleLogEntryLine),
+    ...log.slice(0, leadingBattleLogEntryCount).reverse().map(toBattleLogEntryLine),
   ];
 };
 
 const renderBattleLogLine = (line: BattleLogPresentationLine): string => {
   if (line.kind === 'omission') {
-    return `… ещё ${line.omittedCount} ${formatBattleEventWord(line.omittedCount)} выше`;
+    return `… ещё ${line.omittedCount} ${formatBattleEventWord(line.omittedCount)} между свежими событиями и началом боя`;
   }
 
   return `• ${line.text}`;
