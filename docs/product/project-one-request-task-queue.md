@@ -6,7 +6,7 @@
 - Created: `2026-04-22`
 - Current checkpoint: commit `fa19167 Document lore quest continuation completion`
 - Progress policy: one task = one request = one verification pass = one commit.
-- Active queue progress: `0/46 active task capsules closed`
+- Active queue progress: `1/46 active task capsules closed`
 - Deferred review progress: `0/10 review capsules closed`
 
 Этот документ нужен как рабочая очередь для чата. Когда звучит `дальше`, берётся первый незакрытый пункт из ближайшего приоритета, выполняется маленьким вертикальным срезом, проверяется и коммитится отдельно.
@@ -87,7 +87,7 @@ npm run release:preflight
 
 ### Q-001. Audit school novice elite evidence gap
 
-- Status: `next`
+- Status: `done`
 - Source: `docs/testing/release-evidence-report.md`, `docs/testing/school-path-evidence-report.md`, `docs/telemetry/telemetry-plan.md`
 - Goal: понять, почему в логах нет `school_novice_elite_encounter_started`, и зафиксировать самый маленький честный путь к этому событию.
 - Scope:
