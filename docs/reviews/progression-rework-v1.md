@@ -1,5 +1,7 @@
 # Progression Rework v1
 
+> Q-046 status: the deferred player-state versioning policy note is superseded by `docs/platform/player-state-versioning-policy.md`. Runtime has already removed legacy stat allocation; this file remains a historical decision snapshot for the progression shift.
+
 ## Problem
 
 Текущее level-up распределение `+АТК/+ЗДР/+ФЗАЩ/+МЗАЩ/+ЛВК/+ИНТ` быстро превращается в:
@@ -34,5 +36,5 @@
 ## Deferred after v1
 
 - полный skill tree / doctrine layer;
-- player-state versioning policy для полного удаления старых stat-point полей;
+- player-state versioning policy для полного удаления старых stat-point полей — superseded by `docs/platform/player-state-versioning-policy.md`;
 - school mastery depth beyond first rank / first unlock layer.

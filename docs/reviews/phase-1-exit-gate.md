@@ -35,6 +35,11 @@ Update after Q-038:
 - policy оставляет legacy battle columns как migration bridge до отдельного migration window с rollback-safety критериями;
 - gate verdict остаётся `iterate`, потому что school bible / overlap rules ещё открыты.
 
+Update after Q-046:
+
+- historical two-school Vertical Slice scope and the deferred status for `Буря` / `Прорицание` are superseded by current `PLAN.md`, `README.md` and `CHANGELOG.md`;
+- current runtime has first early school paths for `Буря` / `Прорицание` and novice trial/payoff evidence for four schools, while this review remains a historical scope-lock snapshot for high-risk exclusions and Phase 1 sign-off caveats.
+
 ## Exit criteria summary
 
 | Exit criterion | Status | Decision | Evidence |
