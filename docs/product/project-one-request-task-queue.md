@@ -6,7 +6,7 @@
 - Created: `2026-04-22`
 - Current checkpoint: commit `fa19167 Document lore quest continuation completion`
 - Progress policy: one task = one request = one verification pass = one commit.
-- Active queue progress: `3/46 active task capsules closed`
+- Active queue progress: `4/46 active task capsules closed`
 - Deferred review progress: `0/10 review capsules closed`
 
 Этот документ нужен как рабочая очередь для чата. Когда звучит `дальше`, берётся первый незакрытый пункт из ближайшего приоритета, выполняется маленьким вертикальным срезом, проверяется и коммитится отдельно.
@@ -123,7 +123,7 @@ npm run release:preflight
 
 ### Q-004. Add Gale novice elite local evidence path
 
-- Status: `next`
+- Status: `done`
 - Source: `docs/testing/school-path-playtest-v1.md`
 - Goal: получить отдельный runtime evidence path для Бури.
 - Scope:
@@ -135,7 +135,7 @@ npm run release:preflight
 
 ### Q-005. Add Echo novice elite local evidence path
 
-- Status: `ready-after-q004`
+- Status: `next`
 - Source: `docs/testing/school-path-playtest-v1.md`
 - Goal: получить отдельный runtime evidence path для Прорицания.
 - Scope:

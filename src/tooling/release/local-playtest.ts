@@ -75,6 +75,22 @@ const schoolNoviceEvidencePaths = [
     },
     openRuneHubAfterReward: true,
   },
+  {
+    schoolCode: 'gale',
+    enemyCode: 'storm-lynx',
+    usualRuneName: 'Обычная руна Бури',
+    passiveAbilityCodes: [],
+    activeAbilityCodes: ['gale_step'],
+    usualRuneStats: {
+      health: 2,
+      attack: 3,
+      defence: 0,
+      magicDefence: 0,
+      dexterity: 3,
+      intelligence: 0,
+    },
+    openRuneHubAfterReward: false,
+  },
 ] as const satisfies readonly LocalPlaytestNoviceEvidencePath[];
 
 const inventoryFields = [
@@ -107,7 +123,7 @@ interface LocalPlaytestRuneStats {
 }
 
 interface LocalPlaytestNoviceEvidencePath {
-  readonly schoolCode: 'ember' | 'stone';
+  readonly schoolCode: 'ember' | 'stone' | 'gale';
   readonly enemyCode: string;
   readonly usualRuneName: string;
   readonly passiveAbilityCodes: readonly string[];

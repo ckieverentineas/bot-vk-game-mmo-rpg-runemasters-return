@@ -286,6 +286,12 @@ describe('local playtest harness', () => {
           novicePathSchoolCode: 'stone',
           noviceTargetRewardRarity: 'UNUSUAL',
         }),
+        createLog('school_novice_elite_encounter_started', { schoolCode: 'gale' }),
+        createLog('reward_claim_applied', {
+          isSchoolNoviceAligned: true,
+          novicePathSchoolCode: 'gale',
+          noviceTargetRewardRarity: 'UNUSUAL',
+        }),
         createLog('school_novice_follow_up_action_taken', {
           schoolCode: 'stone',
           actionType: 'open_runes',
@@ -318,6 +324,8 @@ describe('local playtest harness', () => {
       'payload: expected ember school novice aligned reward evidence',
       'payload: expected stone school novice elite evidence',
       'payload: expected stone school novice aligned reward evidence',
+      'payload: expected gale school novice elite evidence',
+      'payload: expected gale school novice aligned reward evidence',
       'payload: expected stone school novice rune hub follow-up',
     ]);
   });
@@ -345,6 +353,8 @@ describe('local playtest harness', () => {
       'payload: expected ember school novice aligned reward evidence',
       'payload: expected stone school novice elite evidence',
       'payload: expected stone school novice aligned reward evidence',
+      'payload: expected gale school novice elite evidence',
+      'payload: expected gale school novice aligned reward evidence',
       'payload: expected stone school novice rune hub follow-up',
     ]);
   });
@@ -379,6 +389,8 @@ describe('local playtest harness', () => {
       'payload: expected ember school novice aligned reward evidence',
       'payload: expected stone school novice elite evidence',
       'payload: expected stone school novice aligned reward evidence',
+      'payload: expected gale school novice elite evidence',
+      'payload: expected gale school novice aligned reward evidence',
       'payload: expected stone school novice rune hub follow-up',
     ]);
   });
@@ -404,6 +416,12 @@ describe('local playtest harness', () => {
           novicePathSchoolCode: 'ember',
           noviceTargetRewardRarity: 'UNUSUAL',
         }),
+        createLog('school_novice_elite_encounter_started', { schoolCode: 'gale' }),
+        createLog('reward_claim_applied', {
+          isSchoolNoviceAligned: true,
+          novicePathSchoolCode: 'gale',
+          noviceTargetRewardRarity: 'UNUSUAL',
+        }),
       ],
       questRewardReplaySafe: true,
     });
@@ -419,6 +437,48 @@ describe('local playtest harness', () => {
       'payload: expected stone school novice elite evidence',
       'payload: expected stone school novice aligned reward evidence',
       'payload: expected stone school novice rune hub follow-up',
+    ]);
+  });
+
+  it('reports missing gale school novice path evidence', () => {
+    const summary = buildLocalPlaytestSummary({
+      scenarioName: 'payload',
+      vkId: 1001,
+      player: createPlayer(),
+      activeBattle: null,
+      pendingRewardOpen: false,
+      transcript: [],
+      logs: [
+        createLog('school_novice_elite_encounter_started', { schoolCode: 'ember' }),
+        createLog('reward_claim_applied', {
+          isSchoolNoviceAligned: true,
+          novicePathSchoolCode: 'ember',
+          noviceTargetRewardRarity: 'UNUSUAL',
+        }),
+        createLog('school_novice_elite_encounter_started', { schoolCode: 'stone' }),
+        createLog('reward_claim_applied', {
+          isSchoolNoviceAligned: true,
+          novicePathSchoolCode: 'stone',
+          noviceTargetRewardRarity: 'UNUSUAL',
+        }),
+        createLog('school_novice_follow_up_action_taken', {
+          schoolCode: 'stone',
+          actionType: 'open_runes',
+        }),
+      ],
+      questRewardReplaySafe: true,
+    });
+
+    const normalizedSummary = {
+      ...summary,
+      trophyCollectionReplyCount: 1,
+      questBookReplyCount: 1,
+      questRewardClaimReplyCount: 1,
+    };
+
+    expect(listLocalPlaytestFailures(normalizedSummary)).toEqual([
+      'payload: expected gale school novice elite evidence',
+      'payload: expected gale school novice aligned reward evidence',
     ]);
   });
 
@@ -449,6 +509,8 @@ describe('local playtest harness', () => {
       'payload: expected ember school novice aligned reward evidence',
       'payload: expected stone school novice elite evidence',
       'payload: expected stone school novice aligned reward evidence',
+      'payload: expected gale school novice elite evidence',
+      'payload: expected gale school novice aligned reward evidence',
       'payload: expected stone school novice rune hub follow-up',
     ]);
   });
