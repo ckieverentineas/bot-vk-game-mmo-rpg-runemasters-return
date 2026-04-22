@@ -55,6 +55,10 @@ type KeyboardColor =
   | typeof Keyboard.POSITIVE_COLOR
   | typeof Keyboard.NEGATIVE_COLOR;
 
+interface KeyboardBuildOptions {
+  readonly inline?: boolean;
+}
+
 interface KeyboardButtonDefinition {
   readonly label: string;
   readonly command: GameCommand;
@@ -65,7 +69,7 @@ interface KeyboardButtonDefinition {
 
 type KeyboardLayout = readonly (readonly KeyboardButtonDefinition[])[];
 
-const buildKeyboard = (layout: KeyboardLayout): KeyboardBuilder => {
+const buildKeyboard = (layout: KeyboardLayout, options: KeyboardBuildOptions = {}): KeyboardBuilder => {
   const keyboard = Keyboard.builder();
 
   layout.forEach((row, rowIndex) => {
@@ -84,7 +88,7 @@ const buildKeyboard = (layout: KeyboardLayout): KeyboardBuilder => {
     }
   });
 
-  return keyboard.oneTime(false).inline(false);
+  return keyboard.oneTime(false).inline(options.inline === true);
 };
 
 const resolveSchoolContinuationLabel = (player: PlayerState | undefined, fallbackLabel: string): string => {
@@ -397,7 +401,10 @@ export const createBattleKeyboard = (battle: BattleView): KeyboardBuilder => bui
 
 export const createBattleResultKeyboard = (battle: BattleView, player?: PlayerState): KeyboardBuilder => buildKeyboard(createBattleResultLayout(battle, player));
 
-export const createPendingRewardKeyboard = (pendingReward: PendingRewardView): KeyboardBuilder => buildKeyboard(createPendingRewardLayout(pendingReward));
+export const createPendingRewardKeyboard = (pendingReward: PendingRewardView): KeyboardBuilder => buildKeyboard(
+  createPendingRewardLayout(pendingReward),
+  { inline: true },
+);
 
 export const createRuneKeyboard = (player?: PlayerState): KeyboardBuilder => buildKeyboard(createRuneListLayout(player));
 

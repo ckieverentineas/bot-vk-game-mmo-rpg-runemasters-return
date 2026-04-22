@@ -17,6 +17,7 @@
 - player skill foundation для action-based progression: типы навыков, persistence `PlayerSkill`, доменный resolver шанса роста и применение skill experience через repository;
 - pending trophy reward vertical slice: versioned pending reward snapshot, `RewardLedgerRecord` rail для `PENDING -> APPLIED`, создание pending-награды после победы, выбор trophy action при сборе и безопасный replay уже собранного результата;
 - player-facing trophy card после победы и команда `добыча` / `награды`: игрок видит закреплённую базовую награду, варианты обработки трофея и ledger-scoped кнопки, а `начать` / `исследовать` возвращают к несобранной добыче вместо потери контекста;
+- trophy card использует inline-клавиатуру для действий сбора лута, чтобы выбор обработки был привязан к конкретному сообщению с добычей;
 - local playtest теперь проходит через сбор pending trophy reward и падает, если после победы остаётся открытая добыча; учебный spirit-трофей даёт первую эссенцию, а имена новых рун больше не дублируют слово `руна`;
 - профиль игрока теперь показывает action-based навыки с рангом и прогрессом до следующего порога, чтобы трофейные действия не исчезали после сообщения о сборе;
 - action-specific trophy rewards теперь моделируются от `enemy.kind` и `lootTable`: `skin_beast`, `gather_slime`, `extract_essence` и fallback `claim_all` могут давать материалы и skill points без повторного начисления базовой победной награды;

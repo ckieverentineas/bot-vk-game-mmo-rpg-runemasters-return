@@ -199,6 +199,25 @@ interface SerializedButton {
   };
 }
 
+interface SerializedKeyboard {
+  readonly isInline: boolean;
+  readonly rows: Array<Array<SerializedButton>>;
+  readonly currentRow?: Array<SerializedButton>;
+}
+
+const serializeKeyboard = (
+  keyboard:
+    | ReturnType<typeof createBattleKeyboard>
+    | ReturnType<typeof createBattleResultKeyboard>
+    | ReturnType<typeof createDeleteConfirmationKeyboard>
+    | ReturnType<typeof createMainMenuKeyboard>
+    | ReturnType<typeof createPendingRewardKeyboard>
+    | ReturnType<typeof createProfileKeyboard>
+    | ReturnType<typeof createRuneDetailKeyboard>
+    | ReturnType<typeof createRuneKeyboard>
+    | ReturnType<typeof createTutorialKeyboard>,
+): SerializedKeyboard => JSON.parse(JSON.stringify(keyboard)) as SerializedKeyboard;
+
 const collectPayloads = (
   keyboard:
     | ReturnType<typeof createBattleKeyboard>
@@ -211,10 +230,7 @@ const collectPayloads = (
     | ReturnType<typeof createRuneKeyboard>
     | ReturnType<typeof createTutorialKeyboard>,
 ): SerializedButtonPayload[] => {
-  const serialized = JSON.parse(JSON.stringify(keyboard)) as {
-    rows: Array<Array<SerializedButton>>;
-    currentRow?: Array<SerializedButton>;
-  };
+  const serialized = serializeKeyboard(keyboard);
 
   return [...serialized.rows.flat(), ...(serialized.currentRow ?? [])]
     .map((button) => JSON.parse(button.action.payload) as SerializedButtonPayload);
@@ -229,10 +245,7 @@ const collectLabels = (
     | ReturnType<typeof createRuneDetailKeyboard>
     | ReturnType<typeof createRuneKeyboard>,
 ): string[] => {
-  const serialized = JSON.parse(JSON.stringify(keyboard)) as {
-    rows: Array<Array<SerializedButton>>;
-    currentRow?: Array<SerializedButton>;
-  };
+  const serialized = serializeKeyboard(keyboard);
 
   return [...serialized.rows.flat(), ...(serialized.currentRow ?? [])].map((button) => button.action.label);
 };
@@ -247,6 +260,8 @@ describe('profile keyboard', () => {
     expect(labels).toContain('🎒 Забрать добычу');
     expect(payloads.find((payload) => payload.command === gameCommands.skinBeastReward)?.stateKey).toBe('battle-victory:battle-1');
     expect(payloads.find((payload) => payload.command === gameCommands.collectAllReward)?.stateKey).toBe('battle-victory:battle-1');
+    expect(serializeKeyboard(keyboard).isInline).toBe(true);
+    expect(serializeKeyboard(createMainMenuKeyboard(createPlayer())).isInline).toBe(false);
   });
 
   it('keeps profile keyboard focused on navigation and delete confirmation', () => {
