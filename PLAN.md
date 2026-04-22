@@ -39,8 +39,9 @@
 ## Архитектурная гигиена
 
 - Дробить проект малыми вертикальными срезами, сохраняя публичные импорты там, где это снижает риск.
-- Presenter-декомпозиция начата с trophy rewards: `src/vk/presenters/rewardMessages.ts` отвечает за pending/collected reward copy, а `message-formatting.ts` держит общие короткие formatter'ы.
-- Следующие безопасные кандидаты: вынести rune/battle presenters из `src/vk/presenters/messages.ts`, выделить маршруты `gameCommandRoutes.ts` из recovery-правил, а `GameHandler` оставить тонким orchestrator'ом поверх use-case и presenter слоёв.
+- Функциональное ядро, компонентная оболочка: чистые formatter/resolver функции внутри модулей, сценарные компоненты вокруг них, public barrel для совместимости импортов.
+- Presenter-декомпозиция начата с trophy rewards и rune hub: `rewardMessages.ts` отвечает за pending/collected reward copy, `runeMessages.ts` — за рунные экраны, а `message-formatting.ts` держит общие короткие formatter'ы.
+- Следующие безопасные кандидаты: вынести battle presenter из `src/vk/presenters/messages.ts`, выделить маршруты `gameCommandRoutes.ts` из recovery-правил, а `GameHandler` оставить тонким orchestrator'ом поверх use-case и presenter слоёв.
 - `PrismaGameRepository` не распиливать механически: сначала выделять чистые мапперы, snapshot hydration и reward/battle persistence helpers с тестами на replay/concurrency.
 
 ## Ближайший порядок работ

@@ -1,5 +1,6 @@
 import type { AcquisitionSummaryView } from '../../modules/player/application/read-models/acquisition-summary';
 import type { NextGoalView } from '../../modules/player/application/read-models/next-goal';
+import { listSchoolDefinitions } from '../../modules/runes/domain/rune-schools';
 import type { RuneDraft } from '../../shared/types/game';
 
 export const withSentencePeriod = (text: string): string => /[.!?]$/.test(text) ? text : `${text}.`;
@@ -34,3 +35,10 @@ export const renderNextGoalSummary = (
   ...(nextGoal.whyText ? [`🜂 Зачем идти: ${withSentencePeriod(nextGoal.whyText)}`] : []),
   `${actionPrefix}: «${nextGoal.primaryActionLabel}».`,
 ];
+
+export const renderStarterSchoolLine = (): string => {
+  const schoolNames = listSchoolDefinitions().map(({ name }) => name);
+  return schoolNames.length > 0
+    ? `Стартовые школы: ${schoolNames.join(', ')}.`
+    : 'Стартовые школы уже ждут первую боевую руну.';
+};
