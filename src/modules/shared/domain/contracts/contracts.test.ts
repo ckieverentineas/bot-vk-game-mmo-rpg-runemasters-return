@@ -12,6 +12,10 @@ import {
   createPendingRewardLedgerEntry,
   isRewardLedgerEntry,
 } from './reward-ledger';
+import {
+  createQuestRewardLedgerEntry,
+  isQuestRewardLedgerEntry,
+} from './quest-reward-ledger';
 import { createBattleVictoryRewardIntent } from './reward-intent';
 
 const createRune = (): RuneView => ({
@@ -210,6 +214,55 @@ describe('battle platform contracts', () => {
     expect(isRewardLedgerEntry({
       ...ledger,
       status: 'APPLIED',
+    })).toBe(false);
+  });
+
+  it('creates a canonical quest reward ledger entry', () => {
+    const reward = {
+      gold: 15,
+      inventoryDelta: {
+        usualShards: 2,
+        leather: 1,
+      },
+    };
+
+    const ledger = createQuestRewardLedgerEntry(
+      1,
+      'awakening_empty_master',
+      reward,
+      '2026-04-22T00:00:00.000Z',
+    );
+
+    expect(ledger).toEqual({
+      schemaVersion: 1,
+      kind: 'QUEST_REWARD',
+      status: 'APPLIED',
+      playerId: 1,
+      ledgerKey: 'quest_reward:1:awakening_empty_master',
+      sourceType: 'QUEST_REWARD',
+      sourceId: 'awakening_empty_master',
+      questCode: 'awakening_empty_master',
+      reward,
+      appliedAt: '2026-04-22T00:00:00.000Z',
+    });
+    expect(isQuestRewardLedgerEntry(ledger)).toBe(true);
+  });
+
+  it('rejects quest reward ledger entries with mismatched identity', () => {
+    const ledger = createQuestRewardLedgerEntry(
+      1,
+      'awakening_empty_master',
+      { inventoryDelta: { usualShards: 2 } },
+      '2026-04-22T00:00:00.000Z',
+    );
+
+    expect(isQuestRewardLedgerEntry({
+      ...ledger,
+      ledgerKey: 'quest_reward:1:first_sign',
+    })).toBe(false);
+    expect(isQuestRewardLedgerEntry({
+      ...ledger,
+      sourceId: 'first_sign',
     })).toBe(false);
   });
 

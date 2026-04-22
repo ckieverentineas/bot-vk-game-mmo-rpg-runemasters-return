@@ -53,6 +53,10 @@ import {
   type PendingRewardLedgerEntryV1,
   type RewardLedgerEntry,
 } from '../../domain/contracts/reward-ledger';
+import {
+  createQuestRewardLedgerEntry,
+  QUEST_REWARD_SOURCE_TYPE,
+} from '../../domain/contracts/quest-reward-ledger';
 import { createBattleVictoryRewardIntent } from '../../domain/contracts/reward-intent';
 import type {
   CollectPendingRewardResult,
@@ -81,25 +85,6 @@ type TransactionClient = Prisma.TransactionClient;
 type CommandIntentKey = GameCommandIntentKey;
 
 type PersistedBattleState = Pick<BattleView, 'status' | 'turnOwner' | 'player' | 'enemy' | 'encounter' | 'log' | 'result' | 'rewards' | 'actionRevision'>;
-
-const questRewardSourceType = 'QUEST_REWARD';
-
-interface QuestRewardLedgerEntryV1 {
-  readonly schemaVersion: 1;
-  readonly kind: typeof questRewardSourceType;
-  readonly status: 'APPLIED';
-  readonly playerId: number;
-  readonly ledgerKey: string;
-  readonly sourceType: typeof questRewardSourceType;
-  readonly sourceId: string;
-  readonly questCode: string;
-  readonly reward: ResourceReward;
-  readonly appliedAt: string;
-}
-
-const buildQuestRewardLedgerKey = (playerId: number, questCode: string): string => (
-  `quest_reward:${playerId}:${questCode}`
-);
 
 const buildInventoryDeltaInput = (delta: InventoryDelta): Record<string, { increment: number }> => {
   const data: Record<string, { increment: number }> = {};
@@ -249,28 +234,6 @@ const mapPendingRewardLedgerCreateData = (rewardLedger: PendingRewardLedgerEntry
   entrySnapshot: stringifyJson(rewardLedger, '{}'),
   appliedAt: null,
 });
-
-const createQuestRewardLedgerEntry = (
-  playerId: number,
-  questCode: string,
-  reward: ResourceReward,
-  appliedAt: string,
-): QuestRewardLedgerEntryV1 => {
-  const ledgerKey = buildQuestRewardLedgerKey(playerId, questCode);
-
-  return {
-    schemaVersion: 1,
-    kind: questRewardSourceType,
-    status: 'APPLIED',
-    playerId,
-    ledgerKey,
-    sourceType: questRewardSourceType,
-    sourceId: questCode,
-    questCode,
-    reward,
-    appliedAt,
-  };
-};
 
 interface CurrentRuneLoadoutState {
   readonly currentRuneIndex: number;
@@ -858,7 +821,7 @@ export class PrismaGameRepository implements GameRepository {
     const records = await this.prisma.rewardLedgerRecord.findMany({
       where: {
         playerId,
-        sourceType: questRewardSourceType,
+        sourceType: QUEST_REWARD_SOURCE_TYPE,
         status: 'APPLIED',
       },
       select: {
