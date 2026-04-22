@@ -15,14 +15,16 @@ Versioned persistence contracts must let the runtime distinguish between:
 - `RewardLedger` — exact-once reward application audit trail;
 - `BattleSnapshot` — versioned persisted JSON snapshot for mutable battle state (`player`, `enemy`, `log`, `result`, `rewards`).
 - `PlayerState` — normalized table aggregate with document-first versioning policy in `docs/platform/player-state-versioning-policy.md`, not a single versioned JSON envelope.
+- State/read-model boundary — document-first platform policy in `docs/platform/state-read-model-boundaries.md`.
 
 ## Player-state hydration rules
 
 Полная `PlayerState` JSON-envelope schema не вводится в Q-036. Current policy: persisted player state остаётся normalized table aggregate, а runtime обязан гидратировать его через один compatibility-safe helper, а не через разрозненные ad-hoc fallback'и.
 
 Canonical policy: `docs/platform/player-state-versioning-policy.md`.
+Source-of-truth vs read-model policy: `docs/platform/state-read-model-boundaries.md`.
 
-- `Player`, `PlayerProgress`, `PlayerInventory`, `Rune` и `PlayerSchoolMastery` остаются source-of-truth таблицами;
+- `Player`, `PlayerProgress`, `PlayerInventory`, `Rune`, `PlayerSchoolMastery` и `PlayerSkill` остаются source-of-truth таблицами;
 - runtime должен уметь безопасно гидратировать:
   - current persisted state;
   - legacy state с неполным `progress` / `inventory` / legacy equipped-slot semantics;

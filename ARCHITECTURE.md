@@ -298,7 +298,22 @@ Standalone-сцены сохраняются через `recordCommandIntentResu
 
 До такого среза нельзя расширять `RewardLedgerRecord` в универсальное хранилище сюжетного состояния и нельзя добавлять Prisma migration для quests “на будущее”.
 
-### 8.7. Telemetry semantics
+### 8.7. Source-of-truth vs read-model boundaries
+
+Formal platform policy lives in [`docs/platform/state-read-model-boundaries.md`](docs/platform/state-read-model-boundaries.md).
+
+Current rule: persisted source-of-truth stays in Prisma tables, versioned snapshots, ledgers, mutation receipts, and static authored content. Derived read-models shape player-facing screens, telemetry payloads, release evidence, and QA summaries, but they must remain rebuildable from those owners.
+
+Current examples:
+
+- `Книга путей` derives progress/readiness from `PlayerState`, authored quest definitions, and reward-ledger facts; only the reward claim fact is persisted.
+- `next-goal` derives menu, return recap, rune hub, battle result, and evidence guidance from player/battle/content state instead of persisting a goal field.
+- `PlayerSchoolMastery` is source-of-truth for school experience/rank; school recognition, payoff copy, and acquisition summaries are read-models.
+- `BattleSnapshot` is persisted combat truth; battle clarity and compact school payoff explanations are read-models over the snapshot, loadout snapshot, player state, and content.
+
+No feature should add hidden persistence because a presenter, telemetry report, or QA note needs a convenient field. If the value cannot be rebuilt, it needs a named table, versioned contract, ledger, or policy update before code lands.
+
+### 8.8. Telemetry semantics
 
 Shipped telemetry v1 не вводит отдельную analytics-platform и опирается на существующий `GameLog` rail через typed adapter [`RepositoryGameTelemetry`](src/modules/shared/infrastructure/telemetry/RepositoryGameTelemetry.ts:1).
 

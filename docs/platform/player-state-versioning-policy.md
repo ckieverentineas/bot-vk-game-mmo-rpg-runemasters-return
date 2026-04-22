@@ -62,6 +62,8 @@ If a future player-owned feature needs a persisted JSON blob, that blob must fol
 
 Derived read models must not become hidden source-of-truth state.
 
+Detailed boundary rules live in `docs/platform/state-read-model-boundaries.md`.
+
 Examples:
 
 - next-goal guidance;
@@ -162,7 +164,6 @@ Still open:
 - no Prisma migration or backfill is included in Q-036;
 - no broad migration harness exists beyond checked-in fixtures and repository tests;
 - `player-state-current.json` exists as a baseline fixture, but the next storage-affecting player-state slice should add an explicit current-fixture assertion beside the legacy/future assertions;
-- full source-of-truth vs derived read-model audit remains a separate sign-off item;
 - legacy battle fallback column retirement remains a separate policy decision.
 
 ## Release rule
