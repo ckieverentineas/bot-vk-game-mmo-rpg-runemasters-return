@@ -453,7 +453,7 @@ describe('GameHandler smoke', () => {
     const message = getReplyCalls(ctx)[0]?.message ?? '';
     expect(services.getQuestBook.execute).toHaveBeenCalledWith(1001);
     expect(message).toContain('📜 Книга путей');
-    expect(message).toContain('Готово к награде: 1');
+    expect(message).toContain('В книге: 1 запись ждёт награду');
     expect(message).toContain('Пробуждение Пустого мастера');
   });
 

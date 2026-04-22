@@ -5,11 +5,56 @@ import type {
 } from '../../modules/quests/application/read-models/quest-book';
 import { formatResourceReward } from './message-formatting';
 
+type RussianPluralForms = readonly [one: string, few: string, many: string];
+
 const questStatusLabels: Readonly<Record<QuestView['status'], string>> = {
   READY_TO_CLAIM: '🎁 Награда ждёт',
   IN_PROGRESS: '🌒 В пути',
   CLAIMED: '✅ Закрыто',
 };
+
+const selectRussianPluralForm = (count: number, forms: RussianPluralForms): string => {
+  const absoluteCount = Math.abs(count);
+  const remainder100 = absoluteCount % 100;
+
+  if (remainder100 >= 11 && remainder100 <= 14) {
+    return forms[2];
+  }
+
+  const remainder10 = absoluteCount % 10;
+
+  if (remainder10 === 1) {
+    return forms[0];
+  }
+
+  if (remainder10 >= 2 && remainder10 <= 4) {
+    return forms[1];
+  }
+
+  return forms[2];
+};
+
+const formatCountPhrase = (count: number, forms: RussianPluralForms): string => (
+  `${count} ${selectRussianPluralForm(count, forms)}`
+);
+
+const renderQuestBookSummary = (book: QuestBookView): string => [
+  formatCountPhrase(book.readyToClaimCount, [
+    'запись ждёт награду',
+    'записи ждут награду',
+    'записей ждут награду',
+  ]),
+  formatCountPhrase(book.inProgressCount, [
+    'след ещё тянется',
+    'следа ещё тянутся',
+    'следов ещё тянутся',
+  ]),
+  formatCountPhrase(book.claimedCount, [
+    'запись уже закрыта',
+    'записи уже закрыты',
+    'записей уже закрыто',
+  ]),
+].join(' · ');
 
 const renderQuestProgress = (quest: QuestView): string => {
   if (quest.status === 'CLAIMED') {
@@ -20,11 +65,11 @@ const renderQuestProgress = (quest: QuestView): string => {
     return 'Шаг завершён. Награда ждёт в книге.';
   }
 
-  return `Путь: ${quest.progress.current}/${quest.progress.required}.`;
+  return `Отметка пути: ${quest.progress.current}/${quest.progress.required}.`;
 };
 
-const renderQuest = (quest: QuestView, index: number): string => [
-  `${index + 1}. ${quest.icon} ${quest.title} · ${questStatusLabels[quest.status]}`,
+const renderQuest = (quest: QuestView): string => [
+  `${quest.icon} ${quest.title} · ${questStatusLabels[quest.status]}`,
   quest.story,
   `След: ${quest.objective}`,
   renderQuestProgress(quest),
@@ -33,11 +78,8 @@ const renderQuest = (quest: QuestView, index: number): string => [
 
 export const renderQuestBook = (book: QuestBookView): string => [
   '📜 Книга путей',
-  '',
   'Руны помнят не обещания, а завершённые шаги.',
-  '',
-  `🎁 Готово к награде: ${book.readyToClaimCount} · 🌒 В пути: ${book.inProgressCount} · ✅ Закрыто: ${book.claimedCount}`,
-  '',
+  `В книге: ${renderQuestBookSummary(book)}.`,
   ...book.quests.map(renderQuest),
 ].join('\n\n');
 
