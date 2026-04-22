@@ -9,9 +9,11 @@
 3. parallel `finalizeBattle` одной победы начисляет reward ровно один раз;
 4. parallel `craftRune` при одном бюджете создаёт одну руну и не уводит shard balance в минус;
 5. parallel `rerollRuneStat` при одном осколке тратит ресурс ровно один раз;
-6. parallel `destroyRune` возвращает refund ровно один раз.
+6. parallel `destroyRune` возвращает refund ровно один раз;
+7. repeated or parallel `claimQuestReward` для одного `questCode` закрывает запись один раз и не выдаёт вторую награду.
 
 ## CI expectation
 
 - минимум mock-level regression coverage и one real Prisma-backed concurrency lane должны оставаться зелёными;
 - новый reward-bearing flow не считается done, пока не добавлен в эту таблицу и в duplication matrix.
+- quest reward claim/replay обязателен для проверки, потому что использует общий `RewardLedgerRecord` exact-once guard вне battle victory path.
