@@ -151,6 +151,38 @@ const applySkinningRewardVariation = (
   };
 };
 
+const applyReagentGatheringRewardVariation = (
+  enemy: TrophyActionRewardEnemyContext,
+  action: TrophyActionDefinition,
+  inventoryDelta: InventoryDelta,
+): InventoryDelta => {
+  if (action.code !== 'gather_slime' || enemy.kind !== 'slime') {
+    return inventoryDelta;
+  }
+
+  const essence = inventoryDelta.essence ?? 0;
+  if (essence <= 0) {
+    return inventoryDelta;
+  }
+
+  return {
+    ...inventoryDelta,
+    herb: (inventoryDelta.herb ?? 0) + 1,
+  };
+};
+
+const applyTrophyRewardVariations = (
+  enemy: TrophyActionRewardEnemyContext,
+  action: TrophyActionDefinition,
+  inventoryDelta: InventoryDelta,
+): InventoryDelta => (
+  applyReagentGatheringRewardVariation(
+    enemy,
+    action,
+    applySkinningRewardVariation(enemy, action, inventoryDelta),
+  )
+);
+
 const resolveTrophySkillPoints = (
   enemy: TrophyActionRewardEnemyContext,
   action: TrophyActionDefinition,
@@ -179,7 +211,7 @@ export const resolveTrophyActionReward = (
 
   return {
     actionCode: action.code,
-    inventoryDelta: applySkinningRewardVariation(enemy, action, inventoryDelta),
+    inventoryDelta: applyTrophyRewardVariations(enemy, action, inventoryDelta),
     skillPoints: resolveTrophySkillPoints(enemy, action),
   };
 };

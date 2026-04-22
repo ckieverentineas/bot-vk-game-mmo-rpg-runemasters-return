@@ -165,6 +165,33 @@ describe('resolveTrophyActions', () => {
     });
   });
 
+  it('adds a slime reagent reward variation when the core has essence', () => {
+    const [gatherSlime] = resolveTrophyActions({ kind: 'slime' });
+
+    expect(resolveTrophyActionReward({
+      kind: 'slime',
+      isElite: false,
+      isBoss: false,
+      lootTable: {
+        herb: 1,
+        essence: 1,
+        leather: 1,
+      },
+    }, gatherSlime!)).toEqual({
+      actionCode: 'gather_slime',
+      inventoryDelta: {
+        herb: 2,
+        essence: 1,
+      },
+      skillPoints: [
+        {
+          skillCode: 'gathering.reagent_gathering',
+          points: 1,
+        },
+      ],
+    });
+  });
+
   it('models boss trophy actions with stronger skill point rewards', () => {
     const [extractEssence] = resolveTrophyActions({ kind: 'spirit' });
 

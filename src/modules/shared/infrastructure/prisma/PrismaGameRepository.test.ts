@@ -952,7 +952,7 @@ describe('PrismaGameRepository release hardening', () => {
             code: 'gather_slime',
             reward: {
               inventoryDelta: {
-                herb: 2,
+                herb: 3,
                 essence: 1,
               },
               skillPoints: [
