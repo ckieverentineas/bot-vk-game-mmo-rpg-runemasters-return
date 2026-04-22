@@ -34,14 +34,14 @@
 - Есть защита от повторных наград, отрицательных остатков инвентаря, stale battle overwrite и повторного применения command intent.
 - Есть smoke/regression/concurrency tests и release tooling для content validation, локального first-session playtest, summary, evidence и preflight.
 - School novice trial evidence закрыт для четырёх школ: `release:school-evidence` показывает `Novice elite` и `UNUSUAL reward` по Пламени, Тверди, Бури и Прорицанию.
+- `Книга путей` имеет local handler manual evidence и release-evidence funnel по open/claim/replay: `quest_book_opened`, `quest_reward_claimed` и `quest_reward_replayed` уже видны в `docs/testing/release-evidence-report.md`.
 
 ## Что не считаем доказанным
 
-- School novice trial/payoff по четырём школам уже подтверждён автоматическим runtime evidence, но весь school-first path ещё не считается release-green: `release:evidence` сейчас возвращает `warn`, потому что после novice payoff не подтверждены equip sign/loadout engagement по школам и `return_recap_shown`.
+- School novice trial/payoff по четырём школам уже подтверждён автоматическим runtime evidence, но весь school-first path ещё не считается release-green: `release:evidence` сейчас возвращает `warn`, потому что `first_school_committed` покрывает не все first-school reveal случаи, после novice payoff не подтверждены equip sign/loadout engagement по школам и `return_recap_shown` не показывает follow-up proxy.
 - Игровая версия считается только по commit-based правилу из `release:status`; `package.json` остаётся технической npm-метаинформацией и не является player-facing версией игры.
 - Production database rollout не считается оформленным, пока нет явной процедуры backup + migration/deploy для SQLite.
 - Action-based trophy rewards имеют local handler manual evidence для pending trophy collect/replay в `docs/testing/pending-trophy-manual-playtest-q022.md`, но ещё не считаются полностью release-proven без release evidence или release-owner решения. Hidden drop pools и skill-threshold unlocks за пределами первых узких срезов, а также stat growth остаются будущими работами.
-- `Книга путей` пока не считается release-proven, пока opening/claim/replay сценарии не пройдены ручным playtest'ом на живом боте.
 
 ## Архитектурная гигиена
 
@@ -58,7 +58,7 @@
 ## Ближайший порядок работ
 
 1. Прогнать technical gate после остановки бота: `npm run db:generate`, `npm run check`, `npm run release:local-playtest`, `npm run release:preflight`.
-2. Пройти ручной playtest поверх автоматического first-session smoke: onboarding, quest book open/claim/replay, encounter choice, fight/flee, rune hub, две руны, craft/reroll/destroy и четыре school paths. Pending trophy collect/replay уже закрыт local handler evidence в Q-022, но может быть повторён на живом боте перед релизом.
+2. Пройти ручной playtest поверх автоматического first-session smoke: onboarding, encounter choice, fight/flee, rune hub, две руны, craft/reroll/destroy и четыре school paths. Quest book open/claim/replay уже закрыт local handler evidence в Q-011 и виден в `release:evidence`; pending trophy collect/replay уже закрыт local handler evidence в Q-022. Оба сценария можно повторить на живом боте перед релизом как optional smoke.
 3. Собрать `npm run release:school-evidence` и `npm run release:evidence`; если verdict остаётся `warn` или хуже, релиз не готов без явного release-owner решения.
 4. После evidence pass обновить `README.md`, `CHANGELOG.md`, `PLAN.md` и при необходимости `ARCHITECTURE.md` / `RELEASE_CHECKLIST.md`.
 5. Подготовить минимальный ops-runbook: где `.env`, где SQLite DB, как запускается production-процесс, где логи и как откатываться.
