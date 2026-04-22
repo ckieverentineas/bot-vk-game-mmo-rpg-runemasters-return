@@ -6,7 +6,7 @@
 - Created: `2026-04-22`
 - Current checkpoint: commit `fa19167 Document lore quest continuation completion`
 - Progress policy: one task = one request = one verification pass = one commit.
-- Active queue progress: `10/46 active task capsules closed`
+- Active queue progress: `11/46 active task capsules closed`
 - Deferred review progress: `0/10 review capsules closed`
 
 Этот документ нужен как рабочая очередь для чата. Когда звучит `дальше`, берётся первый незакрытый пункт из ближайшего приоритета, выполняется маленьким вертикальным срезом, проверяется и коммитится отдельно.
@@ -207,7 +207,7 @@ npm run release:preflight
 
 ### Q-011. Run manual quest book playtest note
 
-- Status: `next`
+- Status: `done`
 - Source: `PLAN.md`, `docs/product/lore-quests-home-continuation.md`
 - Goal: закрыть human-readable evidence по open/claim/replay `Книги путей`.
 - Scope:
@@ -219,7 +219,7 @@ npm run release:preflight
 
 ### Q-012. Quest book copy density pass
 
-- Status: `ready-after-q011`
+- Status: `next`
 - Source: `src/vk/presenters/questMessages.ts`
 - Goal: проверить, что после добавления новых глав экран не выглядит как административный список.
 - Scope:
