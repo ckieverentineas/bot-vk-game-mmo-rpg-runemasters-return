@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { emptyInventory } from '../../../player/domain/player-stats';
 import type { GameRepository } from '../../../shared/application/ports/GameRepository';
+import type { GameTelemetry } from '../../../shared/application/ports/GameTelemetry';
 import type { PlayerState } from '../../../../shared/types/game';
 import { ClaimQuestReward } from './ClaimQuestReward';
 
@@ -58,10 +59,21 @@ const createRepository = (player = createPlayer(), claimedQuestCodes: readonly s
   }),
 } as unknown as GameRepository);
 
+const createTelemetry = () => ({
+  questRewardClaimed: vi.fn().mockResolvedValue(undefined),
+  questRewardReplayed: vi.fn().mockResolvedValue(undefined),
+  questRewardNotReady: vi.fn().mockResolvedValue(undefined),
+});
+
+const createUseCase = (repository: GameRepository, telemetry = createTelemetry()): ClaimQuestReward => (
+  new ClaimQuestReward(repository, telemetry as unknown as GameTelemetry)
+);
+
 describe('ClaimQuestReward', () => {
   it('claims a ready quest reward exactly through the repository rail', async () => {
     const repository = createRepository();
-    const result = await new ClaimQuestReward(repository).execute(1001, 'awakening_empty_master');
+    const telemetry = createTelemetry();
+    const result = await createUseCase(repository, telemetry).execute(1001, 'awakening_empty_master');
 
     expect(repository.claimQuestReward).toHaveBeenCalledWith(
       1,
@@ -70,14 +82,59 @@ describe('ClaimQuestReward', () => {
     );
     expect(result.claimedNow).toBe(true);
     expect(result.book.claimedCount).toBe(1);
+    expect(telemetry.questRewardClaimed).toHaveBeenCalledWith(1, {
+      playerId: 1,
+      questCode: 'awakening_empty_master',
+      questStatus: 'CLAIMED',
+      readyToClaimCount: 0,
+      claimedCount: 1,
+    });
   });
 
   it('does not apply a reward that is already in the claimed ledger', async () => {
     const repository = createRepository(createPlayer(), ['awakening_empty_master']);
-    const result = await new ClaimQuestReward(repository).execute(1001, 'awakening_empty_master');
+    const telemetry = createTelemetry();
+    const result = await createUseCase(repository, telemetry).execute(1001, 'awakening_empty_master');
 
     expect(repository.claimQuestReward).not.toHaveBeenCalled();
     expect(result.claimedNow).toBe(false);
     expect(result.quest.status).toBe('CLAIMED');
+    expect(telemetry.questRewardReplayed).toHaveBeenCalledWith(1, {
+      playerId: 1,
+      questCode: 'awakening_empty_master',
+      questStatus: 'CLAIMED',
+      readyToClaimCount: 0,
+      claimedCount: 1,
+    });
+  });
+
+  it('tracks not-ready claims before returning the domain error', async () => {
+    const player = createPlayer({ victories: 0, mobsKilled: 0 });
+    const repository = createRepository(player);
+    const telemetry = createTelemetry();
+
+    await expect(createUseCase(repository, telemetry).execute(1001, 'awakening_empty_master'))
+      .rejects.toMatchObject({ code: 'quest_not_ready' });
+
+    expect(repository.claimQuestReward).not.toHaveBeenCalled();
+    expect(telemetry.questRewardNotReady).toHaveBeenCalledWith(1, {
+      playerId: 1,
+      questCode: 'awakening_empty_master',
+      questStatus: 'IN_PROGRESS',
+      readyToClaimCount: 0,
+      claimedCount: 0,
+    });
+  });
+
+  it('still returns a claimed quest when telemetry logging fails after persistence', async () => {
+    const repository = createRepository();
+    const telemetry = createTelemetry();
+    telemetry.questRewardClaimed.mockRejectedValueOnce(new Error('telemetry offline'));
+
+    await expect(createUseCase(repository, telemetry).execute(1001, 'awakening_empty_master'))
+      .resolves.toMatchObject({
+        claimedNow: true,
+        book: { claimedCount: 1 },
+      });
   });
 });

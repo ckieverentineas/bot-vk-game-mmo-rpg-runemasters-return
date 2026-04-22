@@ -1,6 +1,16 @@
 import type { RuneRarity, TutorialState } from '../../../../shared/types/game';
 import type { NextGoalType } from '../../../player/application/read-models/next-goal';
 
+export type QuestTelemetryStatus = 'READY_TO_CLAIM' | 'IN_PROGRESS' | 'CLAIMED';
+
+export interface QuestTelemetryPayload {
+  readonly playerId: number;
+  readonly questCode: string | null;
+  readonly questStatus: QuestTelemetryStatus | null;
+  readonly readyToClaimCount: number;
+  readonly claimedCount: number;
+}
+
 export interface GameTelemetry {
   onboardingStarted(
     userId: number,
@@ -89,4 +99,8 @@ export interface GameTelemetry {
       readonly isSchoolNoviceElite: boolean;
     },
   ): Promise<void>;
+  questBookOpened(userId: number, payload: QuestTelemetryPayload): Promise<void>;
+  questRewardClaimed(userId: number, payload: QuestTelemetryPayload): Promise<void>;
+  questRewardReplayed(userId: number, payload: QuestTelemetryPayload): Promise<void>;
+  questRewardNotReady(userId: number, payload: QuestTelemetryPayload): Promise<void>;
 }

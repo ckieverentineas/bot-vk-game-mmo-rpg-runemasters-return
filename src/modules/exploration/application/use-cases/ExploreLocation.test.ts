@@ -171,6 +171,10 @@ const createTelemetry = (): GameTelemetry => ({
   schoolNoviceFollowUpActionTaken: vi.fn().mockResolvedValue(undefined),
   returnRecapShown: vi.fn().mockResolvedValue(undefined),
   postSessionNextGoalShown: vi.fn().mockResolvedValue(undefined),
+  questBookOpened: vi.fn().mockResolvedValue(undefined),
+  questRewardClaimed: vi.fn().mockResolvedValue(undefined),
+  questRewardReplayed: vi.fn().mockResolvedValue(undefined),
+  questRewardNotReady: vi.fn().mockResolvedValue(undefined),
 });
 
 describe('ExploreLocation', () => {

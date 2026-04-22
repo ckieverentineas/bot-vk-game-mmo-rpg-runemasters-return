@@ -67,7 +67,35 @@ export class RepositoryGameTelemetry implements GameTelemetry {
     await this.log(userId, 'post_session_next_goal_shown', payload);
   }
 
-  private async log(userId: number, action: string, details: Record<string, unknown>): Promise<void> {
+  public async questBookOpened(
+    userId: number,
+    payload: Parameters<GameTelemetry['questBookOpened']>[1],
+  ): Promise<void> {
+    await this.log(userId, 'quest_book_opened', payload);
+  }
+
+  public async questRewardClaimed(
+    userId: number,
+    payload: Parameters<GameTelemetry['questRewardClaimed']>[1],
+  ): Promise<void> {
+    await this.log(userId, 'quest_reward_claimed', payload);
+  }
+
+  public async questRewardReplayed(
+    userId: number,
+    payload: Parameters<GameTelemetry['questRewardReplayed']>[1],
+  ): Promise<void> {
+    await this.log(userId, 'quest_reward_replayed', payload);
+  }
+
+  public async questRewardNotReady(
+    userId: number,
+    payload: Parameters<GameTelemetry['questRewardNotReady']>[1],
+  ): Promise<void> {
+    await this.log(userId, 'quest_reward_not_ready', payload);
+  }
+
+  private async log(userId: number, action: string, details: object): Promise<void> {
     await this.repository.log(userId, action, {
       event_version: 1,
       ...details,
