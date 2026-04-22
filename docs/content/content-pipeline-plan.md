@@ -156,6 +156,52 @@ Quest package пока документируется как consumer school/ene
 - promised payoff reflected in school copy and ability references;
 - no missing encounter/enemy hook once encounter packages begin shipping.
 
+## Worked example — enemy package `Камнерогий таран`
+
+### Identity
+
+- enemy code: `stonehorn-ram`
+- world lane: `dark-forest`
+- package role: early elite pressure for the `Твердь` novice lane.
+
+### Fantasy / combat role
+
+- A stone-horned charging beast that tests whether the player can survive weight and impact, not just trade faster.
+- It should feel like a living battering ram: sturdy body, direct rush, and enough defence to punish careless chip damage.
+- It is not a boss package; it is the first compact elite check that makes the defensive school fantasy readable.
+
+### Combat pressure
+
+- Stat pressure: high early health, attack, and defence, with low magic defence as a possible future tuning lever.
+- Pressure pattern: a heavy body crash that should be readable before the dangerous hit lands.
+- Button pressure: the player should hesitate before blind attack spam and consider guard or school response.
+
+### Intent language
+
+- Runtime attack text already anchors the intent: `врезается всем весом`.
+- Player-facing tell should stay physical and readable: lowered horns, scraped stone, incoming impact.
+- Avoid mystical or puzzle wording here; the package asks for sturdy timing, not hidden knowledge.
+
+### School relevance
+
+- Primary school answer: `Твердь` / `Страж`.
+- `Каменный дозор` and `Каменный отпор` should make the impact survivable and turn the next safe window into progress.
+- If the enemy is equally clear for every school, the package loses its job as a Твердь readability check.
+
+### Reward/source role
+
+- Base reward stays modest: early elite experience, gold, and physical materials from the existing loot table.
+- School chase comes from the connected novice path payoff, not from inventing a special one-off drop here.
+- Reward replay should remain ledger-safe through the surrounding encounter or quest flow.
+
+### Validation expectations
+
+- referenced enemy `stonehorn-ram` exists in `dark-forest`;
+- enemy remains elite and non-boss for this package;
+- fantasy role, pressure pattern, and intent language all point to the same heavy-impact read;
+- school relevance references `stone` / `Твердь`;
+- reward role uses existing source fields unless a later runtime task explicitly adds a new drop contract.
+
 ## Worked example — encounter package `Таран у каменного пролома`
 
 ### Identity
