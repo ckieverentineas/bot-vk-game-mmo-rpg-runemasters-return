@@ -131,6 +131,26 @@ const collectAllPositiveLoot = (lootTable: InventoryLoot): InventoryDelta => (
   }, {})
 );
 
+const applySkinningRewardVariation = (
+  enemy: TrophyActionRewardEnemyContext,
+  action: TrophyActionDefinition,
+  inventoryDelta: InventoryDelta,
+): InventoryDelta => {
+  if (action.code !== 'skin_beast' || enemy.kind !== 'boar') {
+    return inventoryDelta;
+  }
+
+  const bone = inventoryDelta.bone ?? 0;
+  if (bone <= 0) {
+    return inventoryDelta;
+  }
+
+  return {
+    ...inventoryDelta,
+    bone: bone + 1,
+  };
+};
+
 const resolveTrophySkillPoints = (
   enemy: TrophyActionRewardEnemyContext,
   action: TrophyActionDefinition,
@@ -152,10 +172,14 @@ const resolveTrophySkillPoints = (
 export const resolveTrophyActionReward = (
   enemy: TrophyActionRewardEnemyContext,
   action: TrophyActionDefinition,
-): TrophyActionReward => ({
-  actionCode: action.code,
-  inventoryDelta: action.code === 'claim_all'
+): TrophyActionReward => {
+  const inventoryDelta = action.code === 'claim_all'
     ? collectAllPositiveLoot(enemy.lootTable)
-    : collectPositiveLoot(enemy.lootTable, action.visibleRewardFields),
-  skillPoints: resolveTrophySkillPoints(enemy, action),
-});
+    : collectPositiveLoot(enemy.lootTable, action.visibleRewardFields);
+
+  return {
+    actionCode: action.code,
+    inventoryDelta: applySkinningRewardVariation(enemy, action, inventoryDelta),
+    skillPoints: resolveTrophySkillPoints(enemy, action),
+  };
+};

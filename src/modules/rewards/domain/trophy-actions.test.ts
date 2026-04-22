@@ -113,6 +113,33 @@ describe('resolveTrophyActions', () => {
     });
   });
 
+  it('adds a boar skinning reward variation for preserved horn and bone', () => {
+    const [skinning] = resolveTrophyActions({ kind: 'boar' });
+
+    expect(resolveTrophyActionReward({
+      kind: 'boar',
+      isElite: false,
+      isBoss: false,
+      lootTable: {
+        leather: 1,
+        bone: 1,
+        herb: 2,
+      },
+    }, skinning!)).toEqual({
+      actionCode: 'skin_beast',
+      inventoryDelta: {
+        leather: 1,
+        bone: 2,
+      },
+      skillPoints: [
+        {
+          skillCode: 'gathering.skinning',
+          points: 1,
+        },
+      ],
+    });
+  });
+
   it('models slime gathering as reagent loot only when the enemy can drop it', () => {
     const [gatherSlime] = resolveTrophyActions({ kind: 'slime' });
 
