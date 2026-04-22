@@ -191,7 +191,7 @@ Quest package пока документируется как consumer school/ene
 - [ ] School package checklist is explicit.
 - [ ] Dependencies and defers are documented.
 - [ ] Validator scope doc exists and is linked.
-- [ ] README / PLAN / release checklist reference the plan where relevant.
+- [x] README / PLAN / release checklist reference the plan where relevant.
 
 ## Next step after v1
 

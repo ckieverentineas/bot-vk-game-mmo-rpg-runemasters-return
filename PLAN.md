@@ -11,6 +11,7 @@
 - `docs/product/1-0-release-charter.md` — обещание 1.0, explicit out-of-scope и ethical retention boundaries.
 - `docs/product/action-based-progression-and-trophy-loot.md` — committed design candidate для pending trophy rewards, action-based навыков, скрытого дропа и узких специализаций.
 - `docs/product/lore-quests-home-continuation.md` — рабочая памятка по лору, `Книге путей` и следующим домашним срезам.
+- `docs/content/content-pipeline-plan.md` — минимальный content package workflow и DoD для school/enemy/encounter/quest/season packages.
 - `docs/reviews/*` — исторические decision snapshots. Если review-документ спорит с runtime, он должен быть помечен как superseded, а не использоваться как актуальный план.
 
 ## Что уже является базой
@@ -18,6 +19,7 @@
 - Проект собран как TypeScript/VK bot с модульными слоями `application`, `domain`, `infrastructure`, `transport`.
 - Prisma/SQLite используются для изменяемого runtime state: игроки, прогресс, руны, бои, reward ledger, command intents и telemetry.
 - Статический world/rune content живёт в `src/content/**` и валидируется через `content:validate`.
+- Content pipeline для новых пакетов зафиксирован в `docs/content/content-pipeline-plan.md`; validator scope живёт рядом в `docs/content/validator-scope.md`.
 - Основной маршрут игрока идёт через `Исследовать`: событие, встреча, выбор `В бой` / `Отступить`, бой, результат, возврат к исследованию.
 - Боевой экран показывает состояние, тактические подсказки и инвертированный журнал: свежие события сверху, начало боя снизу как контекст.
 - Player-facing тексты держатся в языке мира: без “нажмите”, “режим”, “статы”, “тип” и другой служебной воды там, где игрок должен читать след, бой, трофеи и путь мастера.

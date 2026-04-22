@@ -34,6 +34,7 @@ npm run release:preflight
 
 - `db:generate` проходит без `EPERM`;
 - `check` проходит полностью: typecheck, content validation, build, tests;
+- если менялись school/enemy/encounter/quest/season packages, изменения сверены с `docs/content/content-pipeline-plan.md` и `docs/content/validator-scope.md`;
 - `release:local-playtest` проходит два first-session сценария: legacy text и keyboard payload с `stateKey`;
 - `release:status` показывает правдоподобное число коммитов и player-facing версию игры;
 - `release:summary` не расходится с `CHANGELOG.md`;
@@ -77,6 +78,7 @@ Q-022 manual snapshot: pending trophy collect/replay подтверждён на
 - `PLAN.md` — что готово, что не доказано, что отложено;
 - `CHANGELOG.md` — что изменилось для игрока и релиза;
 - `ARCHITECTURE.md` — только если менялись границы модулей, persistence, replay-safety или контракты.
+- `docs/content/content-pipeline-plan.md` — если менялись правила, полнота или review cadence для content packages.
 
 Generated reports в `docs/testing/*-evidence-report.md` можно хранить локально как артефакты конкретного прогона, но они не заменяют `PLAN.md` и `CHANGELOG.md`.
 
