@@ -349,6 +349,59 @@ describe('summarizeReleaseEvidence', () => {
     });
   });
 
+  it('summarizes committed economy transactions by transaction and source type', () => {
+    const report = summarizeReleaseEvidence([
+      {
+        userId: 1,
+        action: 'economy_transaction_committed',
+        details: JSON.stringify({
+          transactionType: 'reward_claim',
+          sourceType: 'QUEST_REWARD',
+          sourceId: 'awakening_empty_master',
+          resourceDustDelta: 5,
+          resourceShardsDelta: 1,
+          runeDelta: 0,
+          playerLevel: 1,
+        }),
+        createdAt: '2026-04-20T01:00:00.000Z',
+      },
+      {
+        userId: 2,
+        action: 'economy_transaction_committed',
+        details: JSON.stringify({
+          transactionType: 'reward_claim',
+          sourceType: 'QUEST_REWARD',
+          sourceId: 'first_school_sign',
+          resourceDustDelta: 3,
+          resourceShardsDelta: 2,
+          runeDelta: 0,
+          playerLevel: 2,
+        }),
+        createdAt: '2026-04-20T01:01:00.000Z',
+      },
+    ], '2026-04-20T03:00:00.000Z');
+
+    expect(report.actionRows.find((row) => row.action === 'economy_transaction_committed')).toEqual({
+      action: 'economy_transaction_committed',
+      label: '`economy_transaction_committed`',
+      eventCount: 2,
+      uniqueUsers: 2,
+    });
+    expect(report.economyRows).toEqual([
+      {
+        transactionType: 'reward_claim',
+        sourceType: 'QUEST_REWARD',
+        eventCount: 2,
+        uniqueUsers: 2,
+        resourceDustDelta: 8,
+        resourceShardsDelta: 3,
+        runeDelta: 0,
+        sourceIds: ['awakening_empty_master', 'first_school_sign'],
+        latestEventAt: '2026-04-20T01:01:00.000Z',
+      },
+    ]);
+  });
+
   it('does not mark unrelated school follow-up as success and warns when return recap evidence is missing', () => {
     const report = summarizeReleaseEvidence([
       {
@@ -815,13 +868,29 @@ describe('buildReleaseEvidenceMarkdown', () => {
         }),
         createdAt: '2026-04-20T01:01:00.000Z',
       },
+      {
+        userId: 11,
+        action: 'economy_transaction_committed',
+        details: JSON.stringify({
+          transactionType: 'reward_claim',
+          sourceType: 'QUEST_REWARD',
+          sourceId: 'awakening_empty_master',
+          resourceDustDelta: 5,
+          resourceShardsDelta: 1,
+          runeDelta: 0,
+          playerLevel: 1,
+        }),
+        createdAt: '2026-04-20T01:02:00.000Z',
+      },
     ], '2026-04-20T03:00:00.000Z'));
 
     expect(markdown).toContain('# Release Evidence Report');
     expect(markdown).toContain('## School payoff funnel');
     expect(markdown).toContain('## Quest book funnel');
+    expect(markdown).toContain('## Economy health');
     expect(markdown).toContain('## QA / exploit guardrails');
     expect(markdown).toContain('| Quest signal | Events | Unique users | Quest codes | Latest event |');
+    expect(markdown).toContain('| Transaction | Source | Events | Unique users | Dust delta | Shards delta | Rune delta | Source IDs | Latest event |');
     expect(markdown).toContain('| Школа | Novice elite | UNUSUAL reward | Open runes | Equip sign | Follow-up battle | RARE seal | Latest event |');
   });
 });

@@ -150,7 +150,7 @@ Healthy signal:
 ## Release evidence artifact
 
 - `npm run release:evidence` собирает `docs/testing/release-evidence-report.md` из текущего `GameLog` baseline без отдельной analytics-platform; по умолчанию это окно последних 7 дней, которое можно сузить/расширить через `--since`, `--until` или `--days`; date-only `--since/--until` считаются как UTC-границы календарного дня;
-- этот отчёт специально остаётся узким: onboarding coverage, school payoff funnel, post-session guidance, return recap proxy и QA/exploit guardrails;
+- этот отчёт специально остаётся узким: onboarding coverage, school payoff funnel, post-session guidance, return recap proxy, economy source/sink summary и QA/exploit guardrails;
 - для onboarding funnel отчёт читает `tutorial_path_chosen`, `first_school_presented` и `first_school_committed` как earliest-per-user milestones, даже если transport retry/replay дал повторный raw event;
 - отчёт не заменяет manual playtest, а даёт единый markdown-срез для release review поверх уже shipped telemetry events.
 
@@ -159,6 +159,8 @@ Healthy signal:
 - source/sink summary by `economy_transaction_committed`
 - ratio and patterns for `reward_claim_applied`
 - rate of `battle_stale_action_rejected`
+
+`release:evidence` рендерит economy health table по `transactionType` / `sourceType` и суммирует только shipped поля `resourceDustDelta`, `resourceShardsDelta`, `runeDelta`, `sourceId`.
 
 Current runtime coverage starts with `QUEST_REWARD` claims only; battle rewards and pending trophy rewards should reuse the same stable event shape when their economy source paths are added.
 

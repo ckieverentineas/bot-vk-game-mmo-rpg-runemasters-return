@@ -25,6 +25,7 @@ export const releaseEvidenceTrackedActions = [
   'return_recap_shown',
   'post_session_next_goal_shown',
   'reward_claim_applied',
+  'economy_transaction_committed',
   ...questBookEvidenceActions,
   'battle_stale_action_rejected',
 ] as const;
@@ -70,6 +71,16 @@ interface QuestBookAccumulator {
   latestEventAt: string | null;
   readonly users: Set<number>;
   readonly questCodes: Set<string>;
+}
+
+interface EconomyTransactionAccumulator {
+  eventCount: number;
+  resourceDustDelta: number;
+  resourceShardsDelta: number;
+  runeDelta: number;
+  latestEventAt: string | null;
+  readonly users: Set<number>;
+  readonly sourceIds: Set<string>;
 }
 
 interface PendingSurfaceMarker {
@@ -138,6 +149,18 @@ export interface ReleaseEvidenceQuestBookRow {
   readonly latestEventAt: string | null;
 }
 
+export interface ReleaseEvidenceEconomyRow {
+  readonly transactionType: string;
+  readonly sourceType: string;
+  readonly eventCount: number;
+  readonly uniqueUsers: number;
+  readonly resourceDustDelta: number;
+  readonly resourceShardsDelta: number;
+  readonly runeDelta: number;
+  readonly sourceIds: readonly string[];
+  readonly latestEventAt: string | null;
+}
+
 export interface ReleaseEvidenceExploitSummary {
   readonly duplicateRewardLedgerKeys: readonly string[];
   readonly duplicateRewardBattleIds: readonly string[];
@@ -164,6 +187,7 @@ export interface ReleaseEvidenceReport {
   readonly nextGoalRows: readonly ReleaseEvidenceNextGoalRow[];
   readonly returnRecapRows: readonly ReleaseEvidenceReturnRecapRow[];
   readonly questBookRows: readonly ReleaseEvidenceQuestBookRow[];
+  readonly economyRows: readonly ReleaseEvidenceEconomyRow[];
   readonly exploitSummary: ReleaseEvidenceExploitSummary;
   readonly confidenceNotes: readonly string[];
 }
@@ -179,6 +203,7 @@ const actionLabels: Readonly<Record<ReleaseEvidenceTrackedAction, string>> = {
   return_recap_shown: '`return_recap_shown`',
   post_session_next_goal_shown: '`post_session_next_goal_shown`',
   reward_claim_applied: '`reward_claim_applied`',
+  economy_transaction_committed: '`economy_transaction_committed`',
   quest_book_opened: '`quest_book_opened`',
   quest_reward_claimed: '`quest_reward_claimed`',
   quest_reward_replayed: '`quest_reward_replayed`',
@@ -228,6 +253,16 @@ const createQuestBookAccumulator = (): QuestBookAccumulator => ({
   questCodes: new Set<string>(),
 });
 
+const createEconomyTransactionAccumulator = (): EconomyTransactionAccumulator => ({
+  eventCount: 0,
+  resourceDustDelta: 0,
+  resourceShardsDelta: 0,
+  runeDelta: 0,
+  latestEventAt: null,
+  users: new Set<number>(),
+  sourceIds: new Set<string>(),
+});
+
 const parseDetails = (details: SchoolPathEvidenceLogEntry['details']): Record<string, unknown> => {
   if (!details) {
     return {};
@@ -261,6 +296,14 @@ const normalizeTextField = (value: unknown): string | null => {
   const normalizedValue = value.trim();
   return normalizedValue.length > 0 ? normalizedValue : null;
 };
+
+const normalizeNumberField = (value: unknown): number => (
+  typeof value === 'number' && Number.isFinite(value) ? value : 0
+);
+
+const createEconomyTransactionKey = (transactionType: string, sourceType: string): string => (
+  `${transactionType}:${sourceType}`
+);
 
 const createUserSchoolKey = (userId: number, schoolCode: string): string => `${userId}:${schoolCode}`;
 
@@ -395,6 +438,7 @@ export const summarizeReleaseEvidence = (
   const questBookAccumulators = new Map<QuestBookEvidenceAction, QuestBookAccumulator>(
     questBookEvidenceActions.map((action) => [action, createQuestBookAccumulator()]),
   );
+  const economyAccumulators = new Map<string, EconomyTransactionAccumulator>();
   const rewardUnlockedByUserSchool = new Set<string>();
   const pendingPostSessionGoalsByUser = new Map<number, PendingSurfaceMarker[]>();
   const pendingReturnRecapsByUser = new Map<number, PendingSurfaceMarker[]>();
@@ -515,6 +559,28 @@ export const summarizeReleaseEvidence = (
         accumulator.questCodes.add(questCode);
       }
 
+      continue;
+    }
+
+    if (entry.action === 'economy_transaction_committed') {
+      const transactionType = normalizeTextField(details.transactionType) ?? 'unknown';
+      const sourceType = normalizeTextField(details.sourceType) ?? 'unknown';
+      const sourceId = normalizeTextField(details.sourceId);
+      const accumulatorKey = createEconomyTransactionKey(transactionType, sourceType);
+      const accumulator = economyAccumulators.get(accumulatorKey) ?? createEconomyTransactionAccumulator();
+
+      accumulator.eventCount += 1;
+      accumulator.users.add(entry.userId);
+      accumulator.resourceDustDelta += normalizeNumberField(details.resourceDustDelta);
+      accumulator.resourceShardsDelta += normalizeNumberField(details.resourceShardsDelta);
+      accumulator.runeDelta += normalizeNumberField(details.runeDelta);
+      accumulator.latestEventAt = timestamp;
+
+      if (sourceId) {
+        accumulator.sourceIds.add(sourceId);
+      }
+
+      economyAccumulators.set(accumulatorKey, accumulator);
       continue;
     }
 
@@ -788,6 +854,35 @@ export const summarizeReleaseEvidence = (
     } satisfies ReleaseEvidenceQuestBookRow;
   });
 
+  const economyRows = [...economyAccumulators.entries()]
+    .map(([key, accumulator]) => {
+      const [transactionType, sourceType] = key.split(':');
+
+      return {
+        transactionType: transactionType ?? 'unknown',
+        sourceType: sourceType ?? 'unknown',
+        eventCount: accumulator.eventCount,
+        uniqueUsers: accumulator.users.size,
+        resourceDustDelta: accumulator.resourceDustDelta,
+        resourceShardsDelta: accumulator.resourceShardsDelta,
+        runeDelta: accumulator.runeDelta,
+        sourceIds: [...accumulator.sourceIds].sort((left, right) => left.localeCompare(right)),
+        latestEventAt: accumulator.latestEventAt,
+      } satisfies ReleaseEvidenceEconomyRow;
+    })
+    .sort((left, right) => {
+      if (right.eventCount !== left.eventCount) {
+        return right.eventCount - left.eventCount;
+      }
+
+      const transactionTypeComparison = left.transactionType.localeCompare(right.transactionType);
+      if (transactionTypeComparison !== 0) {
+        return transactionTypeComparison;
+      }
+
+      return left.sourceType.localeCompare(right.sourceType);
+    });
+
   const exploitSummary = {
     duplicateRewardLedgerKeys: [...duplicateRewardLedgerKeyCounts.entries()]
       .filter(([, count]) => count > 1)
@@ -811,7 +906,7 @@ export const summarizeReleaseEvidence = (
   const confidenceNotes = [
     'Onboarding funnel всё ещё читается как lightweight evidence layer: путь обучения, первое school reveal и первый commit считаются по earliest-per-user событию без session-level stitching.',
     'Return recap follow-up считается только по явно сопоставленному `school_novice_follow_up_action_taken`, а не по полноценному session-link.',
-    'Экономика не попадает в этот отчёт, потому что `economy_transaction_committed` ещё не входит в текущий shipped telemetry baseline.',
+    'Economy health пока читает только shipped `economy_transaction_committed`; source paths без этого события остаются invisible для release evidence.',
     ...(onboardingStartedRow && onboardingStartedRow.eventCount === 0
       ? ['В текущем окне нет `onboarding_started`, поэтому onboarding clarity можно читать только как coverage-gap, а не как полноценный funnel.']
       : []),
@@ -847,6 +942,7 @@ export const summarizeReleaseEvidence = (
     nextGoalRows,
     returnRecapRows,
     questBookRows,
+    economyRows,
     exploitSummary,
     confidenceNotes,
   };
@@ -968,6 +1064,23 @@ export const buildReleaseEvidenceMarkdown = (report: ReleaseEvidenceReport): str
         row.eventCount,
         row.uniqueUsers,
         row.questCodes.length > 0 ? row.questCodes.join(', ') : 'none',
+        row.latestEventAt ?? 'none',
+      ]),
+    ),
+    '',
+    '## Economy health',
+    '',
+    ...buildTable(
+      ['Transaction', 'Source', 'Events', 'Unique users', 'Dust delta', 'Shards delta', 'Rune delta', 'Source IDs', 'Latest event'],
+      report.economyRows.map((row) => [
+        row.transactionType,
+        row.sourceType,
+        row.eventCount,
+        row.uniqueUsers,
+        row.resourceDustDelta,
+        row.resourceShardsDelta,
+        row.runeDelta,
+        row.sourceIds.length > 0 ? row.sourceIds.join(', ') : 'none',
         row.latestEventAt ?? 'none',
       ]),
     ),
