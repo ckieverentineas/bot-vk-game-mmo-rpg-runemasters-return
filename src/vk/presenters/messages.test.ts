@@ -8,6 +8,7 @@ import {
   renderLocation,
   renderMainMenu,
   renderPendingReward,
+  renderProfile,
   renderReturnRecap,
   renderRuneDetailScreen,
   renderRuneScreen,
@@ -308,12 +309,15 @@ describe('messages school-first onboarding framing', () => {
     const message = renderRuneScreen(player);
     const detail = renderRuneDetailScreen(player);
 
-    expect(message).toContain('Руны: 6 · страница 1 из 2');
-    expect(message).toContain('🧩 Слоты рун: 2 открыто сейчас.');
-    expect(message).toContain('Надето: 1. Руна A · 2. пусто');
-    expect(message).toContain('1. Руна A · ✅ Надета: слот 1');
-    expect(message).toContain('2. Руна B');
-    expect(message).toContain('5. Руна E');
+    expect(message).toContain('🔮 Руны:');
+    expect(message).toContain('🧩 Рун надето ✅1/2');
+    expect(message).toContain('1. 🔥 Руна A · ✅ слот 1 · Пламя · ⚔️ Штурм');
+    expect(message).toContain('2. 🔥 Руна B · Пламя · ⚔️ Штурм');
+    expect(message).toContain('5. 🔥 Руна E');
+    expect(message).toContain('Страница 1 из 2');
+    expect(message).not.toContain('Список рун:');
+    expect(message).not.toContain('Слоты рун:');
+    expect(message).not.toContain('Надето:');
     expect(message).not.toContain('Активный навык:');
 
     expect(detail).toContain('🔮 Руна');
@@ -339,9 +343,30 @@ describe('messages school-first onboarding framing', () => {
       currentRuneIndex: 1,
     }));
 
-    expect(message).toContain('🧩 Слоты рун: 2 открыто сейчас.');
-    expect(message).toContain('Надето: 1. Руна A · 2. Руна B');
-    expect(message).toContain('2. Руна B · ✅ Надета: слот 2');
+    expect(message).toContain('🧩 Рун надето ✅2/2');
+    expect(message).toContain('1. 🔥 Руна A · ✅ слот 1');
+    expect(message).toContain('2. 🔥 Руна B · ✅ слот 2');
+    expect(message).not.toContain('Надето:');
+  });
+
+  it('normalizes legacy rune names and shows school icons in the rune list', () => {
+    const message = renderRuneScreen(createPlayer({
+      runes: [{
+        ...createCollectionRune('Обычная руна руна Бури', 1),
+        archetypeCode: 'gale',
+        passiveAbilityCodes: [],
+        activeAbilityCodes: ['gale_step'],
+        health: 0,
+        attack: 0,
+        defence: 0,
+        magicDefence: 0,
+        dexterity: 1,
+        intelligence: 0,
+      }],
+    }));
+
+    expect(message).toContain('1. 🌪️ Обычная руна Бури · ✅ слот 2 · Буря · 💨 Налётчик · ЛВК +1');
+    expect(message).not.toContain('руна руна');
   });
 
   it('keeps skipped players on the adventure path even with stale intro location state', () => {
@@ -407,6 +432,33 @@ describe('messages school-first onboarding framing', () => {
     }));
 
     expect(message).toContain('Мастерство школы: Твердь · ранг 0 · 2/3');
+  });
+
+  it('shows action-based skills in the profile', () => {
+    const message = renderProfile(createPlayer({
+      skills: [
+        {
+          skillCode: 'gathering.essence_extraction',
+          experience: 1,
+          rank: 0,
+        },
+        {
+          skillCode: 'gathering.skinning',
+          experience: 100,
+          rank: 1,
+        },
+      ],
+    }));
+
+    expect(message).toContain('Навыки:');
+    expect(message).toContain('Свежевание: ранг 1 · 100 опыта');
+    expect(message).toContain('Извлечение эссенции: ранг 0 · 1/100');
+  });
+
+  it('keeps the profile explicit when action-based skills are still empty', () => {
+    const message = renderProfile(createPlayer());
+
+    expect(message).toContain('Навыки: пока нет опыта обработки трофеев.');
   });
 
   it('keeps active tutorial recap focused on the first training battle', () => {

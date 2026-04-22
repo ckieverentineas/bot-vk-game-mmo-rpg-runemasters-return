@@ -490,7 +490,7 @@ display value = points / 100
 - hidden school pools;
 - unlock действий по skill thresholds;
 - action-based stat growth;
-- отображение навыков в профиле.
+- глубокая роль навыков в профиле, сборке и будущих unlock'ах.
 
 ---
 
@@ -510,10 +510,10 @@ display value = points / 100
 12. Done: `feat: return to pending reward from start and explore`
 13. Done: `test: prevent duplicate trophy action rewards`
 14. Done: `test: add local playtest for pending trophy reward`
-15. Next: `feat: show skills in profile`
-16. Later: `feat: add skinning skill growth depth`
-17. Later: `feat: add reagent gathering skill growth depth`
-18. Later: `feat: add essence extraction skill growth depth`
+15. Done: `feat: show skills in profile`
+16. Next: `feat: add skinning skill growth depth`
+17. Next: `feat: add reagent gathering skill growth depth`
+18. Next: `feat: add essence extraction skill growth depth`
 19. Later: `feat: add hidden drop pools by school`
 20. Later: `feat: unlock trophy actions by skill thresholds`
 21. Later: `feat: connect rune school behavior to school growth`

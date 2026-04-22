@@ -7,6 +7,7 @@ import {
   getPlayerSkillDefinition,
   listPlayerSkillCodes,
   listPlayerSkillDefinitions,
+  resolveNextPlayerSkillThreshold,
 } from './player-skills';
 
 describe('player skills', () => {
@@ -61,5 +62,7 @@ describe('player skills', () => {
       experience: 100,
       rank: 1,
     });
+    expect(resolveNextPlayerSkillThreshold(0)).toBe(100);
+    expect(resolveNextPlayerSkillThreshold(1)).toBeNull();
   });
 });

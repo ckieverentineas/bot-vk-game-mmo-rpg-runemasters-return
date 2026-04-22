@@ -19,6 +19,7 @@
 - Статический world/rune content живёт в `src/content/**` и валидируется через `content:validate`.
 - Основной маршрут игрока идёт через `Исследовать`: событие, встреча, выбор `В бой` / `Отступить`, бой, результат, возврат к исследованию.
 - Рунная сборка стартует с двух равноправных слотов. Обе надетые руны дают статы, пассивы и активное действие, если оно есть.
+- Экран рун показывает компактный список со счётчиком надетых рун, иконками школ, ролью архетипа и отдельной карточкой выбранной руны.
 - Player-facing support-slot модель вырезана.
 - Рост персонажа смещён к школам, mastery, рунам и будущей ветке мастера, а не к старой раздаче stat points за уровни.
 - Action-based trophy rewards имеют первый playable vertical slice: победа создаёт `PENDING` reward ledger, доступные trophy actions фиксируются в snapshot, игрок видит post-battle trophy card, `начать` / `исследовать` возвращают к несобранной добыче, выбранное действие собирается exact-once, `claim_all` даёт быстрый безопасный сбор, а bootstrap восстанавливает потерянные pending-записи после рестарта.
@@ -30,7 +31,7 @@
 - School-first path по всем четырём школам не считается release-proven, пока не пройден ручной playtest и `release:evidence` не перестал возвращать `insufficient_evidence`.
 - Игровая версия считается только по commit-based правилу из `release:status`; `package.json` остаётся технической npm-метаинформацией и не является player-facing версией игры.
 - Production database rollout не считается оформленным, пока нет явной процедуры backup + migration/deploy для SQLite.
-- Action-based trophy rewards всё ещё не считаются release-proven, пока pending trophy collect/replay не пройден ручным playtest'ом и release evidence. Hidden drop pools, skill-threshold unlocks, stat growth и profile UI для навыков остаются будущими срезами.
+- Action-based trophy rewards всё ещё не считаются release-proven, пока pending trophy collect/replay не пройден ручным playtest'ом и release evidence. Hidden drop pools, skill-threshold unlocks и stat growth остаются будущими срезами.
 
 ## Ближайший порядок работ
 

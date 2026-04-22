@@ -27,14 +27,21 @@ import { buildPlayerSchoolRecognitionView } from '../../modules/player/applicati
 import { resolveDefendGuardGain } from '../../modules/combat/domain/battle-tactics';
 import { describeRuneContent } from '../../modules/runes/domain/rune-abilities';
 import { buildRuneCollectionPage } from '../../modules/runes/domain/rune-collection';
-import { getRuneSchoolPresentation, listSchoolDefinitions } from '../../modules/runes/domain/rune-schools';
-import { getPlayerSkillDefinition } from '../../modules/player/domain/player-skills';
+import {
+  getRuneSchoolPresentation,
+  getSchoolDefinitionForArchetype,
+  listSchoolDefinitions,
+} from '../../modules/runes/domain/rune-schools';
+import {
+  getPlayerSkillDefinition,
+  resolveNextPlayerSkillThreshold,
+} from '../../modules/player/domain/player-skills';
 import type { PendingRewardView } from '../../modules/shared/application/ports/GameRepository';
 import {
   getExplorationSceneEffectLine,
   type ExplorationSceneView,
 } from '../../modules/world/domain/exploration-events';
-import type { AbilityDefinition, BattleView, PlayerState, RuneView, StatBlock } from '../../shared/types/game';
+import type { AbilityDefinition, BattleView, PlayerState, RuneDraft, RuneView, StatBlock } from '../../shared/types/game';
 
 const formatStatBlock = (stats: StatBlock): string => [
   `❤️ Здоровье: ${stats.health}`,
@@ -71,6 +78,41 @@ const formatRuneStatSummary = (stats: StatBlock, limit = 3): string => {
     .map((key) => `${runeStatSummaryLabels[key]} +${stats[key]}`);
 
   return parts.length > 0 ? parts.join(' · ') : 'Без бонусов';
+};
+
+const schoolIconByCode: Readonly<Record<string, string>> = {
+  ember: '🔥',
+  stone: '🪨',
+  gale: '🌪️',
+  echo: '🧠',
+};
+
+const archetypeIconByCode: Readonly<Record<string, string>> = {
+  ember: '⚔️',
+  stone: '🛡️',
+  gale: '💨',
+  echo: '👁️',
+};
+
+const normalizeRuneDisplayName = (name: string): string => (
+  name.replace(/руна\s+руна/gi, 'руна')
+);
+
+const formatRuneDisplayName = (rune: Pick<RuneDraft, 'name'> | null | undefined): string => (
+  rune ? normalizeRuneDisplayName(rune.name) : 'нет руны'
+);
+
+const resolveRuneSchoolIcon = (rune: Pick<RuneDraft, 'archetypeCode'>): string => {
+  const school = getSchoolDefinitionForArchetype(rune.archetypeCode);
+  return school ? schoolIconByCode[school.code] ?? '🔹' : '🔹';
+};
+
+const resolveRuneArchetypeIcon = (rune: Pick<RuneDraft, 'archetypeCode'>): string | null => {
+  if (!rune.archetypeCode) {
+    return null;
+  }
+
+  return archetypeIconByCode[rune.archetypeCode] ?? null;
 };
 
 const renderStarterSchoolLine = (): string => {
@@ -176,7 +218,7 @@ const formatBaseRewardLine = (pendingReward: PendingRewardView): string => {
     `+${baseReward.experience} опыта`,
     `+${baseReward.gold} пыли`,
     formatInventoryDelta(baseReward.shards),
-    baseReward.droppedRune ? `руна: ${baseReward.droppedRune.name}` : null,
+    baseReward.droppedRune ? `руна: ${formatRuneDisplayName(baseReward.droppedRune)}` : null,
   ].filter((part): part is string => Boolean(part) && part !== 'без дополнительных материалов');
 
   return parts.join(' · ');
@@ -192,6 +234,31 @@ const formatSkillTitles = (skillCodes: readonly string[]): string => {
 const formatTrophyActionPreview = (action: PendingRewardView['snapshot']['trophyActions'][number]): string => {
   const rewardLine = action.reward ? formatInventoryDelta(action.reward.inventoryDelta) : 'добыча без предпросмотра';
   return `${action.label} — ${rewardLine}; ${formatSkillTitles(action.skillCodes)}.`;
+};
+
+const formatPlayerSkillProgress = (skill: NonNullable<PlayerState['skills']>[number]): string => {
+  const definition = getPlayerSkillDefinition(skill.skillCode);
+  const nextThreshold = resolveNextPlayerSkillThreshold(skill.rank);
+  const progress = nextThreshold === null
+    ? `${skill.experience} опыта`
+    : `${skill.experience}/${nextThreshold}`;
+
+  return `${definition?.title ?? skill.skillCode}: ранг ${skill.rank} · ${progress}`;
+};
+
+const renderPlayerSkillsBlock = (player: PlayerState): readonly string[] => {
+  const skills = [...(player.skills ?? [])].sort((left, right) => (
+    right.experience - left.experience || left.skillCode.localeCompare(right.skillCode)
+  ));
+
+  if (skills.length === 0) {
+    return ['Навыки: пока нет опыта обработки трофеев.'];
+  }
+
+  return [
+    'Навыки:',
+    ...skills.map(formatPlayerSkillProgress),
+  ];
 };
 
 export const renderPendingReward = (
@@ -288,7 +355,7 @@ const resolveReturnStyleLine = (player: PlayerState): string => {
     return `Стиль: ${equippedSchool.schoolLine} · роль ${equippedSchool.roleName.toLowerCase()}.`;
   }
 
-  return `Стиль: экипирована руна ${equippedRune.name}.`;
+  return `Стиль: экипирована руна ${formatRuneDisplayName(equippedRune)}.`;
 };
 
 export const renderReturnRecap = (player: PlayerState, title = '🧭 Возвращение'): string => {
@@ -321,7 +388,7 @@ const formatRune = (rune: RuneView | null): string => {
       }
       return '🎯 Выбрана';
     })(),
-    `Руна: ${rune.name}`,
+    `Руна: ${formatRuneDisplayName(rune)}`,
     `Редкость: ${gameBalance.runes.profiles[rune.rarity].title}${school ? ` · ${school.name}` : ''}`,
     ...(school ? [`Стиль: ${school.playPatternLine}`] : []),
     ...formatRuneStatDetails({
@@ -338,10 +405,21 @@ const formatRune = (rune: RuneView | null): string => {
 
 const formatRunePageEntryStatus = (equippedSlot: number | null): string | null => {
   if (equippedSlot !== null) {
-    return `✅ Надета: слот ${equippedSlot + 1}`;
+    return `✅ слот ${equippedSlot + 1}`;
   }
 
   return null;
+};
+
+const formatRunePageEntryRole = (rune: RuneView): string | null => {
+  const school = getRuneSchoolPresentation(rune.archetypeCode);
+  const archetypeIcon = resolveRuneArchetypeIcon(rune);
+
+  if (!school) {
+    return null;
+  }
+
+  return archetypeIcon ? `${archetypeIcon} ${school.roleName}` : school.roleName;
 };
 
 const formatRunePageEntry = (
@@ -352,11 +430,12 @@ const formatRunePageEntry = (
   const status = formatRunePageEntryStatus(getRuneEquippedSlot(rune));
 
   return [
-    `${slot + 1}. ${rune.name}`,
+    `${slot + 1}. ${resolveRuneSchoolIcon(rune)} ${formatRuneDisplayName(rune)}`,
     ...(status ? [status] : []),
     school?.name ?? 'без школы',
+    formatRunePageEntryRole(rune),
     formatRuneStatSummary(rune),
-  ].join(' · ');
+  ].filter((part): part is string => Boolean(part)).join(' · ');
 };
 
 export const renderWelcome = (player: PlayerState, created: boolean): string => {
@@ -398,7 +477,7 @@ export const renderMainMenu = (player: PlayerState): string => {
     `💰 Руная пыль: ${player.gold}`,
     `🧭 Максимально пройденная угроза: ${player.highestLocationLevel}`,
     `🧩 Слоты рун: ${getUnlockedRuneSlotCount(player)} открыто`,
-    `🔮 Экипирована: ${equippedRune ? equippedRune.name : 'нет руны'}`,
+    `🔮 Экипирована: ${formatRuneDisplayName(equippedRune)}`,
     renderSchoolMasteryLine(player),
     ...(player.tutorialState === 'ACTIVE' ? ['🜂 Первый бой ведёт к первой руне, а первая руна открывает школу рун.'] : []),
     ...(equippedSchool ? [`🜂 Ваш путь: ${equippedSchool.schoolLine} · роль ${equippedSchool.roleName.toLowerCase()}.`] : []),
@@ -426,6 +505,8 @@ export const renderProfile = (player: PlayerState): string => {
     `🧩 Слоты рун: ${getUnlockedRuneSlotCount(player)} открыто`,
     renderSchoolMasteryLine(player),
     'Дальнейший рост силы идёт через руны, школу рун и её мастерство, а не через ручное распределение статов.',
+    '',
+    ...renderPlayerSkillsBlock(player),
     '',
     formatStatBlock(stats),
   ].join('\n');
@@ -491,10 +572,21 @@ export const renderExplorationEvent = (event: ExplorationSceneView, player: Play
 const renderEquippedRuneSlots = (player: PlayerState): string => {
   const slotLines = Array.from({ length: getUnlockedRuneSlotCount(player) }, (_, slot) => {
     const rune = getEquippedRune(player, slot);
-    return `${slot + 1}. ${rune ? rune.name : 'пусто'}`;
+    return `${slot + 1}. ${rune ? formatRuneDisplayName(rune) : 'пусто'}`;
   });
 
   return `Надето: ${slotLines.join(' · ')}`;
+};
+
+const countEquippedRunes = (player: PlayerState): number => (
+  Array.from({ length: getUnlockedRuneSlotCount(player) }, (_, slot) => getEquippedRune(player, slot))
+    .filter((rune): rune is RuneView => rune !== null)
+    .length
+);
+
+const renderEquippedRuneCounter = (player: PlayerState): string => {
+  const unlockedSlotCount = getUnlockedRuneSlotCount(player);
+  return `🧩 Рун надето ✅${countEquippedRunes(player)}/${unlockedSlotCount}`;
 };
 
 export const renderRuneScreen = (player: PlayerState, acquisitionSummary?: AcquisitionSummaryView | null): string => {
@@ -514,15 +606,13 @@ export const renderRuneScreen = (player: PlayerState, acquisitionSummary?: Acqui
   }
 
   return [
-    '🔮 Руны',
-    '',
-    `Руны: ${player.runes.length} · страница ${page.pageNumber} из ${page.totalPages}`,
-    `🧩 Слоты рун: ${getUnlockedRuneSlotCount(player)} открыто сейчас.`,
-    renderEquippedRuneSlots(player),
+    '🔮 Руны:',
+    renderEquippedRuneCounter(player),
     ...renderAcquisitionSummary(acquisitionSummary),
     '',
-    'Список рун:',
     ...page.entries.map((entry) => formatRunePageEntry(entry.slot, entry.rune)),
+    '',
+    `Страница ${page.pageNumber} из ${page.totalPages}`,
   ].join('\n');
 };
 
@@ -778,7 +868,7 @@ export const renderBattle = (battle: BattleView, player?: PlayerState, acquisiti
         ...(battle.rewards.droppedRune ? (() => {
           const droppedSchool = getRuneSchoolPresentation(battle.rewards?.droppedRune?.archetypeCode);
           return [
-            `Руна: ${battle.rewards.droppedRune.name}`,
+            `Руна: ${formatRuneDisplayName(battle.rewards.droppedRune)}`,
             ...(droppedSchool ? [`Школа: ${droppedSchool.name}.`] : []),
           ];
         })() : []),

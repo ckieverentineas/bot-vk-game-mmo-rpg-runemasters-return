@@ -83,6 +83,10 @@ export const resolvePlayerSkillRank = (experience: number): number => {
   return maxPlayerSkillRank;
 };
 
+export const resolveNextPlayerSkillThreshold = (rank: number): number | null => (
+  playerSkillThresholds[rank + 1] ?? null
+);
+
 export const createPlayerSkillView = (skillCode: PlayerSkillCode, experience = 0): PlayerSkillView => {
   const normalizedExperience = Math.max(0, Math.floor(Number.isFinite(experience) ? experience : 0));
 

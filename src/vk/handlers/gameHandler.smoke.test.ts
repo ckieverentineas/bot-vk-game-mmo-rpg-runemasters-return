@@ -1601,8 +1601,10 @@ describe('GameHandler smoke', () => {
 
     expect(services.getRuneCollection.execute).toHaveBeenCalledTimes(2);
     expect(getReplyCalls(runeContext)[0]?.message).toContain('🔮 Руны');
-    expect(getReplyCalls(runeContext)[0]?.message).toContain('Список рун');
-    expect(getReplyCalls(runeContext)[0]?.message).toContain('1. Эпическая руна Пламени');
+    expect(getReplyCalls(runeContext)[0]?.message).toContain('🧩 Рун надето');
+    expect(getReplyCalls(runeContext)[0]?.message).toContain('1. 🔥 Эпическая руна Пламени');
+    expect(getReplyCalls(runeContext)[0]?.message).toContain('Страница 1 из 1');
+    expect(getReplyCalls(runeContext)[0]?.message).not.toContain('Список рун');
     expect(getReplyCalls(runeContext)[0]?.message).not.toContain('Редкость: Эпическая руна · Пламя');
     expect(getReplyCalls(altarContext)[0]?.message).toContain('🔮 Руна');
     expect(getReplyCalls(altarContext)[0]?.message).toContain('Редкость: Эпическая руна · Пламя');
