@@ -237,6 +237,47 @@ Quest package пока документируется как consumer school/ene
 - reward hook stays aligned with the school novice payoff;
 - validator can still treat this as documented encounter ask until encounter runtime contracts exist.
 
+## Worked example — quest package `Печать стены`
+
+### Identity
+
+- quest code: `stone_wall_seal`
+- quest book chapter: `Твердь`
+- package role: turns the first Твердь elite lesson into a visible path reward.
+- consumed packages: school `Твердь`, enemy `Камнерогий таран`, encounter `Таран у каменного пролома`.
+
+### Purpose
+
+- The quest does not define a new combat scenario by itself.
+- It consumes the school promise, the enemy pressure, and the encounter ask, then rewards the player for carrying that lesson to a durable school payoff.
+- The player-facing meaning is simple: surviving the heavy impact should eventually leave a real stone sign in the build.
+
+### Trigger / source
+
+- Source surface: `Книга путей`, school chapter `Твердь`.
+- Authoring source: static quest definition under the stone school chapter.
+- No new quest runtime platform, trigger table, or branching state is required for this package.
+
+### Completion condition type
+
+- Derived state: player has an `UNUSUAL` or rarer rune of `stone` / `Твердь`.
+- Current resolver shape: `school_seal`, backed by `hasRuneOfSchoolAtLeastRarity(player, schoolCode, 'UNUSUAL')`.
+- The encounter package is the intended authored route into the payoff, not a required persisted encounter-completion marker.
+
+### Reward hook
+
+- Existing reward shape: gold, `unusualShards`, and `metal`.
+- Reward fantasy: the wall leaves material proof behind, not a detached generic bonus.
+- Claim/replay must stay exact-once through the quest reward ledger; handlers must not grant this reward directly.
+
+### Validation expectations
+
+- quest code exists in the static quest definitions;
+- connected school package references `stone` / `Твердь`;
+- completion condition remains derivable from `PlayerState` or existing read models;
+- reward items exist in the current inventory/resource model;
+- no `PlayerQuestState` or quest runtime platform is introduced until a future quest needs non-derivable history.
+
 ## Dependencies and defers matrix
 
 | Lane | Can ship now | Depends on later |
@@ -277,5 +318,5 @@ Quest package пока документируется как consumer school/ene
 ## Next step after v1
 
 - school package checklist теперь зеркалится package-level completeness validator'ом в `content:validate` для shipped 4-school baseline;
-- add one quest or season chronicle package example once those lanes need a concrete authoring slice;
+- add one season chronicle package example once that lane needs a concrete authoring slice;
 - only then decide whether runtime folders or authoring templates need migration.
