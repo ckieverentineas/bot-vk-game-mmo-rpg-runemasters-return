@@ -473,6 +473,24 @@ describe('GameHandler smoke', () => {
     expect(message).toContain('В сумке: +5 пыли · +1 обычный осколок.');
   });
 
+  it('передает legacy text intent для текстового получения награды квеста', async () => {
+    const services = createServices();
+    const handler = new GameHandler(services);
+    const ctx = createFakeContext({
+      text: 'забрать награду',
+      id: 519,
+      conversationMessageId: 95,
+      peerId: 2000000001,
+    });
+
+    await handler.handle(ctx as never);
+
+    expect(services.claimQuestReward.execute).toHaveBeenCalledWith(1001, {
+      intentId: 'legacy-text:2000000001:1001:95:забрать награду',
+      intentSource: 'legacy_text',
+    });
+  });
+
   it('оставляет tutorial keyboard для вернувшегося игрока с активным обучением', async () => {
     const services = createServices();
     vi.mocked(services.registerPlayer.execute).mockResolvedValueOnce({

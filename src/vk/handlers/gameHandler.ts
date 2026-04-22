@@ -213,8 +213,13 @@ export class GameHandler {
     await sendQuestBook(ctx, book);
   }
 
-  public async claimQuestReward(ctx: Context, vkId: number, questCode?: string): Promise<void> {
-    const result = await this.services.claimQuestReward.execute(vkId, questCode);
+  public async claimQuestReward(ctx: Context, vkId: number, context: CommandIntentContext): Promise<void> {
+    const result = context.intentSource === 'legacy_text'
+      ? await this.services.claimQuestReward.execute(vkId, {
+          intentId: context.intentId ?? undefined,
+          intentSource: context.intentSource,
+        })
+      : await this.services.claimQuestReward.execute(vkId, context.stateKey ?? undefined);
     await sendQuestClaimResult(ctx, result);
   }
 

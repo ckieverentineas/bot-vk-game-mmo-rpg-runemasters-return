@@ -649,6 +649,129 @@ describe('PrismaGameRepository release hardening', () => {
     ]);
   });
 
+  it('claims a quest reward under a command intent receipt when options are provided', async () => {
+    const { repository, tx } = createPrismaMock();
+
+    tx.commandIntentRecord.findUnique.mockResolvedValue(null);
+    tx.commandIntentRecord.create.mockResolvedValue({});
+    tx.commandIntentRecord.update.mockResolvedValue({});
+    tx.rewardLedgerRecord.create.mockResolvedValue({});
+    tx.player.update.mockResolvedValue({});
+    tx.playerInventory.updateMany.mockResolvedValue({ count: 1 });
+    tx.player.findUnique.mockResolvedValue({
+      ...createPlayerRecord(),
+      gold: 12,
+      inventory: {
+        ...createPlayerRecord().inventory,
+        usualShards: 16,
+      },
+    });
+
+    const result = await repository.claimQuestReward(
+      1,
+      'awakening_empty_master',
+      { gold: 5, inventoryDelta: { usualShards: 1 } },
+      {
+        commandKey: 'CLAIM_QUEST_REWARD',
+        intentId: 'legacy-text:2000000001:1001:94:забрать награду',
+        intentStateKey: 'awakening_empty_master',
+        currentStateKey: 'awakening_empty_master',
+      },
+    );
+
+    expect(tx.commandIntentRecord.create).toHaveBeenCalledWith({
+      data: {
+        playerId: 1,
+        intentId: 'legacy-text:2000000001:1001:94:забрать награду',
+        commandKey: 'CLAIM_QUEST_REWARD',
+        stateKey: 'awakening_empty_master',
+      },
+    });
+    expect(tx.rewardLedgerRecord.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        playerId: 1,
+        ledgerKey: 'quest_reward:1:awakening_empty_master',
+        sourceType: 'QUEST_REWARD',
+        sourceId: 'awakening_empty_master',
+        status: 'APPLIED',
+      }),
+    });
+    expect(tx.commandIntentRecord.update).toHaveBeenCalledWith({
+      where: {
+        playerId_intentId: {
+          playerId: 1,
+          intentId: 'legacy-text:2000000001:1001:94:забрать награду',
+        },
+      },
+      data: {
+        status: 'APPLIED',
+        resultSnapshot: expect.any(String),
+      },
+    });
+
+    const resultSnapshot = JSON.parse(String(tx.commandIntentRecord.update.mock.calls[0]?.[0]?.data?.resultSnapshot));
+    expect(resultSnapshot).toMatchObject({
+      questCode: 'awakening_empty_master',
+      claimed: true,
+      reward: {
+        gold: 5,
+        inventoryDelta: { usualShards: 1 },
+      },
+    });
+    expect(result.claimed).toBe(true);
+    expect(result.questCode).toBe('awakening_empty_master');
+  });
+
+  it('finalizes the quest command receipt when the reward ledger was already claimed', async () => {
+    const { repository, tx } = createPrismaMock();
+
+    tx.commandIntentRecord.findUnique.mockResolvedValue(null);
+    tx.commandIntentRecord.create.mockResolvedValue({});
+    tx.commandIntentRecord.update.mockResolvedValue({});
+    tx.rewardLedgerRecord.create.mockRejectedValueOnce(new Prisma.PrismaClientKnownRequestError('Unique conflict', {
+      code: 'P2002',
+      clientVersion: 'test',
+      meta: {
+        target: ['ledgerKey'],
+      },
+    }));
+    tx.player.findUnique.mockResolvedValue(createPlayerRecord());
+
+    const result = await repository.claimQuestReward(
+      1,
+      'awakening_empty_master',
+      { gold: 5, inventoryDelta: { usualShards: 1 } },
+      {
+        commandKey: 'CLAIM_QUEST_REWARD',
+        intentId: 'legacy-text:2000000001:1001:95:забрать награду',
+        intentStateKey: 'awakening_empty_master',
+        currentStateKey: 'awakening_empty_master',
+      },
+    );
+
+    expect(result.claimed).toBe(false);
+    expect(tx.player.update).not.toHaveBeenCalled();
+    expect(tx.playerInventory.updateMany).not.toHaveBeenCalled();
+    expect(tx.commandIntentRecord.update).toHaveBeenCalledWith({
+      where: {
+        playerId_intentId: {
+          playerId: 1,
+          intentId: 'legacy-text:2000000001:1001:95:забрать награду',
+        },
+      },
+      data: {
+        status: 'APPLIED',
+        resultSnapshot: expect.any(String),
+      },
+    });
+
+    const resultSnapshot = JSON.parse(String(tx.commandIntentRecord.update.mock.calls[0]?.[0]?.data?.resultSnapshot));
+    expect(resultSnapshot).toMatchObject({
+      questCode: 'awakening_empty_master',
+      claimed: false,
+    });
+  });
+
   it('finds a pending reward with battle source context', async () => {
     const { repository, tx } = createPrismaMock();
     const pendingRecord = createPendingRewardLedgerRecord();

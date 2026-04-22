@@ -19,6 +19,7 @@ export type RuneLoadoutCommandIntentKey = 'EQUIP_RUNE' | 'UNEQUIP_RUNE';
 export type RuneNavigationCommandIntentKey = 'MOVE_RUNE_CURSOR' | 'SELECT_RUNE_PAGE_SLOT';
 export type RuneCraftCommandIntentKey = 'CRAFT_RUNE' | 'REROLL_RUNE_STAT' | 'DESTROY_RUNE';
 export type ExplorationCommandIntentKey = 'ENTER_TUTORIAL_MODE' | 'SKIP_TUTORIAL' | 'RETURN_TO_ADVENTURE' | 'EXPLORE_LOCATION';
+export type QuestRewardCommandIntentKey = 'CLAIM_QUEST_REWARD';
 export type BattleActionCommandIntentKey =
   | 'BATTLE_ENGAGE'
   | 'BATTLE_FLEE'
@@ -31,6 +32,7 @@ export type GameCommandIntentKey =
   | RuneLoadoutCommandIntentKey
   | RuneNavigationCommandIntentKey
   | ExplorationCommandIntentKey
+  | QuestRewardCommandIntentKey
   | BattleActionCommandIntentKey;
 
 export interface SaveRuneLoadoutOptions {
@@ -75,6 +77,13 @@ export interface SaveBattleOptions {
 
 export interface RecordInventoryDeltaResultOptions {
   readonly commandKey: GameCommandIntentKey;
+  readonly intentId?: string;
+  readonly intentStateKey?: string;
+  readonly currentStateKey?: string;
+}
+
+export interface ClaimQuestRewardOptions {
+  readonly commandKey: QuestRewardCommandIntentKey;
   readonly intentId?: string;
   readonly intentStateKey?: string;
   readonly currentStateKey?: string;
@@ -165,7 +174,12 @@ export interface GameRepository {
   ): Promise<TResult>;
   applyPlayerSkillExperience(playerId: number, gains: readonly PlayerSkillPointGain[]): Promise<PlayerState>;
   listClaimedQuestRewardCodes(playerId: number): Promise<readonly string[]>;
-  claimQuestReward(playerId: number, questCode: string, reward: ResourceReward): Promise<QuestRewardClaimResult>;
+  claimQuestReward(
+    playerId: number,
+    questCode: string,
+    reward: ResourceReward,
+    options?: ClaimQuestRewardOptions,
+  ): Promise<QuestRewardClaimResult>;
   findPendingReward(playerId: number): Promise<PendingRewardView | null>;
   collectPendingReward(playerId: number, ledgerKey: string, actionCode: TrophyActionCode): Promise<CollectPendingRewardResult>;
   recoverPendingRewardsOnStart(): Promise<RecoverPendingRewardsResult>;

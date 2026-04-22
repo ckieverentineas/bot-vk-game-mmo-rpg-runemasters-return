@@ -244,6 +244,21 @@ describe('normalizeCommand', () => {
     expect(explore.intentSource).toBe('legacy_text');
   });
 
+  it('выводит server-owned intent для legacy text получения награды квеста', () => {
+    const resolved = resolveCommandEnvelope({
+      text: 'забрать награду',
+      senderId: 1001,
+      peerId: 2000000001,
+      conversationMessageId: 93,
+      id: 517,
+      messagePayload: null,
+    } as never);
+
+    expect(resolved.command).toBe(gameCommands.claimQuestReward);
+    expect(resolved.intentId).toBe('legacy-text:2000000001:1001:93:забрать награду');
+    expect(resolved.intentSource).toBe('legacy_text');
+  });
+
   it('выводит server-owned intent для legacy text боевых команд', () => {
     const attack = resolveCommandEnvelope({
       text: 'атака',

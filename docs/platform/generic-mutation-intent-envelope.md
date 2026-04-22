@@ -33,7 +33,7 @@ Already protected by command-intent or domain-ledger semantics:
 - exploration entry and battle creation;
 - battle engage, flee, attack, defend, rune skill;
 - pending trophy reward claims through reward ledger and ledger-scoped buttons;
-- quest reward claim through quest reward ledger and quest-code state key.
+- quest reward claim through quest reward ledger and quest-code state key, with legacy text `CLAIM_QUEST_REWARD` command receipts for text replay.
 
 Current flat payload remains valid:
 
@@ -120,7 +120,7 @@ The concrete TypeScript names can change during implementation, but the separati
 | Entry and account lifecycle | `start`, `deletePlayer`, `confirmDeletePlayer` | `confirmDeletePlayer` uses `DeletePlayerReceipt`; `start` is not exact-once guarded | Keep `confirmDeletePlayer` in dedicated receipt owner. Do not add generic replay to `start` until duplicate registration has a real bug or migration need. |
 | Read-only home/profile/inventory | `backToMenu`, `profile`, `inventory` | No mutation receipt | Classify as `read_only`; no `intentId` required. |
 | Quest book open | `questBook` and quest aliases | No mutation receipt | Classify as `read_only`; opening the book should not mutate quest state. |
-| Quest reward claim | `claimQuestReward` | Quest reward ledger, quest-code state key | Keep receipt owner as `RewardLedgerRecord`; candidate for generic resolved envelope because it is reward-bearing but not a `CommandIntentRecord` flow. |
+| Quest reward claim | `claimQuestReward` | Quest reward ledger, quest-code state key; legacy text has `CLAIM_QUEST_REWARD` command receipt | Keep economic receipt owner as `RewardLedgerRecord`. Legacy text also needs a `CommandIntentRecord` selection receipt so a redelivered `забрать награду` cannot choose the next ready quest. |
 | Pending reward screen | `pendingReward` and aliases | No mutation receipt for open screen | Classify open screen as `read_only`; the claim buttons are separate. |
 | Pending trophy reward claim | `collectAllReward`, trophy action commands | Reward ledger, ledger-key state key | Keep receipt owner as `RewardLedgerRecord`; classify as `pending_reward`. Do not duplicate this with `CommandIntentRecord`. |
 | Rune screens | `runeCollection`, `altar`, `rerollRuneMenu` | No mutation receipt for open screens | Classify as `read_only` or `profile_navigation`; no `intentId` required. |
@@ -138,6 +138,7 @@ Generic envelope must not mean generic persistence for every mutation.
 - Use `CommandIntentRecord` when one player aggregate survives and the replay result is a command output snapshot.
 - Use `DeletePlayerReceipt` when the mutation removes the player row and replay must survive `player_not_found`.
 - Use `RewardLedgerRecord` when exact-once economic reward application is already keyed by reward source.
+- Use a narrow `CommandIntentRecord` selection receipt for legacy text reward commands only when the text command lacks the reward source key at transport time.
 - Use no receipt for read-only screen navigation.
 
 If a future command needs a new receipt owner, document it before runtime code lands.
@@ -192,7 +193,8 @@ Scope for the candidate:
   - read-only commands classify as `receiptOwner = none`;
   - rune/battle/exploration commands classify as `CommandIntentRecord`;
   - delete confirmation classifies as `DeletePlayerReceipt`;
-  - quest and pending reward claims classify as `RewardLedgerRecord`;
+  - quest and pending reward economic claims classify as `RewardLedgerRecord`;
+  - legacy text quest reward claim classifies its command replay as `CommandIntentRecord` without replacing the reward ledger;
   - unsupported legacy text remains unguarded unless explicitly listed.
 
 Out of scope for the candidate:

@@ -25,6 +25,13 @@
 - exact-once economic side effect фиксируется в `RewardLedgerRecord` по unique `ledgerKey`;
 - retry после уже завершённой победы обязан вернуть canonical persisted result, а не перероллить награду локально.
 
+## Quest reward rules
+
+- keyboard `claimQuestReward` uses quest-code `stateKey` and `RewardLedgerRecord` for exact-once economic application;
+- plain text `забрать награду` receives a server-owned message intent id;
+- first legacy text claim stores `CLAIM_QUEST_REWARD` with `stateKey = questCode`, while the reward itself still lands through `RewardLedgerRecord`;
+- duplicate same-intent legacy text claim must return the stored canonical quest reward result before choosing any other ready quest.
+
 ## Rune mutation rules
 
 - craft / reroll / destroy идут через guarded repository mutations;
@@ -81,4 +88,4 @@
 
 - explicit RNG authority rules for reroll / drop / craft are now defined in `docs/platform/rng-authority-rules.md`, but broader legacy-text and non-profile command replay still remains;
 - migration fixtures for versioned persisted contracts;
-- remaining legacy text-command repeated actions beyond guarded rune mutations / tutorial navigation / exploration entry / battle actions, plus non-rune mutations beyond guarded rune loadout buttons; delete confirmation exact-once is now covered.
+- remaining legacy text-command repeated actions beyond guarded rune mutations / tutorial navigation / exploration entry / quest reward claim / battle actions, plus non-rune mutations beyond guarded rune loadout buttons; delete confirmation exact-once is now covered.

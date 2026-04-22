@@ -22,15 +22,16 @@ Covered by intent-based dedupe:
 - `exploreLocation`
 - keyboard battle actions (`engageBattle`, `fleeBattle`, `attack`, `defend`, `runeSkill`)
 - legacy text battle actions (`в бой`, `отступить`, `бой`, `начать бой`, `сражаться`, `бежать`, `атака`, `защита`, `навыки`, `спелл`)
+- legacy text quest reward claim (`забрать награду`)
 
 Transport surface:
 
 - VK keyboard payloads for guarded buttons;
-- server-owned legacy text intents for `craftRune`, `rerollRuneStat`, `destroyRune`, `equipRune`, `unequipRune`, rune hub navigation (`+руна`, `-руна`, `руны >`, `руны <`, `руна слот 1..5` and aliases), `enterTutorialMode` (`локация`, `обучение`), `skipTutorial`, `returnToAdventure`, `exploreLocation` (`исследовать`), `engageBattle`, `fleeBattle`, `attack`, `defend`, `runeSkill`.
+- server-owned legacy text intents for `craftRune`, `rerollRuneStat`, `destroyRune`, `equipRune`, `unequipRune`, rune hub navigation (`+руна`, `-руна`, `руны >`, `руны <`, `руна слот 1..5` and aliases), `enterTutorialMode` (`локация`, `обучение`), `skipTutorial`, `returnToAdventure`, `exploreLocation` (`исследовать`), `claimQuestReward` (`забрать награду`), `engageBattle`, `fleeBattle`, `attack`, `defend`, `runeSkill`.
 
 Not covered yet:
 
-- other free-text legacy commands outside rune mutations;
+- other free-text legacy commands outside guarded rune, tutorial, exploration, battle, and quest-reward families;
 - broader profile/progression mutations beyond the shipped school/rune flows;
 - full repo-wide exact-once command handling.
 
@@ -136,11 +137,18 @@ Fields of interest:
 - duplicate same-intent arrival returns the stored post-action battle result instead of resolving another turn;
 - stale battle button restores the latest canonical battle view instead of replaying an old turn.
 
+### Quest reward claim
+
+- keyboard claim buttons keep using quest-code `stateKey` and `RewardLedgerRecord` as the economic exact-once receipt;
+- legacy text `забрать награду` gets a server-owned message intent id;
+- first legacy text arrival chooses the current ready quest and stores `CLAIM_QUEST_REWARD` with `stateKey = questCode`;
+- duplicate same-intent legacy text returns the stored canonical claim result before selecting another ready quest.
+
 ## Transport rule
 
 - keyboard payload is the current source of intent ids;
 - delete confirmation uses keyboard-issued `intentId` + profile `updatedAt` stateKey and is replayed through an account-scoped delete receipt;
-- server-owned legacy text ids currently protect rune craft / reroll / destroy / equip / unequip, tutorial navigation (`пропустить обучение`, `в приключения`, `в мир`), and battle text inputs (`в бой`, `отступить`, `бой`, `начать бой`, `сражаться`, `бежать`, `атака`, `защита`, `навыки`, `спелл`);
+- server-owned legacy text ids currently protect rune craft / reroll / destroy / equip / unequip, tutorial navigation (`пропустить обучение`, `в приключения`, `в мир`), quest reward claim (`забрать награду`), and battle text inputs (`в бой`, `отступить`, `бой`, `начать бой`, `сражаться`, `бежать`, `атака`, `защита`, `навыки`, `спелл`);
 - server-owned legacy text ids also protect rune hub navigation (`+руна`, `-руна`, `руны >`, `руны <`, `руна слот 1..5` and aliases);
 - server-owned legacy text ids also protect tutorial entry via `локация` / `обучение`;
 - server-owned legacy text ids also protect exploration entry via `исследовать`;
@@ -166,11 +174,12 @@ Fields of interest:
 - same-intent delete confirmation -> one canonical delete success only;
 - same-intent tutorial entry from main menu / legacy text -> one canonical tutorial context only;
 - same-intent explore from main menu / tutorial / battle-result CTA -> one canonical exploration outcome only;
+- same-intent legacy text quest reward claim -> one canonical quest reward result only, even if another quest becomes ready afterward;
 - stale reused intent after state change -> explicit `stale_command_intent` style rejection;
 - different intent ids still allow honest repeated actions.
 
 ## Deferred after v1
 
 - generic mutation intent envelope implementation after the design in `docs/platform/generic-mutation-intent-envelope.md`;
-- remaining text-command replay handling beyond guarded rune mutations, tutorial navigation, exploration entry, and battle actions;
+- remaining text-command replay handling beyond guarded rune mutations, tutorial navigation, exploration entry, quest reward claim, and battle actions;
 - broader state-key strategy for future non-rune mutations that are not already covered by exploration, battle, quest reward, pending reward, or delete receipts.

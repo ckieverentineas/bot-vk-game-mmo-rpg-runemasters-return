@@ -41,9 +41,37 @@ const createPlayer = (overrides: Partial<PlayerState> = {}): PlayerState => ({
   ...overrides,
 });
 
+const createEquippedRunePlayer = (overrides: Partial<PlayerState> = {}): PlayerState => (
+  createPlayer({
+    runes: [
+      {
+        id: 'rune-1',
+        runeCode: 'rune-1',
+        archetypeCode: 'ember',
+        passiveAbilityCodes: ['ember_heart'],
+        activeAbilityCodes: ['ember_pulse'],
+        name: 'Обычная руна Пламени',
+        rarity: 'USUAL',
+        isEquipped: true,
+        equippedSlot: 0,
+        health: 1,
+        attack: 1,
+        defence: 0,
+        magicDefence: 0,
+        dexterity: 0,
+        intelligence: 0,
+        createdAt: '2026-04-22T00:00:00.000Z',
+      },
+    ],
+    ...overrides,
+  })
+);
+
 const createRepository = (player = createPlayer(), claimedQuestCodes: readonly string[] = []): GameRepository => ({
   findPlayerByVkId: vi.fn().mockResolvedValue(player),
   listClaimedQuestRewardCodes: vi.fn().mockResolvedValue(claimedQuestCodes),
+  getCommandIntentResult: vi.fn().mockResolvedValue(null),
+  recordCommandIntentResult: vi.fn(async (_playerId, _commandKey, _intentId, _intentStateKey, _currentStateKey, result) => result),
   claimQuestReward: vi.fn().mockResolvedValue({
     player: {
       ...player,
@@ -117,6 +145,56 @@ describe('ClaimQuestReward', () => {
       readyToClaimCount: 0,
       claimedCount: 1,
     });
+  });
+
+  it('replays a legacy text quest reward intent before selecting another ready quest', async () => {
+    const player = createEquippedRunePlayer({ gold: 5 });
+    const repository = createRepository(player, ['awakening_empty_master']);
+    vi.mocked(repository.getCommandIntentResult).mockResolvedValueOnce({
+      status: 'APPLIED',
+      result: {
+        player,
+        questCode: 'awakening_empty_master',
+        reward: { gold: 5, inventoryDelta: { usualShards: 1 } },
+        claimed: true,
+      },
+    });
+
+    const result = await createUseCase(repository).execute(1001, {
+      intentId: 'legacy-text:2000000001:1001:93:забрать награду',
+      intentSource: 'legacy_text',
+    });
+
+    expect(repository.getCommandIntentResult).toHaveBeenCalledWith(
+      1,
+      'legacy-text:2000000001:1001:93:забрать награду',
+      ['CLAIM_QUEST_REWARD'],
+    );
+    expect(repository.claimQuestReward).not.toHaveBeenCalled();
+    expect(result.claimedNow).toBe(true);
+    expect(result.quest.code).toBe('awakening_empty_master');
+    expect(result.quest.status).toBe('CLAIMED');
+  });
+
+  it('stores a canonical command receipt for a first legacy text quest reward claim', async () => {
+    const repository = createRepository();
+
+    await createUseCase(repository).execute(1001, {
+      intentId: 'legacy-text:2000000001:1001:94:забрать награду',
+      intentSource: 'legacy_text',
+    });
+
+    expect(repository.claimQuestReward).toHaveBeenCalledWith(
+      1,
+      'awakening_empty_master',
+      { gold: 5, inventoryDelta: { usualShards: 1 } },
+      {
+        commandKey: 'CLAIM_QUEST_REWARD',
+        intentId: 'legacy-text:2000000001:1001:94:забрать награду',
+        intentStateKey: 'awakening_empty_master',
+        currentStateKey: 'awakening_empty_master',
+      },
+    );
   });
 
   it('tracks not-ready claims before returning the domain error', async () => {

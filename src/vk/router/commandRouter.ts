@@ -27,6 +27,7 @@ const legacyTextIntentCommands = new Set<string>([
   gameCommands.destroyRune,
   gameCommands.equipRune,
   gameCommands.unequipRune,
+  gameCommands.claimQuestReward,
   gameCommands.location,
   gameCommands.skipTutorial,
   gameCommands.returnToAdventure,

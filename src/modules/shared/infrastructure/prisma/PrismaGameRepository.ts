@@ -66,6 +66,7 @@ import {
 } from '../../domain/contracts/quest-reward-ledger';
 import { createBattleVictoryRewardIntent } from '../../domain/contracts/reward-intent';
 import type {
+  ClaimQuestRewardOptions,
   CollectPendingRewardResult,
   CreateBattleOptions,
   FinalizeBattleResult,
@@ -92,6 +93,10 @@ type TransactionClient = Prisma.TransactionClient;
 type CommandIntentKey = GameCommandIntentKey;
 
 type PersistedBattleState = Pick<BattleView, 'status' | 'turnOwner' | 'player' | 'enemy' | 'encounter' | 'log' | 'result' | 'rewards' | 'actionRevision'>;
+
+const isPrismaUniqueConstraintError = (error: unknown): error is Prisma.PrismaClientKnownRequestError => (
+  error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002'
+);
 
 const buildInventoryDeltaInput = (delta: InventoryDelta): Record<string, { increment: number }> => {
   const data: Record<string, { increment: number }> = {};
@@ -877,6 +882,7 @@ export class PrismaGameRepository implements GameRepository {
     playerId: number,
     questCode: string,
     reward: ResourceReward,
+    options?: ClaimQuestRewardOptions,
   ): Promise<QuestRewardClaimResult> {
     const appliedAt = new Date();
     const ledger = createQuestRewardLedgerEntry(
@@ -888,42 +894,71 @@ export class PrismaGameRepository implements GameRepository {
 
     try {
       return await this.prisma.$transaction(async (tx) => {
-        await tx.rewardLedgerRecord.create({
-          data: {
-            playerId,
-            ledgerKey: ledger.ledgerKey,
-            sourceType: ledger.sourceType,
-            sourceId: ledger.sourceId,
-            status: ledger.status,
-            entrySnapshot: stringifyJson(ledger, '{}'),
-            appliedAt,
-          },
-        });
-
-        if (reward.gold !== undefined && reward.gold !== 0) {
-          await tx.player.update({
-            where: { id: playerId },
-            data: {
-              gold: {
-                increment: reward.gold,
+        const applyQuestReward = async (): Promise<QuestRewardClaimResult> => {
+          try {
+            await tx.rewardLedgerRecord.create({
+              data: {
+                playerId,
+                ledgerKey: ledger.ledgerKey,
+                sourceType: ledger.sourceType,
+                sourceId: ledger.sourceId,
+                status: ledger.status,
+                entrySnapshot: stringifyJson(ledger, '{}'),
+                appliedAt,
               },
-            },
-          });
-        }
+            });
+          } catch (error) {
+            if (!isPrismaUniqueConstraintError(error)) {
+              throw error;
+            }
 
-        if (reward.inventoryDelta) {
-          await this.applyInventoryDelta(tx, playerId, reward.inventoryDelta);
-        }
+            return {
+              player: mapPlayerRecord(await this.requirePlayerRecord(tx, playerId)),
+              questCode,
+              reward,
+              claimed: false,
+            };
+          }
 
-        return {
-          player: mapPlayerRecord(await this.requirePlayerRecord(tx, playerId)),
-          questCode,
-          reward,
-          claimed: true,
+          if (reward.gold !== undefined && reward.gold !== 0) {
+            await tx.player.update({
+              where: { id: playerId },
+              data: {
+                gold: {
+                  increment: reward.gold,
+                },
+              },
+            });
+          }
+
+          if (reward.inventoryDelta) {
+            await this.applyInventoryDelta(tx, playerId, reward.inventoryDelta);
+          }
+
+          return {
+            player: mapPlayerRecord(await this.requirePlayerRecord(tx, playerId)),
+            questCode,
+            reward,
+            claimed: true,
+          };
         };
+
+        if (options?.commandKey && options.intentId && options.intentStateKey) {
+          return this.runWithCommandIntent(
+            tx,
+            playerId,
+            options.commandKey,
+            options.intentId,
+            options.intentStateKey,
+            options.currentStateKey,
+            applyQuestReward,
+          );
+        }
+
+        return applyQuestReward();
       });
     } catch (error) {
-      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+      if (isPrismaUniqueConstraintError(error)) {
         return {
           player: mapPlayerRecord(await this.requirePlayerRecord(this.prisma, playerId)),
           questCode,
