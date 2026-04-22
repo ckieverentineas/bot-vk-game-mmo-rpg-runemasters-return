@@ -7,6 +7,7 @@ import type {
 } from '../../../shared/types/game';
 import { gameBalance } from '../../../config/game-balance';
 import { getEquippedRunes } from '../../player/domain/player-stats';
+import { hasRuneOfSchoolAtLeastRarity } from '../../player/domain/school-novice-path';
 
 export type QuestCode =
   | 'awakening_empty_master'
@@ -18,7 +19,19 @@ export type QuestCode =
   | 'trail_beyond_circle'
   | 'second_rune_silence'
   | 'first_pattern'
-  | 'craft_after_battle';
+  | 'craft_after_battle'
+  | 'ember_finishing_spark'
+  | 'ember_light_fear'
+  | 'ember_ash_seal'
+  | 'stone_standing_ground'
+  | 'stone_answer'
+  | 'stone_wall_seal'
+  | 'gale_before_thunder'
+  | 'gale_wind_intercept'
+  | 'gale_dash_seal'
+  | 'echo_future_crack'
+  | 'echo_unmade_strike'
+  | 'echo_warning_seal';
 
 export interface QuestProgress {
   readonly current: number;
@@ -33,6 +46,24 @@ export interface QuestDefinition {
   readonly objective: string;
   readonly reward: ResourceReward;
   readonly progress: (player: PlayerState) => QuestProgress;
+}
+
+type StarterSchoolCode = 'ember' | 'stone' | 'gale' | 'echo';
+type SchoolQuestProgressKind = 'first_school_victory' | 'school_mastery_rank' | 'school_seal';
+
+interface SchoolQuestTemplate {
+  readonly code: QuestCode;
+  readonly icon: string;
+  readonly title: string;
+  readonly story: string;
+  readonly objective: string;
+  readonly reward: ResourceReward;
+  readonly progressKind: SchoolQuestProgressKind;
+}
+
+interface SchoolQuestChapter {
+  readonly schoolCode: StarterSchoolCode;
+  readonly quests: readonly SchoolQuestTemplate[];
 }
 
 const materialFields = [
@@ -67,6 +98,13 @@ const highestSchoolMasteryExperience = (player: PlayerState): number => (
   Math.max(0, ...(player.schoolMasteries ?? []).map((mastery) => mastery.experience))
 );
 
+const getSchoolMasteryExperience = (
+  player: PlayerState,
+  schoolCode: StarterSchoolCode,
+): number => (
+  player.schoolMasteries?.find((mastery) => mastery.schoolCode === schoolCode)?.experience ?? 0
+);
+
 const hasOpenedAdventure = (player: PlayerState): boolean => (
   player.tutorialState !== 'ACTIVE'
   && player.locationLevel >= gameBalance.world.minAdventureLocationLevel
@@ -84,6 +122,207 @@ const highestGatheringSkillExperience = (player: PlayerState): number => (
       .map((skill) => skill.experience),
   )
 );
+
+const resolveSchoolQuestProgress = (
+  player: PlayerState,
+  schoolCode: StarterSchoolCode,
+  kind: SchoolQuestProgressKind,
+): QuestProgress => {
+  const masteryExperience = getSchoolMasteryExperience(player, schoolCode);
+
+  if (kind === 'first_school_victory') {
+    return clampProgress(masteryExperience, 1);
+  }
+
+  if (kind === 'school_mastery_rank') {
+    return clampProgress(masteryExperience, 3);
+  }
+
+  return clampProgress(hasRuneOfSchoolAtLeastRarity(player, schoolCode, 'UNUSUAL') ? 1 : 0, 1);
+};
+
+const createSchoolQuestDefinitions = (
+  chapters: readonly SchoolQuestChapter[],
+): readonly QuestDefinition[] => chapters.flatMap((chapter) => (
+  chapter.quests.map((quest): QuestDefinition => ({
+    code: quest.code,
+    icon: quest.icon,
+    title: quest.title,
+    story: quest.story,
+    objective: quest.objective,
+    reward: quest.reward,
+    progress: (player) => resolveSchoolQuestProgress(player, chapter.schoolCode, quest.progressKind),
+  }))
+));
+
+const schoolQuestChapters: readonly SchoolQuestChapter[] = [
+  {
+    schoolCode: 'ember',
+    quests: [
+      {
+        code: 'ember_finishing_spark',
+        icon: '🔥',
+        title: 'Искра дожима',
+        story: 'Пламя узнаёт мастера по тому, как он доводит бой до последнего вздоха жара.',
+        objective: 'Победить с руной Пламени.',
+        reward: {
+          gold: 12,
+          inventoryDelta: { essence: 1 },
+        },
+        progressKind: 'first_school_victory',
+      },
+      {
+        code: 'ember_light_fear',
+        icon: '🌞',
+        title: 'То, что боится света',
+        story: 'Чем ярче школа отвечает, тем меньше теней остаётся у врага.',
+        objective: 'Набрать 3 опыта мастерства Пламени.',
+        reward: {
+          gold: 16,
+          inventoryDelta: { usualShards: 3 },
+        },
+        progressKind: 'school_mastery_rank',
+      },
+      {
+        code: 'ember_ash_seal',
+        icon: '🜂',
+        title: 'Пепельная печать',
+        story: 'В пепле остаётся знак: Пламя признало первый настоящий узор.',
+        objective: 'Получить необычную или более редкую руну Пламени.',
+        reward: {
+          gold: 18,
+          inventoryDelta: { unusualShards: 1, essence: 1 },
+        },
+        progressKind: 'school_seal',
+      },
+    ],
+  },
+  {
+    schoolCode: 'stone',
+    quests: [
+      {
+        code: 'stone_standing_ground',
+        icon: '🛡️',
+        title: 'Пока я стою',
+        story: 'Твердь отвечает тому, кто не отступает, даже когда земля дрожит под ногами.',
+        objective: 'Победить с руной Тверди.',
+        reward: {
+          gold: 12,
+          inventoryDelta: { metal: 1 },
+        },
+        progressKind: 'first_school_victory',
+      },
+      {
+        code: 'stone_answer',
+        icon: '🪨',
+        title: 'Ответ камня',
+        story: 'Камень не торопится. Он помнит каждый удар и возвращает его формой.',
+        objective: 'Набрать 3 опыта мастерства Тверди.',
+        reward: {
+          gold: 16,
+          inventoryDelta: { usualShards: 3 },
+        },
+        progressKind: 'school_mastery_rank',
+      },
+      {
+        code: 'stone_wall_seal',
+        icon: '🧱',
+        title: 'Печать стены',
+        story: 'Первая стена встаёт не вокруг мастера, а вместе с ним.',
+        objective: 'Получить необычную или более редкую руну Тверди.',
+        reward: {
+          gold: 18,
+          inventoryDelta: { unusualShards: 1, metal: 1 },
+        },
+        progressKind: 'school_seal',
+      },
+    ],
+  },
+  {
+    schoolCode: 'gale',
+    quests: [
+      {
+        code: 'gale_before_thunder',
+        icon: '🌪️',
+        title: 'До грома',
+        story: 'Буря ценит шаг, сделанный раньше звука удара.',
+        objective: 'Победить с руной Бури.',
+        reward: {
+          gold: 12,
+          inventoryDelta: { crystal: 1 },
+        },
+        progressKind: 'first_school_victory',
+      },
+      {
+        code: 'gale_wind_intercept',
+        icon: '💨',
+        title: 'Перехват ветра',
+        story: 'Ветер уже не просто несёт мастера: он начинает слушать направление руки.',
+        objective: 'Набрать 3 опыта мастерства Бури.',
+        reward: {
+          gold: 16,
+          inventoryDelta: { usualShards: 3 },
+        },
+        progressKind: 'school_mastery_rank',
+      },
+      {
+        code: 'gale_dash_seal',
+        icon: '⚡',
+        title: 'Печать рывка',
+        story: 'Первый рывок оставляет в воздухе знак, который не успевает рассыпаться.',
+        objective: 'Получить необычную или более редкую руну Бури.',
+        reward: {
+          gold: 18,
+          inventoryDelta: { unusualShards: 1, crystal: 1 },
+        },
+        progressKind: 'school_seal',
+      },
+    ],
+  },
+  {
+    schoolCode: 'echo',
+    quests: [
+      {
+        code: 'echo_future_crack',
+        icon: '🔮',
+        title: 'Трещина в будущем',
+        story: 'Прорицание начинается с тонкой трещины там, где удар ещё не случился.',
+        objective: 'Победить с руной Прорицания.',
+        reward: {
+          gold: 12,
+          inventoryDelta: { herb: 1 },
+        },
+        progressKind: 'first_school_victory',
+      },
+      {
+        code: 'echo_unmade_strike',
+        icon: '👁️',
+        title: 'Удар, которого ещё нет',
+        story: 'Мастер видит не только врага, но и место, где его решение станет ошибкой.',
+        objective: 'Набрать 3 опыта мастерства Прорицания.',
+        reward: {
+          gold: 16,
+          inventoryDelta: { usualShards: 3 },
+        },
+        progressKind: 'school_mastery_rank',
+      },
+      {
+        code: 'echo_warning_seal',
+        icon: '🜁',
+        title: 'Печать предупреждения',
+        story: 'Предзнаменование становится печатью, когда мастер впервые отвечает ему выбором.',
+        objective: 'Получить необычную или более редкую руну Прорицания.',
+        reward: {
+          gold: 18,
+          inventoryDelta: { unusualShards: 1, herb: 1 },
+        },
+        progressKind: 'school_seal',
+      },
+    ],
+  },
+];
+
+const schoolQuestDefinitions = createSchoolQuestDefinitions(schoolQuestChapters);
 
 const questDefinitions: readonly QuestDefinition[] = [
   {
@@ -206,6 +445,7 @@ const questDefinitions: readonly QuestDefinition[] = [
     },
     progress: (player) => clampProgress(highestGatheringSkillExperience(player), 1),
   },
+  ...schoolQuestDefinitions,
 ];
 
 export const listQuestDefinitions = (): readonly QuestDefinition[] => questDefinitions;
