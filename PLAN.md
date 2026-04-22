@@ -38,7 +38,7 @@
 - School novice trial/payoff по четырём школам уже подтверждён автоматическим runtime evidence, но весь school-first path ещё не считается release-green: `release:evidence` сейчас возвращает `warn`, потому что после novice payoff не подтверждены equip sign/loadout engagement по школам и `return_recap_shown`.
 - Игровая версия считается только по commit-based правилу из `release:status`; `package.json` остаётся технической npm-метаинформацией и не является player-facing версией игры.
 - Production database rollout не считается оформленным, пока нет явной процедуры backup + migration/deploy для SQLite.
-- Action-based trophy rewards всё ещё не считаются release-proven, пока pending trophy collect/replay не пройден ручным playtest'ом и release evidence. Hidden drop pools, skill-threshold unlocks и stat growth остаются будущими срезами.
+- Action-based trophy rewards имеют local handler manual evidence для pending trophy collect/replay в `docs/testing/pending-trophy-manual-playtest-q022.md`, но ещё не считаются полностью release-proven без release evidence или release-owner решения. Hidden drop pools и skill-threshold unlocks за пределами первых узких срезов, а также stat growth остаются будущими работами.
 - `Книга путей` пока не считается release-proven, пока opening/claim/replay сценарии не пройдены ручным playtest'ом на живом боте.
 
 ## Архитектурная гигиена
@@ -56,7 +56,7 @@
 ## Ближайший порядок работ
 
 1. Прогнать technical gate после остановки бота: `npm run db:generate`, `npm run check`, `npm run release:local-playtest`, `npm run release:preflight`.
-2. Пройти ручной playtest поверх автоматического first-session smoke: onboarding, quest book open/claim/replay, encounter choice, fight/flee, rune hub, две руны, craft/reroll/destroy, четыре school paths, pending trophy collect/replay.
+2. Пройти ручной playtest поверх автоматического first-session smoke: onboarding, quest book open/claim/replay, encounter choice, fight/flee, rune hub, две руны, craft/reroll/destroy и четыре school paths. Pending trophy collect/replay уже закрыт local handler evidence в Q-022, но может быть повторён на живом боте перед релизом.
 3. Собрать `npm run release:school-evidence` и `npm run release:evidence`; если verdict остаётся `warn` или хуже, релиз не готов без явного release-owner решения.
 4. После evidence pass обновить `README.md`, `CHANGELOG.md`, `PLAN.md` и при необходимости `ARCHITECTURE.md` / `RELEASE_CHECKLIST.md`.
 5. Подготовить минимальный ops-runbook: где `.env`, где SQLite DB, как запускается production-процесс, где логи и как откатываться.

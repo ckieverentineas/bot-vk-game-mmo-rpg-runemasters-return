@@ -52,6 +52,8 @@ npm run release:evidence
 
 Q-006 evidence snapshot: school novice trial + aligned `UNUSUAL` reward подтверждены для Пламени, Тверди, Бури и Прорицания. Оставшиеся runtime gaps находятся после novice payoff: equip sign/loadout engagement по школам и отсутствие `return_recap_shown` в текущем окне.
 
+Q-022 manual snapshot: pending trophy collect/replay подтверждён на local handler уровне в `docs/testing/pending-trophy-manual-playtest-q022.md`. Повтор старого trophy payload не добавил ресурсы или skill progress повторно; live VK replay остаётся optional smoke перед релизом.
+
 Минимально нужно подтвердить:
 
 - onboarding стартует и ведёт к понятному первому маршруту;
