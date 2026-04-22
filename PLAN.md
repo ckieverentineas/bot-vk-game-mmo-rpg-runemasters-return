@@ -22,6 +22,7 @@
 - Player-facing тексты держатся в языке мира: без “нажмите”, “режим”, “статы”, “тип” и другой служебной воды там, где игрок должен читать след, бой, трофеи и путь мастера.
 - Рунная сборка стартует с двух равноправных слотов. Обе надетые руны дают боевые черты, пассивы и активное действие, если оно есть.
 - Экран рун показывает компактный список со счётчиком надетых рун, иконками школ, ролью архетипа и отдельной карточкой выбранной руны.
+- VK-клавиатуры разнесены по сценариям (`main`, `battle`, `runes`, `rewards`, `tutorial`) с общим builder'ом и совместимым public barrel `src/vk/keyboards/index.ts`.
 - Player-facing support-slot модель вырезана.
 - Рост персонажа смещён к школам, mastery, рунам и будущей ветке мастера, а не к старой раздаче stat points за уровни.
 - Action-based trophy rewards имеют первый playable vertical slice: победа создаёт `PENDING` reward ledger, доступные trophy actions фиксируются в snapshot, игрок видит post-battle trophy card с inline-кнопками, `начать` / `исследовать` возвращают к несобранной добыче, выбранное действие собирается exact-once, `claim_all` даёт быстрый безопасный сбор, а bootstrap восстанавливает потерянные pending-записи после рестарта.
@@ -34,6 +35,12 @@
 - Игровая версия считается только по commit-based правилу из `release:status`; `package.json` остаётся технической npm-метаинформацией и не является player-facing версией игры.
 - Production database rollout не считается оформленным, пока нет явной процедуры backup + migration/deploy для SQLite.
 - Action-based trophy rewards всё ещё не считаются release-proven, пока pending trophy collect/replay не пройден ручным playtest'ом и release evidence. Hidden drop pools, skill-threshold unlocks и stat growth остаются будущими срезами.
+
+## Архитектурная гигиена
+
+- Дробить проект малыми вертикальными срезами, сохраняя публичные импорты там, где это снижает риск.
+- Следующие безопасные кандидаты: разнести `src/vk/presenters/messages.ts` по экранам, выделить маршруты `gameCommandRoutes.ts` из recovery-правил, а `GameHandler` оставить тонким orchestrator'ом поверх use-case и presenter слоёв.
+- `PrismaGameRepository` не распиливать механически: сначала выделять чистые мапперы, snapshot hydration и reward/battle persistence helpers с тестами на replay/concurrency.
 
 ## Ближайший порядок работ
 
