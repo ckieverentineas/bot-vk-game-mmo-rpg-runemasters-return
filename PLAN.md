@@ -42,8 +42,8 @@
 - Функциональное ядро, компонентная оболочка: чистые formatter/resolver функции внутри модулей, сценарные компоненты вокруг них, public barrel для совместимости импортов.
 - Presenter-декомпозиция VK-экранов разнесена по сценариям: `rewardMessages.ts`, `runeMessages.ts`, `battleMessages.ts`, `homeMessages.ts`, `profileMessages.ts` и `explorationMessages.ts` держат свои flow, а `message-formatting.ts` / `player-progress-formatting.ts` — общие чистые formatter'ы.
 - Handler-декомпозиция продолжена: `gameCommandRoutes.ts` стал агрегатором, `routes/*CommandRoutes.ts` держат core/tutorial/battle/rune/reward маршруты, а `gameCommandRecovery.ts` — recoverable stale/retry/battle/rune контексты.
-- Responder-декомпозиция продолжена: `responders/runeReplyFlow.ts`, `rewardReplyFlow.ts` и `battleReplyFlow.ts` держат рендер/клавиатуры рун, pending trophy rewards, battle result и exploration result, а `GameHandler` делегирует им reply-flow.
-- Следующие безопасные кандидаты: вынести return/tutorial/profile responder-компоненты и оставить `GameHandler` тонким orchestrator'ом поверх use-case, telemetry и responder слоёв.
+- Responder-декомпозиция продолжена: `responders/homeReplyFlow.ts`, `runeReplyFlow.ts`, `rewardReplyFlow.ts` и `battleReplyFlow.ts` держат рендер/клавиатуры home/profile/location экранов, рун, pending trophy rewards, battle result и exploration result, а `GameHandler` делегирует им reply-flow.
+- Следующие безопасные кандидаты: вынести оставшуюся telemetry-адаптацию или точечно разбирать `PrismaGameRepository` через мапперы и persistence helpers, оставляя `GameHandler` тонким orchestrator'ом поверх use-case и responder слоёв.
 - `PrismaGameRepository` не распиливать механически: сначала выделять чистые мапперы, snapshot hydration и reward/battle persistence helpers с тестами на replay/concurrency.
 
 ## Ближайший порядок работ

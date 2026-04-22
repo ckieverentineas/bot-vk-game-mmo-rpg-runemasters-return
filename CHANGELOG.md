@@ -89,6 +89,7 @@
 - static/dynamic command routes разнесены по сценариям `routes/coreCommandRoutes.ts`, `tutorialCommandRoutes.ts`, `battleCommandRoutes.ts`, `runeCommandRoutes.ts` и `rewardCommandRoutes.ts`, а `gameCommandRoutes.ts` стал агрегатором совместимости;
 - rune/reward reply-flow вынесены из `GameHandler` в `src/vk/handlers/responders/runeReplyFlow.ts` и `rewardReplyFlow.ts`, чтобы handler делегировал сборку presenter + keyboard сценарным responder-компонентам;
 - battle/exploration reply-flow вынесен из `GameHandler` в `src/vk/handlers/responders/battleReplyFlow.ts`, при этом telemetry остаётся в handler'е и передаётся responder'у callback'ами;
+- home/profile/location reply-flow вынесен в `src/vk/handlers/responders/homeReplyFlow.ts`, чтобы старт, возврат, профиль, инвентарь и удаление персонажа собирались одним сценарным responder-компонентом;
 - карточка руны теперь даёт одну кнопку `надеть`: выбранная руна автоматически занимает первый свободный слот, без выбора слота игроком;
 - второй слот больше не является player-facing “поддержкой”: две стартовые руны равноправно дают полные статы, пассивы и активные действия в бою;
 - telemetry `loadout_changed` больше не использует primary/support changeType: новое событие пишет нейтральный `equip_rune` / `unequip_rune` и 1-based `slotNumber`, чтобы будущие 3+ слоты не ломали модель;

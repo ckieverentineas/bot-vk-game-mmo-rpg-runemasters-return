@@ -14,22 +14,8 @@ import { getSchoolDefinitionForArchetype } from '../../modules/runes/domain/rune
 import { AppError, isAppError } from '../../shared/domain/AppError';
 import type { BattleActionType, BattleView, PlayerState } from '../../shared/types/game';
 import { Logger } from '../../utils/logger';
-import {
-  createDeleteConfirmationKeyboard,
-  createEntryKeyboard,
-  createMainMenuKeyboard,
-  createProfileKeyboard,
-  createTutorialKeyboard,
-} from '../keyboards';
-import {
-  renderBattle,
-  renderInventory,
-  renderLocation,
-  renderMainMenu,
-  renderProfile,
-  renderReturnRecap,
-  renderWelcome,
-} from '../presenters/messages';
+import { createMainMenuKeyboard } from '../keyboards';
+import { renderBattle } from '../presenters/messages';
 import { resolveCommandEnvelope } from '../router/commandRouter';
 import {
   config,
@@ -60,6 +46,16 @@ import {
   replyWithPendingRewardScreen as sendPendingRewardScreen,
 } from './responders/rewardReplyFlow';
 import {
+  replyWithDeleteConfirmation as sendDeleteConfirmation,
+  replyWithDeletedPlayer as sendDeletedPlayer,
+  replyWithInventory as sendInventory,
+  replyWithLocation as sendLocation,
+  replyWithMainMenu as sendMainMenu,
+  replyWithProfile as sendProfile,
+  replyWithReturnRecap as sendReturnRecap,
+  replyWithWelcome as sendWelcome,
+} from './responders/homeReplyFlow';
+import {
   replyWithRuneDetail as sendRuneDetail,
   replyWithRuneList as sendRuneList,
   replyWithRuneRerollMenu as sendRuneRerollMenu,
@@ -74,24 +70,6 @@ type TutorialRouteExecutor = (
   stateKey?: string,
   intentSource?: ReturnType<typeof resolveCommandEnvelope>['intentSource'],
 ) => Promise<TutorialRouteReplyState>;
-
-
-
-
-const formatRuneCountLabel = (count: number): string => {
-  const remainder10 = count % 10;
-  const remainder100 = count % 100;
-
-  if (remainder10 === 1 && remainder100 !== 11) {
-    return 'руна';
-  }
-
-  if (remainder10 >= 2 && remainder10 <= 4 && (remainder100 < 12 || remainder100 > 14)) {
-    return 'руны';
-  }
-
-  return 'рун';
-};
 
 const normalizeTutorialRouteReplyState = (state: TutorialRouteReplyState): { player: PlayerState; replayed: boolean } => (
   'player' in state
@@ -178,12 +156,12 @@ export class GameHandler {
 
   public async showMainMenu(ctx: Context, vkId: number): Promise<void> {
     const player = await this.services.getPlayerProfile.execute(vkId);
-    await this.reply(ctx, renderMainMenu(player), createMainMenuKeyboard(player));
+    await sendMainMenu(ctx, player);
   }
 
   public async showProfile(ctx: Context, vkId: number): Promise<void> {
     const player = await this.services.getPlayerProfile.execute(vkId);
-    await this.replyWithProfile(ctx, player);
+    await sendProfile(ctx, player);
   }
 
   private async tryRecoverCommandContext(ctx: Context, vkId: number, command: string, error: AppError): Promise<boolean> {
@@ -211,17 +189,7 @@ export class GameHandler {
 
   public async confirmDeletePlayer(ctx: Context, vkId: number): Promise<void> {
     const player = await this.services.getPlayerProfile.execute(vkId);
-    await this.reply(
-      ctx,
-      [
-        '⚠️ Удаление персонажа',
-        '',
-        `Будет удалён герой уровня ${player.level}${player.runes.length > 0 ? ` и ${player.runes.length} ${formatRuneCountLabel(player.runes.length)}` : ''}.`,
-        'Это действие необратимо: прогресс и сборка будут удалены.',
-        '«🗑️ Да, удалить» — только если действительно хотите начать заново.',
-      ].join('\n'),
-      createDeleteConfirmationKeyboard(player),
-    );
+    await sendDeleteConfirmation(ctx, player);
   }
 
   public async deletePlayer(
@@ -232,12 +200,12 @@ export class GameHandler {
     intentSource: ReturnType<typeof resolveCommandEnvelope>['intentSource'] = null,
   ): Promise<void> {
     await this.services.deletePlayer.execute(vkId, intentId, intentStateKey, intentSource);
-    await this.reply(ctx, 'Персонаж удалён. Можно начать заново в любой момент.', createEntryKeyboard());
+    await sendDeletedPlayer(ctx);
   }
 
   public async showInventory(ctx: Context, vkId: number): Promise<void> {
     const player = await this.services.getPlayerProfile.execute(vkId);
-    await this.reply(ctx, renderInventory(player), createMainMenuKeyboard(player));
+    await sendInventory(ctx, player);
   }
 
   public async startGame(ctx: Context, vkId: number): Promise<void> {
@@ -246,15 +214,7 @@ export class GameHandler {
       return;
     }
 
-    const keyboard = result.created || result.player.tutorialState === 'ACTIVE'
-      ? createTutorialKeyboard(result.player)
-      : createMainMenuKeyboard(result.player);
-    const message = renderWelcome(result.player, result.created);
-    await this.reply(
-      ctx,
-      message,
-      keyboard,
-    );
+    await sendWelcome(ctx, result.player, result.created);
 
     if (!result.created) {
       await this.trackReturnRecapShown(result.player, 'start_existing');
@@ -269,7 +229,7 @@ export class GameHandler {
     intentSource: ReturnType<typeof resolveCommandEnvelope>['intentSource'] = null,
   ): Promise<void> {
     const player = await this.services.enterTutorialMode.execute(vkId, intentId, intentStateKey, intentSource);
-    await this.replyWithLocation(ctx, player);
+    await sendLocation(ctx, player);
   }
 
   public async returnRecapRoute(
@@ -284,7 +244,7 @@ export class GameHandler {
       routeState.stateKey,
       routeState.intentSource,
     ));
-    await this.reply(ctx, renderReturnRecap(result.player, '🧭 Возвращение в приключения'), createMainMenuKeyboard(result.player));
+    await sendReturnRecap(ctx, result.player);
     await this.trackReturnRecapShown(result.player, entrySurface);
   }
 
@@ -414,14 +374,6 @@ export class GameHandler {
       routeState.intentSource,
     );
     await this.replyWithRuneDetail(ctx, player);
-  }
-
-  private async replyWithProfile(ctx: Context, player: PlayerState): Promise<void> {
-    await this.reply(ctx, renderProfile(player), createProfileKeyboard(player));
-  }
-
-  private async replyWithLocation(ctx: Context, player: PlayerState): Promise<void> {
-    await this.reply(ctx, renderLocation(player), createTutorialKeyboard(player));
   }
 
   public async replyWithRuneList(ctx: Context, state: RuneHubReplyState): Promise<void> {
