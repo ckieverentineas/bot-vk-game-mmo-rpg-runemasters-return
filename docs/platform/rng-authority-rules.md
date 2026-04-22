@@ -13,9 +13,9 @@ Reward-relevant randomness must be resolved once on the server, before persisten
 ## Out of scope
 
 - combat damage randomness;
-- encounter composition randomness;
+- general encounter composition randomness outside the shipped `exploreLocation` command receipt;
 - analytics/vendor specifics;
-- full replay-safe intent ids for every command.
+- generic replay-safe intent ids for every command family.
 
 ## Authority boundary
 
@@ -54,8 +54,33 @@ Rules:
 - battle finalize retry returns same drop payload;
 - stale branch cannot overwrite with a different random result.
 
-## Deferred after v1
+## Q-042 command-intent review
 
-- idempotency keys for craft/reroll commands;
-- broader repeated-command dedupe outside current critical rails;
-- RNG authority for encounter selection and other non-reward flows.
+Closed by current command-intent and reward-ledger work:
+
+- shipped `craftRune` commands now have replay receipts through `CommandIntentRecord` for keyboard payloads and server-owned legacy text intents;
+- shipped `rerollRuneStat` commands now have replay receipts through `CommandIntentRecord` for keyboard payloads and server-owned legacy text intents;
+- victory rune drops are not keyed by a standalone button intent, but the resolved drop is persisted in the battle reward payload / reward intent path and replayed through `finalizeBattle()` instead of rerolling;
+- shipped `exploreLocation` entry now stores the selected event or battle outcome behind the exploration command receipt, so duplicate delivery of the same explore intent returns the canonical outcome.
+
+Evidence anchors:
+
+- `docs/platform/command-intent-rules.md`;
+- `docs/platform/retry-handling-rules.md`;
+- `docs/platform/generic-mutation-intent-envelope.md`;
+- `docs/qa/reward-duplication-matrix.md`;
+- `src/modules/shared/infrastructure/prisma/PrismaGameRepository.concurrency.test.ts` finalize/drop retry coverage.
+
+## Deferred after Q-042 review
+
+No longer deferred:
+
+- idempotency keys for shipped craft/reroll commands;
+- replay protection for the current shipped `exploreLocation` entry point.
+
+Still deferred:
+
+- generic mutation intent envelope implementation after the design in `docs/platform/generic-mutation-intent-envelope.md`;
+- remaining text-command replay handling outside the guarded command families listed in `docs/platform/command-intent-rules.md`;
+- RNG authority policy for future encounter-selection systems, combat damage, and other non-reward flows;
+- receipt-owner decisions for any future reward-bearing random flow before runtime code lands.
