@@ -171,6 +171,6 @@ Fields of interest:
 
 ## Deferred after v1
 
-- generic mutation intent envelope for all keyboard actions;
+- generic mutation intent envelope implementation after the design in `docs/platform/generic-mutation-intent-envelope.md`;
 - remaining text-command replay handling beyond guarded rune mutations, tutorial navigation, exploration entry, and battle actions;
-- broader state-key strategy for non-rune mutations.
+- broader state-key strategy for future non-rune mutations that are not already covered by exploration, battle, quest reward, pending reward, or delete receipts.
