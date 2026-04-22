@@ -6,7 +6,7 @@
 - Created: `2026-04-22`
 - Current checkpoint: commit `fa19167 Document lore quest continuation completion`
 - Progress policy: one task = one request = one verification pass = one commit.
-- Active queue progress: `8/46 active task capsules closed`
+- Active queue progress: `9/46 active task capsules closed`
 - Deferred review progress: `0/10 review capsules closed`
 
 Этот документ нужен как рабочая очередь для чата. Когда звучит `дальше`, берётся первый незакрытый пункт из ближайшего приоритета, выполняется маленьким вертикальным срезом, проверяется и коммитится отдельно.
@@ -183,7 +183,7 @@ npm run release:preflight
 
 ### Q-009. Add quest book funnel to release evidence
 
-- Status: `next`
+- Status: `done`
 - Source: `docs/product/lore-quests-home-continuation.md`, `PLAN.md`
 - Goal: сделать `Книгу путей` видимой в `release:evidence`, а не только в unit/local playtest.
 - Scope:
@@ -195,7 +195,7 @@ npm run release:preflight
 
 ### Q-010. Add quest rewards to duplication matrix
 
-- Status: `ready`
+- Status: `next`
 - Source: `docs/qa/reward-duplication-matrix.md`, `docs/testing/concurrency-critical-use-cases.md`
 - Goal: явно включить quest reward claim/replay в reward duplication safety docs.
 - Scope:

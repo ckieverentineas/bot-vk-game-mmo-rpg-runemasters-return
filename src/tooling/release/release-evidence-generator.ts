@@ -7,6 +7,13 @@ import {
 
 const trackedSchoolCodes = new Set(['ember', 'stone', 'gale', 'echo']);
 
+const questBookEvidenceActions = [
+  'quest_book_opened',
+  'quest_reward_claimed',
+  'quest_reward_replayed',
+  'quest_reward_not_ready',
+] as const;
+
 export const releaseEvidenceTrackedActions = [
   'onboarding_started',
   'tutorial_path_chosen',
@@ -18,9 +25,11 @@ export const releaseEvidenceTrackedActions = [
   'return_recap_shown',
   'post_session_next_goal_shown',
   'reward_claim_applied',
+  ...questBookEvidenceActions,
   'battle_stale_action_rejected',
 ] as const;
 
+type QuestBookEvidenceAction = typeof questBookEvidenceActions[number];
 type ReleaseEvidenceTrackedAction = typeof releaseEvidenceTrackedActions[number];
 type ReleaseEvidenceVerdict = 'pass' | 'warn' | 'insufficient_evidence';
 
@@ -54,6 +63,13 @@ interface ReturnRecapAccumulator {
   readonly withoutEquippedRuneShownUsers: Set<number>;
   readonly withEquippedRuneShownUsers: Set<number>;
   readonly followUpUsers: Set<number>;
+}
+
+interface QuestBookAccumulator {
+  eventCount: number;
+  latestEventAt: string | null;
+  readonly users: Set<number>;
+  readonly questCodes: Set<string>;
 }
 
 interface PendingSurfaceMarker {
@@ -113,6 +129,15 @@ export interface ReleaseEvidenceReturnRecapRow {
   readonly followUpUsers: number;
 }
 
+export interface ReleaseEvidenceQuestBookRow {
+  readonly action: QuestBookEvidenceAction;
+  readonly label: string;
+  readonly eventCount: number;
+  readonly uniqueUsers: number;
+  readonly questCodes: readonly string[];
+  readonly latestEventAt: string | null;
+}
+
 export interface ReleaseEvidenceExploitSummary {
   readonly duplicateRewardLedgerKeys: readonly string[];
   readonly duplicateRewardBattleIds: readonly string[];
@@ -138,6 +163,7 @@ export interface ReleaseEvidenceReport {
   readonly loadoutRows: readonly ReleaseEvidenceLoadoutRow[];
   readonly nextGoalRows: readonly ReleaseEvidenceNextGoalRow[];
   readonly returnRecapRows: readonly ReleaseEvidenceReturnRecapRow[];
+  readonly questBookRows: readonly ReleaseEvidenceQuestBookRow[];
   readonly exploitSummary: ReleaseEvidenceExploitSummary;
   readonly confidenceNotes: readonly string[];
 }
@@ -153,10 +179,15 @@ const actionLabels: Readonly<Record<ReleaseEvidenceTrackedAction, string>> = {
   return_recap_shown: '`return_recap_shown`',
   post_session_next_goal_shown: '`post_session_next_goal_shown`',
   reward_claim_applied: '`reward_claim_applied`',
+  quest_book_opened: '`quest_book_opened`',
+  quest_reward_claimed: '`quest_reward_claimed`',
+  quest_reward_replayed: '`quest_reward_replayed`',
+  quest_reward_not_ready: '`quest_reward_not_ready`',
   battle_stale_action_rejected: '`battle_stale_action_rejected`',
 };
 
 const trackedActionSet = new Set<string>(releaseEvidenceTrackedActions);
+const questBookActionSet = new Set<string>(questBookEvidenceActions);
 
 const createCounterAccumulator = (): CounterAccumulator => ({
   eventCount: 0,
@@ -188,6 +219,13 @@ const createReturnRecapAccumulator = (): ReturnRecapAccumulator => ({
   withoutEquippedRuneShownUsers: new Set<number>(),
   withEquippedRuneShownUsers: new Set<number>(),
   followUpUsers: new Set<number>(),
+});
+
+const createQuestBookAccumulator = (): QuestBookAccumulator => ({
+  eventCount: 0,
+  latestEventAt: null,
+  users: new Set<number>(),
+  questCodes: new Set<string>(),
 });
 
 const parseDetails = (details: SchoolPathEvidenceLogEntry['details']): Record<string, unknown> => {
@@ -354,6 +392,9 @@ export const summarizeReleaseEvidence = (
   const schoolLoadoutAccumulators = new Map(schoolDefinitions.map((school) => [school.code, createSchoolLoadoutAccumulator()]));
   const postSessionAccumulators = new Map<string, PostSessionAccumulator>();
   const returnRecapAccumulators = new Map<string, ReturnRecapAccumulator>();
+  const questBookAccumulators = new Map<QuestBookEvidenceAction, QuestBookAccumulator>(
+    questBookEvidenceActions.map((action) => [action, createQuestBookAccumulator()]),
+  );
   const rewardUnlockedByUserSchool = new Set<string>();
   const pendingPostSessionGoalsByUser = new Map<number, PendingSurfaceMarker[]>();
   const pendingReturnRecapsByUser = new Map<number, PendingSurfaceMarker[]>();
@@ -459,6 +500,22 @@ export const summarizeReleaseEvidence = (
         actionAccumulator.eventCount += 1;
         actionAccumulator.users.add(entry.userId);
       }
+    }
+
+    if (questBookActionSet.has(entry.action)) {
+      const action = entry.action as QuestBookEvidenceAction;
+      const accumulator = questBookAccumulators.get(action)!;
+      const questCode = normalizeTextField(details.questCode);
+
+      accumulator.eventCount += 1;
+      accumulator.users.add(entry.userId);
+      accumulator.latestEventAt = timestamp;
+
+      if (questCode) {
+        accumulator.questCodes.add(questCode);
+      }
+
+      continue;
     }
 
     if (entry.action === 'onboarding_started') {
@@ -719,6 +776,18 @@ export const summarizeReleaseEvidence = (
       return left.nextStepType.localeCompare(right.nextStepType);
     });
 
+  const questBookRows = questBookEvidenceActions.map((action) => {
+    const accumulator = questBookAccumulators.get(action)!;
+    return {
+      action,
+      label: actionLabels[action],
+      eventCount: accumulator.eventCount,
+      uniqueUsers: accumulator.users.size,
+      questCodes: [...accumulator.questCodes].sort((left, right) => left.localeCompare(right)),
+      latestEventAt: accumulator.latestEventAt,
+    } satisfies ReleaseEvidenceQuestBookRow;
+  });
+
   const exploitSummary = {
     duplicateRewardLedgerKeys: [...duplicateRewardLedgerKeyCounts.entries()]
       .filter(([, count]) => count > 1)
@@ -777,6 +846,7 @@ export const summarizeReleaseEvidence = (
     loadoutRows,
     nextGoalRows,
     returnRecapRows,
+    questBookRows,
     exploitSummary,
     confidenceNotes,
   };
@@ -886,6 +956,19 @@ export const buildReleaseEvidenceMarkdown = (report: ReleaseEvidenceReport): str
         row.withoutEquippedRuneShownCount,
         row.withEquippedRuneShownCount,
         row.followUpUsers,
+      ]),
+    ),
+    '',
+    '## Quest book funnel',
+    '',
+    ...buildTable(
+      ['Quest signal', 'Events', 'Unique users', 'Quest codes', 'Latest event'],
+      report.questBookRows.map((row) => [
+        row.label,
+        row.eventCount,
+        row.uniqueUsers,
+        row.questCodes.length > 0 ? row.questCodes.join(', ') : 'none',
+        row.latestEventAt ?? 'none',
       ]),
     ),
     '',

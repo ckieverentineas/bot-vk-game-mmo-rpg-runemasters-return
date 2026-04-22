@@ -81,6 +81,42 @@ describe('summarizeReleaseEvidence', () => {
       },
       {
         userId: 11,
+        action: 'quest_book_opened',
+        details: JSON.stringify({
+          playerId: 11,
+          questCode: null,
+          questStatus: null,
+          readyToClaimCount: 1,
+          claimedCount: 0,
+        }),
+        createdAt: '2026-04-20T01:05:40.000Z',
+      },
+      {
+        userId: 11,
+        action: 'quest_reward_claimed',
+        details: JSON.stringify({
+          playerId: 11,
+          questCode: 'awakening_empty_master',
+          questStatus: 'CLAIMED',
+          readyToClaimCount: 0,
+          claimedCount: 1,
+        }),
+        createdAt: '2026-04-20T01:05:45.000Z',
+      },
+      {
+        userId: 11,
+        action: 'quest_reward_replayed',
+        details: JSON.stringify({
+          playerId: 11,
+          questCode: 'awakening_empty_master',
+          questStatus: 'CLAIMED',
+          readyToClaimCount: 0,
+          claimedCount: 1,
+        }),
+        createdAt: '2026-04-20T01:05:50.000Z',
+      },
+      {
+        userId: 11,
         action: 'loadout_changed',
         details: JSON.stringify({
           changeType: 'equip_rune',
@@ -120,6 +156,18 @@ describe('summarizeReleaseEvidence', () => {
           hasEquippedRune: false,
         }),
         createdAt: '2026-04-20T02:00:00.000Z',
+      },
+      {
+        userId: 21,
+        action: 'quest_reward_not_ready',
+        details: JSON.stringify({
+          playerId: 21,
+          questCode: 'first_school_sign',
+          questStatus: 'IN_PROGRESS',
+          readyToClaimCount: 0,
+          claimedCount: 1,
+        }),
+        createdAt: '2026-04-20T02:00:30.000Z',
       },
       {
         userId: 21,
@@ -200,6 +248,41 @@ describe('summarizeReleaseEvidence', () => {
         withoutEquippedRuneShownCount: 1,
         withEquippedRuneShownCount: 0,
         followUpUsers: 1,
+      },
+    ]);
+
+    expect(report.questBookRows).toEqual([
+      {
+        action: 'quest_book_opened',
+        label: '`quest_book_opened`',
+        eventCount: 1,
+        uniqueUsers: 1,
+        questCodes: [],
+        latestEventAt: '2026-04-20T01:05:40.000Z',
+      },
+      {
+        action: 'quest_reward_claimed',
+        label: '`quest_reward_claimed`',
+        eventCount: 1,
+        uniqueUsers: 1,
+        questCodes: ['awakening_empty_master'],
+        latestEventAt: '2026-04-20T01:05:45.000Z',
+      },
+      {
+        action: 'quest_reward_replayed',
+        label: '`quest_reward_replayed`',
+        eventCount: 1,
+        uniqueUsers: 1,
+        questCodes: ['awakening_empty_master'],
+        latestEventAt: '2026-04-20T01:05:50.000Z',
+      },
+      {
+        action: 'quest_reward_not_ready',
+        label: '`quest_reward_not_ready`',
+        eventCount: 1,
+        uniqueUsers: 1,
+        questCodes: ['first_school_sign'],
+        latestEventAt: '2026-04-20T02:00:30.000Z',
       },
     ]);
 
@@ -736,7 +819,9 @@ describe('buildReleaseEvidenceMarkdown', () => {
 
     expect(markdown).toContain('# Release Evidence Report');
     expect(markdown).toContain('## School payoff funnel');
+    expect(markdown).toContain('## Quest book funnel');
     expect(markdown).toContain('## QA / exploit guardrails');
+    expect(markdown).toContain('| Quest signal | Events | Unique users | Quest codes | Latest event |');
     expect(markdown).toContain('| Школа | Novice elite | UNUSUAL reward | Open runes | Equip sign | Follow-up battle | RARE seal | Latest event |');
   });
 });
