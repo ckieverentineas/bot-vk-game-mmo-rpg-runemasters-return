@@ -56,12 +56,14 @@ import {
   errorCodeKeyboardFactoryByCode,
   GameCommandType,
   isErrorKeyboardCode,
-  recoverableCommandErrorCodes,
-  recoveryRules,
   toRouteState,
   type CommandIntentContext,
   type StaticCommandHandler,
 } from './gameCommandRoutes';
+import {
+  recoverableCommandErrorCodes,
+  recoveryRules,
+} from './gameCommandRecovery';
 import type { TrophyActionCode } from '../../modules/rewards/domain/trophy-actions';
 
 type ReplyKeyboard = ReturnType<typeof createMainMenuKeyboard>;

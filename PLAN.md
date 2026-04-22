@@ -41,7 +41,8 @@
 - Дробить проект малыми вертикальными срезами, сохраняя публичные импорты там, где это снижает риск.
 - Функциональное ядро, компонентная оболочка: чистые formatter/resolver функции внутри модулей, сценарные компоненты вокруг них, public barrel для совместимости импортов.
 - Presenter-декомпозиция VK-экранов разнесена по сценариям: `rewardMessages.ts`, `runeMessages.ts`, `battleMessages.ts`, `homeMessages.ts`, `profileMessages.ts` и `explorationMessages.ts` держат свои flow, а `message-formatting.ts` / `player-progress-formatting.ts` — общие чистые formatter'ы.
-- Следующие безопасные кандидаты: выделить маршруты `gameCommandRoutes.ts` из recovery-правил и оставить `GameHandler` тонким orchestrator'ом поверх use-case и presenter слоёв.
+- Handler-декомпозиция начата: `gameCommandRoutes.ts` держит обычные static/dynamic маршруты, а `gameCommandRecovery.ts` — recoverable stale/retry/battle/rune контексты.
+- Следующие безопасные кандидаты: разнести static/dynamic маршруты по сценариям и оставить `GameHandler` тонким orchestrator'ом поверх use-case и presenter слоёв.
 - `PrismaGameRepository` не распиливать механически: сначала выделять чистые мапперы, snapshot hydration и reward/battle persistence helpers с тестами на replay/concurrency.
 
 ## Ближайший порядок работ

@@ -2,8 +2,6 @@ import type { Context } from 'vk-io';
 
 import type { RunePageSlot } from '../../modules/runes/domain/rune-collection';
 import type { StatKey } from '../../shared/types/game';
-import type { AppError } from '../../shared/domain/AppError';
-import { isAppError } from '../../shared/domain/AppError';
 import {
   gameCommands,
   resolveRuneCursorDeltaCommand,
@@ -13,20 +11,10 @@ import {
 } from '../commands/catalog';
 import {
   createEntryKeyboard,
-  createProfileKeyboard,
-  createRuneDetailKeyboard,
   createRuneKeyboard,
   createRuneRerollKeyboard,
-  createTutorialKeyboard,
 } from '../keyboards';
-import {
-  renderAltar,
-  renderBattle,
-  renderLocation,
-  renderProfile,
-  renderRuneDetailScreen,
-  renderRuneScreen,
-} from '../presenters/messages';
+import { renderAltar } from '../presenters/messages';
 import { resolveCommandEnvelope } from '../router/commandRouter';
 
 import type { GameHandler } from './gameHandler';
@@ -82,40 +70,7 @@ const createDynamicCommandRoute = <T>(
   },
 });
 
-export type RecoveryRule = {
-  readonly matches: (command: string, error: AppError) => boolean;
-  readonly handle: (
-    handler: GameHandler,
-    ctx: Context,
-    vkId: number,
-    command: string,
-    error: AppError,
-  ) => Promise<boolean>;
-};
-
 export type GameCommandType = typeof gameCommands[keyof typeof gameCommands];
-
-export const recoverableCommandErrorCodes = new Set([
-  'stale_command_intent',
-  'command_retry_pending',
-  'rune_slot_not_found',
-  'battle_in_progress',
-]);
-
-const tutorialFlowCommandSet = new Set<GameCommandType>([
-  gameCommands.location,
-  gameCommands.skipTutorial,
-  gameCommands.returnToAdventure,
-]);
-
-const runeManageCommandSet = new Set<GameCommandType>([
-  gameCommands.equipRune,
-  gameCommands.equipRuneSlot1,
-  gameCommands.equipRuneSlot2,
-  gameCommands.unequipRune,
-  gameCommands.craftRune,
-  gameCommands.destroyRune,
-]);
 
 export const errorCodeKeyboardFactoryByCode: Partial<Record<ErrorKeyboardCode, () => ReplyKeyboard>> = {
   player_not_found: createEntryKeyboard,
@@ -163,18 +118,32 @@ export const config: Readonly<Partial<Record<GameCommandType, StaticCommandHandl
     );
   },
   [gameCommands.pendingReward]: (handler, ctx, vkId) => handler.showPendingReward(ctx, vkId),
-  [gameCommands.collectAllReward]: (handler, ctx, vkId, context) => handler.collectPendingReward(ctx, vkId, 'claim_all', context),
-  [gameCommands.skinBeastReward]: (handler, ctx, vkId, context) => handler.collectPendingReward(ctx, vkId, 'skin_beast', context),
-  [gameCommands.gatherSlimeReward]: (handler, ctx, vkId, context) => handler.collectPendingReward(ctx, vkId, 'gather_slime', context),
-  [gameCommands.extractEssenceReward]: (handler, ctx, vkId, context) => handler.collectPendingReward(ctx, vkId, 'extract_essence', context),
+  [gameCommands.collectAllReward]: (handler, ctx, vkId, context) => (
+    handler.collectPendingReward(ctx, vkId, 'claim_all', context)
+  ),
+  [gameCommands.skinBeastReward]: (handler, ctx, vkId, context) => (
+    handler.collectPendingReward(ctx, vkId, 'skin_beast', context)
+  ),
+  [gameCommands.gatherSlimeReward]: (handler, ctx, vkId, context) => (
+    handler.collectPendingReward(ctx, vkId, 'gather_slime', context)
+  ),
+  [gameCommands.extractEssenceReward]: (handler, ctx, vkId, context) => (
+    handler.collectPendingReward(ctx, vkId, 'extract_essence', context)
+  ),
   [gameCommands.explore]: (handler, ctx, vkId, context) => handler.exploreNewBattle(ctx, vkId, context),
-  [gameCommands.engageBattle]: (handler, ctx, vkId, context) => handler.executeBattleAction(ctx, vkId, 'ENGAGE', context),
+  [gameCommands.engageBattle]: (handler, ctx, vkId, context) => (
+    handler.executeBattleAction(ctx, vkId, 'ENGAGE', context)
+  ),
   [gameCommands.fleeBattle]: (handler, ctx, vkId, context) => handler.executeBattleAction(ctx, vkId, 'FLEE', context),
   [gameCommands.attack]: (handler, ctx, vkId, context) => handler.executeBattleAction(ctx, vkId, 'ATTACK', context),
   [gameCommands.defend]: (handler, ctx, vkId, context) => handler.executeBattleAction(ctx, vkId, 'DEFEND', context),
   [gameCommands.skills]: (handler, ctx, vkId, context) => handler.executeBattleAction(ctx, vkId, 'RUNE_SKILL', context),
-  [gameCommands.skillSlot1]: (handler, ctx, vkId, context) => handler.executeBattleAction(ctx, vkId, 'RUNE_SKILL_SLOT_1', context),
-  [gameCommands.skillSlot2]: (handler, ctx, vkId, context) => handler.executeBattleAction(ctx, vkId, 'RUNE_SKILL_SLOT_2', context),
+  [gameCommands.skillSlot1]: (handler, ctx, vkId, context) => (
+    handler.executeBattleAction(ctx, vkId, 'RUNE_SKILL_SLOT_1', context)
+  ),
+  [gameCommands.skillSlot2]: (handler, ctx, vkId, context) => (
+    handler.executeBattleAction(ctx, vkId, 'RUNE_SKILL_SLOT_2', context)
+  ),
   [gameCommands.spell]: (handler, ctx, vkId, context) => handler.executeBattleAction(ctx, vkId, 'RUNE_SKILL', context),
   [gameCommands.runeCollection]: (handler, ctx, vkId) => handler.openRuneCollection(ctx, vkId, true),
   [gameCommands.equipRune]: (handler, ctx, vkId, context) => handler.equipCurrentRuneSlot(ctx, vkId, null, context),
@@ -234,139 +203,6 @@ export const dynamicCommandConfig = [
     },
   ),
 ] satisfies readonly DynamicCommandRoute[];
-
-export const recoveryRules: readonly RecoveryRule[] = [
-  {
-    matches: (command, error) => (
-      error.code === 'battle_in_progress' && tutorialFlowCommandSet.has(command as GameCommandType)
-    ),
-    handle: async (handler, ctx, vkId, _command, error) => {
-      const battle = await handler.safeGetActiveBattle(vkId);
-      if (battle === null) {
-        return false;
-      }
-
-      await handler.reply(ctx, [error.message, '', renderBattle(battle)].join('\n'), handler.resolveBattleKeyboard(battle));
-      return true;
-    },
-  },
-  {
-    matches: (command, error) => (
-      command === gameCommands.confirmDeletePlayer && error.code === 'command_retry_pending'
-    ),
-    handle: async (handler, ctx, vkId, _command, error) => {
-      try {
-        const player = await handler.services.getPlayerProfile.execute(vkId);
-        await handler.reply(
-          ctx,
-          [error.message, '', renderProfile(player)].join('\n'),
-          createProfileKeyboard(player),
-        );
-        return true;
-      } catch (profileError) {
-        if (
-          _command === gameCommands.confirmDeletePlayer
-          && isAppError(profileError)
-          && profileError.code === 'player_not_found'
-        ) {
-          await handler.reply(ctx, 'Персонаж удалён. Можно начать заново в любой момент.', createEntryKeyboard());
-          return true;
-        }
-
-        await handler.reply(
-          ctx,
-          'Старый жест удаления больше не действует. Вернитесь в летопись, если всё ещё хотите удалить персонажа.',
-          createEntryKeyboard(),
-        );
-        return true;
-      }
-    },
-  },
-  {
-    matches: (command) => command === gameCommands.confirmDeletePlayer,
-    handle: async (handler, ctx, vkId, _command, error) => {
-      const player = await handler.services.getPlayerProfile.execute(vkId);
-      await handler.reply(
-        ctx,
-        [error.message, '', renderProfile(player)].join('\n'),
-        createProfileKeyboard(player),
-      );
-      return true;
-    },
-  },
-  {
-    matches: (command) => command === gameCommands.explore,
-    handle: async (handler, ctx, vkId, _command, error) => {
-      const battle = await handler.safeGetActiveBattle(vkId);
-      if (battle !== null) {
-        await handler.reply(ctx, [error.message, '', renderBattle(battle)].join('\n'), handler.resolveBattleKeyboard(battle));
-        return true;
-      }
-
-      const player = await handler.services.getPlayerProfile.execute(vkId);
-      await handler.reply(
-        ctx,
-        [error.message, '', renderLocation(player)].join('\n'),
-        createTutorialKeyboard(player),
-      );
-      return true;
-    },
-  },
-  {
-    matches: (command) => tutorialFlowCommandSet.has(command as GameCommandType),
-    handle: async (handler, ctx, vkId, _command, error) => {
-      const player = await handler.services.getPlayerProfile.execute(vkId);
-      await handler.reply(
-        ctx,
-        [error.message, '', renderLocation(player)].join('\n'),
-        createTutorialKeyboard(player),
-      );
-      return true;
-    },
-  },
-  {
-    matches: (command) => (
-      resolveRuneCursorDeltaCommand(command) !== null
-      || resolveRunePageSlotCommand(command) !== null
-    ),
-    handle: async (handler, ctx, vkId, _command, error) => {
-      const player = await handler.services.getRuneCollection.execute(vkId);
-      await handler.reply(
-        ctx,
-        [error.message, '', renderRuneScreen(player)].join('\n'),
-        createRuneKeyboard(player),
-      );
-      return true;
-    },
-  },
-  {
-    matches: (command) => runeManageCommandSet.has(command as GameCommandType),
-    handle: async (handler, ctx, vkId, _command, error) => {
-      const player = await handler.services.getRuneCollection.execute(vkId);
-      await handler.reply(
-        ctx,
-        [error.message, '', renderRuneDetailScreen(player)].join('\n'),
-        createRuneDetailKeyboard(player),
-      );
-      return true;
-    },
-  },
-  {
-    matches: (command) => (
-      command === gameCommands.rerollRuneMenu
-      || resolveRuneStatRerollCommand(command) !== null
-    ),
-    handle: async (handler, ctx, vkId, _command, error) => {
-      const player = await handler.services.getRuneCollection.execute(vkId);
-      await handler.reply(
-        ctx,
-        [error.message, '', renderAltar(player)].join('\n'),
-        createRuneRerollKeyboard(player),
-      );
-      return true;
-    },
-  },
-];
 
 export const toRouteState = (context: CommandIntentContext): {
   intentId: string | undefined;
