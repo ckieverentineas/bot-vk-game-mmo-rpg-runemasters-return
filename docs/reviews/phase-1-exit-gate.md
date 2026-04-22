@@ -10,19 +10,25 @@
 - Gate verdict: `iterate`
 - Scope-lock verdict: `ship`
 
-Итог: **scope Vertical Slice зафиксирован**, risky breadth вынесена из ближайшего delivery order, но **Phase 1 exit gate ещё не считается полностью закрытым**, пока не добиты оставшиеся product lock и player-state contract gaps.
+Итог: **scope Vertical Slice зафиксирован**, risky breadth вынесена из ближайшего delivery order, но **Phase 1 exit gate ещё не считается полностью закрытым**, пока не добиты оставшиеся product lock и domain platform gaps.
 
 Update after Q-035:
 
 - rarity ladder v1 закрыт документом `docs/product/rarity-ladder-v1.md`;
 - gate verdict остаётся `iterate`, потому что school bible / overlap rules и player-state contract gaps ещё требуют отдельного sign-off.
 
+Update after Q-036:
+
+- player-state versioning policy закрыт документом `docs/platform/player-state-versioning-policy.md`;
+- Prisma migration не добавлялась: policy фиксирует normalized table aggregate boundary и hydration/fixture rules;
+- gate verdict остаётся `iterate`, потому что school bible / overlap rules, broader source-of-truth vs read-model sign-off и legacy battle fallback retirement ещё открыты.
+
 ## Exit criteria summary
 
 | Exit criterion | Status | Decision | Evidence |
 |---|---|---|---|
 | Пиллары продукта согласованы и не конфликтуют друг с другом | `partial` | конфликтов в locked slice не осталось; rarity ladder v1 заморожен, school bible / overlap rules ещё открыты | `PLAN.md`, `README.md`, `docs/product/rarity-ladder-v1.md`, этот review |
-| Platform contracts готовы к Vertical Slice | `partial` | battle/loadout/reward/retry baseline готов, но player-state versioning и split source-of-truth/read models ещё открыты | `ARCHITECTURE.md`, `docs/platform/*`, этот review |
+| Platform contracts готовы к Vertical Slice | `partial` | battle/loadout/reward/retry baseline и player-state versioning policy готовы, но broader source-of-truth/read-model sign-off и legacy battle fallback retirement ещё открыты | `ARCHITECTURE.md`, `docs/platform/player-state-versioning-policy.md`, `docs/platform/*`, этот review |
 | Vertical Slice scope заперт и не расползается | `done` | committed scope сведён к одному доказуемому school-first PvE journey | этот review, `PLAN.md` |
 | High-risk out-of-scope вынесен из ближайшего delivery order | `done` | social-lite, PvP beyond locked slice и unsafe breadth явно вырезаны из near-term committed work | этот review, `PLAN.md` |
 
@@ -58,8 +64,7 @@ Update after Q-035:
 
 ### Not yet ready to mark fully green
 
-- full player-state versioning;
-- formal split between source-of-truth state and derived read models beyond current battle/loadout/reward boundaries;
+- formal split between source-of-truth state and derived read models beyond current battle/loadout/reward/player-state policy boundaries;
 - named retirement policy for legacy battle fallback columns.
 
 ### Accepted debt for this gate review
@@ -119,7 +124,7 @@ Update after Q-035:
   - school bible / overlap rules.
 - `11.2 Domain platform`:
   - source-of-truth vs read-model split;
-  - player-state versioning policy.
+  - legacy battle fallback retirement decision.
 
 ### Must not reopen scope lock
 
@@ -134,6 +139,7 @@ Update after Q-035:
 - `docs/product/1-0-release-charter.md`
 - `docs/product/rarity-ladder-v1.md`
 - `ARCHITECTURE.md`
+- `docs/platform/player-state-versioning-policy.md`
 - `docs/platform/persistence-versioning-rules.md`
 - `docs/platform/retry-handling-rules.md`
 - `docs/platform/command-intent-rules.md`
@@ -146,4 +152,4 @@ Update after Q-035:
 ## Decision summary
 
 - **Можно** считать scope lock для Vertical Slice v1 зафиксированным.
-- **Нельзя** считать Phase 1 exit gate полностью закрытым, пока product lock и player-state contract gaps не доведены до explicit sign-off.
+- **Нельзя** считать Phase 1 exit gate полностью закрытым, пока school bible / overlap rules, broader source-of-truth vs read-model split и legacy battle fallback retirement не доведены до explicit sign-off.

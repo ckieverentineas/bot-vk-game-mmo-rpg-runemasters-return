@@ -14,10 +14,13 @@ Versioned persistence contracts must let the runtime distinguish between:
 - `RewardIntent` — canonical reward payload before persistence;
 - `RewardLedger` — exact-once reward application audit trail;
 - `BattleSnapshot` — versioned persisted JSON snapshot for mutable battle state (`player`, `enemy`, `log`, `result`, `rewards`).
+- `PlayerState` — normalized table aggregate with document-first versioning policy in `docs/platform/player-state-versioning-policy.md`, not a single versioned JSON envelope.
 
 ## Player-state hydration rules
 
-Полная versioned schema для `player state` всё ещё не введена, но runtime теперь обязан гидратировать persisted player state через один compatibility-safe helper, а не через разрозненные ad-hoc fallback'и.
+Полная `PlayerState` JSON-envelope schema не вводится в Q-036. Current policy: persisted player state остаётся normalized table aggregate, а runtime обязан гидратировать его через один compatibility-safe helper, а не через разрозненные ad-hoc fallback'и.
+
+Canonical policy: `docs/platform/player-state-versioning-policy.md`.
 
 - `Player`, `PlayerProgress`, `PlayerInventory`, `Rune` и `PlayerSchoolMastery` остаются source-of-truth таблицами;
 - runtime должен уметь безопасно гидратировать:
@@ -56,6 +59,8 @@ Current fixtures live in `src/modules/shared/infrastructure/prisma/fixtures/`.
 - `player-state-legacy.json`;
 - `player-state-future.json`.
 
+Fixture meanings and open coverage gaps are documented in `docs/platform/player-state-versioning-policy.md`.
+
 ## Release rule
 
 - additive persistence change must ship with:
@@ -66,6 +71,7 @@ Current fixtures live in `src/modules/shared/infrastructure/prisma/fixtures/`.
 
 ## Still open after v1
 
-- schema versioning for full `player state`;
+- persisted `PlayerState` JSON-envelope schema is intentionally not introduced while player state remains a normalized table aggregate;
 - broader migration harness beyond current checked-in fixtures and hydration tests;
+- explicit current-fixture assertion for the next storage-affecting player-state slice;
 - future decision on whether legacy battle columns remain permanent fallback or are retired after a migration window.
