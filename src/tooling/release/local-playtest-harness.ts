@@ -1,7 +1,7 @@
 import type { BattleActionType, BattleRuneActionSnapshot, BattleView, PlayerState } from '../../shared/types/game';
 import { type GameCommand, gameCommands } from '../../vk/commands/catalog';
 
-const requiredSchoolNoviceEvidenceCodes = ['ember', 'stone', 'gale'] as const;
+const requiredSchoolNoviceEvidenceCodes = ['ember', 'stone', 'gale', 'echo'] as const;
 const requiredSchoolRuneHubFollowUpCodes = ['stone'] as const;
 
 type RequiredSchoolNoviceEvidenceCode = typeof requiredSchoolNoviceEvidenceCodes[number];
@@ -230,6 +230,7 @@ const createSchoolEvidenceCounts = (): Record<RequiredSchoolNoviceEvidenceCode, 
   ember: 0,
   stone: 0,
   gale: 0,
+  echo: 0,
 });
 
 const isRequiredSchoolNoviceEvidenceCode = (value: unknown): value is RequiredSchoolNoviceEvidenceCode => (

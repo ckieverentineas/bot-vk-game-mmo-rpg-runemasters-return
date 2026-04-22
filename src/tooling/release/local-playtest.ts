@@ -91,6 +91,22 @@ const schoolNoviceEvidencePaths = [
     },
     openRuneHubAfterReward: false,
   },
+  {
+    schoolCode: 'echo',
+    enemyCode: 'blind-augur',
+    usualRuneName: 'Обычная руна Прорицания',
+    passiveAbilityCodes: ['echo_mind'],
+    activeAbilityCodes: [],
+    usualRuneStats: {
+      health: 2,
+      attack: 0,
+      defence: 0,
+      magicDefence: 3,
+      dexterity: 0,
+      intelligence: 3,
+    },
+    openRuneHubAfterReward: false,
+  },
 ] as const satisfies readonly LocalPlaytestNoviceEvidencePath[];
 
 const inventoryFields = [
@@ -123,7 +139,7 @@ interface LocalPlaytestRuneStats {
 }
 
 interface LocalPlaytestNoviceEvidencePath {
-  readonly schoolCode: 'ember' | 'stone' | 'gale';
+  readonly schoolCode: 'ember' | 'stone' | 'gale' | 'echo';
   readonly enemyCode: string;
   readonly usualRuneName: string;
   readonly passiveAbilityCodes: readonly string[];
