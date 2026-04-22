@@ -1757,6 +1757,80 @@ describe('PrismaGameRepository release hardening', () => {
     });
   });
 
+  it('adds a skill-threshold trophy action to pending rewards when the player has enough skill', async () => {
+    const { repository, tx } = createPrismaMock();
+    const currentPlayer = {
+      ...createPlayerRecord(),
+      skills: [
+        {
+          playerId: 1,
+          skillCode: 'gathering.skinning',
+          experience: 10,
+          rank: 0,
+          updatedAt: new Date('2026-04-22T00:00:00.000Z'),
+        },
+      ],
+    };
+    const battleView = createBattleView({
+      enemy: {
+        ...createBattleView().enemy,
+        code: 'forest-wolf',
+        name: 'Лесной волк',
+        kind: 'wolf',
+        lootTable: {
+          leather: 2,
+          bone: 1,
+        },
+      },
+    });
+    const persistedBattle = createBattleRow({
+      status: 'COMPLETED',
+      result: 'VICTORY',
+      enemyCode: 'forest-wolf',
+      enemyName: 'Лесной волк',
+      rewardsSnapshot: JSON.stringify(battleView.rewards),
+      enemySnapshot: JSON.stringify(battleView.enemy),
+    });
+
+    tx.battleSession.updateMany.mockResolvedValue({ count: 1 });
+    tx.player.findUnique.mockResolvedValue(currentPlayer);
+    tx.player.update.mockResolvedValue({});
+    tx.playerProgress.update.mockResolvedValue({});
+    tx.playerInventory.update.mockResolvedValue({});
+    tx.battleSession.findFirst.mockResolvedValue(persistedBattle);
+
+    await repository.finalizeBattle(1, battleView);
+
+    const ledgerSnapshot = JSON.parse(String(tx.rewardLedgerRecord.create.mock.calls[0]?.[0]?.data?.entrySnapshot));
+    const trophyActions = ledgerSnapshot.pendingRewardSnapshot.trophyActions as Array<{
+      readonly code: string;
+      readonly reward?: unknown;
+    }>;
+
+    expect(trophyActions.map((action) => action.code)).toEqual([
+      'skin_beast',
+      'careful_skinning',
+      'claim_all',
+    ]);
+    expect(trophyActions.find((action) => action.code === 'careful_skinning')).toMatchObject({
+      code: 'careful_skinning',
+      skillCodes: ['gathering.skinning'],
+      visibleRewardFields: ['leather', 'bone'],
+      reward: {
+        inventoryDelta: {
+          leather: 3,
+          bone: 1,
+        },
+        skillPoints: [
+          {
+            skillCode: 'gathering.skinning',
+            points: 1,
+          },
+        ],
+      },
+    });
+  });
+
   it('marks school novice aligned reward claims in the reward telemetry payload', async () => {
     const { repository, tx } = createPrismaMock();
     const currentPlayer = createPlayerRecord();

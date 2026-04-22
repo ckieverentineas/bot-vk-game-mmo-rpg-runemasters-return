@@ -491,12 +491,13 @@ Player-facing decision:
 - выбранное trophy action собирается exact-once и переводит ledger в `APPLIED`;
 - `claim_all` даёт быстрый безопасный сбор без skill progress;
 - первый hidden school pool добавляет `🔥 Вытянуть знак Пламени` для `ash-seer`, если экипирована школа Пламени; reward preview фиксируется в pending snapshot как +2 essence и рост `gathering.essence_extraction`;
+- первый skill-threshold unlock добавляет `🔪 Аккуратно снять шкуру` для `wolf`, если `gathering.skinning >= 10`; reward preview фиксируется в pending snapshot как +3 leather, +1 bone и рост `gathering.skinning`;
 - bootstrap восстанавливает отсутствующие pending reward ledger-записи для уже завершённых победных боёв.
 
 Что всё ещё не входит:
 
 - hidden school pools за пределами первого Ember / ash-seer среза;
-- unlock действий по skill thresholds;
+- unlock действий по skill thresholds за пределами первого `gathering.skinning >= 10` среза;
 - action-based stat growth;
 - глубокая роль навыков в профиле, сборке и будущих unlock'ах.
 
@@ -525,10 +526,11 @@ Player-facing decision:
 19. Done: `docs: define skill display style`
 20. Done: `feat: add ember hidden trophy pool`
 21. Later: `feat: expand hidden drop pools by school`
-22. Later: `feat: unlock trophy actions by skill thresholds`
-23. Later: `feat: connect rune school behavior to school growth`
-24. Later: `feat: connect combat behavior to stat growth`
-25. Later: `docs: update OBT tester guide for action progression`
+22. Done: `feat: unlock trophy action by skill threshold`
+23. Later: `feat: expand trophy action skill thresholds`
+24. Later: `feat: connect rune school behavior to school growth`
+25. Later: `feat: connect combat behavior to stat growth`
+26. Later: `docs: update OBT tester guide for action progression`
 
 ---
 

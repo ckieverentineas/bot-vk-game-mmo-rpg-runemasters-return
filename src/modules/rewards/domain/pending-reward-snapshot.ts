@@ -100,6 +100,7 @@ const trophyActionCodes: readonly TrophyActionCode[] = [
   'gather_slime',
   'extract_essence',
   'draw_ember_sign',
+  'careful_skinning',
 ];
 
 const pendingRewardStatuses: readonly PendingRewardSnapshotStatus[] = ['PENDING', 'APPLIED', 'EXPIRED'];

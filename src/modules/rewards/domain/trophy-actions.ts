@@ -12,7 +12,10 @@ export type TrophyActionCode =
   | 'skin_beast'
   | 'gather_slime'
   | 'extract_essence'
-  | 'draw_ember_sign';
+  | 'draw_ember_sign'
+  | 'careful_skinning';
+
+export type TrophyActionSkillExperienceMap = Readonly<Partial<Record<PlayerSkillCode, number>>>;
 
 export interface TrophyActionDefinition {
   readonly code: TrophyActionCode;
@@ -25,6 +28,7 @@ export interface TrophyActionEnemyContext {
   readonly kind: string;
   readonly code?: string | null;
   readonly equippedSchoolCode?: string | null;
+  readonly skillExperiences?: TrophyActionSkillExperienceMap;
 }
 
 export interface TrophyActionRewardEnemyContext extends TrophyActionEnemyContext {
@@ -55,6 +59,13 @@ const drawEmberSignAction: TrophyActionDefinition = {
   label: '🔥 Вытянуть знак Пламени',
   skillCodes: ['gathering.essence_extraction'],
   visibleRewardFields: ['essence'],
+};
+
+const carefulSkinningAction: TrophyActionDefinition = {
+  code: 'careful_skinning',
+  label: '🔪 Аккуратно снять шкуру',
+  skillCodes: ['gathering.skinning'],
+  visibleRewardFields: ['leather', 'bone'],
 };
 
 const trophyActionsByEnemyKind: Readonly<Record<string, readonly TrophyActionDefinition[]>> = {
@@ -100,6 +111,24 @@ const trophyActionsByEnemyKind: Readonly<Record<string, readonly TrophyActionDef
   ],
 };
 
+const hasSkillExperience = (
+  enemy: TrophyActionEnemyContext,
+  skillCode: PlayerSkillCode,
+  minimumExperience: number,
+): boolean => (
+  (enemy.skillExperiences?.[skillCode] ?? 0) >= minimumExperience
+);
+
+const resolveSkillThresholdTrophyActions = (
+  enemy: TrophyActionEnemyContext,
+): readonly TrophyActionDefinition[] => {
+  if (enemy.kind === 'wolf' && hasSkillExperience(enemy, 'gathering.skinning', 10)) {
+    return [carefulSkinningAction];
+  }
+
+  return [];
+};
+
 const resolveHiddenTrophyActions = (
   enemy: TrophyActionEnemyContext,
 ): readonly TrophyActionDefinition[] => {
@@ -113,7 +142,8 @@ const resolveHiddenTrophyActions = (
 export const resolveTrophyActions = (enemy: TrophyActionEnemyContext): readonly TrophyActionDefinition[] => {
   const hiddenActions = resolveHiddenTrophyActions(enemy);
   const contextualActions = trophyActionsByEnemyKind[enemy.kind] ?? [];
-  return [...hiddenActions, ...contextualActions, claimAllAction];
+  const skillThresholdActions = resolveSkillThresholdTrophyActions(enemy);
+  return [...hiddenActions, ...contextualActions, ...skillThresholdActions, claimAllAction];
 };
 
 const isMaterialField = (field: InventoryField): field is MaterialField => (
@@ -169,6 +199,26 @@ const applySkinningRewardVariation = (
   return {
     ...inventoryDelta,
     bone: bone + 1,
+  };
+};
+
+const applyCarefulSkinningRewardVariation = (
+  enemy: TrophyActionRewardEnemyContext,
+  action: TrophyActionDefinition,
+  inventoryDelta: InventoryDelta,
+): InventoryDelta => {
+  if (action.code !== 'careful_skinning' || enemy.kind !== 'wolf') {
+    return inventoryDelta;
+  }
+
+  const leather = inventoryDelta.leather ?? 0;
+  if (leather <= 0) {
+    return inventoryDelta;
+  }
+
+  return {
+    ...inventoryDelta,
+    leather: leather + 1,
   };
 };
 
@@ -250,7 +300,11 @@ const applyTrophyRewardVariations = (
       applyReagentGatheringRewardVariation(
         enemy,
         action,
-        applySkinningRewardVariation(enemy, action, inventoryDelta),
+        applyCarefulSkinningRewardVariation(
+          enemy,
+          action,
+          applySkinningRewardVariation(enemy, action, inventoryDelta),
+        ),
       ),
     ),
   )

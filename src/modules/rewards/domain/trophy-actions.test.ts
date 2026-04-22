@@ -31,6 +31,46 @@ describe('resolveTrophyActions', () => {
     ]);
   });
 
+  it('unlocks careful skinning for wolf enemies at the skinning threshold', () => {
+    expect(resolveTrophyActions({
+      kind: 'wolf',
+      skillExperiences: {
+        'gathering.skinning': 10,
+      },
+    })).toEqual([
+      {
+        code: 'skin_beast',
+        label: '🔪 Свежевать',
+        skillCodes: ['gathering.skinning'],
+        visibleRewardFields: ['leather', 'bone'],
+      },
+      {
+        code: 'careful_skinning',
+        label: '🔪 Аккуратно снять шкуру',
+        skillCodes: ['gathering.skinning'],
+        visibleRewardFields: ['leather', 'bone'],
+      },
+      {
+        code: 'claim_all',
+        label: '🎒 Забрать добычу',
+        skillCodes: [],
+        visibleRewardFields: [],
+      },
+    ]);
+  });
+
+  it('keeps careful skinning locked below the skinning threshold', () => {
+    expect(resolveTrophyActions({
+      kind: 'wolf',
+      skillExperiences: {
+        'gathering.skinning': 9,
+      },
+    }).map((action) => action.code)).toEqual([
+      'skin_beast',
+      'claim_all',
+    ]);
+  });
+
   it('offers reagent gathering for slime enemies', () => {
     expect(resolveTrophyActions({ kind: 'slime' })).toEqual([
       {
@@ -146,6 +186,37 @@ describe('resolveTrophyActions', () => {
         {
           skillCode: 'gathering.skinning',
           points: 2,
+        },
+      ],
+    });
+  });
+
+  it('adds a careful skinning reward variation for preserved hide', () => {
+    const carefulSkinning = resolveTrophyActions({
+      kind: 'wolf',
+      skillExperiences: {
+        'gathering.skinning': 10,
+      },
+    }).find((action) => action.code === 'careful_skinning');
+
+    expect(resolveTrophyActionReward({
+      kind: 'wolf',
+      isElite: false,
+      isBoss: false,
+      lootTable: {
+        leather: 2,
+        bone: 1,
+      },
+    }, carefulSkinning!)).toEqual({
+      actionCode: 'careful_skinning',
+      inventoryDelta: {
+        leather: 3,
+        bone: 1,
+      },
+      skillPoints: [
+        {
+          skillCode: 'gathering.skinning',
+          points: 1,
         },
       ],
     });

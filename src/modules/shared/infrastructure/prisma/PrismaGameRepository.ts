@@ -10,6 +10,7 @@ import type {
   InventoryDelta,
   PlayerSkillCode,
   PlayerSkillPointGain,
+  PlayerSkillView,
   PlayerState,
   ResourceReward,
   RuneDraft,
@@ -47,6 +48,7 @@ import type {
   TrophyActionDefinition,
   TrophyActionEnemyContext,
   TrophyActionReward,
+  TrophyActionSkillExperienceMap,
 } from '../../../rewards/domain/trophy-actions';
 import { getSchoolDefinitionForArchetype } from '../../../runes/domain/rune-schools';
 import { buildLoadoutSnapshotFromBattle } from '../../domain/contracts/loadout-snapshot';
@@ -196,15 +198,32 @@ const resolveBattlePlayerSchoolCode = (battle: BattleView): string | null => (
   ?? null
 );
 
-const createTrophyActionEnemyContext = (battle: BattleView): TrophyActionEnemyContext => ({
+const createTrophyActionSkillExperienceMap = (
+  skills: readonly PlayerSkillView[] | undefined,
+): TrophyActionSkillExperienceMap => {
+  const experienceByCode: Partial<Record<PlayerSkillCode, number>> = {};
+
+  for (const skill of skills ?? []) {
+    experienceByCode[skill.skillCode] = skill.experience;
+  }
+
+  return experienceByCode;
+};
+
+const createTrophyActionEnemyContext = (
+  battle: BattleView,
+  playerSkills?: readonly PlayerSkillView[],
+): TrophyActionEnemyContext => ({
   kind: battle.enemy.kind,
   code: battle.enemy.code,
   equippedSchoolCode: resolveBattlePlayerSchoolCode(battle),
+  skillExperiences: createTrophyActionSkillExperienceMap(playerSkills),
 });
 
 const resolvePendingRewardTrophyActionRewards = (
   battle: BattleView,
   actions: readonly TrophyActionDefinition[],
+  playerSkills?: readonly PlayerSkillView[],
 ): readonly TrophyActionReward[] => {
   const { enemy } = battle;
   const lootTable = enemy.lootTable;
@@ -214,7 +233,7 @@ const resolvePendingRewardTrophyActionRewards = (
   }
 
   return actions.map((action) => resolveTrophyActionReward({
-    ...createTrophyActionEnemyContext(battle),
+    ...createTrophyActionEnemyContext(battle, playerSkills),
     isElite: enemy.isElite,
     isBoss: enemy.isBoss,
     lootTable,
@@ -225,6 +244,7 @@ const createPendingRewardLedgerForBattle = (
   playerId: number,
   battle: BattleView,
   createdAt: string,
+  playerSkills?: readonly PlayerSkillView[],
 ): PendingRewardLedgerEntryV1 | null => {
   const rewardIntent = createBattleVictoryRewardIntent(playerId, battle);
 
@@ -232,12 +252,12 @@ const createPendingRewardLedgerForBattle = (
     return null;
   }
 
-  const trophyActions = resolveTrophyActions(createTrophyActionEnemyContext(battle));
+  const trophyActions = resolveTrophyActions(createTrophyActionEnemyContext(battle, playerSkills));
   const pendingRewardSnapshot = createPendingRewardSnapshot(
     rewardIntent,
     trophyActions,
     createdAt,
-    resolvePendingRewardTrophyActionRewards(battle, trophyActions),
+    resolvePendingRewardTrophyActionRewards(battle, trophyActions, playerSkills),
   );
 
   return createPendingRewardLedgerEntry(pendingRewardSnapshot);
@@ -2177,7 +2197,12 @@ export class PrismaGameRepository implements GameRepository {
       }
 
       if (rewardIntent) {
-        const rewardLedger = createPendingRewardLedgerForBattle(playerId, battle, new Date().toISOString());
+        const rewardLedger = createPendingRewardLedgerForBattle(
+          playerId,
+          battle,
+          new Date().toISOString(),
+          currentPlayer.skills,
+        );
 
         if (!rewardLedger) {
           throw new AppError('battle_reward_missing', 'РќРµР»СЊР·СЏ Р·Р°РІРµСЂС€РёС‚СЊ РїРѕР±РµРґРЅС‹Р№ Р±РѕР№ Р±РµР· Р·Р°С„РёРєСЃРёСЂРѕРІР°РЅРЅРѕР№ РЅР°РіСЂР°РґС‹.');

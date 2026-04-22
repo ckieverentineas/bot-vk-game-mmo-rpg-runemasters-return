@@ -50,6 +50,21 @@ const emberHiddenTrophyActions: readonly TrophyActionDefinition[] = [
   },
 ];
 
+const thresholdTrophyActions: readonly TrophyActionDefinition[] = [
+  {
+    code: 'careful_skinning',
+    label: '🔪 Аккуратно снять шкуру',
+    skillCodes: ['gathering.skinning'],
+    visibleRewardFields: ['leather', 'bone'],
+  },
+  {
+    code: 'claim_all',
+    label: 'Claim all',
+    skillCodes: [],
+    visibleRewardFields: [],
+  },
+];
+
 describe('pending reward snapshots', () => {
   it('creates a versioned pending snapshot from a reward intent and trophy actions', () => {
     const snapshot = createPendingRewardSnapshot(
@@ -177,6 +192,57 @@ describe('pending reward snapshots', () => {
       {
         code: 'claim_all',
         label: '🎒 Забрать добычу',
+        skillCodes: [],
+        visibleRewardFields: [],
+      },
+    ]);
+    expect(isPendingRewardSnapshot(snapshot)).toBe(true);
+  });
+
+  it('accepts skill-threshold trophy rewards as canonical pending snapshot data', () => {
+    const snapshot = createPendingRewardSnapshot(
+      createRewardIntent(),
+      thresholdTrophyActions,
+      '2026-04-22T00:00:00.000Z',
+      [
+        {
+          actionCode: 'careful_skinning',
+          inventoryDelta: {
+            leather: 3,
+            bone: 1,
+          },
+          skillPoints: [
+            {
+              skillCode: 'gathering.skinning',
+              points: 1,
+            },
+          ],
+        },
+      ],
+    );
+
+    expect(snapshot.trophyActions).toEqual([
+      {
+        code: 'careful_skinning',
+        label: '🔪 Аккуратно снять шкуру',
+        skillCodes: ['gathering.skinning'],
+        visibleRewardFields: ['leather', 'bone'],
+        reward: {
+          inventoryDelta: {
+            leather: 3,
+            bone: 1,
+          },
+          skillPoints: [
+            {
+              skillCode: 'gathering.skinning',
+              points: 1,
+            },
+          ],
+        },
+      },
+      {
+        code: 'claim_all',
+        label: 'Claim all',
         skillCodes: [],
         visibleRewardFields: [],
       },

@@ -18,6 +18,7 @@ export const gameCommands = {
   pendingReward: 'добыча',
   collectAllReward: 'забрать добычу',
   skinBeastReward: 'свежевать',
+  carefulSkinningReward: 'аккуратно снять',
   gatherSlimeReward: 'собрать слизь',
   extractEssenceReward: 'извлечь эссенцию',
   drawEmberSignReward: 'вытянуть знак',
@@ -80,6 +81,7 @@ type RuneSlotCommand =
 type TrophyActionCommand =
   | typeof gameCommands.collectAllReward
   | typeof gameCommands.skinBeastReward
+  | typeof gameCommands.carefulSkinningReward
   | typeof gameCommands.gatherSlimeReward
   | typeof gameCommands.extractEssenceReward
   | typeof gameCommands.drawEmberSignReward;
@@ -115,6 +117,7 @@ const runePageSlotCommandMap = {
 const trophyActionCommandMap = {
   [gameCommands.collectAllReward]: 'claim_all',
   [gameCommands.skinBeastReward]: 'skin_beast',
+  [gameCommands.carefulSkinningReward]: 'careful_skinning',
   [gameCommands.gatherSlimeReward]: 'gather_slime',
   [gameCommands.extractEssenceReward]: 'extract_essence',
   [gameCommands.drawEmberSignReward]: 'draw_ember_sign',
@@ -123,6 +126,7 @@ const trophyActionCommandMap = {
 const trophyActionCodeCommandMap = {
   claim_all: gameCommands.collectAllReward,
   skin_beast: gameCommands.skinBeastReward,
+  careful_skinning: gameCommands.carefulSkinningReward,
   gather_slime: gameCommands.gatherSlimeReward,
   extract_essence: gameCommands.extractEssenceReward,
   draw_ember_sign: gameCommands.drawEmberSignReward,

@@ -290,6 +290,32 @@ describe('profile keyboard', () => {
       .toBe('battle-victory:battle-1');
   });
 
+  it('turns skill-threshold trophy actions into ledger-scoped trophy buttons', () => {
+    const pendingReward = createPendingReward();
+    const keyboard = createPendingRewardKeyboard({
+      ...pendingReward,
+      snapshot: {
+        ...pendingReward.snapshot,
+        trophyActions: [
+          {
+            code: 'careful_skinning',
+            label: '🔪 Аккуратно снять шкуру',
+            skillCodes: ['gathering.skinning'],
+            visibleRewardFields: ['leather', 'bone'],
+          },
+          ...pendingReward.snapshot.trophyActions,
+        ],
+      },
+    });
+    const labels = collectLabels(keyboard);
+    const payloads = collectPayloads(keyboard);
+
+    expect(gameCommands.carefulSkinningReward).toBe('аккуратно снять');
+    expect(labels).toContain('🔪 Аккуратно снять шкуру');
+    expect(payloads.find((payload) => payload.command === gameCommands.carefulSkinningReward)?.stateKey)
+      .toBe('battle-victory:battle-1');
+  });
+
   it('keeps profile keyboard focused on navigation and delete confirmation', () => {
     const payloads = collectPayloads(createProfileKeyboard(createPlayer()));
 
