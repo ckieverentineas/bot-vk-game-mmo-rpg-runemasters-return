@@ -156,6 +156,41 @@ Quest package пока документируется как consumer school/ene
 - promised payoff reflected in school copy and ability references;
 - no missing encounter/enemy hook once encounter packages begin shipping.
 
+## Worked example — encounter package `Таран у каменного пролома`
+
+### Identity
+
+- encounter code: `stonehorn-ram-novice-trial` (planning-level id, no runtime folder migration yet)
+- school lane: `Твердь`
+- enemy: `stonehorn-ram` (`Камнерогий таран`)
+- threat band: early novice elite / `dark-forest`
+
+### Enemy pressure
+
+- `Камнерогий таран` is an elite heavy attacker with high health, attack, and defence for the early lane.
+- The readable pressure is a telegraphed heavy hit: the player should see that blind attack trading is risky.
+- The pressure asks for survival, guard value, and a defensive answer instead of raw race damage.
+
+### Tactical ask
+
+- Question: can the player read the heavy telegraph and answer with `защита` or `Каменный отпор` before committing to damage?
+- Good school answer: `Твердь` / `Страж` survives the impact, builds guard value, then punishes the next safe window.
+- Failure mode to watch: if normal attack spam wins just as clearly, encounter no longer teaches Твердь.
+
+### Reward hook
+
+- First aligned payoff: `UNUSUAL` stone sign from the novice path.
+- Player-facing chase: "this sign makes the sturdy style real, not just a defensive label."
+- Follow-up should push toward rune hub/equip sign, then a next fight that validates the sturdier build.
+
+### Validation expectations
+
+- referenced enemy `stonehorn-ram` exists and remains elite;
+- school lane references `stone` / `Твердь`;
+- threat band stays early and readable, not boss-scale;
+- reward hook stays aligned with the school novice payoff;
+- validator can still treat this as documented encounter ask until encounter runtime contracts exist.
+
 ## Dependencies and defers matrix
 
 | Lane | Can ship now | Depends on later |
@@ -196,5 +231,5 @@ Quest package пока документируется как consumer school/ene
 ## Next step after v1
 
 - school package checklist теперь зеркалится package-level completeness validator'ом в `content:validate` для shipped 4-school baseline;
-- add one concrete encounter package example;
+- add one quest or season chronicle package example once those lanes need a concrete authoring slice;
 - only then decide whether runtime folders or authoring templates need migration.
