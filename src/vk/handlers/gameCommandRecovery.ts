@@ -24,7 +24,7 @@ import {
   renderRuneScreen,
 } from '../presenters/messages';
 import type { GameHandler } from './gameHandler';
-import type { GameCommandType } from './gameCommandRoutes';
+import type { GameCommandType } from './gameCommandRouteKit';
 
 export type RecoveryRule = {
   readonly matches: (command: string, error: AppError) => boolean;
