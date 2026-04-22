@@ -4,6 +4,7 @@ import { createAppServices, type AppServices } from '../../app/composition-root'
 import { prisma } from '../../database/client';
 import { buildBattleActionIntentStateKey } from '../../modules/combat/application/command-intent-state';
 import { buildEnterTutorialModeIntentStateKey, buildExploreLocationIntentStateKey } from '../../modules/exploration/application/command-intent-state';
+import type { QuestCode } from '../../modules/quests/domain/quest-definitions';
 import { buildEquipIntentStateKey, buildSelectRunePageSlotIntentStateKey } from '../../modules/runes/application/command-intent-state';
 import type { PendingRewardView } from '../../modules/shared/application/ports/GameRepository';
 import type { BattleView, PlayerState } from '../../shared/types/game';
@@ -29,9 +30,31 @@ interface LocalPlaytestRuntime {
   readonly handler: GameHandler;
   readonly transcript: LocalPlaytestTranscriptEntry[];
   messageId: number;
+  questRewardReplaySafe: boolean | null;
 }
 
 const maxBattleTurns = 20;
+const awakeningQuestCode = 'awakening_empty_master' satisfies QuestCode;
+
+const inventoryFields = [
+  'usualShards',
+  'unusualShards',
+  'rareShards',
+  'epicShards',
+  'legendaryShards',
+  'mythicalShards',
+  'leather',
+  'bone',
+  'herb',
+  'essence',
+  'metal',
+  'crystal',
+] satisfies readonly (keyof PlayerState['inventory'])[];
+
+interface ResourceSnapshot {
+  readonly gold: number;
+  readonly inventory: Readonly<PlayerState['inventory']>;
+}
 
 const createSyntheticVkId = (): number => (
   910_000_000 + Math.floor(Math.random() * 1_000_000)
@@ -49,6 +72,7 @@ const createRuntime = (scenarioName: ScenarioName): LocalPlaytestRuntime => {
     handler: new GameHandler(services),
     transcript: [],
     messageId: 7_000,
+    questRewardReplaySafe: null,
   };
 };
 
@@ -119,6 +143,30 @@ const getPendingReward = async (runtime: LocalPlaytestRuntime): Promise<PendingR
   return result.pendingReward;
 };
 
+const createResourceSnapshot = (player: PlayerState): ResourceSnapshot => ({
+  gold: player.gold,
+  inventory: { ...player.inventory },
+});
+
+const areResourceSnapshotsEqual = (left: ResourceSnapshot, right: ResourceSnapshot): boolean => (
+  left.gold === right.gold
+  && inventoryFields.every((field) => left.inventory[field] === right.inventory[field])
+);
+
+const assertReplyIncludes = (
+  reply: string,
+  label: string,
+  expectedFragments: readonly string[],
+): void => {
+  const missingFragments = expectedFragments.filter((fragment) => !reply.includes(fragment));
+
+  if (missingFragments.length === 0) {
+    return;
+  }
+
+  throw new Error(`${label} reply is missing expected fragments: ${missingFragments.join(', ')}`);
+};
+
 const fightUntilFinished = async (runtime: LocalPlaytestRuntime): Promise<void> => {
   for (let turn = 1; turn <= maxBattleTurns; turn += 1) {
     const battle = await getActiveBattle(runtime);
@@ -156,6 +204,46 @@ const collectPendingRewardIfAny = async (runtime: LocalPlaytestRuntime): Promise
   );
 };
 
+const runQuestBookChecks = async (runtime: LocalPlaytestRuntime): Promise<void> => {
+  const questBookReply = await runCommand(runtime, 'quest-book', gameCommands.questBook);
+  assertReplyIncludes(questBookReply, 'Quest book', [
+    '📜 Книга путей',
+    'Пробуждение Пустого мастера',
+    'Награда ждёт',
+  ]);
+
+  const questClaimReply = await runCommand(
+    runtime,
+    `quest-claim-${awakeningQuestCode}`,
+    gameCommands.claimQuestReward,
+    awakeningQuestCode,
+  );
+  assertReplyIncludes(questClaimReply, 'Quest reward claim', [
+    '📜 Запись закрыта',
+    'Пробуждение Пустого мастера',
+    'В сумке:',
+  ]);
+
+  if (runtime.scenarioName !== 'payload') {
+    return;
+  }
+
+  const afterClaimSnapshot = createResourceSnapshot(await getPlayer(runtime));
+  const replayReply = await runCommand(
+    runtime,
+    `quest-claim-${awakeningQuestCode}-replay`,
+    gameCommands.claimQuestReward,
+    awakeningQuestCode,
+  );
+  const afterReplaySnapshot = createResourceSnapshot(await getPlayer(runtime));
+
+  runtime.questRewardReplaySafe = areResourceSnapshotsEqual(afterClaimSnapshot, afterReplaySnapshot);
+  assertReplyIncludes(replayReply, 'Quest reward replay', [
+    '📜 Запись уже закрыта',
+    'Новая добыча не добавлялась',
+  ]);
+};
+
 const runFirstSessionScenario = async (runtime: LocalPlaytestRuntime): Promise<LocalPlaytestSummary> => {
   console.log(`\n=== Local playtest: ${runtime.scenarioName} ===`);
   console.log(`Synthetic vkId: ${runtime.vkId}`);
@@ -180,6 +268,7 @@ const runFirstSessionScenario = async (runtime: LocalPlaytestRuntime): Promise<L
 
   await fightUntilFinished(runtime);
   await collectPendingRewardIfAny(runtime);
+  await runQuestBookChecks(runtime);
   await runCommand(runtime, 'rune-hub', gameCommands.runeCollection);
 
   const runeListPlayer = await getPlayer(runtime);
@@ -218,6 +307,7 @@ const runFirstSessionScenario = async (runtime: LocalPlaytestRuntime): Promise<L
     player,
     activeBattle,
     pendingRewardOpen: pendingReward !== null,
+    questRewardReplaySafe: runtime.questRewardReplaySafe,
     transcript: runtime.transcript,
     logs,
   });

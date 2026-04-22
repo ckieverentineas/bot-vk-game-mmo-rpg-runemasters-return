@@ -229,6 +229,9 @@ describe('local playtest harness', () => {
       activeBattle: null,
       transcript: [
         { label: 'start', command: gameCommands.start, payload: null, reply: 'created' },
+        { label: 'quest-book', command: gameCommands.questBook, payload: null, reply: '📜 Книга путей\n\nПробуждение Пустого мастера · 🎁 Награда ждёт' },
+        { label: 'quest-claim-awakening', command: gameCommands.claimQuestReward, payload: null, reply: '📜 Запись закрыта\n\nВ сумке: +1 обычный осколок.\n\n📜 Книга путей' },
+        { label: 'quest-claim-awakening-replay', command: gameCommands.claimQuestReward, payload: null, reply: '📜 Запись уже закрыта\n\nНовая добыча не добавлялась.' },
         { label: 'bad', command: gameCommands.profile, payload: null, reply: 'Команда не распознана.' },
       ],
       logs: [
@@ -236,6 +239,7 @@ describe('local playtest harness', () => {
         { action: 'player_registered' },
         { action: 'first_school_committed' },
       ],
+      questRewardReplaySafe: true,
     });
 
     expect(summary.logCounts).toEqual({
@@ -244,6 +248,9 @@ describe('local playtest harness', () => {
     });
     expect(summary.suspiciousReplyCount).toBe(1);
     expect(summary.trophyCollectionReplyCount).toBe(0);
+    expect(summary.questBookReplyCount).toBe(2);
+    expect(summary.questRewardClaimReplyCount).toBe(2);
+    expect(summary.questRewardReplaySafe).toBe(true);
   });
 
   it('reports no failures for the completed first-session path', () => {
@@ -255,9 +262,13 @@ describe('local playtest harness', () => {
       pendingRewardOpen: false,
       transcript: [
         { label: 'collect-skin-beast', command: gameCommands.skinBeastReward, payload: null, reply: 'Трофей разобран: Training Wisp.\nВ сумке: +1 эссенция.' },
+        { label: 'quest-book', command: gameCommands.questBook, payload: null, reply: '📜 Книга путей\n\nПробуждение Пустого мастера · 🎁 Награда ждёт' },
+        { label: 'quest-claim-awakening', command: gameCommands.claimQuestReward, payload: null, reply: '📜 Запись закрыта\n\nВ сумке: +1 обычный осколок.' },
+        { label: 'quest-claim-awakening-replay', command: gameCommands.claimQuestReward, payload: null, reply: '📜 Запись уже закрыта\n\nНовая добыча не добавлялась.' },
         { label: 'profile', command: gameCommands.profile, payload: null, reply: 'profile' },
       ],
       logs: [{ action: 'player_registered' }],
+      questRewardReplaySafe: true,
     });
 
     expect(listLocalPlaytestFailures(summary)).toEqual([]);
@@ -277,6 +288,31 @@ describe('local playtest harness', () => {
     expect(listLocalPlaytestFailures(summary)).toEqual([
       'payload: pending trophy reward is still open',
       'payload: expected a trophy reward collection reply',
+      'payload: expected a quest book reply',
+      'payload: expected a quest reward claim reply',
+      'payload: quest reward replay was not checked',
+    ]);
+  });
+
+  it('reports missing quest book claim coverage', () => {
+    const summary = buildLocalPlaytestSummary({
+      scenarioName: 'payload',
+      vkId: 1001,
+      player: createPlayer(),
+      activeBattle: null,
+      pendingRewardOpen: false,
+      transcript: [
+        { label: 'collect-skin-beast', command: gameCommands.skinBeastReward, payload: null, reply: 'Трофей разобран: Training Wisp.\nВ сумке: +1 эссенция.' },
+        { label: 'profile', command: gameCommands.profile, payload: null, reply: 'profile' },
+      ],
+      logs: [{ action: 'player_registered' }],
+      questRewardReplaySafe: false,
+    });
+
+    expect(listLocalPlaytestFailures(summary)).toEqual([
+      'payload: expected a quest book reply',
+      'payload: expected a quest reward claim reply',
+      'payload: quest reward replay was not safe',
     ]);
   });
 
@@ -300,6 +336,9 @@ describe('local playtest harness', () => {
       'payload: expected at least one rune',
       'payload: expected an equipped rune',
       'payload: found suspicious bot replies',
+      'payload: expected a quest book reply',
+      'payload: expected a quest reward claim reply',
+      'payload: quest reward replay was not checked',
     ]);
   });
 });

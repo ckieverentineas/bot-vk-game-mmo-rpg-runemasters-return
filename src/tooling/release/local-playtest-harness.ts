@@ -48,6 +48,7 @@ export interface LocalPlaytestSummaryInput {
   readonly player: PlayerState;
   readonly activeBattle: BattleView | null;
   readonly pendingRewardOpen?: boolean;
+  readonly questRewardReplaySafe?: boolean | null;
   readonly transcript: readonly LocalPlaytestTranscriptEntry[];
   readonly logs: readonly LocalPlaytestLogEntry[];
 }
@@ -78,6 +79,9 @@ export interface LocalPlaytestSummary {
   readonly logCounts: Readonly<Record<string, number>>;
   readonly suspiciousReplyCount: number;
   readonly trophyCollectionReplyCount: number;
+  readonly questBookReplyCount: number;
+  readonly questRewardClaimReplyCount: number;
+  readonly questRewardReplaySafe: boolean | null;
 }
 
 export interface LocalPlaytestBattleCommand {
@@ -169,7 +173,15 @@ const isSuspiciousReply = (reply: string): boolean => (
 );
 
 const isTrophyCollectionReply = (reply: string): boolean => (
-  reply.includes('Трофей разобран') || reply.includes('В сумке:')
+  reply.includes('Трофей разобран')
+);
+
+const isQuestBookReply = (reply: string): boolean => (
+  reply.includes('📜 Книга путей')
+);
+
+const isQuestRewardClaimReply = (reply: string): boolean => (
+  reply.includes('📜 Запись закрыта') || reply.includes('📜 Запись уже закрыта')
 );
 
 const countLogsByAction = (logs: readonly LocalPlaytestLogEntry[]): Record<string, number> => (
@@ -210,6 +222,9 @@ export const buildLocalPlaytestSummary = (input: LocalPlaytestSummaryInput): Loc
     logCounts: countLogsByAction(input.logs),
     suspiciousReplyCount: input.transcript.filter((entry) => isSuspiciousReply(entry.reply)).length,
     trophyCollectionReplyCount: input.transcript.filter((entry) => isTrophyCollectionReply(entry.reply)).length,
+    questBookReplyCount: input.transcript.filter((entry) => isQuestBookReply(entry.reply)).length,
+    questRewardClaimReplyCount: input.transcript.filter((entry) => isQuestRewardClaimReply(entry.reply)).length,
+    questRewardReplaySafe: input.questRewardReplaySafe ?? null,
   };
 };
 
@@ -242,6 +257,22 @@ export const listLocalPlaytestFailures = (summary: LocalPlaytestSummary): readon
 
   if (summary.suspiciousReplyCount > 0) {
     failures.push(`${summary.scenarioName}: found suspicious bot replies`);
+  }
+
+  if (summary.questBookReplyCount < 1) {
+    failures.push(`${summary.scenarioName}: expected a quest book reply`);
+  }
+
+  if (summary.questRewardClaimReplyCount < 1) {
+    failures.push(`${summary.scenarioName}: expected a quest reward claim reply`);
+  }
+
+  if (summary.questRewardReplaySafe === false) {
+    failures.push(`${summary.scenarioName}: quest reward replay was not safe`);
+  }
+
+  if (summary.scenarioName === 'payload' && summary.questRewardReplaySafe === null) {
+    failures.push(`${summary.scenarioName}: quest reward replay was not checked`);
   }
 
   return failures;
