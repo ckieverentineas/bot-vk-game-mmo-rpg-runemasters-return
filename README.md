@@ -27,6 +27,7 @@ Runemasters Return — VK MMO RPG на TypeScript с модульным игро
 - `main menu`, `return recap`, `rune hub` и `battle result` теперь используют общий school-aware next-goal read-model: игрок видит ближайшую school-веху или ближайший loadout payoff, а не четыре разных подсказки;
 - rune hub теперь показывает ближайшую mastery-веху и то, что она даст школе, а battle result больше не расходится с актуальным return/context состоянием игрока;
 - battle result и крафт руны теперь могут показывать короткий `Что изменилось?` recap: игроку сразу объясняется, что дала новая руна, новая редкость или unlock сборки и что стоит попробовать следующим шагом;
+- `Книга путей` теперь открывает квестовые главы, показывает готовые награды и проводит claim через exact-once `RewardLedgerRecord`; legacy text `забрать награду` получает canonical replay receipt и не может при повторной доставке выбрать следующую готовую запись;
 - стартовые школы получают реальную боевую идентичность: Пламя усиливает давление, Твердь усиливает защиту, Прорицание лучше отвечает на намерения врага;
 - школа Тверди уже получила первый полный пакет: пассивную защитную идентичность и активный `Каменный отпор`;
 - tutorial loop теперь подводит игрока к первой активной руне, экипировке и первому применению рунного действия;
@@ -71,19 +72,20 @@ Runemasters Return — VK MMO RPG на TypeScript с модульным игро
 ## Рельсы проекта
 
 - `src/vk/commands/catalog.ts` — единый источник правды для команд, алиасов и динамических действий;
-- `src/vk/keyboards/*` — сценарные VK-клавиатуры (`main`, `battle`, `runes`, `rewards`, `tutorial`) с общим builder'ом и совместимым barrel `index.ts`;
-- `src/vk/presenters/*` — player-facing тексты: общий barrel `messages.ts`, сценарные presenters для trophy/rune/battle/home/profile/exploration flow и общие чистые formatter'ы для повторяемых строк;
+- `src/vk/keyboards/*` — сценарные VK-клавиатуры (`main`, `battle`, `runes`, `rewards`, `quests`, `tutorial`) с общим builder'ом и совместимым barrel `index.ts`;
+- `src/vk/presenters/*` — player-facing тексты: общий barrel `messages.ts`, сценарные presenters для trophy/quest/rune/battle/home/profile/exploration flow и общие чистые formatter'ы для повторяемых строк;
 - `src/vk/handlers/gameCommandRoutes.ts`, `src/vk/handlers/routes/*` и `src/vk/handlers/gameCommandRecovery.ts` — агрегатор маршрутов, сценарные command routes и recoverable stale/retry контексты отдельно от `GameHandler`;
-- `src/vk/handlers/responders/*` — сценарные reply-flow, которые собирают presenter + keyboard для home/profile/location, рун, pending trophy rewards, battle result и exploration result без раздувания `GameHandler`;
+- `src/vk/handlers/responders/*` — сценарные reply-flow, которые собирают presenter + keyboard для home/profile/location, рун, quest book, pending trophy rewards, battle result и exploration result без раздувания `GameHandler`;
 - `src/vk/handlers/gameHandlerTelemetry.ts` — transport-level telemetry composer для return recap, school presentation и post-session next-goal событий без смешивания analytics payload'ов с маршрутизацией;
 - `src/content/validation/validate-game-content.ts` — автоматическая проверка file-first биомов, мобов, рунного контента и игрового баланса перед быстрыми обновлениями;
 - `src/content/runes/schools.ts` — canonical school identity seed, из которого выводится player-facing school presentation;
 - `src/modules/shared/application/require-player.ts` — единая точка загрузки игрока и консистентных ошибок для use-case слоя;
-- `src/modules/shared/domain/contracts/*` — versioned контракты persistence-уровня для боевой сборки и reward claim flow;
+- `src/modules/shared/domain/contracts/*` — versioned контракты persistence-уровня для боевой сборки, reward claim flow и quest reward ledger snapshot;
 - `src/shared/utils/json.ts` — единая точка для JSON clone/parse/stringify;
 - `docs/platform/retry-handling-rules.md`, `docs/platform/persistence-versioning-rules.md`, `docs/qa/reward-duplication-matrix.md`, `docs/testing/concurrency-critical-use-cases.md` — зафиксированные retry/concurrency rails и versioning policy для critical battle/reward flows;
 - `docs/platform/rng-authority-rules.md` — граница server-authoritative randomness для craft / reroll / reward drops;
-- `docs/platform/command-intent-rules.md` — intent-based replay policy для keyboard rune mutations с достаточным бюджетом;
+- `docs/platform/command-intent-rules.md` — intent-based replay policy для guarded mutation families: рун, обучения, исследования, боя, удаления персонажа и legacy text claim наград `Книги путей`;
+- `docs/product/lore-quests-home-continuation.md` — source-of-truth по `Книге путей`, quest reward copy, exact-once claim rail и границе до отдельного `PlayerQuestState`;
 - `docs/product/1-0-release-charter.md` — утверждённое обещание релиза 1.0, explicit out-of-scope и ethical retention red lines;
 - `docs/product/action-based-progression-and-trophy-loot.md` — дизайн pending trophy rewards, action-based навыков, скрытого дропа от школ/рун/ролей и узких специализаций;
 - `docs/reviews/phase-1-exit-gate.md` — единый gate-review для перехода из Foundation & Platform к Vertical Slice scope lock;
@@ -94,6 +96,7 @@ Runemasters Return — VK MMO RPG на TypeScript с модульным игро
 - `docs/telemetry/telemetry-plan.md` — минимальный telemetry v1 план для onboarding clarity, school readability, return UX, economy health и exploit review;
 - `docs/testing/release-evidence-report.md` — локально сгенерированный markdown-отчёт для release evidence pass по onboarding coverage, school payoff, next-goal/return clarity и QA/exploit signals;
 - `src/modules/player/application/read-models/next-goal.ts` — canonical read-model ближайшей school-вехи и next-step guidance для `main menu`, `return recap`, `rune hub` и `battle result`;
+- `src/modules/quests/application/read-models/quest-book.ts` — read-model `Книги путей`, который выводит прогресс и готовность наград из `PlayerState`, content definitions и `RewardLedgerRecord`;
 - `src/modules/shared/infrastructure/telemetry/RepositoryGameTelemetry.ts` — typed telemetry adapter над `GameLog` для `onboarding_started`, `tutorial_path_chosen`, `first_school_presented`, `first_school_committed`, `loadout_changed`, `school_novice_elite_encounter_started`, `school_novice_follow_up_action_taken`, `return_recap_shown`, `post_session_next_goal_shown`;
 - `src/modules/shared/infrastructure/prisma/player-state-hydration.ts` — compatibility-safe hydration layer для persisted player state с current / legacy / future fixtures;
 - `src/modules/shared/infrastructure/prisma/prisma-game-mappers.ts` — чистые Prisma → runtime мапперы для player/battle records, отделённые от транзакционной логики `PrismaGameRepository`;
@@ -229,6 +232,11 @@ npm run db:studio
 - `в приключения` — вернуться из обучения в основной мир;
 - `назад` — вернуться в главное меню.
 
+### Книга путей
+
+- `книга путей` / `квесты` / `задания` / `летопись пути` — открыть главы пути, текущий прогресс и готовые награды;
+- `забрать награду` — забрать текущую готовую награду; повтор того же legacy text intent возвращает canonical result и не выбирает следующую готовую запись.
+
 ### Исследование и бой
 
 - `исследовать`
@@ -291,8 +299,9 @@ npm run db:studio
 
 ## Keyboard-first интерфейс
 
-- вход в игру, обучение, бой, профиль, инвентарь, алтарь, руны и удаление персонажа доступны кнопками;
-- часть старых боевых и рунных текстовых команд всё ещё распознаётся для совместимости, но основной сценарий рассчитан на клавиатуру VK;
+- вход в игру, обучение, бой, профиль, инвентарь, `Книга путей`, алтарь, руны и удаление персонажа доступны кнопками;
+- часть старых боевых, квестовых и рунных текстовых команд всё ещё распознаётся для совместимости, но основной сценарий рассчитан на клавиатуру VK;
+- mutation-capable legacy text для боя, рун, исследования и `забрать награду` получает server-owned intent, чтобы retry транспорта возвращал canonical result вместо второго применения;
 - экраны приветствия, обучения, рун и боя подсказывают следующий шаг прямо в сообщении;
 - рунный экран показывает до 5 рун на странице, явно разводит `выбрана / надета` и позволяет быстро выбирать нужную руну по слотам вместо бесконечного next/prev browsing;
 - rune hub показывает карусель по 5 рун, статус `выбрана / надета N`, а действия `надеть / снять / распылить` появляются только после выбора конкретной руны;
