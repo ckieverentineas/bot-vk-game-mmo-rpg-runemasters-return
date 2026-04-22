@@ -316,6 +316,10 @@ Runemasters Return в long-horizon виде — это **PvE-first social build-
 
 ## 4.7. Rarity philosophy
 
+Committed early-product rule зафиксирован в `docs/product/rarity-ladder-v1.md`.
+
+Exploratory long-horizon ladder ниже сохраняет тот же принцип, но не переопределяет locked meanings для `USUAL`, `UNUSUAL` и `RARE` в Vertical Slice.
+
 - **Common** — усиливает существующий паттерн;
 - **Rare** — добавляет conditional synergy;
 - **Epic** — открывает новый маршрут;

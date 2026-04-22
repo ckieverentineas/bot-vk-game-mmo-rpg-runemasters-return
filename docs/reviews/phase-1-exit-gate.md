@@ -10,13 +10,18 @@
 - Gate verdict: `iterate`
 - Scope-lock verdict: `ship`
 
-Итог: **scope Vertical Slice зафиксирован**, risky breadth вынесена из ближайшего delivery order, но **Phase 1 exit gate ещё не считается полностью закрытым**, пока не добиты product lock и player-state contract gaps.
+Итог: **scope Vertical Slice зафиксирован**, risky breadth вынесена из ближайшего delivery order, но **Phase 1 exit gate ещё не считается полностью закрытым**, пока не добиты оставшиеся product lock и player-state contract gaps.
+
+Update after Q-035:
+
+- rarity ladder v1 закрыт документом `docs/product/rarity-ladder-v1.md`;
+- gate verdict остаётся `iterate`, потому что school bible / overlap rules и player-state contract gaps ещё требуют отдельного sign-off.
 
 ## Exit criteria summary
 
 | Exit criterion | Status | Decision | Evidence |
 |---|---|---|---|
-| Пиллары продукта согласованы и не конфликтуют друг с другом | `partial` | конфликтов в locked slice не осталось, но school bible / rarity ladder ещё не заморожены | `PLAN.md`, `README.md`, этот review |
+| Пиллары продукта согласованы и не конфликтуют друг с другом | `partial` | конфликтов в locked slice не осталось; rarity ladder v1 заморожен, school bible / overlap rules ещё открыты | `PLAN.md`, `README.md`, `docs/product/rarity-ladder-v1.md`, этот review |
 | Platform contracts готовы к Vertical Slice | `partial` | battle/loadout/reward/retry baseline готов, но player-state versioning и split source-of-truth/read models ещё открыты | `ARCHITECTURE.md`, `docs/platform/*`, этот review |
 | Vertical Slice scope заперт и не расползается | `done` | committed scope сведён к одному доказуемому school-first PvE journey | этот review, `PLAN.md` |
 | High-risk out-of-scope вынесен из ближайшего delivery order | `done` | social-lite, PvP beyond locked slice и unsafe breadth явно вырезаны из near-term committed work | этот review, `PLAN.md` |
@@ -37,8 +42,7 @@
 ### Current tension points still open
 
 - school bible v1 и overlap / uniqueness rules ещё не заморожены как production source-of-truth;
-- rarity ladder v1 ещё не оформлена как locked ruleset;
-- это не ломает scope lock, но пока не позволяет честно закрыть весь Phase 1 exit gate.
+- оставшийся school bible gap не ломает scope lock, но пока не позволяет честно закрыть весь Phase 1 exit gate.
 
 ## Platform contract readiness
 
@@ -112,7 +116,7 @@
 ### Must close before full Phase 1 exit sign-off
 
 - `11.1 Product lock`:
-  - school bible / overlap rules / rarity ladder.
+  - school bible / overlap rules.
 - `11.2 Domain platform`:
   - source-of-truth vs read-model split;
   - player-state versioning policy.
@@ -128,6 +132,7 @@
 - `PLAN.md`
 - `README.md`
 - `docs/product/1-0-release-charter.md`
+- `docs/product/rarity-ladder-v1.md`
 - `ARCHITECTURE.md`
 - `docs/platform/persistence-versioning-rules.md`
 - `docs/platform/retry-handling-rules.md`
