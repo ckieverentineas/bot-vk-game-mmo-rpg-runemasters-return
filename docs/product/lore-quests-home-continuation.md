@@ -2,12 +2,31 @@
 
 ## Status
 
-- Status: `continuation note`
-- Purpose: зафиксировать, что уже сделано по лору, интро и `Книге путей`, и что продолжать следующим рабочим заходом.
-- Scope class: `near-term playable vertical slices`
-- Current checkpoint: commit `6ceb984 Add quest book and lore intro`
+- Status: `continuation complete`
+- Purpose: зафиксировать закрытый проход по лору, интро и `Книге путей`, чтобы следующий заход начинался уже с evidence или нового product slice.
+- Scope class: `completed near-term playable vertical slices`
+- Current checkpoint: commit `4b7f93c Add school quest chapters`
+- Completion: `5/5 slices`, `100%`
 
-Этот документ нужен как быстрый вход в работу дома: открыть, вспомнить решения, взять следующий маленький срез, проверить и закоммитить.
+Этот документ теперь служит итоговой точкой по первому домашнему continuation-проходу: решения сохранены, пять срезов закрыты отдельными коммитами, следующий шаг вынесен в контроль evidence.
+
+## Completion checkpoint
+
+Закрыто отдельными коммитами:
+
+- `e914adb Extend local playtest with quest book claims` — local playtest открывает книгу, забирает первую награду и проверяет replay-safety.
+- `59513bf Add quest telemetry events` — квестовые события пишутся через `GameTelemetry`.
+- `39edd63 Extract quest reward ledger contract` — контракт ledger snapshot вынесен из Prisma repository.
+- `05514c6 Add first name quest chapter` — добавлена глава `Путь первого имени`.
+- `4b7f93c Add school quest chapters` — добавлены первые школьные главы.
+
+Последний контроль:
+
+- `npm run check` — passed перед `4b7f93c`, 602 tests.
+- `npm run release:local-playtest` — passed перед `4b7f93c`.
+- `npm run release:preflight` — passed после `4b7f93c`.
+- `npm run release:school-evidence` — passed, report saved.
+- `npm run release:evidence` — command passed, verdict `insufficient_evidence`: в логах пока нет `school_novice_elite_encounter_started`.
 
 ---
 
@@ -141,11 +160,11 @@
 
 ---
 
-## 3. Следующий порядок работ
+## 3. Закрытый порядок работ
 
-### Срез 1. Расширить local playtest на Книгу путей
+### Срез 1. Расширить local playtest на Книгу путей — закрыт
 
-Сейчас `release:local-playtest` проверяет первый session loop, но не открывает `Книгу путей`.
+На момент continuation-старта `release:local-playtest` проверял первый session loop, но не открывал `Книгу путей`.
 
 Нужно добавить в `src/tooling/release/local-playtest.ts`:
 
@@ -167,9 +186,9 @@ Acceptance:
 - transcript показывает книгу и закрытие записи;
 - повторная кнопка не увеличивает пыль/осколки повторно.
 
-### Срез 2. Добавить quest-specific telemetry
+### Срез 2. Добавить quest-specific telemetry — закрыт
 
-Сейчас квесты проверяются через repository и tests, но в evidence их почти не видно.
+На момент continuation-старта квесты проверялись через repository и tests, но в evidence их почти не было видно.
 
 Добавить события:
 
@@ -197,9 +216,9 @@ Acceptance:
 - telemetry failure не ломает claim;
 - tests покрывают happy path и telemetry rejection.
 
-### Срез 3. Вынести quest reward snapshot в contract
+### Срез 3. Вынести quest reward snapshot в contract — закрыт
 
-Сейчас quest ledger snapshot живёт внутри `PrismaGameRepository.ts`. Для роста лучше вынести его в shared/domain contract:
+На момент continuation-старта quest ledger snapshot жил внутри `PrismaGameRepository.ts`. Для роста его нужно было вынести в shared/domain contract:
 
 - `src/modules/shared/domain/contracts/quest-reward-ledger.ts`
 
@@ -216,7 +235,7 @@ Acceptance:
 - добавлены contract tests;
 - `npm test` зелёный.
 
-### Срез 4. Расширить первые квесты до настоящей главы
+### Срез 4. Расширить первые квесты до настоящей главы — закрыт
 
 Текущие 5 стартовых записей:
 
@@ -254,7 +273,7 @@ Acceptance:
 - не появляются ежедневные задания;
 - каждая запись имеет понятную награду и progress condition.
 
-### Срез 5. Школьные главы
+### Срез 5. Школьные главы — закрыт
 
 После стартовой главы сделать первые school-specific записи:
 
@@ -295,7 +314,7 @@ Acceptance:
 
 ## 4. Ручной playtest дома
 
-Перед следующим кодовым срезом пройти один ручной сценарий в боте:
+Перед следующим product slice полезно пройти один ручной сценарий в боте:
 
 1. Новый игрок.
 2. Прочитать интро.
@@ -385,20 +404,19 @@ npm run db:generate
 
 ---
 
-## 8. Хороший следующий коммит
+## 8. Следующий полезный шаг
 
-Рекомендуемый следующий commit:
+Рекомендуемый следующий шаг:
 
 ```text
-Extend local playtest with quest book claims
+Evidence pass for school novice elite flow
 ```
 
 Содержимое:
 
-- `release:local-playtest` открывает книгу;
-- забирает первую квестовую награду;
-- проверяет replay-safety;
-- добавлены summary поля;
-- tests для harness обновлены.
+- пройти school novice elite flow хотя бы одной школы до runtime-события `school_novice_elite_encounter_started`;
+- обновить `docs/testing/school-path-evidence-report.md`;
+- обновить `docs/testing/release-evidence-report.md`;
+- после появления runtime evidence решить, нужен ли persisted marker для более точных школьных квестов.
 
-Почему это первый шаг: он докажет, что новая `Книга путей` не просто красиво рендерится, а живёт в реальном player session loop.
+Почему это следующий шаг: кодовые срезы закрыты, но релизный evidence пока честно говорит, что школьный novice elite flow не доказан runtime-логами.
