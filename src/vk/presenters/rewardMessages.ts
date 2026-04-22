@@ -1,0 +1,115 @@
+import type { AcquisitionSummaryView } from '../../modules/player/application/read-models/acquisition-summary';
+import { buildPlayerNextGoalView } from '../../modules/player/application/read-models/next-goal';
+import { getPlayerSkillDefinition } from '../../modules/player/domain/player-skills';
+import type { CollectPendingRewardView } from '../../modules/rewards/application/use-cases/CollectPendingReward';
+import type { PendingRewardView } from '../../modules/shared/application/ports/GameRepository';
+import {
+  formatRuneDisplayName,
+  renderAcquisitionSummary,
+  renderNextGoalSummary,
+} from './message-formatting';
+
+const inventoryFieldLabels = {
+  USUAL: 'обычные осколки',
+  UNUSUAL: 'необычные осколки',
+  RARE: 'редкие осколки',
+  EPIC: 'эпические осколки',
+  LEGENDARY: 'легендарные осколки',
+  MYTHICAL: 'мифические осколки',
+  usualShards: 'обычные осколки',
+  unusualShards: 'необычные осколки',
+  rareShards: 'редкие осколки',
+  epicShards: 'эпические осколки',
+  legendaryShards: 'легендарные осколки',
+  mythicalShards: 'мифические осколки',
+  leather: 'кожа',
+  bone: 'кость',
+  herb: 'трава',
+  essence: 'эссенция',
+  metal: 'металл',
+  crystal: 'кристалл',
+} as const;
+
+const formatInventoryDelta = (delta: Record<string, number | undefined>): string => {
+  const parts = Object.entries(delta)
+    .filter(([, amount]) => amount !== undefined && amount > 0)
+    .map(([field, amount]) => {
+      const label = inventoryFieldLabels[field as keyof typeof inventoryFieldLabels] ?? field;
+      return `+${amount} ${label}`;
+    });
+
+  return parts.length > 0 ? parts.join(' · ') : 'без дополнительных материалов';
+};
+
+const formatBaseRewardLine = (pendingReward: PendingRewardView): string => {
+  const { baseReward } = pendingReward.snapshot;
+  const parts = [
+    `+${baseReward.experience} опыта`,
+    `+${baseReward.gold} пыли`,
+    formatInventoryDelta(baseReward.shards),
+    baseReward.droppedRune ? `руна: ${formatRuneDisplayName(baseReward.droppedRune)}` : null,
+  ].filter((part): part is string => Boolean(part) && part !== 'без дополнительных материалов');
+
+  return parts.join(' · ');
+};
+
+const formatSkillTitles = (skillCodes: readonly string[]): string => {
+  const titles = skillCodes
+    .map((skillCode) => getPlayerSkillDefinition(skillCode)?.title ?? skillCode);
+
+  return titles.length > 0 ? titles.join(', ') : 'без роста навыка';
+};
+
+const formatTrophyActionPreview = (
+  action: PendingRewardView['snapshot']['trophyActions'][number],
+): string => {
+  const rewardLine = action.reward ? formatInventoryDelta(action.reward.inventoryDelta) : 'добыча без предпросмотра';
+  return `${action.label} — ${rewardLine}; мастерство: ${formatSkillTitles(action.skillCodes)}.`;
+};
+
+export const renderPendingReward = (
+  pendingReward: PendingRewardView,
+  acquisitionSummary?: AcquisitionSummaryView | null,
+): string => {
+  const sourceLine = pendingReward.source
+    ? [
+        `${pendingReward.source.enemyName} повержен.`,
+        'На поле остался трофей: можно забрать всё как есть или обработать добычу.',
+      ].join(' ')
+    : 'Победа уже зафиксирована. Трофей ждёт: можно забрать всё как есть или обработать добычу.';
+
+  return [
+    '🏁 Трофеи победы',
+    '',
+    sourceLine,
+    `Уже ваше: ${formatBaseRewardLine(pendingReward)}.`,
+    ...renderAcquisitionSummary(acquisitionSummary),
+    'Трофей поддастся только одному подходу; повторный жест не принесёт второй добычи.',
+    '',
+    'Подход к трофею:',
+    ...pendingReward.snapshot.trophyActions.map(formatTrophyActionPreview),
+  ].join('\n');
+};
+
+export const renderCollectedPendingReward = (result: CollectPendingRewardView): string => {
+  const selectedAction = result.pendingReward.snapshot.trophyActions.find((action) => (
+    action.code === result.selectedActionCode
+  ));
+  const skillLines = result.appliedResult.skillUps.map((skillUp) => {
+    const title = getPlayerSkillDefinition(skillUp.skillCode)?.title ?? skillUp.skillCode;
+    return `${title}: ${skillUp.experienceBefore} → ${skillUp.experienceAfter}`;
+  });
+  const sourceLine = result.pendingReward.source
+    ? `Трофей разобран: ${result.pendingReward.source.enemyName}.`
+    : 'Трофей разобран.';
+
+  return [
+    selectedAction?.label ?? '🎒 Добыча собрана',
+    '',
+    sourceLine,
+    `В сумке: ${formatInventoryDelta(result.appliedResult.inventoryDelta)}.`,
+    ...(skillLines.length > 0 ? ['', 'Ремесло:', ...skillLines] : []),
+    '',
+    ...renderNextGoalSummary(buildPlayerNextGoalView(result.player), '👉 Дальше'),
+  ].join('\n');
+};

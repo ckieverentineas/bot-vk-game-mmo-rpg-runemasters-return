@@ -22,7 +22,6 @@ import {
   buildBattleResultNextGoalView,
   buildPlayerNextGoalView,
 } from '../../modules/player/application/read-models/next-goal';
-import type { CollectPendingRewardView } from '../../modules/rewards/application/use-cases/CollectPendingReward';
 import { buildPlayerSchoolRecognitionView } from '../../modules/player/application/read-models/school-recognition';
 import { resolveDefendGuardGain } from '../../modules/combat/domain/battle-tactics';
 import { describeRuneContent } from '../../modules/runes/domain/rune-abilities';
@@ -36,12 +35,22 @@ import {
   getPlayerSkillDefinition,
   resolveNextPlayerSkillThreshold,
 } from '../../modules/player/domain/player-skills';
-import type { PendingRewardView } from '../../modules/shared/application/ports/GameRepository';
 import {
   getExplorationSceneEffectLine,
   type ExplorationSceneView,
 } from '../../modules/world/domain/exploration-events';
-import type { AbilityDefinition, BattleView, PlayerState, RuneDraft, RuneView, StatBlock } from '../../shared/types/game';
+import type { AbilityDefinition, BattleView, PlayerState, RuneView, StatBlock } from '../../shared/types/game';
+import {
+  formatRuneDisplayName,
+  renderAcquisitionSummary,
+  renderNextGoalSummary,
+  withSentencePeriod,
+} from './message-formatting';
+
+export {
+  renderCollectedPendingReward,
+  renderPendingReward,
+} from './rewardMessages';
 
 const formatStatBlock = (stats: StatBlock): string => [
   `❤️ Здоровье: ${stats.health}`,
@@ -94,20 +103,12 @@ const archetypeIconByCode: Readonly<Record<string, string>> = {
   echo: '👁️',
 };
 
-const normalizeRuneDisplayName = (name: string): string => (
-  name.replace(/руна\s+руна/gi, 'руна')
-);
-
-const formatRuneDisplayName = (rune: Pick<RuneDraft, 'name'> | null | undefined): string => (
-  rune ? normalizeRuneDisplayName(rune.name) : 'нет руны'
-);
-
-const resolveRuneSchoolIcon = (rune: Pick<RuneDraft, 'archetypeCode'>): string => {
+const resolveRuneSchoolIcon = (rune: Pick<RuneView, 'archetypeCode'>): string => {
   const school = getSchoolDefinitionForArchetype(rune.archetypeCode);
   return school ? schoolIconByCode[school.code] ?? '🔹' : '🔹';
 };
 
-const resolveRuneArchetypeIcon = (rune: Pick<RuneDraft, 'archetypeCode'>): string | null => {
+const resolveRuneArchetypeIcon = (rune: Pick<RuneView, 'archetypeCode'>): string | null => {
   if (!rune.archetypeCode) {
     return null;
   }
@@ -121,8 +122,6 @@ const renderStarterSchoolLine = (): string => {
     ? `Стартовые школы: ${schoolNames.join(', ')}.`
     : 'Стартовые школы уже ждут первую боевую руну.';
 };
-
-const withSentencePeriod = (text: string): string => /[.!?]$/.test(text) ? text : `${text}.`;
 
 const formatActiveAbilityCost = (ability: AbilityDefinition): string => [
   `${ability.manaCost} маны`,
@@ -147,27 +146,6 @@ const formatRuneStatDetails = (stats: StatBlock): string[] => {
     : ['Бонусы: нет'];
 };
 
-const inventoryFieldLabels = {
-  USUAL: 'обычные осколки',
-  UNUSUAL: 'необычные осколки',
-  RARE: 'редкие осколки',
-  EPIC: 'эпические осколки',
-  LEGENDARY: 'легендарные осколки',
-  MYTHICAL: 'мифические осколки',
-  usualShards: 'обычные осколки',
-  unusualShards: 'необычные осколки',
-  rareShards: 'редкие осколки',
-  epicShards: 'эпические осколки',
-  legendaryShards: 'легендарные осколки',
-  mythicalShards: 'мифические осколки',
-  leather: 'кожа',
-  bone: 'кость',
-  herb: 'трава',
-  essence: 'эссенция',
-  metal: 'металл',
-  crystal: 'кристалл',
-} as const;
-
 const formatRuneAbilityDetails = (runeContent: ReturnType<typeof describeRuneContent>): string[] => [
   ...(runeContent.activeAbilities.length > 0
     ? ['Активный навык:', ...runeContent.activeAbilities.map(formatActiveAbilityDetails)]
@@ -177,64 +155,8 @@ const formatRuneAbilityDetails = (runeContent: ReturnType<typeof describeRuneCon
     : []),
 ];
 
-const renderAcquisitionSummary = (summary: AcquisitionSummaryView | null | undefined): string[] => {
-  if (!summary) {
-    return [];
-  }
-
-  return [
-    '',
-    `✨ Перемена: ${withSentencePeriod(summary.title)}`,
-    ...(summary.nextStepLine ? [`👉 Следом: ${withSentencePeriod(summary.nextStepLine)}`] : []),
-  ];
-};
-
-const renderNextGoalSummary = (
-  nextGoal: ReturnType<typeof buildPlayerNextGoalView>,
-  actionPrefix = '👉 Сделать шаг',
-): string[] => [
-  `🎯 След: ${withSentencePeriod(nextGoal.objectiveText)}`,
-  ...(nextGoal.whyText ? [`🜂 Зачем идти: ${withSentencePeriod(nextGoal.whyText)}`] : []),
-  `${actionPrefix}: «${nextGoal.primaryActionLabel}».`,
-];
-
 const renderSchoolFirstLoopLine = (): string => 'Путь первого входа: базовая атака → первая боевая руна → школа рун → новый стиль боя.';
 const renderSchoolFirstRarityLine = (): string => 'Сначала первая руна открывает школу рун, а новая редкость позже расширяет сборку.';
-
-const formatInventoryDelta = (delta: Record<string, number | undefined>): string => {
-  const parts = Object.entries(delta)
-    .filter(([, amount]) => amount !== undefined && amount > 0)
-    .map(([field, amount]) => {
-      const label = inventoryFieldLabels[field as keyof typeof inventoryFieldLabels] ?? field;
-      return `+${amount} ${label}`;
-    });
-
-  return parts.length > 0 ? parts.join(' · ') : 'без дополнительных материалов';
-};
-
-const formatBaseRewardLine = (pendingReward: PendingRewardView): string => {
-  const { baseReward } = pendingReward.snapshot;
-  const parts = [
-    `+${baseReward.experience} опыта`,
-    `+${baseReward.gold} пыли`,
-    formatInventoryDelta(baseReward.shards),
-    baseReward.droppedRune ? `руна: ${formatRuneDisplayName(baseReward.droppedRune)}` : null,
-  ].filter((part): part is string => Boolean(part) && part !== 'без дополнительных материалов');
-
-  return parts.join(' · ');
-};
-
-const formatSkillTitles = (skillCodes: readonly string[]): string => {
-  const titles = skillCodes
-    .map((skillCode) => getPlayerSkillDefinition(skillCode)?.title ?? skillCode);
-
-  return titles.length > 0 ? titles.join(', ') : 'без роста навыка';
-};
-
-const formatTrophyActionPreview = (action: PendingRewardView['snapshot']['trophyActions'][number]): string => {
-  const rewardLine = action.reward ? formatInventoryDelta(action.reward.inventoryDelta) : 'добыча без предпросмотра';
-  return `${action.label} — ${rewardLine}; мастерство: ${formatSkillTitles(action.skillCodes)}.`;
-};
 
 const formatPlayerSkillProgress = (skill: NonNullable<PlayerState['skills']>[number]): string => {
   const definition = getPlayerSkillDefinition(skill.skillCode);
@@ -259,48 +181,6 @@ const renderPlayerSkillsBlock = (player: PlayerState): readonly string[] => {
     'Навыки:',
     ...skills.map(formatPlayerSkillProgress),
   ];
-};
-
-export const renderPendingReward = (
-  pendingReward: PendingRewardView,
-  acquisitionSummary?: AcquisitionSummaryView | null,
-): string => {
-  const sourceLine = pendingReward.source
-    ? `${pendingReward.source.enemyName} повержен. На поле остался трофей: можно забрать всё как есть или обработать добычу.`
-    : 'Победа уже зафиксирована. Трофей ждёт: можно забрать всё как есть или обработать добычу.';
-
-  return [
-    '🏁 Трофеи победы',
-    '',
-    sourceLine,
-    `Уже ваше: ${formatBaseRewardLine(pendingReward)}.`,
-    ...renderAcquisitionSummary(acquisitionSummary),
-    'Трофей поддастся только одному подходу; повторный жест не принесёт второй добычи.',
-    '',
-    'Подход к трофею:',
-    ...pendingReward.snapshot.trophyActions.map(formatTrophyActionPreview),
-  ].join('\n');
-};
-
-export const renderCollectedPendingReward = (result: CollectPendingRewardView): string => {
-  const selectedAction = result.pendingReward.snapshot.trophyActions.find((action) => action.code === result.selectedActionCode);
-  const skillLines = result.appliedResult.skillUps.map((skillUp) => {
-    const title = getPlayerSkillDefinition(skillUp.skillCode)?.title ?? skillUp.skillCode;
-    return `${title}: ${skillUp.experienceBefore} → ${skillUp.experienceAfter}`;
-  });
-  const sourceLine = result.pendingReward.source
-    ? `Трофей разобран: ${result.pendingReward.source.enemyName}.`
-    : 'Трофей разобран.';
-
-  return [
-    selectedAction?.label ?? '🎒 Добыча собрана',
-    '',
-    sourceLine,
-    `В сумке: ${formatInventoryDelta(result.appliedResult.inventoryDelta)}.`,
-    ...(skillLines.length > 0 ? ['', 'Ремесло:', ...skillLines] : []),
-    '',
-    ...renderNextGoalSummary(buildPlayerNextGoalView(result.player), '👉 Дальше'),
-  ].join('\n');
 };
 
 const renderSchoolMasteryLine = (player: PlayerState): string => {
