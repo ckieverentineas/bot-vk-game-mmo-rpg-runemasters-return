@@ -383,7 +383,7 @@ describe('GameHandler smoke', () => {
     await handler.handle(ctx as never);
 
     expect(getReplyCalls(ctx)[0]?.message).toContain('🧭 Возвращение');
-    expect(getReplyCalls(ctx)[0]?.message).toContain('Дальше: нажмите «⚔️ Исследовать»');
+    expect(getReplyCalls(ctx)[0]?.message).toContain('Дальше: «⚔️ Исследовать»');
     expect(services.telemetry.returnRecapShown).toHaveBeenCalledWith(1, expect.objectContaining({
       entrySurface: 'start_existing',
       nextStepType: 'get_first_rune',
@@ -406,7 +406,7 @@ describe('GameHandler smoke', () => {
 
     await handler.handle(ctx as never);
 
-    expect(getReplyCalls(ctx)[0]?.message).toContain('🏁 Добыча после победы');
+    expect(getReplyCalls(ctx)[0]?.message).toContain('🏁 Трофеи победы');
     expect(getReplyCalls(ctx)[0]?.message).toContain('Лесной волк повержен');
     expect(services.telemetry.returnRecapShown).not.toHaveBeenCalled();
   });
@@ -424,7 +424,7 @@ describe('GameHandler smoke', () => {
 
     const replies = getReplyCalls(ctx);
     expect(replies[0]?.message).toContain('🧭 Возвращение');
-    expect(replies[0]?.message).toContain('Дальше: нажмите «⚔️ Учебный бой»');
+    expect(replies[0]?.message).toContain('Дальше: «⚔️ Учебный бой»');
     expect(JSON.stringify(replies[0]?.keyboard)).toContain('Учебный бой');
     expect(services.telemetry.returnRecapShown).toHaveBeenCalledWith(1, expect.objectContaining({
       entrySurface: 'start_existing',
@@ -544,10 +544,10 @@ describe('GameHandler smoke', () => {
 
     expect(services.enterTutorialMode.execute).toHaveBeenCalledWith(1001, 'intent-location-1', 'state-location-1', 'payload');
     expect(services.exploreLocation.execute).toHaveBeenCalledWith(1001, undefined, undefined, 'payload');
-    expect(getReplyCalls(locationContext)[0]?.message).toContain('Обучение');
+    expect(getReplyCalls(locationContext)[0]?.message).toContain('Учебный круг');
     expect(getReplyCalls(locationContext)[0]?.message).toContain('первую руну');
     expect(getReplyCalls(exploreContext)[0]?.message).toContain('⚔️ Бой');
-    expect(getReplyCalls(exploreContext)[0]?.message).toContain('Действия:');
+    expect(getReplyCalls(exploreContext)[0]?.message).toContain('Ответ мастера:');
   });
 
   it('выводит server-owned legacy intent для текстового исследования', async () => {
@@ -572,7 +572,7 @@ describe('GameHandler smoke', () => {
 
     await handler.handle(ctx as never);
 
-    expect(getReplyCalls(ctx)[0]?.message).toContain('🏁 Добыча после победы');
+    expect(getReplyCalls(ctx)[0]?.message).toContain('🏁 Трофеи победы');
     expect(services.exploreLocation.execute).not.toHaveBeenCalled();
   });
 
@@ -600,9 +600,9 @@ describe('GameHandler smoke', () => {
     const replies = getReplyCalls(ctx);
     expect(replies[0]?.message).toContain('🧭 Исследование');
     expect(replies[0]?.message).toContain('Тихая передышка');
-    expect(replies[0]?.message).toContain('Тип: передышка');
+    expect(replies[0]?.message).toContain('Знак: передышка');
     expect(replies[0]?.message).toContain('Боя нет');
-    expect(replies[0]?.message).not.toContain('Действия:');
+    expect(replies[0]?.message).not.toContain('Ответ мастера:');
     expect(JSON.stringify(replies[0]?.keyboard)).toContain('Исследовать');
   });
 
@@ -625,8 +625,8 @@ describe('GameHandler smoke', () => {
     await handler.handle(ctx as never);
 
     const replies = getReplyCalls(ctx);
-    expect(replies[0]?.message).toContain('Обучение уже пропущено');
-    expect(replies[0]?.message).toContain('Сейчас открыт режим приключений');
+    expect(replies[0]?.message).toContain('Учебный круг оставлен позади');
+    expect(replies[0]?.message).toContain('Дороги открыты');
     expect(JSON.stringify(replies[0]?.keyboard)).toContain('Исследовать');
     expect(JSON.stringify(replies[0]?.keyboard)).not.toContain('Учебный бой');
   });
@@ -634,7 +634,7 @@ describe('GameHandler smoke', () => {
   it('возвращает в активный бой, если открыть локацию во время сражения', async () => {
     const services = createServices();
     vi.mocked(services.enterTutorialMode.execute).mockRejectedValueOnce(
-      new AppError('battle_in_progress', 'Сначала завершите текущий бой, а потом возвращайтесь к экрану обучения.'),
+      new AppError('battle_in_progress', 'Сначала завершите текущий бой, потом возвращайтесь к учебному кругу.'),
     );
     const handler = new GameHandler(services);
     const ctx = createFakeContext({ command: 'локация' });
@@ -650,7 +650,7 @@ describe('GameHandler smoke', () => {
   it('нормализует алиас обучения к тому же battle-safe recovery', async () => {
     const services = createServices();
     vi.mocked(services.enterTutorialMode.execute).mockRejectedValueOnce(
-      new AppError('battle_in_progress', 'Сначала завершите текущий бой, а потом возвращайтесь к экрану обучения.'),
+      new AppError('battle_in_progress', 'Сначала завершите текущий бой, потом возвращайтесь к учебному кругу.'),
     );
     const handler = new GameHandler(services);
     const ctx = createFakeContext({ text: 'обучение' });
@@ -668,14 +668,14 @@ describe('GameHandler smoke', () => {
     const ctx = createFakeContext({ command: 'локация', intentId: 'intent-location-2', stateKey: 'state-location-2' });
 
     vi.mocked(services.enterTutorialMode.execute).mockRejectedValueOnce(
-      new AppError('stale_command_intent', 'Этот экран обучения уже устарел. Я открыл актуальный маршрут героя.'),
+      new AppError('stale_command_intent', 'Учебная тропа сменилась. Вот нынешний путь героя.'),
     );
 
     await handler.handle(ctx as never);
 
     const replies = getReplyCalls(ctx);
-    expect(replies[0]?.message).toContain('Этот экран обучения уже устарел');
-    expect(replies[0]?.message).toContain('📘 Обучение');
+    expect(replies[0]?.message).toContain('Учебная тропа сменилась');
+    expect(replies[0]?.message).toContain('📘 Учебный круг');
   });
 
   it('выводит adventure recap для активного игрока по команде возврата в приключения', async () => {
@@ -689,7 +689,7 @@ describe('GameHandler smoke', () => {
     const replies = getReplyCalls(ctx);
     expect(services.returnToAdventure.execute).toHaveBeenCalledWith(1001, undefined, undefined, 'payload');
     expect(replies[0]?.message).toContain('🧭 Возвращение в приключения');
-    expect(replies[0]?.message).toContain('Дальше: нажмите «⚔️ Исследовать»');
+    expect(replies[0]?.message).toContain('Дальше: «⚔️ Исследовать»');
     expect(replies[0]?.message).not.toContain('Учебный бой');
   });
 
@@ -702,7 +702,7 @@ describe('GameHandler smoke', () => {
     await handler.handle(ctx as never);
 
     expect(services.returnToAdventure.execute).toHaveBeenCalledWith(1001, 'legacy-text:2000000001:1001:77:в приключения', undefined, 'legacy_text');
-    expect(getReplyCalls(ctx)[0]?.message).toContain('Дальше: нажмите «⚔️ Исследовать»');
+    expect(getReplyCalls(ctx)[0]?.message).toContain('Дальше: «⚔️ Исследовать»');
   });
 
   it('проходит сценарий завершения боя', async () => {
@@ -739,7 +739,7 @@ describe('GameHandler smoke', () => {
 
     expect(services.performBattleAction.execute).toHaveBeenCalledWith(1001, 'ATTACK', 'intent-battle-1', 'state-battle-1', 'payload');
     expect(getReplyCalls(ctx)[0]?.message).toContain('🏁 Победа');
-    expect(getReplyCalls(ctx)[0]?.message).toContain('🎯 Следующая цель: разыщите Пепельную ведунью');
+    expect(getReplyCalls(ctx)[0]?.message).toContain('🎯 След: разыщите Пепельную ведунью');
   });
 
   it('после победы показывает карточку несобранной добычи', async () => {
@@ -779,9 +779,9 @@ describe('GameHandler smoke', () => {
     await handler.handle(ctx as never);
 
     expect(services.getPendingReward.execute).toHaveBeenCalledWith(1001);
-    expect(getReplyCalls(ctx)[0]?.message).toContain('🏁 Добыча после победы');
+    expect(getReplyCalls(ctx)[0]?.message).toContain('🏁 Трофеи победы');
     expect(getReplyCalls(ctx)[0]?.message).toContain('Лесной волк повержен');
-    expect(getReplyCalls(ctx)[0]?.message).toContain('✨ Что изменилось: Открыт новый слот рун.');
+    expect(getReplyCalls(ctx)[0]?.message).toContain('✨ Перемена: Открыт новый слот рун.');
     expect(getReplyCalls(ctx)[0]?.message).toContain('🔪 Свежевать');
   });
 
@@ -820,7 +820,7 @@ describe('GameHandler smoke', () => {
 
     expect(services.collectPendingReward.execute).toHaveBeenCalledWith(1001, 'skin_beast', 'battle-victory:battle-1');
     expect(getReplyCalls(ctx)[0]?.message).toContain('🔪 Свежевать');
-    expect(getReplyCalls(ctx)[0]?.message).toContain('Получено: +2 кожа · +1 кость.');
+    expect(getReplyCalls(ctx)[0]?.message).toContain('В сумке: +2 кожа · +1 кость.');
     expect(getReplyCalls(ctx)[0]?.message).toContain('Свежевание: 0 → 1');
   });
 
@@ -876,8 +876,8 @@ describe('GameHandler smoke', () => {
 
     await handler.handle(ctx as never);
 
-    expect(getReplyCalls(ctx)[0]?.message).toContain('✨ Что изменилось: Открыт новый слот рун.');
-    expect(getReplyCalls(ctx)[0]?.message).toContain('👉 Дальше: Откройте «🔮 Руны» и выберите, какой слот занять новой руной.');
+    expect(getReplyCalls(ctx)[0]?.message).toContain('✨ Перемена: Открыт новый слот рун.');
+    expect(getReplyCalls(ctx)[0]?.message).toContain('👉 Следом: Откройте «🔮 Руны» и выберите, какой слот занять новой руной.');
   });
 
   it('логирует первое school reveal после battle result с school trial completion', async () => {
@@ -1193,9 +1193,9 @@ describe('GameHandler smoke', () => {
 
     vi.mocked(services.deletePlayer.execute)
       .mockResolvedValueOnce(undefined)
-      .mockRejectedValueOnce(new AppError('command_retry_pending', 'Команда уже обрабатывается. Дождитесь ответа и обновите экран.'));
+      .mockRejectedValueOnce(new AppError('command_retry_pending', 'Прошлый жест ещё в пути. Дождитесь ответа.'));
     vi.mocked(services.getPlayerProfile.execute).mockRejectedValueOnce(
-      new AppError('player_not_found', 'Персонаж не найден. Нажмите «🎮 Начать», чтобы создать нового мастера.'),
+      new AppError('player_not_found', 'Персонаж не найден. «🎮 Начать» создаст нового мастера.'),
     );
 
     await handler.handle(first as never);
@@ -1211,15 +1211,15 @@ describe('GameHandler smoke', () => {
     const ctx = createFakeContext({ command: '__confirm_delete_player__', intentId: 'intent-delete-2', stateKey: 'stale-delete-state' });
 
     vi.mocked(services.deletePlayer.execute).mockRejectedValueOnce(
-      new AppError('stale_command_intent', 'Это подтверждение уже устарело. Я вернул вас в профиль: начните удаление заново, если всё ещё хотите удалить персонажа.'),
+      new AppError('stale_command_intent', 'Старое подтверждение больше не действует. Вернитесь в летопись, если всё ещё хотите удалить персонажа.'),
     );
 
     await handler.handle(ctx as never);
 
     expect(services.deletePlayer.execute).toHaveBeenCalledWith(1001, 'intent-delete-2', 'stale-delete-state', 'payload');
     const replies = getReplyCalls(ctx);
-    expect(replies[0]?.message).toContain('Это подтверждение уже устарело');
-    expect(replies[0]?.message).toContain('👤 Профиль');
+    expect(replies[0]?.message).toContain('Старое подтверждение больше не действует');
+    expect(replies[0]?.message).toContain('👤 Летопись');
   });
 
   it('пробрасывает intentId для крафта руны через transport payload', async () => {
@@ -1270,8 +1270,8 @@ describe('GameHandler smoke', () => {
 
     await handler.handle(ctx as never);
 
-    expect(getReplyCalls(ctx)[0]?.message).toContain('✨ Что изменилось: Новая руна: Искра Бури.');
-    expect(getReplyCalls(ctx)[0]?.message).toContain('👉 Дальше: Откройте «🔮 Руны» и примерьте её в сборке.');
+    expect(getReplyCalls(ctx)[0]?.message).toContain('✨ Перемена: Новая руна: Искра Бури.');
+    expect(getReplyCalls(ctx)[0]?.message).toContain('👉 Следом: Откройте «🔮 Руны» и примерьте её в сборке.');
   });
 
   it('пробрасывает intentId для перековки руны через transport payload', async () => {
@@ -1341,7 +1341,7 @@ describe('GameHandler smoke', () => {
 
     await handler.handle(ctx as never);
 
-    expect(getReplyCalls(ctx)[0]?.message).toContain('Неизвестная команда');
+    expect(getReplyCalls(ctx)[0]?.message).toContain('Такого пути мастер не знает');
   });
 
   it('пробрасывает intentId для экипировки руны через transport payload', async () => {
@@ -1394,8 +1394,8 @@ describe('GameHandler smoke', () => {
 
     await handler.handle(ctx as never);
 
-    expect(getReplyCalls(ctx)[0]?.message).toContain('✨ Что изменилось: Стиль Пламени закреплён.');
-    expect(getReplyCalls(ctx)[0]?.message).toContain('👉 Дальше: Следующий бой: держите давление');
+    expect(getReplyCalls(ctx)[0]?.message).toContain('✨ Перемена: Стиль Пламени закреплён.');
+    expect(getReplyCalls(ctx)[0]?.message).toContain('👉 Следом: Следующий бой: держите давление');
     expect(JSON.stringify(getReplyCalls(ctx)[0]?.keyboard)).not.toContain('Проверить школу');
     expect(JSON.stringify(getReplyCalls(ctx)[0]?.keyboard)).toContain('К списку рун');
   });
@@ -1560,7 +1560,7 @@ describe('GameHandler smoke', () => {
 
     await handler.handle(ctx as never);
 
-    expect(getReplyCalls(ctx)[0]?.message).toContain('Намерение врага');
+    expect(getReplyCalls(ctx)[0]?.message).toContain('Враг выдаёт замысел');
     expect(getReplyCalls(ctx)[0]?.message).toContain('Тяжёлый удар');
   });
 
@@ -1656,13 +1656,13 @@ describe('GameHandler smoke', () => {
     const ctx = createFakeContext({ command: 'руна слот 4', intentId: 'intent-rune-slot-2', stateKey: 'state-rune-slot-2' });
 
     vi.mocked(services.selectRunePageSlot.execute).mockRejectedValueOnce(
-      new AppError('rune_slot_not_found', 'На этой позиции нет руны. Выберите другой слот на странице.'),
+      new AppError('rune_slot_not_found', 'На этой позиции пусто. Возьмите другой знак со страницы.'),
     );
 
     await handler.handle(ctx as never);
 
     const replies = getReplyCalls(ctx);
-    expect(replies[0]?.message).toContain('На этой позиции нет руны');
+    expect(replies[0]?.message).toContain('На этой позиции пусто');
     expect(JSON.stringify(replies[0]?.keyboard)).not.toContain('✨ Создать');
     expect(JSON.stringify(replies[0]?.keyboard)).toContain('руна слот 1');
   });
@@ -1673,13 +1673,13 @@ describe('GameHandler smoke', () => {
     const ctx = createFakeContext({ command: 'руны >', intentId: 'intent-rune-page-2', stateKey: 'state-rune-page-2' });
 
     vi.mocked(services.moveRuneCursor.execute).mockRejectedValueOnce(
-      new AppError('stale_command_intent', 'Этот экран рун уже устарел. Я открыл актуальные руны.'),
+      new AppError('stale_command_intent', 'Рунная страница сменилась. Вот нынешние знаки.'),
     );
 
     await handler.handle(ctx as never);
 
     const replies = getReplyCalls(ctx);
-    expect(replies[0]?.message).toContain('Этот экран рун уже устарел');
+    expect(replies[0]?.message).toContain('Рунная страница сменилась');
     expect(replies[0]?.message).toContain('🔮 Руны');
     expect(JSON.stringify(replies[0]?.keyboard)).toContain('руны >');
   });
@@ -1690,13 +1690,13 @@ describe('GameHandler smoke', () => {
     const ctx = createFakeContext({ command: 'руна слот 1', intentId: 'intent-rune-slot-3', stateKey: 'state-rune-slot-3' });
 
     vi.mocked(services.selectRunePageSlot.execute).mockRejectedValueOnce(
-      new AppError('command_retry_pending', 'Команда уже обрабатывается. Дождитесь ответа и обновите экран.'),
+      new AppError('command_retry_pending', 'Рунный жест ещё в пути. Дождитесь ответа.'),
     );
 
     await handler.handle(ctx as never);
 
     const replies = getReplyCalls(ctx);
-    expect(replies[0]?.message).toContain('Команда уже обрабатывается');
+    expect(replies[0]?.message).toContain('Рунный жест ещё в пути');
     expect(replies[0]?.message).toContain('🔮 Руны');
     expect(JSON.stringify(replies[0]?.keyboard)).toContain('руна слот 1');
   });
@@ -1707,13 +1707,13 @@ describe('GameHandler smoke', () => {
     const ctx = createFakeContext({ command: 'атака', intentId: 'intent-battle-4', stateKey: 'state-battle-4' });
 
     vi.mocked(services.performBattleAction.execute).mockRejectedValueOnce(
-      new AppError('stale_command_intent', 'Эта кнопка уже устарела. Обновите экран перед повтором команды.'),
+      new AppError('stale_command_intent', 'Этот боевой жест уже выцвел. Вернитесь к свежей развилке боя.'),
     );
 
     await handler.handle(ctx as never);
 
     const replies = getReplyCalls(ctx);
-    expect(replies[0]?.message).toContain('Эта кнопка уже устарела');
+    expect(replies[0]?.message).toContain('Этот боевой жест уже выцвел');
     expect(replies[0]?.message).toContain('⚔️ Бой');
   });
 
@@ -1723,13 +1723,13 @@ describe('GameHandler smoke', () => {
     const ctx = createFakeContext({ command: 'защита', intentId: 'intent-battle-5', stateKey: 'state-battle-5' });
 
     vi.mocked(services.performBattleAction.execute).mockRejectedValueOnce(
-      new AppError('command_retry_pending', 'Команда уже обрабатывается. Дождитесь ответа и обновите экран.'),
+      new AppError('command_retry_pending', 'Боевой жест ещё в пути. Дождитесь ответа.'),
     );
 
     await handler.handle(ctx as never);
 
     const replies = getReplyCalls(ctx);
-    expect(replies[0]?.message).toContain('Команда уже обрабатывается');
+    expect(replies[0]?.message).toContain('Боевой жест ещё в пути');
     expect(replies[0]?.message).toContain('⚔️ Бой');
   });
 
@@ -1740,14 +1740,14 @@ describe('GameHandler smoke', () => {
 
     vi.mocked(services.getActiveBattle.execute).mockResolvedValueOnce(null);
     vi.mocked(services.exploreLocation.execute).mockRejectedValueOnce(
-      new AppError('stale_command_intent', 'Этот вход в приключение уже устарел. Я вернул актуальный контекст приключения.'),
+      new AppError('stale_command_intent', 'След приключения сместился. Вот нынешний путь.'),
     );
 
     await handler.handle(ctx as never);
 
     const replies = getReplyCalls(ctx);
-    expect(replies[0]?.message).toContain('Этот вход в приключение уже устарел');
-    expect(replies[0]?.message).toContain('📘 Обучение');
+    expect(replies[0]?.message).toContain('След приключения сместился');
+    expect(replies[0]?.message).toContain('📘 Учебный круг');
   });
 
   it('восстанавливает рунный контекст после pending retry для перековки', async () => {
@@ -1756,13 +1756,13 @@ describe('GameHandler smoke', () => {
     const ctx = createFakeContext({ command: '~атк', intentId: 'intent-reroll-1', stateKey: 'state-reroll-1' });
 
     vi.mocked(services.rerollCurrentRuneStat.execute).mockRejectedValueOnce(
-      new AppError('command_retry_pending', 'Команда уже обрабатывается. Дождитесь ответа и обновите экран.'),
+      new AppError('command_retry_pending', 'Рунный жест ещё в пути. Дождитесь ответа.'),
     );
 
     await handler.handle(ctx as never);
 
     const replies = getReplyCalls(ctx);
-    expect(replies[0]?.message).toContain('Команда уже обрабатывается');
+    expect(replies[0]?.message).toContain('Рунный жест ещё в пути');
     expect(replies[0]?.message).toContain('🔮 Руна');
     expect(replies[0]?.message).toContain('Редкость: Эпическая руна · Пламя');
   });
@@ -1773,13 +1773,13 @@ describe('GameHandler smoke', () => {
     const ctx = createFakeContext({ command: 'надеть', intentId: 'intent-equip-1', stateKey: 'state-equip-1' });
 
     vi.mocked(services.equipCurrentRune.execute).mockRejectedValueOnce(
-      new AppError('stale_command_intent', 'Эта кнопка уже устарела. Обновите экран перед повтором команды.'),
+      new AppError('stale_command_intent', 'Этот рунный жест уже выцвел. Вернитесь к свежей руне.'),
     );
 
     await handler.handle(ctx as never);
 
     const replies = getReplyCalls(ctx);
-    expect(replies[0]?.message).toContain('Эта кнопка уже устарела');
+    expect(replies[0]?.message).toContain('Этот рунный жест уже выцвел');
     expect(replies[0]?.message).toContain('🔮 Руна');
     expect(JSON.stringify(replies[0]?.keyboard)).toContain('intentId');
     expect(JSON.stringify(replies[0]?.keyboard)).toContain('надеть');
@@ -1791,13 +1791,13 @@ describe('GameHandler smoke', () => {
     const ctx = createFakeContext({ command: 'снять', intentId: 'intent-unequip-1', stateKey: 'state-unequip-1' });
 
     vi.mocked(services.unequipCurrentRune.execute).mockRejectedValueOnce(
-      new AppError('command_retry_pending', 'Команда уже обрабатывается. Дождитесь ответа и обновите экран.'),
+      new AppError('command_retry_pending', 'Рунный жест ещё в пути. Дождитесь ответа.'),
     );
 
     await handler.handle(ctx as never);
 
     const replies = getReplyCalls(ctx);
-    expect(replies[0]?.message).toContain('Команда уже обрабатывается');
+    expect(replies[0]?.message).toContain('Рунный жест ещё в пути');
     expect(replies[0]?.message).toContain('🔮 Руна');
     expect(JSON.stringify(replies[0]?.keyboard)).toContain('надеть');
   });
@@ -1840,7 +1840,7 @@ describe('GameHandler smoke', () => {
 
     expect(services.returnToAdventure.execute).toHaveBeenCalledWith(1001, 'intent-return-1', 'state-return-1', 'payload');
     expect(getReplyCalls(ctx)[0]?.message).toContain('🧭 Возвращение в приключения');
-    expect(getReplyCalls(ctx)[0]?.message).toContain('Дальше: нажмите');
+    expect(getReplyCalls(ctx)[0]?.message).toContain('Дальше: «');
   });
 
   it('выводит server-owned legacy intent для текстового пропуска обучения', async () => {
@@ -1869,14 +1869,14 @@ describe('GameHandler smoke', () => {
     const ctx = createFakeContext({ command: 'пропустить обучение', intentId: 'intent-skip-2', stateKey: 'state-skip-2' });
 
     vi.mocked(services.skipTutorial.execute).mockRejectedValueOnce(
-      new AppError('stale_command_intent', 'Эта кнопка уже устарела. Обновите экран перед повтором команды.'),
+      new AppError('stale_command_intent', 'Этот след уже выцвел. Вернитесь к свежей развилке.'),
     );
 
     await handler.handle(ctx as never);
 
     const replies = getReplyCalls(ctx);
-    expect(replies[0]?.message).toContain('Эта кнопка уже устарела');
-    expect(replies[0]?.message).toContain('📘 Обучение');
+    expect(replies[0]?.message).toContain('Этот след уже выцвел');
+    expect(replies[0]?.message).toContain('📘 Учебный круг');
     expect(JSON.stringify(replies[0]?.keyboard)).toContain('пропустить обучение');
   });
 
@@ -1886,14 +1886,14 @@ describe('GameHandler smoke', () => {
     const ctx = createFakeContext({ command: 'в приключения', intentId: 'intent-return-2', stateKey: 'state-return-2' });
 
     vi.mocked(services.returnToAdventure.execute).mockRejectedValueOnce(
-      new AppError('command_retry_pending', 'Команда уже обрабатывается. Дождитесь ответа и обновите экран.'),
+      new AppError('command_retry_pending', 'Прошлый жест ещё в пути. Дождитесь ответа.'),
     );
 
     await handler.handle(ctx as never);
 
     const replies = getReplyCalls(ctx);
-    expect(replies[0]?.message).toContain('Команда уже обрабатывается');
-    expect(replies[0]?.message).toContain('📘 Обучение');
+    expect(replies[0]?.message).toContain('Прошлый жест ещё в пути');
+    expect(replies[0]?.message).toContain('📘 Учебный круг');
     expect(JSON.stringify(replies[0]?.keyboard)).toContain('Учебный бой');
   });
 
@@ -1903,7 +1903,7 @@ describe('GameHandler smoke', () => {
     const ctx = createFakeContext({ command: 'в приключения', intentId: 'intent-return-3', stateKey: 'state-return-3' });
 
     vi.mocked(services.returnToAdventure.execute).mockRejectedValueOnce(
-      new AppError('battle_in_progress', 'Сначала завершите текущий бой, а потом меняйте маршрут приключения.'),
+      new AppError('battle_in_progress', 'Сначала завершите текущий бой, потом меняйте путь приключения.'),
     );
 
     await handler.handle(ctx as never);

@@ -50,7 +50,7 @@ export class CollectPendingReward {
     const pendingReward = await this.repository.findPendingReward(playerId);
 
     if (!pendingReward || pendingReward.ledgerKey !== ledgerKey) {
-      throw new AppError('pending_reward_not_found', 'Эта добыча уже недоступна. Обновите экран.');
+      throw new AppError('pending_reward_not_found', 'Этого трофея уже нет на поле. Вернитесь к текущей добыче.');
     }
 
     return pendingReward;

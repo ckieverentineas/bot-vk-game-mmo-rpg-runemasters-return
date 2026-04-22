@@ -98,7 +98,7 @@ export class ExploreLocation {
       }
 
       if (replay?.status === 'PENDING') {
-        throw new AppError('command_retry_pending', 'Команда уже обрабатывается. Дождитесь ответа и обновите экран.');
+        throw new AppError('command_retry_pending', 'Прошлый жест ещё в пути. Дождитесь ответа.');
       }
     }
 
@@ -113,7 +113,7 @@ export class ExploreLocation {
       }
 
       if (replay?.status === 'PENDING') {
-        throw new AppError('command_retry_pending', 'Команда уже обрабатывается. Дождитесь ответа и обновите экран.');
+        throw new AppError('command_retry_pending', 'Прошлый жест ещё в пути. Дождитесь ответа.');
       }
     }
 
@@ -142,7 +142,7 @@ export class ExploreLocation {
       : scopedIntent;
 
     if (intentSource !== 'legacy_text' && scopedCreateIntent && scopedCreateIntent.intentStateKey !== currentStateKey) {
-      throw new AppError('stale_command_intent', 'Эта кнопка уже устарела. Я вернул актуальный контекст приключения.');
+      throw new AppError('stale_command_intent', 'След приключения сместился. Вот нынешний путь.');
     }
 
     const commandOptions = {

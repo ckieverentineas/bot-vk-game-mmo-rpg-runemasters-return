@@ -279,10 +279,10 @@ describe('messages school-first onboarding framing', () => {
       },
     }, createPlayer({ tutorialState: 'SKIPPED', locationLevel: 1 }));
 
-    expect(message).toContain('Тип: находка');
+    expect(message).toContain('Знак: находка');
     expect(message).toContain('Мастер снабжения');
     expect(message).toContain('Найдено: трава +1.');
-    expect(message).not.toContain('Действия:');
+    expect(message).not.toContain('Ответ мастера:');
   });
 
   it('teases schools on the empty rune screen', () => {
@@ -377,12 +377,12 @@ describe('messages school-first onboarding framing', () => {
     const location = renderLocation(player);
 
     expect(welcome).toContain('🧭 Возвращение');
-    expect(welcome).toContain('🧭 Дальше: нажмите «⚔️ Исследовать»');
+    expect(welcome).toContain('🧭 Дальше: «⚔️ Исследовать»');
     expect(welcome).not.toContain('Ваш мастер уже существует');
     expect(welcome).not.toContain('учебная зона доступна для спокойной тренировки');
     expect(menu).not.toContain('Первый бой ведёт к первой руне');
-    expect(location).toContain('Обучение уже пропущено');
-    expect(location).toContain('Сейчас открыт режим приключений');
+    expect(location).toContain('Учебный круг оставлен позади');
+    expect(location).toContain('Дороги открыты');
     expect(location).toContain('Исследовать');
   });
 
@@ -393,10 +393,10 @@ describe('messages school-first onboarding framing', () => {
     const location = renderLocation(player);
 
     expect(recap).toContain('🧭 Возвращение');
-    expect(recap).toContain('🧭 Дальше: нажмите «⚔️ Исследовать»');
+    expect(recap).toContain('🧭 Дальше: «⚔️ Исследовать»');
     expect(recap).not.toContain('Учебный бой');
-    expect(location).toContain('Обучение уже завершено');
-    expect(location).toContain('Сейчас открыт режим приключений');
+    expect(location).toContain('Учебный круг завершён');
+    expect(location).toContain('Дороги открыты');
   });
 
   it('builds a calm return recap from current state and equipped school', () => {
@@ -412,9 +412,9 @@ describe('messages school-first onboarding framing', () => {
     expect(message).toContain('🧭 Возвращение');
     expect(message).toContain('Стиль: Школа Пламени · роль штурм.');
     expect(message).toContain('Статус школы: Вы уже пережили большой бой Пламени: школа доверила вам печать давления и дожима');
-    expect(message).toContain('🎯 Следующая цель: одержите ещё 2 победы школой Пламени');
-    expect(message).toContain('🜂 Что это даст: После «Импульса углей»');
-    expect(message).toContain('🧭 Дальше: нажмите «⚔️ Исследовать».');
+    expect(message).toContain('🎯 След: одержите ещё 2 победы школой Пламени');
+    expect(message).toContain('🜂 Зачем идти: После «Импульса углей»');
+    expect(message).toContain('🧭 Дальше: «⚔️ Исследовать».');
   });
 
   it('shows school mastery progress in the main menu once a rune is equipped', () => {
@@ -464,8 +464,8 @@ describe('messages school-first onboarding framing', () => {
   it('keeps active tutorial recap focused on the first training battle', () => {
     const message = renderReturnRecap(createPlayer({ tutorialState: 'ACTIVE', locationLevel: 0 }));
 
-    expect(message).toContain('до первой руны и школы рун остался один шаг');
-    expect(message).toContain('🧭 Дальше: нажмите «⚔️ Учебный бой».');
+    expect(message).toContain('до первой руны и школы остался один бой');
+    expect(message).toContain('🧭 Дальше: «⚔️ Учебный бой».');
   });
 
   it('keeps return recap and post-session guidance free from guilt/fomo wording', () => {
@@ -489,8 +489,8 @@ describe('messages school-first onboarding framing', () => {
       },
     }));
 
-    expect(message).toContain('🎯 Следующая цель: откройте «🔮 Руны» и наденьте новую руну.');
-    expect(message).toContain('👉 Дальше: нажмите «🔮 Руны».');
+    expect(message).toContain('🎯 След: откройте «🔮 Руны» и наденьте новую руну.');
+    expect(message).toContain('👉 Дальше: «🔮 Руны».');
   });
 
   it('adds a forward-looking next goal after victory without a rune drop', () => {
@@ -501,8 +501,8 @@ describe('messages school-first onboarding framing', () => {
       runes: [createEquippedRareRune(), createUnusualReserveRune()],
     }));
 
-    expect(message).toContain('🎯 Следующая цель: одержите ещё 2 победы школой Пламени');
-    expect(message).toContain('👉 Дальше: нажмите «⚔️ Исследовать».');
+    expect(message).toContain('🎯 След: одержите ещё 2 победы школой Пламени');
+    expect(message).toContain('👉 Дальше: «⚔️ Исследовать».');
   });
 
   it('keeps defeat follow-up supportive and without pressure wording', () => {
@@ -512,8 +512,8 @@ describe('messages school-first onboarding framing', () => {
       log: ['💥 Поражение.'],
     }), createPlayer({ tutorialState: 'SKIPPED', runes: [createEquippedRune()] }));
 
-    expect(message).toContain('🎯 Следующая цель: проверьте «🔮 Руны» и текущую школу или спокойно продолжите исследование снова.');
-    expect(message).toContain('👉 Дальше: нажмите «🔮 Руны».');
+    expect(message).toContain('🎯 След: проверьте «🔮 Руны» и текущую школу или спокойно продолжите исследование снова.');
+    expect(message).toContain('👉 Дальше: «🔮 Руны».');
   });
 
   it('shows the nearest school milestone in the main menu once mastery progress exists', () => {
@@ -525,8 +525,8 @@ describe('messages school-first onboarding framing', () => {
     }));
 
     expect(message).toContain('⭐ Печать Пламени: Вы уже пережили большой бой Пламени');
-    expect(message).toContain('🎯 Следующая цель: одержите ещё 2 победы школой Пламени');
-    expect(message).toContain('👉 Сделать шаг: нажмите «⚔️ Исследовать».');
+    expect(message).toContain('🎯 След: одержите ещё 2 победы школой Пламени');
+    expect(message).toContain('👉 Сделать шаг: «⚔️ Исследовать».');
   });
 
   it('shows school sign equip guidance after recognition if the unusual rune is still not equipped', () => {
@@ -539,8 +539,8 @@ describe('messages school-first onboarding framing', () => {
 
     expect(message).toContain('⭐ Первый знак Пламени: Вы уже прошли первое испытание Пламени.');
     expect(message).toContain('Первый знак школы ждёт в рунах');
-    expect(message).toContain('🎯 Следующая цель: откройте «🔮 Руны» и наденьте первый знак школы Пламени.');
-    expect(message).toContain('👉 Сделать шаг: нажмите «🔮 Руны».');
+    expect(message).toContain('🎯 След: откройте «🔮 Руны» и наденьте первый знак школы Пламени.');
+    expect(message).toContain('👉 Сделать шаг: «🔮 Руны».');
   });
 
   it('keeps the first-sign follow-up under the normal explore CTA', () => {
@@ -551,10 +551,10 @@ describe('messages school-first onboarding framing', () => {
       runes: [createEquippedUnusualRune()],
     });
 
-    expect(renderReturnRecap(player)).toContain('🧭 Дальше: нажмите «⚔️ Исследовать».');
-    expect(renderMainMenu(player)).toContain('👉 Сделать шаг: нажмите «⚔️ Исследовать».');
+    expect(renderReturnRecap(player)).toContain('🧭 Дальше: «⚔️ Исследовать».');
+    expect(renderMainMenu(player)).toContain('👉 Сделать шаг: «⚔️ Исследовать».');
     expect(renderRuneScreen(player)).not.toContain('Проверить школу');
-    expect(renderBattle(createBattle(), player)).toContain('👉 Дальше: нажмите «⚔️ Исследовать».');
+    expect(renderBattle(createBattle(), player)).toContain('👉 Дальше: «⚔️ Исследовать».');
   });
 
   it('guides the player to equip the school seal after the miniboss reward if the rare rune is still in reserve', () => {
@@ -573,8 +573,8 @@ describe('messages school-first onboarding framing', () => {
 
     expect(message).toContain('⭐ Печать Пламени: Вы уже пережили большой бой Пламени.');
     expect(message).toContain('Печать школы ждёт в рунах');
-    expect(message).toContain('🎯 Следующая цель: откройте «🔮 Руны» и наденьте печать школы Пламени.');
-    expect(message).toContain('👉 Сделать шаг: нажмите «🔮 Руны».');
+    expect(message).toContain('🎯 След: откройте «🔮 Руны» и наденьте печать школы Пламени.');
+    expect(message).toContain('👉 Сделать шаг: «🔮 Руны».');
   });
 
   it('shows the school miniboss milestone once the first sign is already equipped', () => {
@@ -585,8 +585,8 @@ describe('messages school-first onboarding framing', () => {
       runes: [createEquippedUnusualRune()],
     }));
 
-    expect(message).toContain('🎯 Следующая цель: разыщите Пепельную матрону');
-    expect(message).toContain('👉 Сделать шаг: нажмите «⚔️ Исследовать».');
+    expect(message).toContain('🎯 След: разыщите Пепельную матрону');
+    expect(message).toContain('👉 Сделать шаг: «⚔️ Исследовать».');
   });
 
   it('shows a school novice path milestone before the first unusual school rune is earned', () => {
@@ -597,8 +597,8 @@ describe('messages school-first onboarding framing', () => {
       runes: [createEquippedRune()],
     }));
 
-    expect(message).toContain('🎯 Следующая цель: разыщите Пепельную ведунью');
-    expect(message).toContain('👉 Сделать шаг: нажмите «⚔️ Исследовать».');
+    expect(message).toContain('🎯 След: разыщите Пепельную ведунью');
+    expect(message).toContain('👉 Сделать шаг: «⚔️ Исследовать».');
   });
 
   it('shows an echo novice path milestone once the player reaches Прорицание without an unusual rune yet', () => {
@@ -615,8 +615,8 @@ describe('messages school-first onboarding framing', () => {
       }],
     }));
 
-    expect(message).toContain('🎯 Следующая цель: разыщите Слепого авгура');
-    expect(message).toContain('👉 Сделать шаг: нажмите «⚔️ Исследовать».');
+    expect(message).toContain('🎯 След: разыщите Слепого авгура');
+    expect(message).toContain('👉 Сделать шаг: «⚔️ Исследовать».');
   });
 
   it('shows a gale novice path milestone once the player reaches Буря without an unusual rune yet', () => {
@@ -633,8 +633,8 @@ describe('messages school-first onboarding framing', () => {
       }],
     }));
 
-    expect(message).toContain('🎯 Следующая цель: разыщите Шквальную рысь');
-    expect(message).toContain('👉 Сделать шаг: нажмите «⚔️ Исследовать».');
+    expect(message).toContain('🎯 След: разыщите Шквальную рысь');
+    expect(message).toContain('👉 Сделать шаг: «⚔️ Исследовать».');
   });
 
   it('shows gale seal recognition once the rare gale rune is already equipped', () => {
@@ -677,8 +677,8 @@ describe('messages school-first onboarding framing', () => {
       nextStepLine: 'Откройте «🔮 Руны» и примерьте её в сборке.',
     });
 
-    expect(message).toContain('✨ Что изменилось: Новая руна: Искра Бури.');
-    expect(message).toContain('👉 Дальше: Откройте «🔮 Руны» и примерьте её в сборке.');
+    expect(message).toContain('✨ Перемена: Новая руна: Искра Бури.');
+    expect(message).toContain('👉 Следом: Откройте «🔮 Руны» и примерьте её в сборке.');
   });
 
   it('shows both rune slots in battle text and actions', () => {
@@ -725,7 +725,7 @@ describe('messages school-first onboarding framing', () => {
 
     expect(message).toContain('🌀 Слот 1: Импульс углей — готово');
     expect(message).toContain('🌀 Слот 2: Шаг шквала — готово');
-    expect(message).toContain('🎮 Действия: ⚔️ Атака · 🛡️ Защита (+2 щит) · 🌀 1: Импульс углей · 🌀 2: Шаг шквала');
+    expect(message).toContain('⚔️ Ответ мастера: ⚔️ Атака · 🛡️ Защита (+2 щит) · 🌀 1: Импульс углей · 🌀 2: Шаг шквала');
   });
 
   it('shows a compact combat clarity state line during the active player turn', () => {
@@ -765,15 +765,15 @@ describe('messages school-first onboarding framing', () => {
       },
     }));
 
-    expect(message).toContain('Состояние');
+    expect(message).toContain('Поле боя');
     expect(message).toContain('Вы: Рунный мастер #1001');
     expect(message).toContain('❤️ 🟩🟩🟩🟩🟩🟩🟩🟩⬛⬛ 6/8 HP · 🛡️ щит 3');
     expect(message).toContain('🔷 🟦🟦🟦🟦🟦🟦 4/4 маны');
-    expect(message).toContain('📊 Статы: ⚔️ 4 · 🛡️ 3 · 🔮 1 · 💨 3 · 🧠 1');
+    expect(message).toContain('📊 Черты: ⚔️ 4 · 🛡️ 3 · 🔮 1 · 💨 3 · 🧠 1');
     expect(message).toContain('Враг: Учебный огонёк');
     expect(message).toContain('❤️ 🟨🟨🟨🟨🟨⬛⬛⬛⬛⬛ 3/6 HP');
-    expect(message).toContain('📊 Статы: ⚔️ 2 · 🛡️ 0 · 🔮 0 · 💨 2 · 🧠 1');
-    expect(message).toContain('Тактика');
+    expect(message).toContain('📊 Черты: ⚔️ 2 · 🛡️ 0 · 🔮 0 · 💨 2 · 🧠 1');
+    expect(message).toContain('Чтение боя');
     expect(message).toContain('🔥 Пламя: враг уже просел');
   });
 
@@ -791,11 +791,11 @@ describe('messages school-first onboarding framing', () => {
     }));
 
     expect(message).toContain('🧭 Встреча');
-    expect(message).toContain('Решение');
-    expect(message).toContain('Шанс отступить: 52%');
+    expect(message).toContain('Развилка');
+    expect(message).toContain('Тропа назад: 52%');
     expect(message).toContain('враг успеет начать первым');
-    expect(message).not.toContain('Тактика');
-    expect(message).not.toContain('🎮 Действия:');
+    expect(message).not.toContain('Чтение боя');
+    expect(message).not.toContain('⚔️ Ответ мастера:');
   });
 
   it('shows the full battle log newest-first while it remains short enough to read', () => {
@@ -812,7 +812,7 @@ describe('messages school-first onboarding framing', () => {
       ],
     }));
 
-    expect(message).toContain('Ход событий');
+    expect(message).toContain('Летопись схватки');
     expect(message).toContain('• 🗺️ Тёмный лес: на вас выходит обычный враг Синий слизень.');
     expect(message).toContain('• 🧭 Путевой эпизод: вы находите свежие следы.');
     expect(message).toContain('• 🌀 Импульс углей прожигает Синий слизень на 8 урона.');
@@ -843,7 +843,7 @@ describe('messages school-first onboarding framing', () => {
     }));
 
     expect(message).toContain('• 🗺️ Тёмный лес: на вас выходит обычный враг Синий слизень.');
-    expect(message).toContain('… ещё 2 события между свежими событиями и началом боя');
+    expect(message).toContain('… ещё 2 события между нынешним мигом и началом схватки');
     expect(message).not.toContain('• 🧭 Путевой эпизод: вы находите свежие следы.');
     expect(message).not.toContain('• ⚔️ Вы наносите 4 урона врагу Синий слизень.');
     expect(message).toContain('• ⚠️ Синий слизень готовит «Кислотный прорыв».');
@@ -896,8 +896,8 @@ describe('messages school-first onboarding framing', () => {
       nextStepLine: 'Откройте «🔮 Руны» и выберите, какой слот занять новой руной.',
     });
 
-    expect(message).toContain('✨ Что изменилось: Открыт новый слот рун.');
-    expect(message).toContain('👉 Дальше: Откройте «🔮 Руны» и выберите, какой слот занять новой руной.');
+    expect(message).toContain('✨ Перемена: Открыт новый слот рун.');
+    expect(message).toContain('👉 Следом: Откройте «🔮 Руны» и выберите, какой слот занять новой руной.');
   });
 
   it('celebrates the first aligned school trial completion in battle result', () => {
@@ -919,18 +919,18 @@ describe('messages school-first onboarding framing', () => {
       nextStepLine: 'Откройте «🔮 Руны», наденьте первый знак школы и закрепите стиль в следующем бою.',
     });
 
-    expect(message).toContain('✨ Что изменилось: Испытание школы пройдено.');
-    expect(message).toContain('👉 Дальше: Откройте «🔮 Руны», наденьте первый знак школы');
+    expect(message).toContain('✨ Перемена: Испытание школы пройдено.');
+    expect(message).toContain('👉 Следом: Откройте «🔮 Руны», наденьте первый знак школы');
   });
 
   it('renders a pending trophy card with meaningful action previews', () => {
     const message = renderPendingReward(createPendingReward());
 
-    expect(message).toContain('🏁 Добыча после победы');
+    expect(message).toContain('🏁 Трофеи победы');
     expect(message).toContain('Лесной волк повержен');
-    expect(message).toContain('Боевая награда уже закреплена: +14 опыта · +5 пыли · +2 обычные осколки.');
-    expect(message).toContain('🔪 Свежевать — +2 кожа · +1 кость; Свежевание.');
-    expect(message).toContain('🎒 Забрать добычу — +2 кожа · +1 кость; без роста навыка.');
+    expect(message).toContain('Уже ваше: +14 опыта · +5 пыли · +2 обычные осколки.');
+    expect(message).toContain('🔪 Свежевать — +2 кожа · +1 кость; мастерство: Свежевание.');
+    expect(message).toContain('🎒 Забрать добычу — +2 кожа · +1 кость; мастерство: без роста навыка.');
   });
 
   it('renders collected trophy results and the next player goal', () => {
@@ -960,8 +960,8 @@ describe('messages school-first onboarding framing', () => {
     const message = renderCollectedPendingReward(result);
 
     expect(message).toContain('🔪 Свежевать');
-    expect(message).toContain('Получено: +2 кожа · +1 кость.');
+    expect(message).toContain('В сумке: +2 кожа · +1 кость.');
     expect(message).toContain('Свежевание: 3 → 4');
-    expect(message).toContain('👉 Дальше: нажмите «⚔️ Исследовать».');
+    expect(message).toContain('👉 Дальше: «⚔️ Исследовать».');
   });
 });

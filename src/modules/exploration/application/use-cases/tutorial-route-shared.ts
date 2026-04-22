@@ -22,9 +22,9 @@ type TutorialRouteState = Pick<
   'locationLevel' | 'highestLocationLevel' | 'tutorialState' | 'victoryStreak' | 'defeatStreak'
 >;
 
-const tutorialRoutePendingMessage = 'Команда уже обрабатывается. Дождитесь ответа и обновите экран.';
-const tutorialRouteStaleMessage = 'Эта кнопка уже устарела. Обновите экран перед повтором команды.';
-const tutorialRouteBattleInProgressMessage = 'Сначала завершите текущий бой, а потом меняйте маршрут приключения.';
+const tutorialRoutePendingMessage = 'Прошлый жест ещё в пути. Дождитесь ответа.';
+const tutorialRouteStaleMessage = 'Этот след уже выцвел. Вернитесь к свежей развилке.';
+const tutorialRouteBattleInProgressMessage = 'Сначала завершите текущий бой, потом меняйте путь приключения.';
 
 export const loadTutorialRouteReplayResult = async (
   repository: GameRepository,

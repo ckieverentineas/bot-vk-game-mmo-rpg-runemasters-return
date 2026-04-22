@@ -69,7 +69,7 @@ export class PerformBattleAction {
       }
 
       if (replay?.status === 'PENDING') {
-        throw new AppError('command_retry_pending', 'Команда уже обрабатывается. Дождитесь ответа и обновите экран.');
+        throw new AppError('command_retry_pending', 'Боевой жест ещё в пути. Дождитесь ответа.');
       }
     }
 
@@ -84,7 +84,7 @@ export class PerformBattleAction {
       }
 
       if (replay?.status === 'PENDING') {
-        throw new AppError('command_retry_pending', 'Команда уже обрабатывается. Дождитесь ответа и обновите экран.');
+        throw new AppError('command_retry_pending', 'Боевой жест ещё в пути. Дождитесь ответа.');
       }
     }
 
@@ -99,7 +99,7 @@ export class PerformBattleAction {
       : scopedIntent;
 
     if (intent && intent.intentStateKey !== currentStateKey) {
-      throw new AppError('stale_command_intent', 'Эта кнопка уже устарела. Обновите экран перед повтором команды.');
+      throw new AppError('stale_command_intent', 'Этот боевой жест уже выцвел. Вернитесь к свежей развилке боя.');
     }
 
     const commandOptions = {

@@ -29,23 +29,23 @@ export class SelectRunePageSlot {
       }
 
       if (replay?.status === 'PENDING') {
-        throw new AppError('command_retry_pending', 'Команда уже обрабатывается. Дождитесь ответа и обновите экран.');
+        throw new AppError('command_retry_pending', 'Рунный жест ещё в пути. Дождитесь ответа.');
       }
     }
 
     const currentStateKey = buildSelectRunePageSlotIntentStateKey(player, slot);
     const intent = resolveCommandIntent(intentId, intentStateKey, intentSource, false);
     if (!intent) {
-      throw new AppError('stale_command_intent', 'Этот экран рун уже устарел. Я открыл актуальные руны.');
+      throw new AppError('stale_command_intent', 'Рунная страница сменилась. Вот нынешние знаки.');
     }
 
     if (intentSource !== 'legacy_text' && intent.intentStateKey !== currentStateKey) {
-      throw new AppError('stale_command_intent', 'Этот экран рун уже устарел. Я открыл актуальные руны.');
+      throw new AppError('stale_command_intent', 'Рунная страница сменилась. Вот нынешние знаки.');
     }
 
     const targetIndex = resolveRunePageSlotIndex(player.currentRuneIndex, player.runes.length, slot);
     if (targetIndex === null) {
-      throw new AppError('rune_slot_not_found', 'На этой позиции нет руны. Выберите другой слот на странице.');
+      throw new AppError('rune_slot_not_found', 'На этой позиции пусто. Возьмите другой знак со страницы.');
     }
 
     return this.repository.saveRuneCursor(player.playerId, targetIndex, {

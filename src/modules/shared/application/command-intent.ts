@@ -18,7 +18,7 @@ export const resolveCommandIntent = (
 
   if (source === 'legacy_text') {
     if (!hasIntentId || hasStateKey) {
-      throw new AppError('stale_command_intent', 'Эта кнопка уже устарела. Обновите экран перед повтором команды.');
+      throw new AppError('stale_command_intent', 'Этот след уже выцвел. Вернитесь к свежей развилке.');
     }
 
     return {
@@ -28,12 +28,12 @@ export const resolveCommandIntent = (
   }
 
   if (hasIntentId !== hasStateKey) {
-    throw new AppError('stale_command_intent', 'Эта кнопка уже устарела. Обновите экран перед повтором команды.');
+    throw new AppError('stale_command_intent', 'Этот след уже выцвел. Вернитесь к свежей развилке.');
   }
 
   if (!hasIntentId || !hasStateKey) {
     if (!allowUnscoped) {
-      throw new AppError('stale_command_intent', 'Эта кнопка уже устарела. Обновите экран перед повтором команды.');
+      throw new AppError('stale_command_intent', 'Этот след уже выцвел. Вернитесь к свежей развилке.');
     }
 
     return null;

@@ -75,7 +75,7 @@ describe('resolveGameMasterEncounterLine', () => {
     });
 
     expect(line).toContain('проверку сборки');
-    expect(line).toContain('не одна сильная кнопка');
+    expect(line).toContain('не один сильный приём');
   });
 
   it('stays silent for ordinary encounters', () => {

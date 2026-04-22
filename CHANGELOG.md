@@ -70,6 +70,7 @@
 
 ### Changed
 
+- player-facing copy в бою, трофеях, return recap, main menu, exploration-сценах и stale/retry ответах переписан ближе к языку мира: меньше “нажмите”, “режим”, “статы”, “тип” и служебных UI-ярлыков, больше следа, трофеев, развилки и летописи схватки;
 - documentation reset: `PLAN.md`, `QUICKSTART.md` и `RELEASE_CHECKLIST.md` теперь описывают фактический runtime, текущие release blockers и недоказанные evidence-gate пункты вместо устаревших stat allocation / DB seed сценариев;
 - `release:status`, `release:summary` и `release:preflight` больше не превращают ошибку чтения Git-истории в ложную версию `0.00`; commit count читается от корня проекта с одноразовым `safe.directory`, а некорректный вывод Git теперь падает явно;
 - player-facing версия игры закреплена за commit-based политикой `release:status`, а `package.json` остаётся технической npm-метаинформацией;

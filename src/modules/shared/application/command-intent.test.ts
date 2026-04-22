@@ -8,8 +8,8 @@ describe('resolveCommandIntent', () => {
   });
 
   it('rejects incomplete intent envelopes', () => {
-    expect(() => resolveCommandIntent('intent-only', undefined)).toThrowError('Эта кнопка уже устарела');
-    expect(() => resolveCommandIntent(undefined, 'state-only')).toThrowError('Эта кнопка уже устарела');
+    expect(() => resolveCommandIntent('intent-only', undefined)).toThrowError('Этот след уже выцвел');
+    expect(() => resolveCommandIntent(undefined, 'state-only')).toThrowError('Этот след уже выцвел');
   });
 
   it('synthesizes the state key for legacy text intents', () => {
@@ -20,6 +20,6 @@ describe('resolveCommandIntent', () => {
   });
 
   it('rejects missing intent data when a command requires scoped replay protection', () => {
-    expect(() => resolveCommandIntent(undefined, undefined, 'payload', false)).toThrowError('Эта кнопка уже устарела');
+    expect(() => resolveCommandIntent(undefined, undefined, 'payload', false)).toThrowError('Этот след уже выцвел');
   });
 });

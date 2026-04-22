@@ -109,7 +109,7 @@ const createMainMenuLayout = (player?: PlayerState): KeyboardLayout => {
 
   return [
     [
-      { label: '👤 Профиль', command: gameCommands.profile, color: Keyboard.PRIMARY_COLOR },
+      { label: '👤 Летопись', command: gameCommands.profile, color: Keyboard.PRIMARY_COLOR },
       { label: '🎒 Инвентарь', command: gameCommands.inventory, color: Keyboard.SECONDARY_COLOR },
     ],
     [
@@ -210,7 +210,7 @@ const createBattleResultLayout = (battle: BattleView, player?: PlayerState): Key
       ]
     : [{ label: exploreLabel, command: gameCommands.explore, color: Keyboard.POSITIVE_COLOR, intentScoped: Boolean(player), stateKey: exploreStateKey }],
   [
-    { label: '👤 Профиль', command: gameCommands.profile, color: Keyboard.PRIMARY_COLOR },
+    { label: '👤 Летопись', command: gameCommands.profile, color: Keyboard.PRIMARY_COLOR },
     { label: '◀ Главное меню', command: gameCommands.backToMenu, color: Keyboard.SECONDARY_COLOR },
   ],
   ];

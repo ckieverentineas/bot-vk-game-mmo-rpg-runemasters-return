@@ -24,7 +24,7 @@ export class EnterTutorialMode {
       : resolveCommandIntent(intentId, intentStateKey, intentSource, intentSource === null);
 
     if (player.activeBattleId) {
-      throw new AppError('battle_in_progress', 'Сначала завершите текущий бой, а потом возвращайтесь к экрану обучения.');
+      throw new AppError('battle_in_progress', 'Сначала завершите текущий бой, потом возвращайтесь к учебному кругу.');
     }
 
     const currentStateKey = buildEnterTutorialModeIntentStateKey(player);
@@ -41,11 +41,11 @@ export class EnterTutorialMode {
           return replay.result;
         }
 
-        throw new AppError('stale_command_intent', 'Этот экран обучения уже устарел. Я открыл актуальный маршрут героя.');
+        throw new AppError('stale_command_intent', 'Учебная тропа сменилась. Вот нынешний путь героя.');
       }
 
       if (replay?.status === 'PENDING') {
-        throw new AppError('command_retry_pending', 'Команда уже обрабатывается. Дождитесь ответа и обновите экран.');
+        throw new AppError('command_retry_pending', 'Прошлый жест ещё в пути. Дождитесь ответа.');
       }
     }
 
@@ -60,11 +60,11 @@ export class EnterTutorialMode {
           return replay.result;
         }
 
-        throw new AppError('stale_command_intent', 'Этот экран обучения уже устарел. Я открыл актуальный маршрут героя.');
+        throw new AppError('stale_command_intent', 'Учебная тропа сменилась. Вот нынешний путь героя.');
       }
 
       if (replay?.status === 'PENDING') {
-        throw new AppError('command_retry_pending', 'Команда уже обрабатывается. Дождитесь ответа и обновите экран.');
+        throw new AppError('command_retry_pending', 'Прошлый жест ещё в пути. Дождитесь ответа.');
       }
     }
 
@@ -73,7 +73,7 @@ export class EnterTutorialMode {
       : scopedIntent;
 
     if (intentSource !== 'legacy_text' && saveIntent && saveIntent.intentStateKey !== currentStateKey) {
-      throw new AppError('stale_command_intent', 'Этот экран обучения уже устарел. Я открыл актуальный маршрут героя.');
+      throw new AppError('stale_command_intent', 'Учебная тропа сменилась. Вот нынешний путь героя.');
     }
 
     if (player.tutorialState !== 'ACTIVE') {

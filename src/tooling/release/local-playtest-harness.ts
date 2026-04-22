@@ -169,7 +169,7 @@ const isSuspiciousReply = (reply: string): boolean => (
 );
 
 const isTrophyCollectionReply = (reply: string): boolean => (
-  reply.includes('Трофей обработан') || reply.includes('Добыча собрана')
+  reply.includes('Трофей разобран') || reply.includes('В сумке:')
 );
 
 const countLogsByAction = (logs: readonly LocalPlaytestLogEntry[]): Record<string, number> => (

@@ -254,7 +254,7 @@ describe('local playtest harness', () => {
       activeBattle: null,
       pendingRewardOpen: false,
       transcript: [
-        { label: 'collect-skin-beast', command: gameCommands.skinBeastReward, payload: null, reply: 'Трофей обработан: Training Wisp.' },
+        { label: 'collect-skin-beast', command: gameCommands.skinBeastReward, payload: null, reply: 'Трофей разобран: Training Wisp.\nВ сумке: +1 эссенция.' },
         { label: 'profile', command: gameCommands.profile, payload: null, reply: 'profile' },
       ],
       logs: [{ action: 'player_registered' }],

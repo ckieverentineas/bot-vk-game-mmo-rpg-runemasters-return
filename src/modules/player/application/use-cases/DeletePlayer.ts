@@ -14,7 +14,7 @@ export class DeletePlayer {
   ): Promise<void> {
     const intent = resolveCommandIntent(intentId, intentStateKey, intentSource, false);
     if (!intent) {
-      throw new AppError('stale_command_intent', 'Это подтверждение уже устарело. Откройте профиль и начните заново, если всё ещё хотите удалить персонажа.');
+      throw new AppError('stale_command_intent', 'Старое подтверждение больше не действует. Вернитесь в летопись, если всё ещё хотите удалить персонажа.');
     }
 
     await this.repository.confirmDeletePlayer(vkId, intent.intentId, intent.intentStateKey);

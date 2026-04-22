@@ -59,7 +59,7 @@ const resolveBossLine = (enemy: BattleEnemySnapshot): string | null => {
     return null;
   }
 
-  return '🎲 Совет мастеров помечает бой как проверку сборки: здесь важны ротация, защита и выбор момента, а не одна сильная кнопка.';
+  return '🎲 Совет мастеров помечает бой как проверку сборки: здесь важны ритм, защита и верный миг удара, а не один сильный приём.';
 };
 
 const resolveEliteLine = (enemy: BattleEnemySnapshot): string | null => {

@@ -184,8 +184,8 @@ const renderAcquisitionSummary = (summary: AcquisitionSummaryView | null | undef
 
   return [
     '',
-    `✨ Что изменилось: ${withSentencePeriod(summary.title)}`,
-    ...(summary.nextStepLine ? [`👉 Дальше: ${withSentencePeriod(summary.nextStepLine)}`] : []),
+    `✨ Перемена: ${withSentencePeriod(summary.title)}`,
+    ...(summary.nextStepLine ? [`👉 Следом: ${withSentencePeriod(summary.nextStepLine)}`] : []),
   ];
 };
 
@@ -193,9 +193,9 @@ const renderNextGoalSummary = (
   nextGoal: ReturnType<typeof buildPlayerNextGoalView>,
   actionPrefix = '👉 Сделать шаг',
 ): string[] => [
-  `🎯 Следующая цель: ${withSentencePeriod(nextGoal.objectiveText)}`,
-  ...(nextGoal.whyText ? [`🜂 Что это даст: ${withSentencePeriod(nextGoal.whyText)}`] : []),
-  `${actionPrefix}: нажмите «${nextGoal.primaryActionLabel}».`,
+  `🎯 След: ${withSentencePeriod(nextGoal.objectiveText)}`,
+  ...(nextGoal.whyText ? [`🜂 Зачем идти: ${withSentencePeriod(nextGoal.whyText)}`] : []),
+  `${actionPrefix}: «${nextGoal.primaryActionLabel}».`,
 ];
 
 const renderSchoolFirstLoopLine = (): string => 'Путь первого входа: базовая атака → первая боевая руна → школа рун → новый стиль боя.';
@@ -233,7 +233,7 @@ const formatSkillTitles = (skillCodes: readonly string[]): string => {
 
 const formatTrophyActionPreview = (action: PendingRewardView['snapshot']['trophyActions'][number]): string => {
   const rewardLine = action.reward ? formatInventoryDelta(action.reward.inventoryDelta) : 'добыча без предпросмотра';
-  return `${action.label} — ${rewardLine}; ${formatSkillTitles(action.skillCodes)}.`;
+  return `${action.label} — ${rewardLine}; мастерство: ${formatSkillTitles(action.skillCodes)}.`;
 };
 
 const formatPlayerSkillProgress = (skill: NonNullable<PlayerState['skills']>[number]): string => {
@@ -266,18 +266,18 @@ export const renderPendingReward = (
   acquisitionSummary?: AcquisitionSummaryView | null,
 ): string => {
   const sourceLine = pendingReward.source
-    ? `${pendingReward.source.enemyName} повержен. Можно быстро забрать добычу или обработать трофей.`
-    : 'Победа уже зафиксирована. Можно быстро забрать добычу или обработать трофей.';
+    ? `${pendingReward.source.enemyName} повержен. На поле остался трофей: можно забрать всё как есть или обработать добычу.`
+    : 'Победа уже зафиксирована. Трофей ждёт: можно забрать всё как есть или обработать добычу.';
 
   return [
-    '🏁 Добыча после победы',
+    '🏁 Трофеи победы',
     '',
     sourceLine,
-    `Боевая награда уже закреплена: ${formatBaseRewardLine(pendingReward)}.`,
+    `Уже ваше: ${formatBaseRewardLine(pendingReward)}.`,
     ...renderAcquisitionSummary(acquisitionSummary),
-    'Выберите одно действие для трофея. Повтор кнопки не даст награду второй раз.',
+    'Трофей поддастся только одному подходу; повторный жест не принесёт второй добычи.',
     '',
-    'Доступные действия:',
+    'Подход к трофею:',
     ...pendingReward.snapshot.trophyActions.map(formatTrophyActionPreview),
   ].join('\n');
 };
@@ -289,15 +289,15 @@ export const renderCollectedPendingReward = (result: CollectPendingRewardView): 
     return `${title}: ${skillUp.experienceBefore} → ${skillUp.experienceAfter}`;
   });
   const sourceLine = result.pendingReward.source
-    ? `Трофей обработан: ${result.pendingReward.source.enemyName}.`
-    : 'Трофей обработан.';
+    ? `Трофей разобран: ${result.pendingReward.source.enemyName}.`
+    : 'Трофей разобран.';
 
   return [
     selectedAction?.label ?? '🎒 Добыча собрана',
     '',
     sourceLine,
-    `Получено: ${formatInventoryDelta(result.appliedResult.inventoryDelta)}.`,
-    ...(skillLines.length > 0 ? ['', 'Навыки:', ...skillLines] : []),
+    `В сумке: ${formatInventoryDelta(result.appliedResult.inventoryDelta)}.`,
+    ...(skillLines.length > 0 ? ['', 'Ремесло:', ...skillLines] : []),
     '',
     ...renderNextGoalSummary(buildPlayerNextGoalView(result.player), '👉 Дальше'),
   ].join('\n');
@@ -329,14 +329,14 @@ const renderSchoolMasteryLine = (player: PlayerState): string => {
 
 const resolveReturnStateLine = (player: PlayerState): string => {
   if (player.tutorialState === 'ACTIVE') {
-    return 'Сейчас: обучение активно · до первой руны и школы рун остался один шаг.';
+    return 'Путь: учебная тропа ещё горит · до первой руны и школы остался один бой.';
   }
 
   if (isPlayerInTutorial(player)) {
-    return 'Сейчас: учебная зона доступна для спокойной тренировки, а основной прогресс идёт через приключения.';
+    return 'Путь: учебная зона остаётся безопасной стоянкой, но настоящая сила ждёт в приключениях.';
   }
 
-  return `Сейчас: уровень ${player.level} · рекомендуемая угроза ${resolveAdaptiveAdventureLocationLevel(player)} · лучший проход ${player.highestLocationLevel}.`;
+  return `Путь: уровень ${player.level} · зов угрозы ${resolveAdaptiveAdventureLocationLevel(player)} · самый дальний след ${player.highestLocationLevel}.`;
 };
 
 const resolveReturnStyleLine = (player: PlayerState): string => {
@@ -468,14 +468,14 @@ export const renderMainMenu = (player: PlayerState): string => {
   const recognition = buildPlayerSchoolRecognitionView(player);
 
   return [
-    '🏰 Главное меню Runemasters Return',
+    '🏰 Стоянка рунного мастера',
     '',
     `⭐ Уровень: ${player.level}`,
     inTutorial
-      ? '📘 Режим: обучение'
-      : `🎯 Уровень угрозы: ${resolveAdaptiveAdventureLocationLevel(player)}`,
+      ? '📘 Учебный круг: открыт'
+      : `🎯 Зов угрозы: ${resolveAdaptiveAdventureLocationLevel(player)}`,
     `💰 Руная пыль: ${player.gold}`,
-    `🧭 Максимально пройденная угроза: ${player.highestLocationLevel}`,
+    `🧭 Самый дальний след: ${player.highestLocationLevel}`,
     `🧩 Слоты рун: ${getUnlockedRuneSlotCount(player)} открыто`,
     `🔮 Экипирована: ${formatRuneDisplayName(equippedRune)}`,
     renderSchoolMasteryLine(player),
@@ -496,7 +496,7 @@ export const renderProfile = (player: PlayerState): string => {
   const nextLevelXp = gameBalance.progression.experienceForNextLevel(player.level);
 
   return [
-    '👤 Профиль рунного мастера',
+    '👤 Летопись рунного мастера',
     '',
     `⭐ Уровень: ${player.level}`,
     `📊 Опыт: ${player.experience}/${nextLevelXp}`,
@@ -504,7 +504,7 @@ export const renderProfile = (player: PlayerState): string => {
     `🏆 Победы / Поражения: ${player.victories}/${player.defeats}`,
     `🧩 Слоты рун: ${getUnlockedRuneSlotCount(player)} открыто`,
     renderSchoolMasteryLine(player),
-    'Дальнейший рост силы идёт через руны, школу рун и её мастерство, а не через ручное распределение статов.',
+    'Сила растёт через руны, школу и мастерство, а не через сухую раздачу чисел.',
     '',
     ...renderPlayerSkillsBlock(player),
     '',
@@ -527,22 +527,22 @@ export const renderInventory = (player: PlayerState): string => [
 ].join('\n');
 
 export const renderLocation = (player: PlayerState): string => [
-  '📘 Обучение',
+  '📘 Учебный круг',
   '',
   player.tutorialState === 'ACTIVE'
-    ? 'Обучение ещё не завершено. Это безопасная зона для первого боя, базовой атаки и первой боевой руны.'
+    ? 'Учебный круг ещё открыт: первый бой безопасен, а первая руна покажет школу.'
     : player.tutorialState === 'SKIPPED'
-      ? 'Обучение уже пропущено. Основной прогресс идёт через «⚔️ Исследовать».'
-      : 'Обучение уже завершено. Основной прогресс идёт через «⚔️ Исследовать».',
+      ? 'Учебный круг оставлен позади. Дорога силы идёт через «⚔️ Исследовать».'
+      : 'Учебный круг завершён. Дорога силы идёт через «⚔️ Исследовать».',
   '',
   player.tutorialState === 'ACTIVE'
-    ? `Сначала вы пройдёте бой базовой атакой, затем заберёте первую руну и увидите, как школа меняет стиль боя. ${renderStarterSchoolLine()}`
-    : 'Старые входы в обучение больше не возвращают героя в учебный прогресс. Для роста силы продолжайте обычные приключения.',
+    ? `Сначала мастер проходит бой базовой атакой, затем забирает первую руну и видит, как школа меняет стиль боя. ${renderStarterSchoolLine()}`
+    : 'Старые учебные тропы больше не тянут героя назад. Дальше идут обычные приключения.',
   '',
   isPlayerInTutorial(player)
-    ? 'Сейчас вы в учебной зоне. Враги здесь мягче и подходят для первого боя.'
-    : 'Сейчас открыт режим приключений. Сложность подстраивается под силу героя и серию боёв.',
-  `🎯 Рекомендуемый уровень угрозы: ${resolveAdaptiveAdventureLocationLevel(player)}`,
+    ? 'Учебная зона тише большого мира: здесь удобно почувствовать первый бой.'
+    : 'Дороги открыты. Угроза подстраивается под вашу силу и след последних боёв.',
+  `🎯 Зов угрозы: ${resolveAdaptiveAdventureLocationLevel(player)}`,
   `🧭 Максимально пройденная сложность: ${player.highestLocationLevel}`,
   player.defeatStreak > 0
     ? `🛡️ После поражений подряд (${player.defeatStreak}) враги становятся слабее, чтобы следующий бой читался спокойнее.`
@@ -557,7 +557,7 @@ export const renderExplorationEvent = (event: ExplorationSceneView, player: Play
     '🧭 Исследование',
     '',
     event.title,
-    ...(event.kindLabel ? [`Тип: ${event.kindLabel}`] : []),
+    ...(event.kindLabel ? [`Знак: ${event.kindLabel}`] : []),
     ...(event.directorLine ? [event.directorLine] : []),
     event.description,
     '',
@@ -601,7 +601,7 @@ export const renderRuneScreen = (player: PlayerState, acquisitionSummary?: Acqui
       renderStarterSchoolLine(),
       `Создание руны стоит ${gameBalance.runes.craftCost} осколков одной редкости.`,
       'Новая редкость позже расширит сборку, а сейчас важнее открыть первую школу рун.',
-      'Побеждайте в боях или нажмите «✨ Создать», чтобы собрать первую руну.',
+      'Победы и алтарь помогут собрать первую руну.',
     ].join('\n');
   }
 
@@ -671,7 +671,7 @@ const resolveHealthMeterSegment = (current: number, max: number): string => {
 };
 
 const renderBattleActorStats = (actor: Pick<StatBlock, 'attack' | 'defence' | 'magicDefence' | 'dexterity' | 'intelligence'>): string => (
-  `📊 Статы: ⚔️ ${actor.attack} · 🛡️ ${actor.defence} · 🔮 ${actor.magicDefence} · 💨 ${actor.dexterity} · 🧠 ${actor.intelligence}`
+  `📊 Черты: ⚔️ ${actor.attack} · 🛡️ ${actor.defence} · 🔮 ${actor.magicDefence} · 💨 ${actor.dexterity} · 🧠 ${actor.intelligence}`
 );
 
 const renderBattleActorBlock = (
@@ -709,13 +709,13 @@ const renderBattleActorBlock = (
 const renderBattleRuneState = (battle: BattleView): string => {
   const runeLoadouts = listBattleRuneLoadouts(battle.player);
   if (runeLoadouts.length === 0) {
-    return '🔮 Без руны: доступна базовая атака.';
+    return '🔮 Руна молчит: остаётся сталь и простой удар.';
   }
 
   return runeLoadouts.map(({ slot, loadout }) => {
     const activeAbility = loadout.activeAbility;
     if (!activeAbility) {
-      return `🔮 Слот ${slot + 1}: ${loadout.runeName} · пассивы активны.`;
+      return `🔮 Слот ${slot + 1}: ${loadout.runeName} · тихий знак держит силу.`;
     }
 
     const state = activeAbility.currentCooldown > 0
@@ -734,7 +734,7 @@ const renderBattleEnemyIntent = (battle: BattleView): string | null => {
     return null;
   }
 
-  return `⚠️ Намерение врага: ${intent.title}. ${intent.description}`;
+  return `⚠️ Враг выдаёт замысел: ${intent.title}. ${intent.description}`;
 };
 
 const renderBattleActionState = (battle: BattleView): string => {
@@ -748,7 +748,7 @@ const renderBattleActionState = (battle: BattleView): string => {
       )),
   );
 
-  return `🎮 Действия: ${actions.join(' · ')}`;
+  return `⚔️ Ответ мастера: ${actions.join(' · ')}`;
 };
 
 const resolveBattleEnemyRankLabel = (battle: BattleView): string => {
@@ -771,10 +771,10 @@ const renderBattleEncounterChoice = (battle: BattleView): string[] => {
 
   return [
     `👁️ Встреча: ${battle.enemy.name} замечает вас на маршруте.`,
-    `Тип: ${resolveBattleEnemyRankLabel(battle)} · ${battle.enemy.kind}.`,
-    `💨 Шанс отступить: ${fleeChancePercent}% · ваша ЛВК ${battle.player.dexterity}, враг ${battle.enemy.dexterity}.`,
+    `Угроза: ${resolveBattleEnemyRankLabel(battle)} · ${battle.enemy.kind}.`,
+    `💨 Тропа назад: ${fleeChancePercent}% · ваша ЛВК ${battle.player.dexterity}, враг ${battle.enemy.dexterity}.`,
     firstMoveLine,
-    'Выберите: принять бой или попробовать отступить до первого обмена ударами.',
+    'До первой стычки ещё можно принять бой или уйти в сторону.',
   ];
 };
 
@@ -785,8 +785,8 @@ const renderBattleNextGoal = (battle: BattleView, player?: PlayerState): string[
   }
 
   return [
-    `🎯 Следующая цель: ${withSentencePeriod(nextGoal.objectiveText)}`,
-    `👉 Дальше: нажмите «${nextGoal.primaryActionLabel}».`,
+    `🎯 След: ${withSentencePeriod(nextGoal.objectiveText)}`,
+    `👉 Дальше: «${nextGoal.primaryActionLabel}».`,
   ];
 };
 
@@ -819,7 +819,7 @@ const toBattleLogEntryLine = (text: string): BattleLogPresentationLine => ({
 
 const selectBattleLogLines = (log: readonly string[]): readonly BattleLogPresentationLine[] => {
   if (log.length === 0) {
-    return [toBattleLogEntryLine('Пока без событий.')];
+    return [toBattleLogEntryLine('Поле ещё молчит.')];
   }
 
   if (log.length <= visibleBattleLogEntryLimit) {
@@ -838,7 +838,7 @@ const selectBattleLogLines = (log: readonly string[]): readonly BattleLogPresent
 
 const renderBattleLogLine = (line: BattleLogPresentationLine): string => {
   if (line.kind === 'omission') {
-    return `… ещё ${line.omittedCount} ${formatBattleEventWord(line.omittedCount)} между свежими событиями и началом боя`;
+    return `… ещё ${line.omittedCount} ${formatBattleEventWord(line.omittedCount)} между нынешним мигом и началом схватки`;
   }
 
   return `• ${line.text}`;
@@ -864,7 +864,7 @@ export const renderBattle = (battle: BattleView, player?: PlayerState, acquisiti
   const rewardLines = battle.status === 'COMPLETED' && battle.rewards
     ? [
         '',
-        `Награда: +${battle.rewards.experience} опыта · +${battle.rewards.gold} пыли`,
+        `Добыча: +${battle.rewards.experience} опыта · +${battle.rewards.gold} пыли`,
         ...(battle.rewards.droppedRune ? (() => {
           const droppedSchool = getRuneSchoolPresentation(battle.rewards?.droppedRune?.archetypeCode);
           return [
@@ -882,19 +882,19 @@ export const renderBattle = (battle: BattleView, player?: PlayerState, acquisiti
   return [
     battleStateLine,
     '',
-    'Состояние',
+    'Поле боя',
     renderBattleActorBlock('Вы', battle.player, { guardPoints: battle.player.guardPoints }),
     renderBattleActorBlock('Враг', battle.enemy),
     '',
     ...(isEncounterOffered
       ? [
-          'Решение',
+          'Развилка',
           ...renderBattleEncounterChoice(battle),
           '',
         ]
       : battle.status === 'ACTIVE'
       ? [
-          'Тактика',
+          'Чтение боя',
           ...(enemyIntentLine ? [enemyIntentLine] : []),
           ...(clarity.schoolHintLine ? [clarity.schoolHintLine] : []),
           renderBattleRuneState(battle),
@@ -902,7 +902,7 @@ export const renderBattle = (battle: BattleView, player?: PlayerState, acquisiti
           '',
         ]
       : []),
-    'Ход событий',
+    'Летопись схватки',
     ...battleLogLines.map(renderBattleLogLine),
     ...rewardLines,
     ...renderAcquisitionSummary(acquisitionSummary),

@@ -185,7 +185,7 @@ describe('PerformBattleAction', () => {
   it('rejects a replay receipt when the payload state key no longer matches the stored battle rail', async () => {
     const repository = {
       findPlayerByVkId: vi.fn().mockResolvedValue(createPlayer()),
-      getCommandIntentResult: vi.fn().mockRejectedValue(new AppError('stale_command_intent', 'Эта кнопка уже устарела. Обновите экран перед повтором команды.')),
+      getCommandIntentResult: vi.fn().mockRejectedValue(new AppError('stale_command_intent', 'Этот боевой жест уже выцвел. Вернитесь к свежей развилке боя.')),
       storeCommandIntentResult: vi.fn().mockResolvedValue(undefined),
       getActiveBattle: vi.fn(),
     } as unknown as GameRepository;

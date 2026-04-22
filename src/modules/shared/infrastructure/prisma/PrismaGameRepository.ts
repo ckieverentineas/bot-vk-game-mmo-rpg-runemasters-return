@@ -129,7 +129,7 @@ const parseRewardLedgerEntrySnapshot = (value: string): RewardLedgerEntry => {
   const parsed = parseJson<unknown>(value, null);
 
   if (!isRewardLedgerEntry(parsed)) {
-    throw new AppError('reward_ledger_snapshot_invalid', 'Снимок награды поврежден. Обновите экран и попробуйте еще раз.');
+    throw new AppError('reward_ledger_snapshot_invalid', 'Трофейная запись рассыпалась. Вернитесь к добыче и попробуйте снова.');
   }
 
   return parsed;
@@ -160,7 +160,7 @@ const findPendingRewardTrophyAction = (
   const action = ledger.pendingRewardSnapshot.trophyActions.find((candidate) => candidate.code === actionCode);
 
   if (!action) {
-    throw new AppError('pending_reward_action_unavailable', 'Это действие для трофеев уже недоступно. Обновите экран.');
+    throw new AppError('pending_reward_action_unavailable', 'Этот трофейный жест уже недоступен. Вернитесь к текущей добыче.');
   }
 
   return action;
@@ -525,7 +525,7 @@ export class PrismaGameRepository implements GameRepository {
         && (currentState.runeIds.length !== options.expectedRuneIds.length
           || currentState.runeIds.some((runeId, index) => runeId !== options.expectedRuneIds?.[index])))
     ) {
-      throw new AppError('stale_command_intent', 'Эта кнопка уже устарела. Обновите экран перед повтором команды.');
+      throw new AppError('stale_command_intent', 'Этот след уже выцвел. Вернитесь к свежей развилке.');
     }
   }
 
@@ -546,7 +546,7 @@ export class PrismaGameRepository implements GameRepository {
     });
 
     if (existing && (existing.commandKey !== commandKey || existing.stateKey !== stateKey)) {
-      throw new AppError('stale_command_intent', 'Эта кнопка уже устарела. Обновите экран перед повтором команды.');
+      throw new AppError('stale_command_intent', 'Этот след уже выцвел. Вернитесь к свежей развилке.');
     }
 
     if (existing?.status === 'APPLIED') {
@@ -578,14 +578,14 @@ export class PrismaGameRepository implements GameRepository {
       });
 
       if (retried && (retried.commandKey !== commandKey || retried.stateKey !== stateKey)) {
-        throw new AppError('stale_command_intent', 'Эта кнопка уже устарела. Обновите экран перед повтором команды.');
+        throw new AppError('stale_command_intent', 'Этот след уже выцвел. Вернитесь к свежей развилке.');
       }
 
       if (retried?.status === 'APPLIED') {
         return parseCommandIntentResultSnapshot<TResult>(retried.resultSnapshot);
       }
 
-      throw new AppError('command_retry_pending', 'Команда уже обрабатывается. Дождитесь ответа и обновите экран.');
+      throw new AppError('command_retry_pending', 'Прошлый жест ещё в пути. Дождитесь ответа.');
     }
   }
 
@@ -628,7 +628,7 @@ export class PrismaGameRepository implements GameRepository {
     }
 
     if (currentStateKey !== undefined && currentStateKey !== stateKey) {
-      throw new AppError('stale_command_intent', 'Эта кнопка уже устарела. Обновите экран перед повтором команды.');
+      throw new AppError('stale_command_intent', 'Этот след уже выцвел. Вернитесь к свежей развилке.');
     }
 
     const result = await apply();
@@ -687,7 +687,7 @@ export class PrismaGameRepository implements GameRepository {
     }
 
     if (existing.stateKey !== stateKey) {
-      throw new AppError('stale_command_intent', 'Это подтверждение уже устарело. Откройте профиль и начните заново, если всё ещё хотите удалить персонажа.');
+      throw new AppError('stale_command_intent', 'Старое подтверждение больше не действует. Вернитесь в летопись, если всё ещё хотите удалить персонажа.');
     }
 
     if (existing.expiresAt.getTime() <= Date.now()) {
@@ -699,7 +699,7 @@ export class PrismaGameRepository implements GameRepository {
           },
         },
       });
-      throw new AppError('stale_command_intent', 'Это подтверждение уже устарело. Откройте профиль и начните заново, если всё ещё хотите удалить персонажа.');
+      throw new AppError('stale_command_intent', 'Старое подтверждение больше не действует. Вернитесь в летопись, если всё ещё хотите удалить персонажа.');
     }
 
     if (existing.status === 'APPLIED') {
@@ -716,7 +716,7 @@ export class PrismaGameRepository implements GameRepository {
     ledgerKey: string,
   ): void {
     if (ledger.playerId !== playerId || ledger.ledgerKey !== ledgerKey) {
-      throw new AppError('reward_ledger_snapshot_invalid', 'Снимок награды не совпадает с записью. Обновите экран.');
+      throw new AppError('reward_ledger_snapshot_invalid', 'Трофейная запись не сходится с добычей. Вернитесь к текущему трофею.');
     }
   }
 
@@ -1007,7 +1007,7 @@ export class PrismaGameRepository implements GameRepository {
       });
 
       if (!record || record.playerId !== playerId) {
-        throw new AppError('pending_reward_not_found', 'Награда уже недоступна. Обновите экран.');
+        throw new AppError('pending_reward_not_found', 'Эта награда уже ушла с поля. Вернитесь к текущей добыче.');
       }
 
       const ledger = parseRewardLedgerEntrySnapshot(record.entrySnapshot);
@@ -1018,7 +1018,7 @@ export class PrismaGameRepository implements GameRepository {
       }
 
       if (!isPendingRewardLedgerEntryForCollection(ledger)) {
-        throw new AppError('pending_reward_not_found', 'Награда уже недоступна. Обновите экран.');
+        throw new AppError('pending_reward_not_found', 'Эта награда уже ушла с поля. Вернитесь к текущей добыче.');
       }
 
       const action = findPendingRewardTrophyAction(ledger, actionCode);
@@ -1064,7 +1064,7 @@ export class PrismaGameRepository implements GameRepository {
           return replay;
         }
 
-        throw new AppError('command_retry_pending', 'Награда уже обрабатывается. Обновите экран через мгновение.');
+        throw new AppError('command_retry_pending', 'Трофей уже разбирается. Подождите мгновение.');
       }
 
       await this.applyInventoryDelta(tx, playerId, inventoryDelta);
@@ -1154,7 +1154,7 @@ export class PrismaGameRepository implements GameRepository {
         });
 
         if (deletedPlayer.count === 0) {
-          throw new AppError('stale_command_intent', 'Это подтверждение уже устарело. Откройте профиль и начните заново, если всё ещё хотите удалить персонажа.');
+          throw new AppError('stale_command_intent', 'Старое подтверждение больше не действует. Вернитесь в летопись, если всё ещё хотите удалить персонажа.');
         }
 
         await tx.user.delete({
@@ -1177,7 +1177,7 @@ export class PrismaGameRepository implements GameRepository {
       }
 
       if (existing === 'PENDING') {
-        throw new AppError('command_retry_pending', 'Команда уже обрабатывается. Дождитесь ответа и обновите экран.');
+        throw new AppError('command_retry_pending', 'Прошлый жест ещё в пути. Дождитесь ответа.');
       }
 
       const player = await tx.player.findFirst({
@@ -1199,11 +1199,11 @@ export class PrismaGameRepository implements GameRepository {
       });
 
       if (!player) {
-        throw new AppError('player_not_found', 'Персонаж не найден. Нажмите «🎮 Начать», чтобы создать нового мастера.');
+        throw new AppError('player_not_found', 'Персонаж не найден. «🎮 Начать» создаст нового мастера.');
       }
 
       if (player.updatedAt.toISOString() !== stateKey) {
-        throw new AppError('stale_command_intent', 'Это подтверждение уже устарело. Откройте профиль и начните заново, если всё ещё хотите удалить персонажа.');
+        throw new AppError('stale_command_intent', 'Старое подтверждение больше не действует. Вернитесь в летопись, если всё ещё хотите удалить персонажа.');
       }
 
       try {
@@ -1225,7 +1225,7 @@ export class PrismaGameRepository implements GameRepository {
           return;
         }
 
-        throw new AppError('command_retry_pending', 'Команда уже обрабатывается. Дождитесь ответа и обновите экран.');
+        throw new AppError('command_retry_pending', 'Прошлый жест ещё в пути. Дождитесь ответа.');
       }
 
       try {
@@ -1240,7 +1240,7 @@ export class PrismaGameRepository implements GameRepository {
         });
 
         if (deletedPlayer.count === 0) {
-          throw new AppError('stale_command_intent', 'Это подтверждение уже устарело. Откройте профиль и начните заново, если всё ещё хотите удалить персонажа.');
+          throw new AppError('stale_command_intent', 'Старое подтверждение больше не действует. Вернитесь в летопись, если всё ещё хотите удалить персонажа.');
         }
 
         await tx.user.delete({
@@ -1377,11 +1377,11 @@ export class PrismaGameRepository implements GameRepository {
     }
 
     if (expectedCommandKeys && !expectedCommandKeys.includes(existing.commandKey)) {
-      throw new AppError('stale_command_intent', 'Эта кнопка уже устарела. Обновите экран перед повтором команды.');
+      throw new AppError('stale_command_intent', 'Этот след уже выцвел. Вернитесь к свежей развилке.');
     }
 
     if (expectedStateKey !== undefined && existing.stateKey !== expectedStateKey) {
-      throw new AppError('stale_command_intent', 'Эта кнопка уже устарела. Обновите экран перед повтором команды.');
+      throw new AppError('stale_command_intent', 'Этот след уже выцвел. Вернитесь к свежей развилке.');
     }
 
     if (existing.status === 'APPLIED') {
@@ -1430,7 +1430,7 @@ export class PrismaGameRepository implements GameRepository {
           : { count: 1 };
 
         if (update.count === 0) {
-          throw new AppError('stale_command_intent', 'Эта кнопка уже устарела. Обновите экран перед повтором команды.');
+          throw new AppError('stale_command_intent', 'Этот след уже выцвел. Вернитесь к свежей развилке.');
         }
 
         if (options?.expectedLocationLevel === undefined
@@ -1485,7 +1485,7 @@ export class PrismaGameRepository implements GameRepository {
           });
 
           if (playerGuard.count === 0) {
-            throw new AppError('stale_command_intent', 'Этот экран рун уже устарел. Я открыл актуальные руны.');
+            throw new AppError('stale_command_intent', 'Рунная страница сменилась. Вот нынешние знаки.');
           }
         }
 
@@ -1526,7 +1526,7 @@ export class PrismaGameRepository implements GameRepository {
         const targetSlot = options?.targetSlot ?? 0;
 
         if (!Number.isInteger(targetSlot) || targetSlot < 0) {
-          throw new AppError('invalid_rune_slot', 'Слот руны указан некорректно. Обновите экран и попробуйте снова.');
+          throw new AppError('invalid_rune_slot', 'Такого рунного гнезда нет. Вернитесь к текущим рунам.');
         }
 
         if (options?.expectedPlayerUpdatedAt) {
@@ -1541,7 +1541,7 @@ export class PrismaGameRepository implements GameRepository {
           });
 
           if (playerGuard.count === 0) {
-            throw new AppError('stale_command_intent', 'Эта кнопка уже устарела. Обновите экран перед повтором команды.');
+            throw new AppError('stale_command_intent', 'Этот след уже выцвел. Вернитесь к свежей развилке.');
           }
         }
 
@@ -1574,7 +1574,7 @@ export class PrismaGameRepository implements GameRepository {
           });
 
           if (equipped.count === 0) {
-            throw new AppError('rune_not_found', 'Выбранная руна уже недоступна. Откройте коллекцию ещё раз.');
+            throw new AppError('rune_not_found', 'Выбранный знак уже ушёл из коллекции. Вернитесь к рунам.');
           }
         }
 
@@ -1639,7 +1639,7 @@ export class PrismaGameRepository implements GameRepository {
         });
 
         if (spent.count === 0) {
-          throw new AppError('not_enough_shards', 'Осколков уже не хватает для создания руны. Обновите экран и попробуйте снова.');
+          throw new AppError('not_enough_shards', 'Осколков уже не хватает для новой руны. Вернитесь к алтарю.');
         }
 
         await tx.rune.create({
@@ -1680,7 +1680,7 @@ export class PrismaGameRepository implements GameRepository {
     });
 
     if (updated.count === 0) {
-      throw new AppError('rune_not_found', 'Выбранная руна уже недоступна. Откройте коллекцию ещё раз.');
+      throw new AppError('rune_not_found', 'Выбранный знак уже ушёл из коллекции. Вернитесь к рунам.');
     }
 
     await this.prisma.player.update({
@@ -1711,7 +1711,7 @@ export class PrismaGameRepository implements GameRepository {
         });
 
         if (spent.count === 0) {
-          throw new AppError('not_enough_shards', 'Осколок уже потрачен. Обновите экран и попробуйте снова.');
+          throw new AppError('not_enough_shards', 'Осколок уже потрачен. Вернитесь к алтарю.');
         }
 
         const updatedRune = await tx.rune.updateMany({
@@ -1727,7 +1727,7 @@ export class PrismaGameRepository implements GameRepository {
         });
 
         if (updatedRune.count === 0) {
-          throw new AppError('rune_not_found', 'Выбранная руна уже недоступна. Откройте алтарь ещё раз.');
+          throw new AppError('rune_not_found', 'Выбранный знак уже ушёл из алтаря. Вернитесь к мастерской.');
         }
 
         await tx.player.update({
@@ -1747,7 +1747,7 @@ export class PrismaGameRepository implements GameRepository {
     });
 
     if (deleted.count === 0) {
-      throw new AppError('rune_not_found', 'Выбранная руна уже недоступна. Откройте коллекцию ещё раз.');
+      throw new AppError('rune_not_found', 'Выбранный знак уже ушёл из коллекции. Вернитесь к рунам.');
     }
 
     await this.prisma.player.update({
@@ -1773,7 +1773,7 @@ export class PrismaGameRepository implements GameRepository {
         });
 
         if (deleted.count === 0) {
-          throw new AppError('rune_not_found', 'Эта руна уже недоступна. Откройте алтарь ещё раз.');
+          throw new AppError('rune_not_found', 'Этот знак уже ушёл из алтаря. Вернитесь к мастерской.');
         }
 
         const inventoryUpdate = buildInventoryDeltaInput(refund);
@@ -1815,7 +1815,7 @@ export class PrismaGameRepository implements GameRepository {
     });
 
     if (updated.count === 0) {
-      throw new AppError('inventory_underflow', 'Ресурсов уже не хватает. Обновите экран и попробуйте снова.');
+      throw new AppError('inventory_underflow', 'Ресурсов уже не хватает. Вернитесь к текущей мастерской.');
     }
 
     return this.mapPlayer(await this.requirePlayerRecord(client, playerId));
@@ -1955,7 +1955,7 @@ export class PrismaGameRepository implements GameRepository {
           });
 
           if (!currentBattle) {
-            throw new AppError('battle_not_found', 'Активный бой уже недоступен. Начните новый бой.');
+            throw new AppError('battle_not_found', 'Текущая схватка уже рассеялась. Ищите новую встречу.');
           }
 
           if (isStaleBattleMutation(battle.actionRevision, currentBattle)) {
@@ -1973,7 +1973,7 @@ export class PrismaGameRepository implements GameRepository {
         });
 
         if (!currentBattle) {
-          throw new AppError('battle_not_found', 'Активный бой уже недоступен. Начните новый бой.');
+          throw new AppError('battle_not_found', 'Текущая схватка уже рассеялась. Ищите новую встречу.');
         }
 
         return this.mapBattle(currentBattle);
@@ -2015,7 +2015,7 @@ export class PrismaGameRepository implements GameRepository {
         }
 
         if (options.currentStateKey !== undefined && options.currentStateKey !== options.intentStateKey) {
-          throw new AppError('stale_command_intent', 'Эта кнопка уже устарела. Обновите экран перед повтором команды.');
+          throw new AppError('stale_command_intent', 'Этот след уже выцвел. Вернитесь к свежей развилке.');
         }
       }
 
@@ -2050,7 +2050,7 @@ export class PrismaGameRepository implements GameRepository {
       });
 
       if (!currentBattle) {
-        throw new AppError('battle_not_found', 'Активный бой уже недоступен. Начните новый бой.');
+        throw new AppError('battle_not_found', 'Текущая схватка уже рассеялась. Ищите новую встречу.');
       }
 
       if (finalized.count === 0) {
@@ -2285,7 +2285,7 @@ export class PrismaGameRepository implements GameRepository {
       });
 
       if (!finalizedBattle) {
-        throw new AppError('battle_not_found', 'Активный бой уже недоступен. Начните новый бой.');
+        throw new AppError('battle_not_found', 'Текущая схватка уже рассеялась. Ищите новую встречу.');
       }
 
       const result = {
@@ -2479,7 +2479,7 @@ export class PrismaGameRepository implements GameRepository {
     };
 
     if (persistedLoadoutSnapshot.fallbackToBattleSnapshot && !battleSnapshot.player.runeLoadout) {
-      throw new AppError('loadout_snapshot_invalid', 'Снимок рунной сборки боя повреждён. Начните новый бой.');
+      throw new AppError('loadout_snapshot_invalid', 'Рунная память боя повреждена. Ищите новую встречу.');
     }
 
     return {

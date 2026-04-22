@@ -275,7 +275,7 @@ export const recoveryRules: readonly RecoveryRule[] = [
 
         await handler.reply(
           ctx,
-          'Это команда уже истекла. Обновите профиль и начните заново, если всё ещё хотите удалить персонажа.',
+          'Старый жест удаления больше не действует. Вернитесь в летопись, если всё ещё хотите удалить персонажа.',
           createEntryKeyboard(),
         );
         return true;

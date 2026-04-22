@@ -135,7 +135,7 @@ export class GameHandler {
 
     const commandEnvelope = resolveCommandEnvelope(ctx);
     if (!commandEnvelope.command) {
-      await this.reply(ctx, 'Команда не распознана.', createMainMenuKeyboard());
+      await this.reply(ctx, 'Рунный след неясен. Вернитесь к стоянке и выберите путь заново.', createMainMenuKeyboard());
       return;
     }
 
@@ -152,7 +152,7 @@ export class GameHandler {
         ? await this.handleDynamicCommand(ctx, vkId, command, commandContext)
         : await this.executeStaticCommand(commandHandler, ctx, vkId, commandContext);
       if (!isHandled) {
-        throw new AppError('unknown_command', 'Неизвестная команда. Используйте кнопки меню или старые текстовые команды.');
+        throw new AppError('unknown_command', 'Такого пути мастер не знает. Вернитесь к стоянке и выберите другой след.');
       }
 
     } catch (error) {
@@ -243,7 +243,7 @@ export class GameHandler {
         '',
         `Будет удалён герой уровня ${player.level}${player.runes.length > 0 ? ` и ${player.runes.length} ${formatRuneCountLabel(player.runes.length)}` : ''}.`,
         'Это действие необратимо: прогресс и сборка будут удалены.',
-        'Нажмите «🗑️ Да, удалить» только если действительно хотите начать заново.',
+        '«🗑️ Да, удалить» — только если действительно хотите начать заново.',
       ].join('\n'),
       createDeleteConfirmationKeyboard(player),
     );
@@ -329,7 +329,7 @@ export class GameHandler {
     if (!result.pendingReward) {
       await this.reply(
         ctx,
-        ['Сейчас нет несобранной добычи.', '', renderMainMenu(result.player)].join('\n'),
+        ['На поле не осталось несобранных трофеев.', '', renderMainMenu(result.player)].join('\n'),
         createMainMenuKeyboard(result.player),
       );
       return;

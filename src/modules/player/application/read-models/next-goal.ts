@@ -247,10 +247,10 @@ export const buildPlayerNextGoalView = (player: PlayerState): NextGoalView => {
       {
         schoolCode: schoolDefinition?.code ?? null,
         schoolName: equippedSchool?.name ?? null,
-        whyText: 'Каждая надетая руна работает полностью: статы, пассивы и активное действие в бою.',
+        whyText: 'Каждая надетая руна работает полностью: боевые черты, пассивы и активное действие в бою.',
         milestoneTitle: 'Свободный слот рун',
         milestoneProgressText: 'Второй слот рун уже открыт.',
-        milestoneBenefitText: 'Вторая руна добавит полные статы, пассивы и свою боевую кнопку, если у неё есть активное действие.',
+        milestoneBenefitText: 'Вторая руна добавит полные боевые черты, пассивы и свой приём, если он у неё есть.',
       },
     );
   }

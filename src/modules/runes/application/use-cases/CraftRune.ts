@@ -47,7 +47,7 @@ export class CraftRune {
       }
 
       if (replay?.status === 'PENDING') {
-        throw new AppError('command_retry_pending', 'Команда уже обрабатывается. Дождитесь ответа и обновите экран.');
+        throw new AppError('command_retry_pending', 'Алтарный жест ещё в пути. Дождитесь ответа.');
       }
     }
 
@@ -61,7 +61,7 @@ export class CraftRune {
     }
 
     if (intentSource !== 'legacy_text' && intent && intent.intentStateKey !== currentStateKey) {
-      throw new AppError('stale_command_intent', 'Эта кнопка уже устарела. Обновите экран перед повтором команды.');
+      throw new AppError('stale_command_intent', 'Этот алтарный жест уже выцвел. Вернитесь к свежей развилке.');
     }
 
     const craftedPlayer = await this.repository.craftRune(
