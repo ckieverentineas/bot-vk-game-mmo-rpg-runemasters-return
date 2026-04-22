@@ -4,6 +4,7 @@ import type {
   InventoryDelta,
   PlayerSkillPointGain,
   PlayerState,
+  ResourceReward,
   RuneDraft,
   RuneRarity,
   StatBlock,
@@ -98,6 +99,13 @@ export interface CollectPendingRewardResult {
   readonly appliedResult: PendingRewardAppliedResultSnapshot;
 }
 
+export interface QuestRewardClaimResult {
+  readonly player: PlayerState;
+  readonly questCode: string;
+  readonly reward: ResourceReward;
+  readonly claimed: boolean;
+}
+
 export interface PendingRewardSourceView {
   readonly battleId: string;
   readonly enemyCode: string;
@@ -156,6 +164,8 @@ export interface GameRepository {
     buildResult: (player: PlayerState) => TResult,
   ): Promise<TResult>;
   applyPlayerSkillExperience(playerId: number, gains: readonly PlayerSkillPointGain[]): Promise<PlayerState>;
+  listClaimedQuestRewardCodes(playerId: number): Promise<readonly string[]>;
+  claimQuestReward(playerId: number, questCode: string, reward: ResourceReward): Promise<QuestRewardClaimResult>;
   findPendingReward(playerId: number): Promise<PendingRewardView | null>;
   collectPendingReward(playerId: number, ledgerKey: string, actionCode: TrophyActionCode): Promise<CollectPendingRewardResult>;
   recoverPendingRewardsOnStart(): Promise<RecoverPendingRewardsResult>;

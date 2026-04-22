@@ -78,6 +78,11 @@ export interface InventoryView {
 export type InventoryDelta = Partial<Record<InventoryField, number>>;
 export type InventoryLoot = Partial<Record<MaterialField, number>>;
 
+export interface ResourceReward {
+  readonly gold?: number;
+  readonly inventoryDelta?: InventoryDelta;
+}
+
 export interface RuneDraft extends StatBlock {
   runeCode?: string | null;
   archetypeCode?: string | null;

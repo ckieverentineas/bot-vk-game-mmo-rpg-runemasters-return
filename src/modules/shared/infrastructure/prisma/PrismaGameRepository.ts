@@ -11,6 +11,7 @@ import type {
   PlayerSkillCode,
   PlayerSkillPointGain,
   PlayerState,
+  ResourceReward,
   RuneDraft,
   RuneRarity,
   StatBlock,
@@ -61,6 +62,7 @@ import type {
   GameRepository,
   PendingRewardSourceView,
   PendingRewardView,
+  QuestRewardClaimResult,
   RecordInventoryDeltaResultOptions,
   RecoverPendingRewardsResult,
   SaveBattleOptions,
@@ -79,6 +81,25 @@ type TransactionClient = Prisma.TransactionClient;
 type CommandIntentKey = GameCommandIntentKey;
 
 type PersistedBattleState = Pick<BattleView, 'status' | 'turnOwner' | 'player' | 'enemy' | 'encounter' | 'log' | 'result' | 'rewards' | 'actionRevision'>;
+
+const questRewardSourceType = 'QUEST_REWARD';
+
+interface QuestRewardLedgerEntryV1 {
+  readonly schemaVersion: 1;
+  readonly kind: typeof questRewardSourceType;
+  readonly status: 'APPLIED';
+  readonly playerId: number;
+  readonly ledgerKey: string;
+  readonly sourceType: typeof questRewardSourceType;
+  readonly sourceId: string;
+  readonly questCode: string;
+  readonly reward: ResourceReward;
+  readonly appliedAt: string;
+}
+
+const buildQuestRewardLedgerKey = (playerId: number, questCode: string): string => (
+  `quest_reward:${playerId}:${questCode}`
+);
 
 const buildInventoryDeltaInput = (delta: InventoryDelta): Record<string, { increment: number }> => {
   const data: Record<string, { increment: number }> = {};
@@ -228,6 +249,28 @@ const mapPendingRewardLedgerCreateData = (rewardLedger: PendingRewardLedgerEntry
   entrySnapshot: stringifyJson(rewardLedger, '{}'),
   appliedAt: null,
 });
+
+const createQuestRewardLedgerEntry = (
+  playerId: number,
+  questCode: string,
+  reward: ResourceReward,
+  appliedAt: string,
+): QuestRewardLedgerEntryV1 => {
+  const ledgerKey = buildQuestRewardLedgerKey(playerId, questCode);
+
+  return {
+    schemaVersion: 1,
+    kind: questRewardSourceType,
+    status: 'APPLIED',
+    playerId,
+    ledgerKey,
+    sourceType: questRewardSourceType,
+    sourceId: questCode,
+    questCode,
+    reward,
+    appliedAt,
+  };
+};
 
 interface CurrentRuneLoadoutState {
   readonly currentRuneIndex: number;
@@ -809,6 +852,87 @@ export class PrismaGameRepository implements GameRepository {
 
       return mapPlayerRecord(await this.requirePlayerRecord(tx, playerId));
     });
+  }
+
+  public async listClaimedQuestRewardCodes(playerId: number): Promise<readonly string[]> {
+    const records = await this.prisma.rewardLedgerRecord.findMany({
+      where: {
+        playerId,
+        sourceType: questRewardSourceType,
+        status: 'APPLIED',
+      },
+      select: {
+        sourceId: true,
+      },
+      orderBy: {
+        createdAt: 'asc',
+      },
+    });
+
+    return records.map((record) => record.sourceId);
+  }
+
+  public async claimQuestReward(
+    playerId: number,
+    questCode: string,
+    reward: ResourceReward,
+  ): Promise<QuestRewardClaimResult> {
+    const appliedAt = new Date();
+    const ledger = createQuestRewardLedgerEntry(
+      playerId,
+      questCode,
+      reward,
+      appliedAt.toISOString(),
+    );
+
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        await tx.rewardLedgerRecord.create({
+          data: {
+            playerId,
+            ledgerKey: ledger.ledgerKey,
+            sourceType: ledger.sourceType,
+            sourceId: ledger.sourceId,
+            status: ledger.status,
+            entrySnapshot: stringifyJson(ledger, '{}'),
+            appliedAt,
+          },
+        });
+
+        if (reward.gold !== undefined && reward.gold !== 0) {
+          await tx.player.update({
+            where: { id: playerId },
+            data: {
+              gold: {
+                increment: reward.gold,
+              },
+            },
+          });
+        }
+
+        if (reward.inventoryDelta) {
+          await this.applyInventoryDelta(tx, playerId, reward.inventoryDelta);
+        }
+
+        return {
+          player: mapPlayerRecord(await this.requirePlayerRecord(tx, playerId)),
+          questCode,
+          reward,
+          claimed: true,
+        };
+      });
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        return {
+          player: mapPlayerRecord(await this.requirePlayerRecord(this.prisma, playerId)),
+          questCode,
+          reward,
+          claimed: false,
+        };
+      }
+
+      throw error;
+    }
   }
 
   public async findPendingReward(playerId: number): Promise<PendingRewardView | null> {

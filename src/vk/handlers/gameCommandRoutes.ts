@@ -8,6 +8,7 @@ import {
   rewardCommandRoutes,
   rewardDynamicCommandRoutes,
 } from './routes/rewardCommandRoutes';
+import { questCommandRoutes } from './routes/questCommandRoutes';
 import {
   runeCommandRoutes,
   runeDynamicCommandRoutes,
@@ -43,6 +44,7 @@ export const isErrorKeyboardCode = (errorCode: string): errorCode is ErrorKeyboa
 
 export const config: StaticCommandRouteConfig = {
   ...coreCommandRoutes,
+  ...questCommandRoutes,
   ...tutorialCommandRoutes,
   ...rewardCommandRoutes,
   ...battleCommandRoutes,

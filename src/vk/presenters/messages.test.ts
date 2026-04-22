@@ -928,9 +928,9 @@ describe('messages school-first onboarding framing', () => {
 
     expect(message).toContain('🏁 Трофеи победы');
     expect(message).toContain('Лесной волк повержен');
-    expect(message).toContain('Уже ваше: +14 опыта · +5 пыли · +2 обычные осколки.');
-    expect(message).toContain('🔪 Свежевать — +2 кожа · +1 кость; мастерство: Свежевание.');
-    expect(message).toContain('🎒 Забрать добычу — +2 кожа · +1 кость; мастерство: без роста навыка.');
+    expect(message).toContain('Уже ваше: +14 опыта · +5 пыли · +2 обычных осколка.');
+    expect(message).toContain('🔪 Свежевать — +2 кожи · +1 кость; мастерство: Свежевание.');
+    expect(message).toContain('🎒 Забрать добычу — +2 кожи · +1 кость; мастерство: без роста навыка.');
   });
 
   it('renders collected trophy results and the next player goal', () => {
@@ -960,7 +960,7 @@ describe('messages school-first onboarding framing', () => {
     const message = renderCollectedPendingReward(result);
 
     expect(message).toContain('🔪 Свежевать');
-    expect(message).toContain('В сумке: +2 кожа · +1 кость.');
+    expect(message).toContain('В сумке: +2 кожи · +1 кость.');
     expect(message).toContain('Свежевание: 3 → 4');
     expect(message).toContain('👉 Дальше: «⚔️ Исследовать».');
   });

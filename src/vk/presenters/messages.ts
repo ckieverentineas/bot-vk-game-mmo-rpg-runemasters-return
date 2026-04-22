@@ -24,3 +24,8 @@ export {
   renderCollectedPendingReward,
   renderPendingReward,
 } from './rewardMessages';
+
+export {
+  renderQuestBook,
+  renderQuestClaimResult,
+} from './questMessages';

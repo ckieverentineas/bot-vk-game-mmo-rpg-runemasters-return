@@ -20,9 +20,11 @@
 - Основной маршрут игрока идёт через `Исследовать`: событие, встреча, выбор `В бой` / `Отступить`, бой, результат, возврат к исследованию.
 - Боевой экран показывает состояние, тактические подсказки и инвертированный журнал: свежие события сверху, начало боя снизу как контекст.
 - Player-facing тексты держатся в языке мира: без “нажмите”, “режим”, “статы”, “тип” и другой служебной воды там, где игрок должен читать след, бой, трофеи и путь мастера.
+- Onboarding получил лорную завязку Пустого мастера: игрок просыпается в Рунном Пределе, слышит первый осколок и выходит в учебный бой за первую руну.
+- `📜 Книга путей` имеет первый vertical slice постоянных квестов: игрок читает записи пути, видит готовые награды и забирает их через inline-кнопки exact-once поверх reward ledger.
 - Рунная сборка стартует с двух равноправных слотов. Обе надетые руны дают боевые черты, пассивы и активное действие, если оно есть.
 - Экран рун показывает компактный список со счётчиком надетых рун, иконками школ, ролью архетипа и отдельной карточкой выбранной руны.
-- VK-клавиатуры разнесены по сценариям (`main`, `battle`, `runes`, `rewards`, `tutorial`) с общим builder'ом и совместимым public barrel `src/vk/keyboards/index.ts`.
+- VK-клавиатуры разнесены по сценариям (`main`, `battle`, `runes`, `rewards`, `quests`, `tutorial`) с общим builder'ом и совместимым public barrel `src/vk/keyboards/index.ts`.
 - Player-facing support-slot модель вырезана.
 - Рост персонажа смещён к школам, mastery, рунам и будущей ветке мастера, а не к старой раздаче stat points за уровни.
 - Action-based trophy rewards имеют первый playable vertical slice: победа создаёт `PENDING` reward ledger, доступные trophy actions фиксируются в snapshot, игрок видит post-battle trophy card с inline-кнопками, `начать` / `исследовать` возвращают к несобранной добыче, выбранное действие собирается exact-once, `claim_all` даёт быстрый безопасный сбор, а bootstrap восстанавливает потерянные pending-записи после рестарта.
@@ -35,14 +37,15 @@
 - Игровая версия считается только по commit-based правилу из `release:status`; `package.json` остаётся технической npm-метаинформацией и не является player-facing версией игры.
 - Production database rollout не считается оформленным, пока нет явной процедуры backup + migration/deploy для SQLite.
 - Action-based trophy rewards всё ещё не считаются release-proven, пока pending trophy collect/replay не пройден ручным playtest'ом и release evidence. Hidden drop pools, skill-threshold unlocks и stat growth остаются будущими срезами.
+- `Книга путей` пока не считается release-proven, пока opening/claim/replay сценарии не пройдены ручным playtest'ом на живом боте.
 
 ## Архитектурная гигиена
 
 - Дробить проект малыми вертикальными срезами, сохраняя публичные импорты там, где это снижает риск.
 - Функциональное ядро, компонентная оболочка: чистые formatter/resolver функции внутри модулей, сценарные компоненты вокруг них, public barrel для совместимости импортов.
-- Presenter-декомпозиция VK-экранов разнесена по сценариям: `rewardMessages.ts`, `runeMessages.ts`, `battleMessages.ts`, `homeMessages.ts`, `profileMessages.ts` и `explorationMessages.ts` держат свои flow, а `message-formatting.ts` / `player-progress-formatting.ts` — общие чистые formatter'ы.
-- Handler-декомпозиция продолжена: `gameCommandRoutes.ts` стал агрегатором, `routes/*CommandRoutes.ts` держат core/tutorial/battle/rune/reward маршруты, а `gameCommandRecovery.ts` — recoverable stale/retry/battle/rune контексты.
-- Responder-декомпозиция продолжена: `responders/homeReplyFlow.ts`, `runeReplyFlow.ts`, `rewardReplyFlow.ts` и `battleReplyFlow.ts` держат рендер/клавиатуры home/profile/location экранов, рун, pending trophy rewards, battle result и exploration result, а `GameHandler` делегирует им reply-flow.
+- Presenter-декомпозиция VK-экранов разнесена по сценариям: `rewardMessages.ts`, `questMessages.ts`, `runeMessages.ts`, `battleMessages.ts`, `homeMessages.ts`, `profileMessages.ts` и `explorationMessages.ts` держат свои flow, а `message-formatting.ts` / `player-progress-formatting.ts` — общие чистые formatter'ы.
+- Handler-декомпозиция продолжена: `gameCommandRoutes.ts` стал агрегатором, `routes/*CommandRoutes.ts` держат core/tutorial/battle/rune/reward/quest маршруты, а `gameCommandRecovery.ts` — recoverable stale/retry/battle/rune контексты.
+- Responder-декомпозиция продолжена: `responders/homeReplyFlow.ts`, `runeReplyFlow.ts`, `questReplyFlow.ts`, `rewardReplyFlow.ts` и `battleReplyFlow.ts` держат рендер/клавиатуры home/profile/location экранов, рун, книги путей, pending trophy rewards, battle result и exploration result, а `GameHandler` делегирует им reply-flow.
 - `gameHandlerTelemetry.ts` держит transport-level telemetry payloads для return recap, school presentation, rune hub follow-up и post-session next-goal событий, оставляя `GameHandler` тонким orchestrator'ом поверх use-case и responder слоёв.
 - `prisma-game-mappers.ts` держит чистые Prisma → runtime мапперы для player/battle records; `PrismaGameRepository` оставляет у себя транзакции, replay receipts, reward ledger и CAS-обновления.
 - Следующий безопасный кандидат: выносить reward/battle persistence helpers малыми срезами, без механического распила транзакционных replay/concurrency rails.
@@ -51,7 +54,7 @@
 ## Ближайший порядок работ
 
 1. Прогнать technical gate после остановки бота: `npm run db:generate`, `npm run check`, `npm run release:local-playtest`, `npm run release:preflight`.
-2. Пройти ручной playtest поверх автоматического first-session smoke: onboarding, encounter choice, fight/flee, rune hub, две руны, craft/reroll/destroy, четыре school paths, pending trophy collect/replay.
+2. Пройти ручной playtest поверх автоматического first-session smoke: onboarding, quest book open/claim/replay, encounter choice, fight/flee, rune hub, две руны, craft/reroll/destroy, четыре school paths, pending trophy collect/replay.
 3. Собрать `npm run release:school-evidence` и `npm run release:evidence`; если verdict всё ещё `insufficient_evidence`, релиз не готов.
 4. После evidence pass обновить `README.md`, `CHANGELOG.md`, `PLAN.md` и при необходимости `ARCHITECTURE.md` / `RELEASE_CHECKLIST.md`.
 5. Подготовить минимальный ops-runbook: где `.env`, где SQLite DB, как запускается production-процесс, где логи и как откатываться.

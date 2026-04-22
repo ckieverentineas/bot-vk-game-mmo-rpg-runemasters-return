@@ -38,6 +38,10 @@ import {
   replyWithPendingRewardScreen as sendPendingRewardScreen,
 } from './responders/rewardReplyFlow';
 import {
+  replyWithQuestBook as sendQuestBook,
+  replyWithQuestClaimResult as sendQuestClaimResult,
+} from './responders/questReplyFlow';
+import {
   replyWithDeleteConfirmation as sendDeleteConfirmation,
   replyWithDeletedPlayer as sendDeletedPlayer,
   replyWithInventory as sendInventory,
@@ -202,6 +206,16 @@ export class GameHandler {
   public async showInventory(ctx: Context, vkId: number): Promise<void> {
     const player = await this.services.getPlayerProfile.execute(vkId);
     await sendInventory(ctx, player);
+  }
+
+  public async openQuestBook(ctx: Context, vkId: number): Promise<void> {
+    const book = await this.services.getQuestBook.execute(vkId);
+    await sendQuestBook(ctx, book);
+  }
+
+  public async claimQuestReward(ctx: Context, vkId: number, questCode?: string): Promise<void> {
+    const result = await this.services.claimQuestReward.execute(vkId, questCode);
+    await sendQuestClaimResult(ctx, result);
   }
 
   public async startGame(ctx: Context, vkId: number): Promise<void> {

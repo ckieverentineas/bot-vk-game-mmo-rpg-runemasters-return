@@ -262,6 +262,23 @@ const createServices = (): AppServices => {
       '⚔️ Вы наносите 6 урона врагу Учебный огонёк.',
     ],
   });
+  const readyQuest = {
+    code: 'awakening_empty_master',
+    icon: '🌑',
+    title: 'Пробуждение Пустого мастера',
+    story: 'Мир ещё не знает твоего имени, но первый бой заставляет землю запомнить шаг.',
+    objective: 'Выстоять в первой схватке.',
+    reward: { gold: 5, inventoryDelta: { usualShards: 1 } },
+    progress: { current: 1, required: 1, completed: true },
+    status: 'READY_TO_CLAIM',
+  } as const;
+  const questBook = {
+    player: basePlayer,
+    quests: [readyQuest],
+    readyToClaimCount: 1,
+    inProgressCount: 0,
+    claimedCount: 0,
+  };
 
   return {
     telemetry: {
@@ -303,6 +320,21 @@ const createServices = (): AppServices => {
     getPlayerProfile: {
       execute: vi.fn().mockResolvedValue(basePlayer),
     } as unknown as AppServices['getPlayerProfile'],
+    getQuestBook: {
+      execute: vi.fn().mockResolvedValue(questBook),
+    } as unknown as AppServices['getQuestBook'],
+    claimQuestReward: {
+      execute: vi.fn().mockResolvedValue({
+        book: {
+          ...questBook,
+          readyToClaimCount: 0,
+          claimedCount: 1,
+          quests: [{ ...readyQuest, status: 'CLAIMED' }],
+        },
+        quest: { ...readyQuest, status: 'CLAIMED' },
+        claimedNow: true,
+      }),
+    } as unknown as AppServices['claimQuestReward'],
     enterTutorialMode: {
       execute: vi.fn().mockResolvedValue(tutorialPlayer),
     } as unknown as AppServices['enterTutorialMode'],
@@ -409,6 +441,36 @@ describe('GameHandler smoke', () => {
     expect(getReplyCalls(ctx)[0]?.message).toContain('🏁 Трофеи победы');
     expect(getReplyCalls(ctx)[0]?.message).toContain('Лесной волк повержен');
     expect(services.telemetry.returnRecapShown).not.toHaveBeenCalled();
+  });
+
+  it('открывает книгу путей отдельной кнопкой', async () => {
+    const services = createServices();
+    const handler = new GameHandler(services);
+    const ctx = createFakeContext({ command: 'книга путей' });
+
+    await handler.handle(ctx as never);
+
+    const message = getReplyCalls(ctx)[0]?.message ?? '';
+    expect(services.getQuestBook.execute).toHaveBeenCalledWith(1001);
+    expect(message).toContain('📜 Книга путей');
+    expect(message).toContain('Готово к награде: 1');
+    expect(message).toContain('Пробуждение Пустого мастера');
+  });
+
+  it('забирает награду квеста из inline-кнопки', async () => {
+    const services = createServices();
+    const handler = new GameHandler(services);
+    const ctx = createFakeContext({
+      command: 'забрать награду',
+      stateKey: 'awakening_empty_master',
+    });
+
+    await handler.handle(ctx as never);
+
+    const message = getReplyCalls(ctx)[0]?.message ?? '';
+    expect(services.claimQuestReward.execute).toHaveBeenCalledWith(1001, 'awakening_empty_master');
+    expect(message).toContain('📜 Запись закрыта');
+    expect(message).toContain('В сумке: +5 пыли · +1 обычный осколок.');
   });
 
   it('оставляет tutorial keyboard для вернувшегося игрока с активным обучением', async () => {
@@ -820,7 +882,7 @@ describe('GameHandler smoke', () => {
 
     expect(services.collectPendingReward.execute).toHaveBeenCalledWith(1001, 'skin_beast', 'battle-victory:battle-1');
     expect(getReplyCalls(ctx)[0]?.message).toContain('🔪 Свежевать');
-    expect(getReplyCalls(ctx)[0]?.message).toContain('В сумке: +2 кожа · +1 кость.');
+    expect(getReplyCalls(ctx)[0]?.message).toContain('В сумке: +2 кожи · +1 кость.');
     expect(getReplyCalls(ctx)[0]?.message).toContain('Свежевание: 0 → 1');
   });
 

@@ -4,42 +4,11 @@ import { getPlayerSkillDefinition } from '../../modules/player/domain/player-ski
 import type { CollectPendingRewardView } from '../../modules/rewards/application/use-cases/CollectPendingReward';
 import type { PendingRewardView } from '../../modules/shared/application/ports/GameRepository';
 import {
+  formatInventoryDelta,
   formatRuneDisplayName,
   renderAcquisitionSummary,
   renderNextGoalSummary,
 } from './message-formatting';
-
-const inventoryFieldLabels = {
-  USUAL: 'обычные осколки',
-  UNUSUAL: 'необычные осколки',
-  RARE: 'редкие осколки',
-  EPIC: 'эпические осколки',
-  LEGENDARY: 'легендарные осколки',
-  MYTHICAL: 'мифические осколки',
-  usualShards: 'обычные осколки',
-  unusualShards: 'необычные осколки',
-  rareShards: 'редкие осколки',
-  epicShards: 'эпические осколки',
-  legendaryShards: 'легендарные осколки',
-  mythicalShards: 'мифические осколки',
-  leather: 'кожа',
-  bone: 'кость',
-  herb: 'трава',
-  essence: 'эссенция',
-  metal: 'металл',
-  crystal: 'кристалл',
-} as const;
-
-const formatInventoryDelta = (delta: Record<string, number | undefined>): string => {
-  const parts = Object.entries(delta)
-    .filter(([, amount]) => amount !== undefined && amount > 0)
-    .map(([field, amount]) => {
-      const label = inventoryFieldLabels[field as keyof typeof inventoryFieldLabels] ?? field;
-      return `+${amount} ${label}`;
-    });
-
-  return parts.length > 0 ? parts.join(' · ') : 'без дополнительных материалов';
-};
 
 const formatBaseRewardLine = (pendingReward: PendingRewardView): string => {
   const { baseReward } = pendingReward.snapshot;

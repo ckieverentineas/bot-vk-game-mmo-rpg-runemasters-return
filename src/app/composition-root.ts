@@ -10,6 +10,8 @@ import { SkipTutorial } from '../modules/exploration/application/use-cases/SkipT
 import { DeletePlayer } from '../modules/player/application/use-cases/DeletePlayer';
 import { GetPlayerProfile } from '../modules/player/application/use-cases/GetPlayerProfile';
 import { RegisterPlayer } from '../modules/player/application/use-cases/RegisterPlayer';
+import { ClaimQuestReward } from '../modules/quests/application/use-cases/ClaimQuestReward';
+import { GetQuestBook } from '../modules/quests/application/use-cases/GetQuestBook';
 import { CollectPendingReward } from '../modules/rewards/application/use-cases/CollectPendingReward';
 import { GetPendingReward } from '../modules/rewards/application/use-cases/GetPendingReward';
 import { RecoverPendingRewardsOnStart } from '../modules/rewards/application/use-cases/RecoverPendingRewardsOnStart';
@@ -35,6 +37,8 @@ export interface AppServices {
   registerPlayer: RegisterPlayer;
   deletePlayer: DeletePlayer;
   getPlayerProfile: GetPlayerProfile;
+  getQuestBook: GetQuestBook;
+  claimQuestReward: ClaimQuestReward;
   enterTutorialMode: EnterTutorialMode;
   returnToAdventure: ReturnToAdventure;
   skipTutorial: SkipTutorial;
@@ -67,6 +71,8 @@ export const createAppServices = (): AppServices => {
     registerPlayer: new RegisterPlayer(repository, telemetry),
     deletePlayer: new DeletePlayer(repository),
     getPlayerProfile: new GetPlayerProfile(repository),
+    getQuestBook: new GetQuestBook(repository),
+    claimQuestReward: new ClaimQuestReward(repository),
     enterTutorialMode: new EnterTutorialMode(repository),
     returnToAdventure: new ReturnToAdventure(repository, telemetry),
     skipTutorial: new SkipTutorial(repository, telemetry),

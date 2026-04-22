@@ -9,6 +9,7 @@ export {
   createBattleResultKeyboard,
 } from './battle';
 export { createPendingRewardKeyboard } from './rewards';
+export { createQuestBookKeyboard } from './quests';
 export {
   createAltarKeyboard,
   createRuneDetailKeyboard,

@@ -21,6 +21,9 @@ const createMainMenuLayout = (player?: PlayerState): KeyboardLayout => {
       { label: '🎒 Инвентарь', command: gameCommands.inventory, color: Keyboard.SECONDARY_COLOR },
     ],
     [
+      { label: '📜 Книга путей', command: gameCommands.questBook, color: Keyboard.PRIMARY_COLOR },
+    ],
+    [
       {
         label: '📘 Обучение',
         command: gameCommands.location,
