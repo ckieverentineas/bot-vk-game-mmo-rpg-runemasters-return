@@ -276,7 +276,29 @@ Standalone-сцены сохраняются через `recordCommandIntentResu
 - player-state hydration теперь тоже вынесена в один compatibility-safe helper [`src/modules/shared/infrastructure/prisma/player-state-hydration.ts`](src/modules/shared/infrastructure/prisma/player-state-hydration.ts), чтобы `Player`, `PlayerProgress`, `PlayerInventory`, `Rune` и `PlayerSchoolMastery` не склеивались в runtime через разрозненные fallback'и.
 - Prisma player/battle record mapping живёт в [`src/modules/shared/infrastructure/prisma/prisma-game-mappers.ts`](src/modules/shared/infrastructure/prisma/prisma-game-mappers.ts): `PrismaGameRepository` держит транзакции, CAS/replay и запись state, а чистая гидрация runtime view вынесена отдельно.
 
-### 8.6. Telemetry semantics
+### 8.6. Quest persistence boundary
+
+`Книга путей` пока не является отдельной persistence-системой. Quest progress считается read-model'ом поверх `PlayerState`, а `RewardLedgerRecord` отвечает только за exact-once economic side effect: выдать награду за `questCode` один раз и вернуть canonical replay без повторного начисления.
+
+`RewardLedgerRecord` достаточен для quest flow, если:
+
+- progress можно вывести из текущего `PlayerState`, уже существующих counters/mastery/inventory/runes или уже существующего ledger-факта;
+- claim имеет один reward-bearing step на один `questCode`;
+- после claim не нужно хранить отдельную lifecycle-машину записи кроме факта `claimed`;
+- player-facing copy не зависит от скрытой ветки, которую нельзя восстановить из текущего runtime state.
+
+Отдельная таблица `PlayerQuestState` нужна только при появлении реального quest-owned state. Конкретные признаки:
+
+- branch choice, irreversible story decision или mutually exclusive path;
+- hidden/revealed stage, seen/unseen state или unlock, который нельзя вывести из `PlayerState`;
+- accepted/declined/abandoned/failed/paused/cooldown lifecycle;
+- несколько reward claims внутри одной главы или ordered multi-step reward flow;
+- per-quest counters и одноразовые серверные события, которые не сохраняются в других canonical таблицах;
+- необходимость отличать `completed`, `claimed`, `replayed`, `revealed`, `seen` и другие состояния без догадок в read-model.
+
+До такого среза нельзя расширять `RewardLedgerRecord` в универсальное хранилище сюжетного состояния и нельзя добавлять Prisma migration для quests “на будущее”.
+
+### 8.7. Telemetry semantics
 
 Shipped telemetry v1 не вводит отдельную analytics-platform и опирается на существующий `GameLog` rail через typed adapter [`RepositoryGameTelemetry`](src/modules/shared/infrastructure/telemetry/RepositoryGameTelemetry.ts:1).
 

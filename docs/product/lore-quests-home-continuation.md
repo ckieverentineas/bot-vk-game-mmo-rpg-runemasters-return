@@ -90,20 +90,35 @@
 
 ### Квесты пока без отдельной таблицы
 
-Первый срез использует `RewardLedgerRecord`:
+Решение Q-014: текущая `Книга путей` остаётся read-model'ом поверх `PlayerState`, а `RewardLedgerRecord` используется только как экономический exact-once rail для выдачи награды.
+
+Первый срез использует `RewardLedgerRecord` так:
 
 - `sourceType = QUEST_REWARD`
 - `sourceId = questCode`
 - `ledgerKey = quest_reward:${playerId}:${questCode}`
 
-Это даёт exact-once выдачу наград без Prisma migration. Отдельная таблица `PlayerQuestState` понадобится позже, когда появятся:
+Этого достаточно, пока каждая запись отвечает на два вопроса:
 
-- квесты с ручным выбором ветки;
-- скрытые стадии;
-- сюжетные решения;
-- временно недоступные записи;
-- несколько claims внутри одной главы;
-- серверные события, которые нельзя вывести из текущего `PlayerState`.
+- можно ли честно вычислить progress из текущего `PlayerState` или уже существующего ledger-события;
+- была ли награда за конкретный `questCode` уже выдана.
+
+`RewardLedgerRecord` перестаёт быть достаточным, когда квесту нужно собственное состояние, а не только факт выдачи награды. В таком случае следующая миграция должна вводить отдельный `PlayerQuestState`, а не прятать сюжетный state в reward ledger snapshot.
+
+Конкретные признаки, которые требуют `PlayerQuestState`:
+
+- ручной выбор ветки, школы ответа, союзника, исхода или другой mutually exclusive путь;
+- скрытые или открываемые стадии, которые нельзя восстановить из публичного `PlayerState`;
+- сюжетные решения с долгим последствием: accepted, declined, forgiven, betrayed, remembered;
+- временная недоступность записи, cooldown, fail state, pause/resume или abandoned state;
+- несколько reward claims или несколько reward-bearing steps внутри одной quest chapter;
+- ordered multi-step progress, где важен порядок действий, а не только итоговый счётчик;
+- per-quest counters, которые не являются уже сохранёнными player counters;
+- серверное событие, которое произошло один раз и не оставило честного marker'а в `PlayerState`;
+- необходимость показать игроку разные тексты для `seen`, `revealed`, `completed`, `claimed`, `replayed`;
+- analytics/evidence требует distinguishing state, который невозможно получить из current read-model без догадок.
+
+До появления хотя бы одного такого признака новые записи добавляются через `quest-definitions.ts`, а claim продолжает идти через `RewardLedgerRecord`.
 
 ### Прогресс квестов считается read-model'ом
 
