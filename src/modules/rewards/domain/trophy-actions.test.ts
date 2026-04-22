@@ -192,6 +192,33 @@ describe('resolveTrophyActions', () => {
     });
   });
 
+  it('adds a mage focus reward variation for stable crystal traces', () => {
+    const [extractEssence] = resolveTrophyActions({ kind: 'mage' });
+
+    expect(resolveTrophyActionReward({
+      kind: 'mage',
+      isElite: false,
+      isBoss: false,
+      lootTable: {
+        essence: 1,
+        crystal: 1,
+        metal: 2,
+      },
+    }, extractEssence!)).toEqual({
+      actionCode: 'extract_essence',
+      inventoryDelta: {
+        essence: 1,
+        crystal: 1,
+      },
+      skillPoints: [
+        {
+          skillCode: 'gathering.essence_extraction',
+          points: 1,
+        },
+      ],
+    });
+  });
+
   it('models boss trophy actions with stronger skill point rewards', () => {
     const [extractEssence] = resolveTrophyActions({ kind: 'spirit' });
 

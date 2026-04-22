@@ -171,15 +171,39 @@ const applyReagentGatheringRewardVariation = (
   };
 };
 
+const applyEssenceExtractionRewardVariation = (
+  enemy: TrophyActionRewardEnemyContext,
+  action: TrophyActionDefinition,
+  inventoryDelta: InventoryDelta,
+): InventoryDelta => {
+  if (action.code !== 'extract_essence' || enemy.kind !== 'mage') {
+    return inventoryDelta;
+  }
+
+  const crystal = enemy.lootTable.crystal ?? 0;
+  if (crystal <= 0) {
+    return inventoryDelta;
+  }
+
+  return {
+    ...inventoryDelta,
+    crystal,
+  };
+};
+
 const applyTrophyRewardVariations = (
   enemy: TrophyActionRewardEnemyContext,
   action: TrophyActionDefinition,
   inventoryDelta: InventoryDelta,
 ): InventoryDelta => (
-  applyReagentGatheringRewardVariation(
+  applyEssenceExtractionRewardVariation(
     enemy,
     action,
-    applySkinningRewardVariation(enemy, action, inventoryDelta),
+    applyReagentGatheringRewardVariation(
+      enemy,
+      action,
+      applySkinningRewardVariation(enemy, action, inventoryDelta),
+    ),
   )
 );
 
