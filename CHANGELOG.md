@@ -84,6 +84,7 @@
 - reward-presenter вынесен из общего `messages.ts` в `src/vk/presenters/rewardMessages.ts`, а повторяемые formatter'ы `Перемена` / `След` / имя руны собраны в `message-formatting.ts`;
 - rune-presenter вынесен в `src/vk/presenters/runeMessages.ts`: rune hub, карточка руны и алтарь стали отдельным сценарным компонентом поверх чистых formatter-функций;
 - battle-presenter вынесен в `src/vk/presenters/battleMessages.ts`: боевой экран, развилка встречи, шкалы, состояние рун, журнал и итог боя стали отдельным сценарным компонентом;
+- оставшиеся общие VK-presenters разнесены по сценариям `homeMessages.ts`, `profileMessages.ts` и `explorationMessages.ts`, а `messages.ts` стал совместимым public barrel без экранной логики;
 - карточка руны теперь даёт одну кнопку `надеть`: выбранная руна автоматически занимает первый свободный слот, без выбора слота игроком;
 - второй слот больше не является player-facing “поддержкой”: две стартовые руны равноправно дают полные статы, пассивы и активные действия в бою;
 - telemetry `loadout_changed` больше не использует primary/support changeType: новое событие пишет нейтральный `equip_rune` / `unequip_rune` и 1-based `slotNumber`, чтобы будущие 3+ слоты не ломали модель;

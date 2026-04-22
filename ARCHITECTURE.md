@@ -130,7 +130,7 @@ src/
 
 В текущем rune UX это позволяет держать один и тот же action set для unified rune hub: page navigation, быстрый выбор 5 рун на странице, выбор конкретной руны, автоэкипировку в свободный слот, unequip, craft, reroll и destroy без размножения handler-веток.
 
-Presenter-слой следует тому же правилу: `src/vk/presenters/messages.ts` остаётся public barrel / совместимым входом, а сценарные сообщения выносятся в компоненты вроде `rewardMessages.ts`, `runeMessages.ts` и `battleMessages.ts`. Общие чистые formatter'ы живут в `message-formatting.ts`, чтобы copy и next-step строки не дублировались между экранами.
+Presenter-слой следует тому же правилу: `src/vk/presenters/messages.ts` остаётся public barrel / совместимым входом, а сценарные сообщения живут в компонентах `rewardMessages.ts`, `runeMessages.ts`, `battleMessages.ts`, `homeMessages.ts`, `profileMessages.ts` и `explorationMessages.ts`. Общие чистые formatter'ы живут в `message-formatting.ts` и `player-progress-formatting.ts`, чтобы copy, next-step строки и прогресс школы не дублировались между экранами.
 
 ### 3. Централизованная сериализация
 
