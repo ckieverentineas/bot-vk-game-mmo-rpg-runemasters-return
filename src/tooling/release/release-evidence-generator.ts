@@ -6,6 +6,12 @@ import {
 } from './school-path-evidence-generator';
 
 const trackedSchoolCodes = new Set(['ember', 'stone', 'gale', 'echo']);
+const loadoutFollowUpGoalTypes = new Set([
+  'equip_first_rune',
+  'equip_school_sign',
+  'fill_rune_slot',
+  'equip_dropped_rune',
+]);
 
 const questBookEvidenceActions = [
   'quest_book_opened',
@@ -521,6 +527,34 @@ export const summarizeReleaseEvidence = (
     selectedMatch.pendingMap.delete(userId);
   };
 
+  const markPostSessionLoadoutFollowUp = (userId: number): void => {
+    const pendingGoals = pendingPostSessionGoalsByUser.get(userId);
+    if (!pendingGoals || pendingGoals.length === 0) {
+      return;
+    }
+
+    const latestGoal = pendingGoals[pendingGoals.length - 1]!;
+    if (!loadoutFollowUpGoalTypes.has(latestGoal.goalType)) {
+      return;
+    }
+
+    const newerReturnRecapExists = (pendingReturnRecapsByUser.get(userId) ?? [])
+      .some((entry) => entry.shownAt > latestGoal.shownAt);
+    if (newerReturnRecapExists) {
+      return;
+    }
+
+    pendingGoals.pop();
+    postSessionAccumulators.get(latestGoal.goalType)?.followUpUsers.add(userId);
+
+    if (pendingGoals.length > 0) {
+      pendingPostSessionGoalsByUser.set(userId, pendingGoals);
+      return;
+    }
+
+    pendingPostSessionGoalsByUser.delete(userId);
+  };
+
   for (const entry of sortedEntries) {
     const timestamp = normalizeTimestamp(entry.createdAt);
     const details = parseDetails(entry.details);
@@ -680,6 +714,13 @@ export const summarizeReleaseEvidence = (
     }
 
     if (entry.action === 'loadout_changed') {
+      const changeType = normalizeTextField(details.changeType);
+      const isEquipChange = changeType === 'equip_rune'
+        || (changeType !== null && changeType.startsWith('equip_'));
+      if (isEquipChange) {
+        markPostSessionLoadoutFollowUp(entry.userId);
+      }
+
       const afterSchoolCode = normalizeSchoolCode(details.afterSchoolCode);
       if (!afterSchoolCode) {
         continue;
@@ -688,9 +729,6 @@ export const summarizeReleaseEvidence = (
       if (!rewardUnlockedByUserSchool.has(createUserSchoolKey(entry.userId, afterSchoolCode))) {
         continue;
       }
-
-      const isEquipChange = details.changeType === 'equip_rune'
-        || (typeof details.changeType === 'string' && details.changeType.startsWith('equip_'));
 
       if (isNonUsualRarity(details.afterRarity) && isEquipChange) {
         schoolLoadoutAccumulators.get(afterSchoolCode)!.loadoutChangedAfterRewardUsers.add(entry.userId);
@@ -905,6 +943,7 @@ export const summarizeReleaseEvidence = (
   const totalNoviceEliteUsers = schoolPathRows.reduce((sum, row) => sum + row.noviceEliteUsers, 0);
   const confidenceNotes = [
     'Onboarding funnel всё ещё читается как lightweight evidence layer: путь обучения, первое school reveal и первый commit считаются по earliest-per-user событию без session-level stitching.',
+    'Post-session next-goal follow-up stitches matching school follow-up and loadout equip telemetry; это всё ещё lightweight proxy, а не полноценный session-link.',
     'Return recap follow-up считается только по явно сопоставленному `school_novice_follow_up_action_taken`, а не по полноценному session-link.',
     'Economy health пока читает только shipped `economy_transaction_committed`; source paths без этого события остаются invisible для release evidence.',
     ...(onboardingStartedRow && onboardingStartedRow.eventCount === 0

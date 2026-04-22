@@ -1,7 +1,7 @@
 # Release Evidence Report
 
-Сгенерировано: 2026-04-22T13:53:40.885Z
-Запрошенное окно: 2026-04-15T13:53:40.854Z → 2026-04-22T13:53:40.854Z
+Сгенерировано: 2026-04-22T14:01:35.554Z
+Запрошенное окно: 2026-04-15T14:01:35.523Z → 2026-04-22T14:01:35.523Z
 Окно evidence: 2026-04-20T13:13:31.588Z → 2026-04-22T13:53:26.241Z
 Уникальных игроков в выборке: 46
 
@@ -74,7 +74,7 @@
 
 | Suggested goal | Shown | Novice elite shown | Follow-up users |
 | --- | --- | --- | --- |
-| equip_dropped_rune | 5 | 0 | 0 |
+| equip_dropped_rune | 5 | 0 | 5 |
 | challenge_school_miniboss | 1 | 0 | 1 |
 
 ## Return recap health
@@ -107,5 +107,6 @@
 ## Confidence notes
 
 - Onboarding funnel всё ещё читается как lightweight evidence layer: путь обучения, первое school reveal и первый commit считаются по earliest-per-user событию без session-level stitching.
+- Post-session next-goal follow-up stitches matching school follow-up and loadout equip telemetry; это всё ещё lightweight proxy, а не полноценный session-link.
 - Return recap follow-up считается только по явно сопоставленному `school_novice_follow_up_action_taken`, а не по полноценному session-link.
 - Economy health пока читает только shipped `economy_transaction_committed`; source paths без этого события остаются invisible для release evidence.

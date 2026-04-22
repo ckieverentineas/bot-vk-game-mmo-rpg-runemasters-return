@@ -575,6 +575,87 @@ describe('summarizeReleaseEvidence', () => {
     ]);
   });
 
+  it('stitches a loadout change to the latest matching post-session next-goal surface', () => {
+    const report = summarizeReleaseEvidence([
+      {
+        userId: 9,
+        action: 'school_novice_elite_encounter_started',
+        details: JSON.stringify({ schoolCode: 'ember' }),
+        createdAt: '2026-04-20T01:00:00.000Z',
+      },
+      {
+        userId: 9,
+        action: 'reward_claim_applied',
+        details: JSON.stringify({
+          ledgerKey: 'ledger-1',
+          battleId: 'battle-1',
+          isSchoolNoviceAligned: true,
+          novicePathSchoolCode: 'ember',
+          noviceTargetRewardRarity: 'UNUSUAL',
+          rewardRuneRarity: 'UNUSUAL',
+        }),
+        createdAt: '2026-04-20T01:01:00.000Z',
+      },
+      {
+        userId: 9,
+        action: 'post_session_next_goal_shown',
+        details: JSON.stringify({
+          suggestedGoalType: 'equip_dropped_rune',
+          isSchoolNoviceElite: false,
+        }),
+        createdAt: '2026-04-20T01:02:00.000Z',
+      },
+      {
+        userId: 9,
+        action: 'loadout_changed',
+        details: JSON.stringify({
+          changeType: 'equip_rune',
+          afterSchoolCode: 'ember',
+          afterRarity: 'UNUSUAL',
+        }),
+        createdAt: '2026-04-20T01:03:00.000Z',
+      },
+      {
+        userId: 9,
+        action: 'return_recap_shown',
+        details: JSON.stringify({
+          nextStepType: 'equip_school_sign',
+          hasEquippedRune: true,
+        }),
+        createdAt: '2026-04-20T01:04:00.000Z',
+      },
+      {
+        userId: 9,
+        action: 'school_novice_follow_up_action_taken',
+        details: JSON.stringify({
+          schoolCode: 'ember',
+          currentGoalType: 'equip_school_sign',
+          actionType: 'start_next_battle',
+          signEquipped: true,
+        }),
+        createdAt: '2026-04-20T01:05:00.000Z',
+      },
+    ], '2026-04-20T03:00:00.000Z');
+
+    expect(report.nextGoalRows).toEqual([
+      {
+        goalType: 'equip_dropped_rune',
+        shownCount: 1,
+        noviceEliteShownCount: 0,
+        followUpUsers: 1,
+      },
+    ]);
+    expect(report.returnRecapRows).toEqual([
+      {
+        nextStepType: 'equip_school_sign',
+        shownCount: 1,
+        withoutEquippedRuneShownCount: 0,
+        withEquippedRuneShownCount: 1,
+        followUpUsers: 1,
+      },
+    ]);
+  });
+
   it('counts the earliest tutorial path choice per user in the onboarding split', () => {
     const report = summarizeReleaseEvidence([
       {
