@@ -33,6 +33,7 @@
 Пока не входят в mandatory validation:
 
 - full encounter composition rules;
+- automated weak encounter tactical ask warning, until runtime/content owns stable encounter package fields such as `tacticalAsk`, `enemyPressure`, and `schoolHook`;
 - full quest scripting validation;
 - season chronicle balancing coverage;
 - live-ops schedule validation;
@@ -63,7 +64,12 @@
 
 - referenced enemies exist;
 - threat band valid;
-- encounter ask documented.
+- encounter ask documented in package docs/review notes while no runtime encounter package shape exists.
+
+Deferred warning rule:
+
+- do not infer weak tactical ask from enemy `attackText`, school copy, or private runtime hint text alone;
+- enable a warning-level validator only after encounter packages expose stable authored fields for tactical ask, enemy pressure, and school/readability hook.
 
 ### Quests
 
@@ -89,7 +95,7 @@
 ### Manual review
 
 - school fantasy clarity;
-- encounter question readability;
+- encounter question readability, including weak tactical ask review until the runtime content shape can carry an explicit encounter ask;
 - whether the reward/chase hook is genuinely motivating;
 - whether the package is worth shipping now.
 
@@ -102,4 +108,5 @@
 ## Next step after v1
 
 - expand completeness validators beyond school packages only after the 4-school baseline is stable;
-- only expand to encounter/quest/season rules when those systems have runtime contracts.
+- only expand to encounter/quest/season rules when those systems have runtime contracts;
+- first encounter candidate: warning-level tactical ask validation once the content package owns explicit `tacticalAsk`, `enemyPressure`, and `schoolHook` fields.
