@@ -1,7 +1,6 @@
 ﻿import type { Context } from 'vk-io';
 
 import type { AppServices } from '../../app/composition-root';
-import type { CraftRuneResultView } from '../../modules/runes/application/use-cases/CraftRune';
 import type { BattleActionResultView } from '../../modules/combat/application/use-cases/PerformBattleAction';
 import {
   type ExploreLocationEventResult,
@@ -29,15 +28,10 @@ import {
   createMainMenuKeyboard,
   createPendingRewardKeyboard,
   createProfileKeyboard,
-  createRuneDetailKeyboard,
-  createRuneKeyboard,
-  createRuneRerollKeyboard,
   createTutorialKeyboard,
 } from '../keyboards';
 import {
-  renderAltar,
   renderBattle,
-  renderCollectedPendingReward,
   renderExplorationEvent,
   renderInventory,
   renderLocation,
@@ -45,8 +39,6 @@ import {
   renderPendingReward,
   renderProfile,
   renderReturnRecap,
-  renderRuneDetailScreen,
-  renderRuneScreen,
   renderWelcome,
 } from '../presenters/messages';
 import { resolveCommandEnvelope } from '../router/commandRouter';
@@ -65,11 +57,21 @@ import {
   recoveryRules,
 } from './gameCommandRecovery';
 import type { TrophyActionCode } from '../../modules/rewards/domain/trophy-actions';
+import {
+  replyWithCollectedPendingReward as sendCollectedPendingReward,
+  replyWithPendingRewardIfAny as sendPendingRewardIfAny,
+  replyWithPendingRewardScreen as sendPendingRewardScreen,
+} from './responders/rewardReplyFlow';
+import {
+  replyWithRuneDetail as sendRuneDetail,
+  replyWithRuneList as sendRuneList,
+  replyWithRuneRerollMenu as sendRuneRerollMenu,
+  type RuneHubReplyState,
+} from './responders/runeReplyFlow';
 
 type ReplyKeyboard = ReturnType<typeof createMainMenuKeyboard>;
 type BattleReplyState = BattleView | BattleActionResultView | ExploreLocationReplayResult;
 type ExplorationReplyState = BattleReplyState | ExploreLocationEventResult;
-type RuneHubReplyState = PlayerState | CraftRuneResultView;
 type TutorialRouteReplyState = PlayerState | SkipTutorialReplayResult | ReturnToAdventureReplayResult;
 
 type TutorialRouteExecutor = (
@@ -115,15 +117,6 @@ const normalizeTutorialRouteReplyState = (state: TutorialRouteReplyState): { pla
   'player' in state
     ? { player: state.player, replayed: 'replayed' in state && state.replayed === true }
     : { player: state, replayed: false }
-);
-
-const normalizeRuneHubReplyState = (state: RuneHubReplyState): CraftRuneResultView => (
-  'player' in state && 'acquisitionSummary' in state
-    ? state
-    : {
-        player: state,
-        acquisitionSummary: null,
-      }
 );
 
 export class GameHandler {
@@ -269,7 +262,7 @@ export class GameHandler {
 
   public async startGame(ctx: Context, vkId: number): Promise<void> {
     const result = await this.services.registerPlayer.execute(vkId);
-    if (!result.created && await this.replyWithPendingRewardIfAny(ctx, result.player)) {
+    if (!result.created && await sendPendingRewardIfAny(ctx, this.services, result.player)) {
       return;
     }
 
@@ -316,7 +309,8 @@ export class GameHandler {
   }
 
   public async exploreNewBattle(ctx: Context, vkId: number, context: CommandIntentContext): Promise<void> {
-    if (await this.replyWithPendingRewardIfAny(ctx, await this.services.getPlayerProfile.execute(vkId))) {
+    const player = await this.services.getPlayerProfile.execute(vkId);
+    if (await sendPendingRewardIfAny(ctx, this.services, player)) {
       return;
     }
 
@@ -326,18 +320,7 @@ export class GameHandler {
   }
 
   public async showPendingReward(ctx: Context, vkId: number): Promise<void> {
-    const result = await this.services.getPendingReward.execute(vkId);
-
-    if (!result.pendingReward) {
-      await this.reply(
-        ctx,
-        ['На поле не осталось несобранных трофеев.', '', renderMainMenu(result.player)].join('\n'),
-        createMainMenuKeyboard(result.player),
-      );
-      return;
-    }
-
-    await this.reply(ctx, renderPendingReward(result.pendingReward), createPendingRewardKeyboard(result.pendingReward));
+    await sendPendingRewardScreen(ctx, this.services, vkId);
   }
 
   public async collectPendingReward(
@@ -346,8 +329,7 @@ export class GameHandler {
     actionCode: TrophyActionCode,
     context: CommandIntentContext,
   ): Promise<void> {
-    const result = await this.services.collectPendingReward.execute(vkId, actionCode, context.stateKey ?? undefined);
-    await this.reply(ctx, renderCollectedPendingReward(result), createMainMenuKeyboard(result.player));
+    await sendCollectedPendingReward(ctx, this.services, vkId, actionCode, context.stateKey ?? undefined);
   }
 
   public async executeBattleAction(
@@ -401,7 +383,7 @@ export class GameHandler {
 
   public async openRuneRerollMenu(ctx: Context, vkId: number): Promise<void> {
     const player = await this.services.getRuneCollection.execute(vkId);
-    await this.reply(ctx, renderAltar(player), createRuneRerollKeyboard(player));
+    await this.replyWithRuneRerollMenu(ctx, player);
   }
 
   public async equipCurrentRuneSlot(
@@ -463,13 +445,15 @@ export class GameHandler {
   }
 
   public async replyWithRuneList(ctx: Context, state: RuneHubReplyState): Promise<void> {
-    const result = normalizeRuneHubReplyState(state);
-    await this.reply(ctx, renderRuneScreen(result.player, result.acquisitionSummary), createRuneKeyboard(result.player));
+    await sendRuneList(ctx, state);
   }
 
   public async replyWithRuneDetail(ctx: Context, state: RuneHubReplyState): Promise<void> {
-    const result = normalizeRuneHubReplyState(state);
-    await this.reply(ctx, renderRuneDetailScreen(result.player, result.acquisitionSummary), createRuneDetailKeyboard(result.player));
+    await sendRuneDetail(ctx, state);
+  }
+
+  public async replyWithRuneRerollMenu(ctx: Context, player: PlayerState): Promise<void> {
+    await sendRuneRerollMenu(ctx, player);
   }
 
   private async replyWithExplorationResult(ctx: Context, state: ExplorationReplyState, vkId?: number): Promise<void> {
@@ -534,17 +518,6 @@ export class GameHandler {
 
   public async reply(ctx: Context, message: string, keyboard: ReplyKeyboard): Promise<void> {
     await ctx.reply(message, { keyboard });
-  }
-
-  private async replyWithPendingRewardIfAny(ctx: Context, player: PlayerState): Promise<boolean> {
-    const result = await this.services.getPendingReward.execute(player.vkId);
-
-    if (!result.pendingReward) {
-      return false;
-    }
-
-    await this.reply(ctx, renderPendingReward(result.pendingReward), createPendingRewardKeyboard(result.pendingReward));
-    return true;
   }
 
   private async trackReturnRecapShown(

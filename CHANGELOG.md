@@ -87,6 +87,7 @@
 - оставшиеся общие VK-presenters разнесены по сценариям `homeMessages.ts`, `profileMessages.ts` и `explorationMessages.ts`, а `messages.ts` стал совместимым public barrel без экранной логики;
 - recoverable stale/retry/battle/rune контексты вынесены из `gameCommandRoutes.ts` в `src/vk/handlers/gameCommandRecovery.ts`, чтобы обычные маршруты команд не смешивались с аварийным восстановлением;
 - static/dynamic command routes разнесены по сценариям `routes/coreCommandRoutes.ts`, `tutorialCommandRoutes.ts`, `battleCommandRoutes.ts`, `runeCommandRoutes.ts` и `rewardCommandRoutes.ts`, а `gameCommandRoutes.ts` стал агрегатором совместимости;
+- rune/reward reply-flow вынесены из `GameHandler` в `src/vk/handlers/responders/runeReplyFlow.ts` и `rewardReplyFlow.ts`, чтобы handler делегировал сборку presenter + keyboard сценарным responder-компонентам;
 - карточка руны теперь даёт одну кнопку `надеть`: выбранная руна автоматически занимает первый свободный слот, без выбора слота игроком;
 - второй слот больше не является player-facing “поддержкой”: две стартовые руны равноправно дают полные статы, пассивы и активные действия в бою;
 - telemetry `loadout_changed` больше не использует primary/support changeType: новое событие пишет нейтральный `equip_rune` / `unequip_rune` и 1-based `slotNumber`, чтобы будущие 3+ слоты не ломали модель;

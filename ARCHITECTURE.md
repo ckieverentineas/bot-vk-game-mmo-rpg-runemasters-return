@@ -132,7 +132,7 @@ src/
 
 Presenter-слой следует тому же правилу: `src/vk/presenters/messages.ts` остаётся public barrel / совместимым входом, а сценарные сообщения живут в компонентах `rewardMessages.ts`, `runeMessages.ts`, `battleMessages.ts`, `homeMessages.ts`, `profileMessages.ts` и `explorationMessages.ts`. Общие чистые formatter'ы живут в `message-formatting.ts` и `player-progress-formatting.ts`, чтобы copy, next-step строки и прогресс школы не дублировались между экранами.
 
-Handler-слой тоже режется по ролям: `gameCommandRoutes.ts` остаётся агрегатором маршрутов, `routes/*CommandRoutes.ts` описывают core/tutorial/battle/rune/reward команды, а `gameCommandRecovery.ts` держит восстановление stale/retry/battle/rune контекстов. `GameHandler` остаётся точкой оркестрации вокруг VK context, use-case'ов, presenters и keyboards.
+Handler-слой тоже режется по ролям: `gameCommandRoutes.ts` остаётся агрегатором маршрутов, `routes/*CommandRoutes.ts` описывают core/tutorial/battle/rune/reward команды, а `gameCommandRecovery.ts` держит восстановление stale/retry/battle/rune контекстов. `responders/*ReplyFlow.ts` собирают player-facing ответ из presenter'а и keyboard'а для конкретного сценария. `GameHandler` остаётся точкой оркестрации вокруг VK context, use-case'ов, responders и telemetry.
 
 ### 3. Централизованная сериализация
 

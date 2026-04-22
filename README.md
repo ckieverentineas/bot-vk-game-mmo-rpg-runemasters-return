@@ -74,6 +74,7 @@ Runemasters Return — VK MMO RPG на TypeScript с модульным игро
 - `src/vk/keyboards/*` — сценарные VK-клавиатуры (`main`, `battle`, `runes`, `rewards`, `tutorial`) с общим builder'ом и совместимым barrel `index.ts`;
 - `src/vk/presenters/*` — player-facing тексты: общий barrel `messages.ts`, сценарные presenters для trophy/rune/battle/home/profile/exploration flow и общие чистые formatter'ы для повторяемых строк;
 - `src/vk/handlers/gameCommandRoutes.ts`, `src/vk/handlers/routes/*` и `src/vk/handlers/gameCommandRecovery.ts` — агрегатор маршрутов, сценарные command routes и recoverable stale/retry контексты отдельно от `GameHandler`;
+- `src/vk/handlers/responders/*` — сценарные reply-flow, которые собирают presenter + keyboard для рун и pending trophy rewards без раздувания `GameHandler`;
 - `src/content/validation/validate-game-content.ts` — автоматическая проверка file-first биомов, мобов, рунного контента и игрового баланса перед быстрыми обновлениями;
 - `src/content/runes/schools.ts` — canonical school identity seed, из которого выводится player-facing school presentation;
 - `src/modules/shared/application/require-player.ts` — единая точка загрузки игрока и консистентных ошибок для use-case слоя;

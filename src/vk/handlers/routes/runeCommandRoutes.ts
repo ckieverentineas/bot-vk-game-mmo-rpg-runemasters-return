@@ -6,8 +6,6 @@ import {
   resolveRunePageSlotCommand,
   resolveRuneStatRerollCommand,
 } from '../../commands/catalog';
-import { createRuneRerollKeyboard } from '../../keyboards';
-import { renderAltar } from '../../presenters/messages';
 import {
   createDynamicCommandRoute,
   type DynamicCommandRoute,
@@ -73,7 +71,7 @@ export const runeDynamicCommandRoutes = [
         context.stateKey ?? undefined,
         context.intentSource,
       );
-      await handler.reply(ctx, renderAltar(player), createRuneRerollKeyboard(player));
+      await handler.replyWithRuneRerollMenu(ctx, player);
     },
   ),
 ] satisfies readonly DynamicCommandRoute[];
