@@ -530,7 +530,7 @@ Player-facing decision:
 23. Later: `feat: expand trophy action skill thresholds`
 24. Later: `feat: connect rune school behavior to school growth`
 25. Later: `feat: connect combat behavior to stat growth`
-26. Later: `docs: update OBT tester guide for action progression`
+26. Done: `docs: update OBT tester guide for action progression`
 
 ---
 
