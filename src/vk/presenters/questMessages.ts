@@ -20,13 +20,13 @@ const renderQuestProgress = (quest: QuestView): string => {
     return 'Шаг завершён. Награда ждёт в книге.';
   }
 
-  return `Прогресс: ${quest.progress.current}/${quest.progress.required}.`;
+  return `Путь: ${quest.progress.current}/${quest.progress.required}.`;
 };
 
 const renderQuest = (quest: QuestView, index: number): string => [
   `${index + 1}. ${quest.icon} ${quest.title} · ${questStatusLabels[quest.status]}`,
   quest.story,
-  `Цель: ${quest.objective}`,
+  `След: ${quest.objective}`,
   renderQuestProgress(quest),
   `Награда: ${formatResourceReward(quest.reward)}.`,
 ].join('\n');
