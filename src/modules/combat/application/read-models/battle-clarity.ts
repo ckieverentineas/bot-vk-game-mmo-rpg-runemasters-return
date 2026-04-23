@@ -32,6 +32,13 @@ const hasReadyRuneAction = (battle: BattleView): boolean => (
   })
 );
 
+const hasReadyRuneActionCode = (battle: BattleView, code: string): boolean => (
+  listBattleRuneLoadouts(battle.player).some(({ loadout }) => (
+    loadout.activeAbility?.code === code
+    && buildBattleRuneActionReadinessView(battle, loadout.activeAbility).isReady
+  ))
+);
+
 const resolveChoiceLine = (battle: BattleView): string | null => {
   const readyRuneAction = hasReadyRuneAction(battle);
 
@@ -56,6 +63,12 @@ const resolveSchoolHint = (battle: BattleView): string | null => {
   switch (battle.player.runeLoadout?.schoolCode) {
     case 'ember': {
       const threshold = Math.ceil(battle.enemy.maxHealth / 2);
+      if (battle.enemy.intent?.code === 'GUARD_BREAK') {
+        return firstSchoolSignEquipped
+          ? '🔥 Первый знак Пламени: guard-break — ваше окно давления; отвечайте атакой или «Импульсом углей», пока враг раскрыт.'
+          : '🔥 Пламя: guard-break — окно давления; атака и готовая техника не дают врагу спокойно сломать стойку.';
+      }
+
       if (firstSchoolSignEquipped) {
         return battle.enemy.currentHealth <= threshold
           ? '🔥 Первый знак Пламени: враг уже просел — дожмите его сейчас, чтобы сразу почувствовать стиль школы.'
@@ -68,7 +81,7 @@ const resolveSchoolHint = (battle: BattleView): string | null => {
     }
     case 'stone':
       if (firstSchoolSignEquipped && battle.enemy.intent?.code === 'HEAVY_STRIKE') {
-        return '🪨 Первый знак Тверди: переживите тяжёлый удар защитой или «Каменным отпором», а затем ответьте сильнее обычного.';
+        return '🪨 Первый знак Тверди: держите тяжёлый удар защитой или «Каменным отпором», а затем отвечайте сильнее обычного.';
       }
 
       if (firstSchoolSignEquipped && battle.enemy.intent?.code === 'GUARD_BREAK') {
@@ -80,7 +93,7 @@ const resolveSchoolHint = (battle: BattleView): string | null => {
       }
 
       if (battle.enemy.intent?.code === 'HEAVY_STRIKE') {
-        return '🪨 Твердь: тяжёлый удар лучше пережить защитой или «Каменным отпором», а затем наказать в окно ответа.';
+        return '🪨 Твердь: тяжёлый удар лучше держать защитой или «Каменным отпором», а затем наказать в окно ответа.';
       }
 
       if (battle.enemy.intent?.code === 'GUARD_BREAK') {
@@ -90,6 +103,12 @@ const resolveSchoolHint = (battle: BattleView): string | null => {
       return '🪨 Твердь: ценность школы в том, чтобы пережить опасный ход и ответить сильнее, чем обычная сборка.';
     case 'gale': {
       const activeAbility = battle.player.runeLoadout?.activeAbility;
+      if (battle.enemy.intent && hasReadyRuneActionCode(battle, 'gale_step')) {
+        return firstSchoolSignEquipped
+          ? '🌪️ Первый знак Бури: раскрытый замысел — окно темпа; «Шаг шквала» бьёт и лучше прикрывает следующий ответ.'
+          : '🌪️ Буря: раскрытый замысел — окно темпа; «Шаг шквала» бьёт и лучше прикрывает следующий ответ.';
+      }
+
       if (firstSchoolSignEquipped && activeAbility && activeAbility.currentCooldown <= 0 && battle.player.currentMana >= activeAbility.manaCost) {
         return '🌪️ Первый знак Бури: ударьте «Шагом шквала», чтобы сразу нанести урон и подготовить защиту на ответ врага.';
       }
@@ -107,12 +126,12 @@ const resolveSchoolHint = (battle: BattleView): string | null => {
     case 'echo':
       if (firstSchoolSignEquipped) {
         return battle.enemy.intent
-          ? '🧠 Первый знак Прорицания: раскрытая угроза — ваше главное окно для точного ответа, не тратьте ход вслепую.'
+          ? `🧠 Первый знак Прорицания: «${battle.enemy.intent.title}» уже прочитан — отвечайте точно, не тратьте ход вслепую.`
           : '🧠 Первый знак Прорицания: ждите раскрытую угрозу и отвечайте в правильный момент, чтобы почувствовать школу.';
       }
 
       return battle.enemy.intent
-        ? '🧠 Прорицание: раскрытая угроза даёт лучшее окно для точного ответа — не тратьте ход вслепую.'
+        ? `🧠 Прорицание: «${battle.enemy.intent.title}» уже прочитан — это лучшее окно для точного ответа.`
         : '🧠 Прорицание: ждите раскрытую угрозу и наказывайте врага в правильный момент, а не наугад.';
     default:
       return null;

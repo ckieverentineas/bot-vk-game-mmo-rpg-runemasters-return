@@ -23,8 +23,18 @@ const hasActiveCooldownWindow = (battle: BattleView): boolean => (
   ))
 );
 
+const hasRevealedIntent = (battle: BattleView): boolean => !!battle.enemy.intent;
+
+const isGuardBreakIntent = (battle: BattleView): boolean => battle.enemy.intent?.code === 'GUARD_BREAK';
+
+const isHeavyStrikeIntent = (battle: BattleView): boolean => battle.enemy.intent?.code === 'HEAVY_STRIKE';
+
 export const resolveEmberAttackBonus = (battle: BattleView): number => (
   countPassive(battle, 'ember_heart')
+);
+
+export const resolveEmberPressureIntentBonus = (battle: BattleView): number => (
+  hasPassive(battle, 'ember_heart') && isGuardBreakIntent(battle) ? 1 : 0
 );
 
 export const resolveEmberExecutionBonus = (battle: BattleView): number => (
@@ -49,6 +59,10 @@ export const resolveStoneGuardCapBonus = (battle: BattleView): number => (
   countPassive(battle, 'stone_guard') * 2
 );
 
+export const resolveStoneHoldIntentGuardBonus = (battle: BattleView): number => (
+  hasPassive(battle, 'stone_guard') && isHeavyStrikeIntent(battle) ? 1 : 0
+);
+
 export const resolveStoneMasteryGuardGainBonus = (battle: BattleView): number => (
   hasSchoolMastery(battle, 'stone') ? 1 : 0
 );
@@ -63,6 +77,10 @@ export const resolveStoneSynergyGuardBonus = (battle: BattleView): number => (
 
 export const resolveGaleMasteryAttackGuardGain = (battle: BattleView): number => (
   hasSchoolMastery(battle, 'gale') ? 1 : 0
+);
+
+export const resolveGaleTempoIntentGuardBonus = (battle: BattleView): number => (
+  hasRevealedIntent(battle) ? 1 : 0
 );
 
 export const resolveEchoIntentAttackBonus = (battle: BattleView): number => {

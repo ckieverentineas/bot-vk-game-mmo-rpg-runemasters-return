@@ -31,9 +31,12 @@ import {
   resolveEmberAttackBonus,
   resolveEmberComboBonus,
   resolveEmberExecutionBonus,
+  resolveEmberPressureIntentBonus,
   resolveGaleMasteryAttackGuardGain,
+  resolveGaleTempoIntentGuardBonus,
   resolveStoneGuardCapBonus,
   resolveStoneGuardGainBonus,
+  resolveStoneHoldIntentGuardBonus,
   resolveStoneSynergyDamageBonus,
   resolveStoneSynergyGuardBonus,
   resolveStoneMasteryGuardGainBonus,
@@ -48,17 +51,20 @@ interface DefendOutcome {
   readonly guardGain: number;
   readonly guardCap: number;
   readonly intentGuardBonus: number;
+  readonly stoneHoldIntentGuardBonus: number;
   readonly stoneMasteryGuardGainBonus: number;
 }
 
 interface BasicAttackOutcome {
   readonly totalDamage: number;
   readonly emberBonus: number;
+  readonly emberPressureIntentBonus: number;
   readonly emberExecutionBonus: number;
   readonly emberComboBonus: number;
   readonly echoBonus: number;
   readonly echoMasteryBonus: number;
   readonly galeGuardGain: number;
+  readonly revealedIntentTitle: string | null;
 }
 
 interface PlayerActionOptions {
@@ -215,6 +221,7 @@ const finishEnemyPreparation = (battle: BattleView): BattleView => {
 
 const resolveDefendOutcome = (battle: BattleView): DefendOutcome => {
   const stoneMasteryGuardGainBonus = resolveStoneMasteryGuardGainBonus(battle);
+  const stoneHoldIntentGuardBonus = resolveStoneHoldIntentGuardBonus(battle);
   const intentGuardBonus = resolveIntentDefendGuardBonus(battle.enemy.intent);
 
   return {
@@ -222,12 +229,14 @@ const resolveDefendOutcome = (battle: BattleView): DefendOutcome => {
       resolveDefendGuardGain(battle.player),
       intentGuardBonus,
       resolveStoneGuardGainBonus(battle),
+      stoneHoldIntentGuardBonus,
       stoneMasteryGuardGainBonus,
     ]),
     guardCap: resolveGuardCapWithBonuses(battle, [
       resolveStoneGuardCapBonus(battle),
     ]),
     intentGuardBonus,
+    stoneHoldIntentGuardBonus,
     stoneMasteryGuardGainBonus,
   };
 };
@@ -235,6 +244,7 @@ const resolveDefendOutcome = (battle: BattleView): DefendOutcome => {
 const resolveBasicAttackOutcome = (battle: BattleView): BasicAttackOutcome => {
   const baseDamage = calculatePhysicalDamage(battle.player.attack, battle.enemy.defence);
   const emberBonus = resolveEmberAttackBonus(battle);
+  const emberPressureIntentBonus = resolveEmberPressureIntentBonus(battle);
   const emberExecutionBonus = resolveEmberExecutionBonus(battle);
   const emberComboBonus = resolveEmberComboBonus(battle);
   const echoBonus = resolveEchoIntentAttackBonus(battle);
@@ -245,17 +255,20 @@ const resolveBasicAttackOutcome = (battle: BattleView): BasicAttackOutcome => {
     totalDamage: sum([
       baseDamage,
       emberBonus,
+      emberPressureIntentBonus,
       emberExecutionBonus,
       emberComboBonus,
       echoBonus,
       echoMasteryBonus,
     ]),
     emberBonus,
+    emberPressureIntentBonus,
     emberExecutionBonus,
     emberComboBonus,
     echoBonus,
     echoMasteryBonus,
     galeGuardGain,
+    revealedIntentTitle: battle.enemy.intent?.title ?? null,
   };
 };
 
@@ -299,6 +312,7 @@ export class BattleEngine {
       nextBattle.log,
       `🛡️ Вы занимаете защитную стойку и готовите защиту на ${outcome.guardGain} урона.`,
       ...messageWhen(outcome.intentGuardBonus > 0, '🛡️ Раскрытый тяжёлый удар даёт время встать плотнее обычного.'),
+      ...messageWhen(outcome.stoneHoldIntentGuardBonus > 0, '🪨 Твердь держит раскрытую угрозу: стойка становится ещё крепче.'),
       ...messageWhen(outcome.stoneMasteryGuardGainBonus > 0, '🪨 Мастерство Тверди усиливает защитную стойку.'),
     );
     nextBattle.turnOwner = 'ENEMY';
@@ -391,9 +405,13 @@ export class BattleEngine {
       nextBattle.log,
       `⚔️ Вы наносите ${outcome.totalDamage} урона врагу ${nextBattle.enemy.name}.`,
       ...messageWhen(outcome.emberBonus > 0, `🔥 Школа Пламени усиливает атаку ещё на ${outcome.emberBonus}.`),
+      ...messageWhen(outcome.emberPressureIntentBonus > 0, '🔥 Пламя давит пробивающий замах до того, как враг успевает сломать стойку.'),
       ...messageWhen(outcome.emberExecutionBonus > 0, `🔥 Мастерство Пламени помогает дожать врага ещё на ${outcome.emberExecutionBonus}.`),
       ...messageWhen(outcome.emberComboBonus > 0, '🔥 Разогрев Пламени превращает откат рунной техники в окно для ещё более сильного добивания.'),
-      ...messageWhen(outcome.echoBonus > 0, `🧠 Школа Прорицания считывает намерение врага и добавляет ${outcome.echoBonus} магического урона.`),
+      ...messageWhen(
+        outcome.echoBonus > 0,
+        `🧠 Школа Прорицания читает «${outcome.revealedIntentTitle ?? 'замысел'}» и добавляет ${outcome.echoBonus} магического урона.`,
+      ),
       ...messageWhen(outcome.echoMasteryBonus > 0, `🧠 Мастерство Прорицания добавляет ещё ${outcome.echoMasteryBonus} урона по раскрытой угрозе.`),
       ...messageWhen(outcome.galeGuardGain > 0, `🌪️ Мастерство Бури готовит защиту ещё на ${outcome.galeGuardGain} урона.`),
     );
@@ -512,7 +530,8 @@ export class BattleEngine {
     const strikePower = Math.max(1, Math.floor(nextBattle.player.attack * 0.75) + Math.floor(nextBattle.player.dexterity / 2));
     const intentDamageBonus = resolveRuneIntentDamageBonus(nextBattle.enemy.intent);
     const damage = calculatePhysicalDamage(strikePower, nextBattle.enemy.defence) + intentDamageBonus;
-    const guardGain = resolveGaleGuardGain(nextBattle.player);
+    const tempoGuardBonus = resolveGaleTempoIntentGuardBonus(nextBattle);
+    const guardGain = resolveGaleGuardGain(nextBattle.player) + tempoGuardBonus;
     const guardCap = resolveGuardCap(nextBattle.player);
 
     applyDamageToEnemy(nextBattle, damage);
@@ -523,6 +542,7 @@ export class BattleEngine {
       nextBattle.log,
       `🌀 ${activeAbility.name} наносит ${damage} урона и готовит защиту на ${guardGain} урона.`,
       ...messageWhen(intentDamageBonus > 0, '🔮 Руна бьёт точнее по раскрытому замыслу врага.'),
+      ...messageWhen(tempoGuardBonus > 0, '🌪️ Буря забирает темп по раскрытому замыслу: следующий ответ прикрыт лучше.'),
       `💙 Мана: ${nextBattle.player.currentMana}/${nextBattle.player.maxMana}.`,
     );
 

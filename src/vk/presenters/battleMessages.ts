@@ -2,6 +2,11 @@ import { buildBattleClarityView } from '../../modules/combat/application/read-mo
 import { buildBattleRuneActionReadinessView } from '../../modules/combat/application/read-models/battle-rune-action-readiness';
 import { isBattleEncounterOffered } from '../../modules/combat/domain/battle-encounter';
 import { listBattleRuneLoadouts } from '../../modules/combat/domain/battle-rune-loadouts';
+import {
+  resolveStoneGuardGainBonus,
+  resolveStoneHoldIntentGuardBonus,
+  resolveStoneMasteryGuardGainBonus,
+} from '../../modules/combat/domain/battle-rune-passives';
 import { resolveDefendGuardGain, resolveIntentDefendGuardBonus } from '../../modules/combat/domain/battle-tactics';
 import type { AcquisitionSummaryView } from '../../modules/player/application/read-models/acquisition-summary';
 import { buildDefeatFlowView } from '../../modules/player/application/read-models/defeat-flow';
@@ -132,7 +137,13 @@ const renderBattleRuneActionLabel = (
 };
 
 const renderBattleActionState = (battle: BattleView): string => {
-  const defendGain = resolveDefendGuardGain(battle.player) + resolveIntentDefendGuardBonus(battle.enemy.intent);
+  const defendGain = [
+    resolveDefendGuardGain(battle.player),
+    resolveIntentDefendGuardBonus(battle.enemy.intent),
+    resolveStoneGuardGainBonus(battle),
+    resolveStoneHoldIntentGuardBonus(battle),
+    resolveStoneMasteryGuardGainBonus(battle),
+  ].reduce((total, gain) => total + gain, 0);
   const actions = ['⚔️ Атака', `🛡️ Защита (+${defendGain} щит)`];
 
   actions.push(

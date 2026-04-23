@@ -248,6 +248,27 @@ describe('BattleEngine', () => {
     expect(resolved.log.some((entry) => entry.includes('Школа Пламени'))).toBe(true);
   });
 
+  it('пламя давит guard-break базовой атакой до слома стойки', () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0.5);
+    const battle = createBattle({
+      enemy: {
+        ...createBattle().enemy,
+        intent: {
+          code: 'GUARD_BREAK',
+          title: 'Кислотный прорыв',
+          description: 'Следующий удар разобьёт защиту.',
+          bonusAttack: 1,
+          shattersGuard: true,
+        },
+      },
+    });
+
+    const resolved = BattleEngine.attack(battle);
+
+    expect(resolved.enemy.currentHealth).toBe(2);
+    expect(resolved.log.some((entry) => entry.includes('Пламя давит пробивающий замах'))).toBe(true);
+  });
+
   it('мастерство пламени усиливает добивающую атаку по просевшему врагу', () => {
     const battle = createBattle({
       player: {
@@ -396,6 +417,36 @@ describe('BattleEngine', () => {
 
     expect(resolved.player.guardPoints).toBe(5);
     expect(resolved.log.some((entry) => entry.includes('Мастерство Тверди'))).toBe(true);
+  });
+
+  it('твердь получает дополнительную стойку против раскрытого тяжёлого удара', () => {
+    const battle = createBattle({
+      player: {
+        ...createBattle().player,
+        runeLoadout: {
+          ...createBattle().player.runeLoadout!,
+          archetypeCode: 'stone',
+          archetypeName: 'Страж',
+          passiveAbilityCodes: ['stone_guard'],
+          activeAbility: null,
+        },
+      },
+      enemy: {
+        ...createBattle().enemy,
+        kind: 'wolf',
+        intent: {
+          code: 'HEAVY_STRIKE',
+          title: 'Тяжёлый удар',
+          description: 'Следующая атака врага будет сильнее обычной.',
+          bonusAttack: 3,
+        },
+      },
+    });
+
+    const resolved = BattleEngine.defend(battle);
+
+    expect(resolved.player.guardPoints).toBe(7);
+    expect(resolved.log.some((entry) => entry.includes('Твердь держит раскрытую угрозу'))).toBe(true);
   });
 
   it('вторая руна тверди даёт полный guard-бонус', () => {
@@ -555,6 +606,42 @@ describe('BattleEngine', () => {
     expect(resolved.log.some((entry) => entry.includes('Мастерство Бури'))).toBe(true);
   });
 
+  it('шаг шквала получает темповую защиту по раскрытому намерению', () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0.5);
+    const battle = createBattle({
+      player: {
+        ...createBattle().player,
+        runeLoadout: {
+          ...createBattle().player.runeLoadout!,
+          archetypeCode: 'gale',
+          archetypeName: 'Налётчик',
+          passiveAbilityCodes: [],
+          activeAbility: {
+            code: 'gale_step',
+            name: 'Шаг шквала',
+            manaCost: 2,
+            cooldownTurns: 2,
+            currentCooldown: 0,
+          },
+        },
+      },
+      enemy: {
+        ...createBattle().enemy,
+        intent: {
+          code: 'HEAVY_STRIKE',
+          title: 'Тяжёлый удар',
+          description: 'Следующая атака врага будет сильнее обычной.',
+          bonusAttack: 3,
+        },
+      },
+    });
+
+    const resolved = BattleEngine.useRuneSkill(battle);
+
+    expect(resolved.player.guardPoints).toBe(4);
+    expect(resolved.log.some((entry) => entry.includes('Буря забирает темп'))).toBe(true);
+  });
+
   it('мастерство прорицания усиливает атаку по раскрытому намерению', () => {
     vi.spyOn(Math, 'random').mockReturnValue(0.5);
     const battle = createBattle({
@@ -585,6 +672,36 @@ describe('BattleEngine', () => {
 
     expect(resolved.enemy.currentHealth).toBe(2);
     expect(resolved.log.some((entry) => entry.includes('Мастерство Прорицания'))).toBe(true);
+  });
+
+  it('прорицание называет прочитанный intent в результате атаки', () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0.5);
+    const battle = createBattle({
+      player: {
+        ...createBattle().player,
+        runeLoadout: {
+          ...createBattle().player.runeLoadout!,
+          archetypeCode: 'echo',
+          archetypeName: 'Провидец',
+          passiveAbilityCodes: ['echo_mind'],
+          activeAbility: null,
+        },
+      },
+      enemy: {
+        ...createBattle().enemy,
+        intent: {
+          code: 'GUARD_BREAK',
+          title: 'Пробивающий удар',
+          description: 'Следующий удар разобьёт защиту.',
+          bonusAttack: 1,
+          shattersGuard: true,
+        },
+      },
+    });
+
+    const resolved = BattleEngine.attack(battle);
+
+    expect(resolved.log.some((entry) => entry.includes('читает «Пробивающий удар»'))).toBe(true);
   });
 
   it('телеграфирует тяжёлый удар у подходящего врага вместо обычной атаки', () => {

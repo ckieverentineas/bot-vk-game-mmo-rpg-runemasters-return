@@ -114,6 +114,59 @@ describe('buildBattleClarityView', () => {
     expect(clarity.choiceLine).toContain('чистую защиту оставьте');
   });
 
+  it('builds an ember-specific pressure hint against guard-break', () => {
+    const clarity = buildBattleClarityView(createBattle({
+      enemy: {
+        ...createBattle().enemy,
+        intent: {
+          code: 'GUARD_BREAK',
+          title: 'Пробивающий удар',
+          description: 'Следующий удар разобьёт защиту.',
+          bonusAttack: 1,
+          shattersGuard: true,
+        },
+      },
+    }));
+
+    expect(clarity.schoolHintLine).toContain('окно давления');
+    expect(clarity.schoolHintLine).toContain('guard-break');
+  });
+
+  it('builds a stone-specific hold hint against heavy strike', () => {
+    const clarity = buildBattleClarityView(createBattle({
+      player: {
+        ...createBattle().player,
+        runeLoadout: {
+          ...createBattle().player.runeLoadout!,
+          runeName: 'Руна Тверди',
+          archetypeCode: 'stone',
+          archetypeName: 'Страж',
+          schoolCode: 'stone',
+          passiveAbilityCodes: ['stone_guard'],
+          activeAbility: {
+            code: 'stone_bastion',
+            name: 'Каменный отпор',
+            manaCost: 2,
+            cooldownTurns: 2,
+            currentCooldown: 0,
+          },
+        },
+      },
+      enemy: {
+        ...createBattle().enemy,
+        intent: {
+          code: 'HEAVY_STRIKE',
+          title: 'Тяжёлый удар',
+          description: 'Следующий удар будет сильнее.',
+          bonusAttack: 2,
+        },
+      },
+    }));
+
+    expect(clarity.schoolHintLine).toContain('Твердь');
+    expect(clarity.schoolHintLine).toContain('держать');
+  });
+
   it('builds a gale-specific hint on ready gale step', () => {
     const clarity = buildBattleClarityView(createBattle({
       player: {
@@ -142,6 +195,41 @@ describe('buildBattleClarityView', () => {
     expect(clarity.schoolHintLine).toContain('Шагом шквала');
   });
 
+  it('builds a gale-specific tempo hint when gale step can answer intent', () => {
+    const clarity = buildBattleClarityView(createBattle({
+      player: {
+        ...createBattle().player,
+        runeLoadout: {
+          ...createBattle().player.runeLoadout!,
+          runeName: 'Руна Бури',
+          archetypeCode: 'gale',
+          archetypeName: 'Налётчик',
+          schoolCode: 'gale',
+          passiveAbilityCodes: [],
+          activeAbility: {
+            code: 'gale_step',
+            name: 'Шаг шквала',
+            manaCost: 2,
+            cooldownTurns: 2,
+            currentCooldown: 0,
+          },
+        },
+      },
+      enemy: {
+        ...createBattle().enemy,
+        intent: {
+          code: 'HEAVY_STRIKE',
+          title: 'Тяжёлый удар',
+          description: 'Следующий удар будет сильнее.',
+          bonusAttack: 2,
+        },
+      },
+    }));
+
+    expect(clarity.schoolHintLine).toContain('окно темпа');
+    expect(clarity.schoolHintLine).toContain('Шаг шквала');
+  });
+
   it('builds an echo-specific hint around revealed intent', () => {
     const clarity = buildBattleClarityView(createBattle({
       player: {
@@ -168,6 +256,7 @@ describe('buildBattleClarityView', () => {
       },
     }));
 
-    expect(clarity.schoolHintLine).toContain('раскрытая угроза');
+    expect(clarity.schoolHintLine).toContain('Guard-break');
+    expect(clarity.schoolHintLine).toContain('прочитан');
   });
 });

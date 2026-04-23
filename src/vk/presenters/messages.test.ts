@@ -972,7 +972,46 @@ describe('messages school-first onboarding framing', () => {
     }));
 
     expect(message).toContain('🎲 Выбор: пробивающий удар ломает стойку');
-    expect(message).toContain('🧠 Прорицание: раскрытая угроза даёт лучшее окно для точного ответа');
+    expect(message).toContain('🧠 Прорицание: «Guard-break» уже прочитан');
+  });
+
+  it('shows school-aware guard value for stone stance in battle actions', () => {
+    const message = renderBattle(createBattle({
+      status: 'ACTIVE',
+      result: null,
+      rewards: null,
+      enemy: {
+        ...createBattle().enemy,
+        intent: {
+          code: 'HEAVY_STRIKE',
+          title: 'Тяжёлый удар',
+          description: 'Следующий удар будет сильнее.',
+          bonusAttack: 2,
+        },
+      },
+      player: {
+        ...createBattle().player,
+        runeLoadout: {
+          runeId: 'rune-1',
+          runeName: 'Руна Тверди',
+          archetypeCode: 'stone',
+          archetypeName: 'Страж',
+          schoolCode: 'stone',
+          schoolMasteryRank: 1,
+          passiveAbilityCodes: ['stone_guard'],
+          activeAbility: {
+            code: 'stone_bastion',
+            name: 'Каменный отпор',
+            manaCost: 2,
+            cooldownTurns: 2,
+            currentCooldown: 0,
+          },
+        },
+      },
+    }));
+
+    expect(message).toContain('🛡️ Защита (+8 щит)');
+    expect(message).toContain('🪨 Твердь: тяжёлый удар лучше держать защитой');
   });
 
   it('shows an impact recap block in battle result when a reward changes the build', () => {
