@@ -896,6 +896,50 @@ describe('PrismaGameRepository release hardening', () => {
     });
   });
 
+  it('derives bestiary discovery from battles and applied victory ledgers', async () => {
+    const { repository, tx } = createPrismaMock();
+
+    tx.battleSession.findMany.mockResolvedValue([
+      { id: 'battle-1', enemyCode: 'blue-slime' },
+      { id: 'battle-2', enemyCode: 'forest-wolf' },
+      { id: 'battle-3', enemyCode: 'blue-slime' },
+    ]);
+    tx.rewardLedgerRecord.findMany.mockResolvedValue([
+      { sourceId: 'battle-2' },
+      { sourceId: 'battle-missing' },
+    ]);
+
+    const discovery = await repository.listBestiaryDiscovery(1);
+
+    expect(discovery).toEqual({
+      discoveredEnemyCodes: ['blue-slime', 'forest-wolf'],
+      rewardedEnemyCodes: ['forest-wolf'],
+    });
+    expect(tx.battleSession.findMany).toHaveBeenCalledWith({
+      where: { playerId: 1 },
+      select: {
+        id: true,
+        enemyCode: true,
+      },
+      orderBy: {
+        createdAt: 'asc',
+      },
+    });
+    expect(tx.rewardLedgerRecord.findMany).toHaveBeenCalledWith({
+      where: {
+        playerId: 1,
+        sourceType: 'BATTLE_VICTORY',
+        status: 'APPLIED',
+      },
+      select: {
+        sourceId: true,
+      },
+      orderBy: {
+        appliedAt: 'asc',
+      },
+    });
+  });
+
   it('finds a pending reward with battle source context', async () => {
     const { repository, tx } = createPrismaMock();
     const pendingRecord = createPendingRewardLedgerRecord();

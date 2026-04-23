@@ -65,6 +65,7 @@ export const buildWorldCatalog = ({ biomes, mobs }: BuildWorldCatalogInput): Wor
   });
 
   return {
+    listBiomes: (): readonly BiomeView[] => biomeViews,
     findBiomeForLocationLevel: (locationLevel: number): BiomeView | null => (
       biomesSortedByLevel.find((biome) => biome.minLevel <= locationLevel && biome.maxLevel >= locationLevel) ?? null
     ),

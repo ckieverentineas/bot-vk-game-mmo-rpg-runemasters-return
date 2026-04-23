@@ -1,5 +1,7 @@
 export { renderBattle } from './battleMessages';
 
+export { renderBestiary } from './bestiaryMessages';
+
 export { renderExplorationEvent } from './explorationMessages';
 
 export {

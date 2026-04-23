@@ -22,6 +22,7 @@ const createMainMenuLayout = (player?: PlayerState): KeyboardLayout => {
     ],
     [
       { label: '📜 Книга путей', command: gameCommands.questBook, color: Keyboard.PRIMARY_COLOR },
+      { label: '📖 Бестиарий', command: gameCommands.bestiary, color: Keyboard.SECONDARY_COLOR },
     ],
     [
       {

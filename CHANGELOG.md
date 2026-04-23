@@ -14,6 +14,7 @@
 
 ### Added
 
+- `📖 Бестиарий` добавлен как отдельный VK-экран: локации идут страницами по 5, противники внутри локации скрыты до первой встречи, а добыча и шанс руны раскрываются только после первого `APPLIED` трофея из существующего reward ledger без новых таблиц;
 - combat skill growth подключён к честным battle action facts: результативная `ATTACK` растит `combat.striking`, поднятая `DEFEND`-защита растит `combat.guard`, а активное рунное действие с расходом маны или запуском отката растит `rune.active_use`; начисление идёт внутри `saveBattle()` / `finalizeBattle()` вместе с revision guard, поэтому replay не дублирует прогресс;
 - player skill foundation для action-based progression: типы навыков, persistence `PlayerSkill`, доменный resolver шанса роста и применение skill experience через repository;
 - pending trophy reward vertical slice: versioned pending reward snapshot, `RewardLedgerRecord` rail для `PENDING -> APPLIED`, создание pending-награды после победы, выбор trophy action при сборе и безопасный replay уже собранного результата;

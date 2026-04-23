@@ -10,6 +10,7 @@ export const gameCommands = {
   profile: 'профиль',
   inventory: 'инвентарь',
   questBook: 'книга путей',
+  bestiary: 'бестиарий',
   claimQuestReward: 'забрать награду',
   location: 'локация',
   skipTutorial: 'пропустить обучение',
@@ -64,7 +65,11 @@ export const gameCommands = {
   rerollIntelligence: '~инт',
 } as const;
 
-export type GameCommand = (typeof gameCommands)[keyof typeof gameCommands];
+export const bestiaryPageCommandPrefix = 'бестиарий страница ';
+
+export type StaticGameCommand = (typeof gameCommands)[keyof typeof gameCommands];
+export type BestiaryPageCommand = `${typeof bestiaryPageCommandPrefix}${number}`;
+export type GameCommand = StaticGameCommand | BestiaryPageCommand;
 
 type RuneStatRerollCommand =
   | typeof gameCommands.rerollAttack
@@ -175,6 +180,9 @@ export const commandAliases: Readonly<Record<string, GameCommand>> = {
   'квесты': gameCommands.questBook,
   'задания': gameCommands.questBook,
   'летопись пути': gameCommands.questBook,
+  'книга зверей': gameCommands.bestiary,
+  'монстры': gameCommands.bestiary,
+  'враги': gameCommands.bestiary,
   'проверить школу': gameCommands.explore,
   'испытать знак': gameCommands.explore,
   'бой': gameCommands.engageBattle,
@@ -219,6 +227,24 @@ export const resolveRunePageSlotCommand = (command: string): 0 | 1 | 2 | 3 | 4 |
   }
 
   return runePageSlotCommandMap[command];
+};
+
+export const createBestiaryPageCommand = (pageNumber: number): BestiaryPageCommand => {
+  const safePageNumber = Number.isFinite(pageNumber)
+    ? Math.max(1, Math.floor(pageNumber))
+    : 1;
+
+  return `${bestiaryPageCommandPrefix}${safePageNumber}` as BestiaryPageCommand;
+};
+
+export const resolveBestiaryPageCommand = (command: string): number | null => {
+  const match = /^бестиарий(?: страница)? ([1-9]\d*)$/.exec(command);
+
+  if (!match) {
+    return null;
+  }
+
+  return Number(match[1]);
 };
 
 export const resolveTrophyActionCommand = (command: string): TrophyActionCode | null => {

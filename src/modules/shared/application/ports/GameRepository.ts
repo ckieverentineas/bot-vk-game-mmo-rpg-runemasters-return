@@ -129,6 +129,11 @@ export interface PendingRewardView {
   readonly snapshot: PendingRewardOpenSnapshotV1;
 }
 
+export interface BestiaryDiscoveryView {
+  readonly discoveredEnemyCodes: readonly string[];
+  readonly rewardedEnemyCodes: readonly string[];
+}
+
 export interface RecoverPendingRewardsResult {
   readonly scanned: number;
   readonly recovered: number;
@@ -175,6 +180,7 @@ export interface GameRepository {
   ): Promise<TResult>;
   applyPlayerSkillExperience(playerId: number, gains: readonly PlayerSkillPointGain[]): Promise<PlayerState>;
   listClaimedQuestRewardCodes(playerId: number): Promise<readonly string[]>;
+  listBestiaryDiscovery(playerId: number): Promise<BestiaryDiscoveryView>;
   claimQuestReward(
     playerId: number,
     questCode: string,

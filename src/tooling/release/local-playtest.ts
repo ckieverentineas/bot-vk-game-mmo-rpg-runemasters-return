@@ -545,6 +545,17 @@ const runQuestBookChecks = async (runtime: LocalPlaytestRuntime): Promise<void> 
   ]);
 };
 
+const runBestiaryChecks = async (runtime: LocalPlaytestRuntime): Promise<void> => {
+  const bestiaryReply = await runCommand(runtime, 'bestiary', gameCommands.bestiary);
+  assertReplyIncludes(bestiaryReply, 'Bestiary', [
+    '📖 Бестиарий',
+    'Порог Инициации',
+    'Учебный огонёк',
+    'добыча: +1 эссенция',
+    '??? — след не встречен',
+  ]);
+};
+
 const runReturnRecapCheck = async (runtime: LocalPlaytestRuntime): Promise<void> => {
   await runCommand(runtime, 'returning-start', gameCommands.start);
 };
@@ -573,6 +584,7 @@ const runFirstSessionScenario = async (runtime: LocalPlaytestRuntime): Promise<L
 
   await fightUntilFinished(runtime);
   await collectPendingRewardIfAny(runtime);
+  await runBestiaryChecks(runtime);
   await runQuestBookChecks(runtime);
   await runCommand(runtime, 'rune-hub', gameCommands.runeCollection);
 

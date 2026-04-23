@@ -3,6 +3,10 @@ import {
   createRuneKeyboard,
 } from '../keyboards';
 import { battleCommandRoutes } from './routes/battleCommandRoutes';
+import {
+  bestiaryCommandRoutes,
+  bestiaryDynamicCommandRoutes,
+} from './routes/bestiaryCommandRoutes';
 import { coreCommandRoutes } from './routes/coreCommandRoutes';
 import {
   rewardCommandRoutes,
@@ -45,6 +49,7 @@ export const isErrorKeyboardCode = (errorCode: string): errorCode is ErrorKeyboa
 export const config: StaticCommandRouteConfig = {
   ...coreCommandRoutes,
   ...questCommandRoutes,
+  ...bestiaryCommandRoutes,
   ...tutorialCommandRoutes,
   ...rewardCommandRoutes,
   ...battleCommandRoutes,
@@ -54,4 +59,5 @@ export const config: StaticCommandRouteConfig = {
 export const dynamicCommandConfig = [
   ...runeDynamicCommandRoutes,
   ...rewardDynamicCommandRoutes,
+  ...bestiaryDynamicCommandRoutes,
 ] satisfies readonly DynamicCommandRoute[];

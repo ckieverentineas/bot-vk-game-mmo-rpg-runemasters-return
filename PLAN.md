@@ -10,6 +10,7 @@
 - `CHANGELOG.md` — история shipped-изменений и release notes.
 - `docs/product/1-0-release-charter.md` — обещание 1.0, explicit out-of-scope и ethical retention boundaries.
 - `docs/product/school-bible-v1.md` — product lock по идентичности школ, allowed/forbidden overlap и safe hidden trophy directions.
+- `docs/product/bestiary-v1.md` — правила бестиария: локации по 5, скрытие мобов до встречи, скрытие добычи до первого обработанного трофея без новых таблиц.
 - `docs/product/action-based-progression-and-trophy-loot.md` — committed design candidate для pending trophy rewards, action-based навыков, скрытого дропа и узких специализаций.
 - `docs/product/lore-quests-home-continuation.md` — рабочая памятка по лору, `Книге путей` и следующим домашним срезам.
 - `docs/content/content-pipeline-plan.md` — минимальный content package workflow и DoD для school/enemy/encounter/quest/season packages.
@@ -27,9 +28,10 @@
 - Player-facing тексты держатся в языке мира: без “нажмите”, “режим”, “статы”, “тип” и другой служебной воды там, где игрок должен читать след, бой, трофеи и путь мастера.
 - Onboarding получил лорную завязку Пустого мастера: игрок просыпается в Рунном Пределе, слышит первый осколок и выходит в учебный бой за первую руну.
 - `📜 Книга путей` имеет первый vertical slice постоянных квестов: игрок видит готовые награды по главам, один ближайший незавершённый след и компактный архив закрытых записей, а награды забирает через inline-кнопки exact-once поверх reward ledger.
+- `📖 Бестиарий` имеет первый runtime slice: локации идут каруселью по 5, противники внутри локации скрыты до первой встречи, а добыча раскрывается только после первого `APPLIED` трофея из существующего reward ledger.
 - Рунная сборка стартует с двух равноправных слотов. Обе надетые руны дают боевые черты, пассивы и активное действие, если оно есть.
 - Экран рун показывает компактный список со счётчиком надетых рун, иконками школ, ролью архетипа и отдельной карточкой выбранной руны.
-- VK-клавиатуры разнесены по сценариям (`main`, `battle`, `runes`, `rewards`, `quests`, `tutorial`) с общим builder'ом и совместимым public barrel `src/vk/keyboards/index.ts`.
+- VK-клавиатуры разнесены по сценариям (`main`, `battle`, `runes`, `rewards`, `quests`, `bestiary`, `tutorial`) с общим builder'ом и совместимым public barrel `src/vk/keyboards/index.ts`.
 - Player-facing support-slot модель вырезана.
 - Рост персонажа смещён к школам, mastery, рунам и будущей ветке мастера, а не к старой раздаче stat points за уровни.
 - Action-based trophy rewards имеют расширенный playable vertical slice: победа создаёт `PENDING` reward ledger, доступные trophy actions фиксируются в snapshot, игрок видит post-battle trophy card с inline-кнопками, `начать` / `исследовать` возвращают к несобранной добыче, выбранное действие собирается exact-once, `claim_all` даёт быстрый безопасный сбор, bootstrap восстанавливает потерянные pending-записи после рестарта, а первые threshold-срезы для `skinning`, `reagent_gathering` и `essence_extraction` дополняются enemy-kind действиями без новых таблиц.
@@ -52,9 +54,9 @@
 
 - Дробить проект малыми вертикальными срезами, сохраняя публичные импорты там, где это снижает риск.
 - Функциональное ядро, компонентная оболочка: чистые formatter/resolver функции внутри модулей, сценарные компоненты вокруг них, public barrel для совместимости импортов.
-- Presenter-декомпозиция VK-экранов разнесена по сценариям: `rewardMessages.ts`, `questMessages.ts`, `runeMessages.ts`, `battleMessages.ts`, `homeMessages.ts`, `profileMessages.ts` и `explorationMessages.ts` держат свои flow, а `message-formatting.ts`, `player-progress-formatting.ts` и `player-skill-formatting.ts` — общие чистые formatter'ы.
-- Handler-декомпозиция продолжена: `gameCommandRoutes.ts` стал агрегатором, `routes/*CommandRoutes.ts` держат core/tutorial/battle/rune/reward/quest маршруты, а `gameCommandRecovery.ts` — recoverable stale/retry/battle/rune контексты.
-- Responder-декомпозиция продолжена: `responders/homeReplyFlow.ts`, `runeReplyFlow.ts`, `questReplyFlow.ts`, `rewardReplyFlow.ts` и `battleReplyFlow.ts` держат рендер/клавиатуры home/profile/location экранов, рун, книги путей, pending trophy rewards, battle result и exploration result, а `GameHandler` делегирует им reply-flow.
+- Presenter-декомпозиция VK-экранов разнесена по сценариям: `rewardMessages.ts`, `questMessages.ts`, `bestiaryMessages.ts`, `runeMessages.ts`, `battleMessages.ts`, `homeMessages.ts`, `profileMessages.ts` и `explorationMessages.ts` держат свои flow, а `message-formatting.ts`, `player-progress-formatting.ts` и `player-skill-formatting.ts` — общие чистые formatter'ы.
+- Handler-декомпозиция продолжена: `gameCommandRoutes.ts` стал агрегатором, `routes/*CommandRoutes.ts` держат core/tutorial/battle/rune/reward/quest/bestiary маршруты, а `gameCommandRecovery.ts` — recoverable stale/retry/battle/rune контексты.
+- Responder-декомпозиция продолжена: `responders/homeReplyFlow.ts`, `runeReplyFlow.ts`, `questReplyFlow.ts`, `bestiaryReplyFlow.ts`, `rewardReplyFlow.ts` и `battleReplyFlow.ts` держат рендер/клавиатуры home/profile/location экранов, рун, книги путей, бестиария, pending trophy rewards, battle result и exploration result, а `GameHandler` делегирует им reply-flow.
 - `gameHandlerTelemetry.ts` держит transport-level telemetry payloads для return recap, school presentation, rune hub follow-up и post-session next-goal событий, оставляя `GameHandler` тонким orchestrator'ом поверх use-case и responder слоёв.
 - `prisma-game-mappers.ts` держит чистые Prisma → runtime мапперы для player/battle records; `PrismaGameRepository` оставляет у себя транзакции, replay receipts, reward ledger и CAS-обновления.
 - Следующий безопасный кандидат: выносить reward/battle persistence helpers малыми срезами, без механического распила транзакционных replay/concurrency rails.

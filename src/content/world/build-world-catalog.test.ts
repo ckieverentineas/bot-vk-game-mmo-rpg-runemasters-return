@@ -87,6 +87,12 @@ describe('buildWorldCatalog', () => {
     expect(catalog.findBiomeForLocationLevel(999)).toBeNull();
   });
 
+  it('lists biomes in authored order for catalog screens', () => {
+    const catalog = buildWorldCatalog({ biomes, mobs });
+
+    expect(catalog.listBiomes().map(({ code }) => code)).toEqual(['tutorial', 'forest']);
+  });
+
   it('keeps authored mob order inside a biome', () => {
     const catalog = buildWorldCatalog({ biomes, mobs });
 

@@ -70,6 +70,7 @@ import type {
   CollectPendingRewardResult,
   CreateBattleOptions,
   FinalizeBattleResult,
+  BestiaryDiscoveryView,
   GameCommandIntentKey,
   GameRepository,
   PendingRewardSourceView,
@@ -885,6 +886,50 @@ export class PrismaGameRepository implements GameRepository {
     });
 
     return records.map((record) => record.sourceId);
+  }
+
+  public async listBestiaryDiscovery(playerId: number): Promise<BestiaryDiscoveryView> {
+    const [battleRows, rewardRows] = await Promise.all([
+      this.prisma.battleSession.findMany({
+        where: { playerId },
+        select: {
+          id: true,
+          enemyCode: true,
+        },
+        orderBy: {
+          createdAt: 'asc',
+        },
+      }),
+      this.prisma.rewardLedgerRecord.findMany({
+        where: {
+          playerId,
+          sourceType: 'BATTLE_VICTORY',
+          status: 'APPLIED',
+        },
+        select: {
+          sourceId: true,
+        },
+        orderBy: {
+          appliedAt: 'asc',
+        },
+      }),
+    ]);
+    const rewardedBattleIds = new Set(rewardRows.map((record) => record.sourceId));
+    const discoveredEnemyCodes = new Set<string>();
+    const rewardedEnemyCodes = new Set<string>();
+
+    for (const battleRow of battleRows) {
+      discoveredEnemyCodes.add(battleRow.enemyCode);
+
+      if (rewardedBattleIds.has(battleRow.id)) {
+        rewardedEnemyCodes.add(battleRow.enemyCode);
+      }
+    }
+
+    return {
+      discoveredEnemyCodes: [...discoveredEnemyCodes],
+      rewardedEnemyCodes: [...rewardedEnemyCodes],
+    };
   }
 
   public async claimQuestReward(

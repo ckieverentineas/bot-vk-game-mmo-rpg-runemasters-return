@@ -52,6 +52,9 @@ import {
   replyWithWelcome as sendWelcome,
 } from './responders/homeReplyFlow';
 import {
+  replyWithBestiary as sendBestiary,
+} from './responders/bestiaryReplyFlow';
+import {
   replyWithRuneDetail as sendRuneDetail,
   replyWithRuneList as sendRuneList,
   replyWithRuneRerollMenu as sendRuneRerollMenu,
@@ -211,6 +214,11 @@ export class GameHandler {
   public async openQuestBook(ctx: Context, vkId: number): Promise<void> {
     const book = await this.services.getQuestBook.execute(vkId);
     await sendQuestBook(ctx, book);
+  }
+
+  public async openBestiary(ctx: Context, vkId: number, pageNumber = 1): Promise<void> {
+    const bestiary = await this.services.getBestiary.execute(vkId, pageNumber);
+    await sendBestiary(ctx, bestiary);
   }
 
   public async claimQuestReward(ctx: Context, vkId: number, context: CommandIntentContext): Promise<void> {

@@ -279,6 +279,61 @@ const createServices = (): AppServices => {
     inProgressCount: 0,
     claimedCount: 0,
   };
+  const bestiary = {
+    pageNumber: 1,
+    totalPages: 1,
+    totalLocations: 1,
+    locations: [
+      {
+        biome: {
+          id: 1,
+          code: 'initium',
+          name: 'Порог Инициации',
+          description: 'Нулевая зона.',
+          minLevel: 0,
+          maxLevel: 0,
+        },
+        discoveredEnemyCount: 1,
+        revealedDropCount: 0,
+        totalEnemyCount: 1,
+        enemies: [
+          {
+            isDiscovered: true,
+            isDropRevealed: false,
+            template: {
+              code: 'training-wisp',
+              biomeCode: 'initium',
+              name: 'Учебный огонёк',
+              kind: 'spirit',
+              isElite: false,
+              isBoss: false,
+              baseStats: {
+                health: 8,
+                attack: 1,
+                defence: 0,
+                magicDefence: 0,
+                dexterity: 2,
+                intelligence: 1,
+              },
+              scales: {
+                health: 1,
+                attack: 1,
+                defence: 1,
+                magicDefence: 1,
+                dexterity: 1,
+                intelligence: 1,
+              },
+              baseExperience: 6,
+              baseGold: 2,
+              runeDropChance: 10,
+              lootTable: { essence: 1 },
+              attackText: 'касается искрой',
+            },
+          },
+        ],
+      },
+    ],
+  };
 
   return {
     telemetry: {
@@ -323,6 +378,9 @@ const createServices = (): AppServices => {
     getQuestBook: {
       execute: vi.fn().mockResolvedValue(questBook),
     } as unknown as AppServices['getQuestBook'],
+    getBestiary: {
+      execute: vi.fn().mockResolvedValue(bestiary),
+    } as unknown as AppServices['getBestiary'],
     claimQuestReward: {
       execute: vi.fn().mockResolvedValue({
         book: {
@@ -455,6 +513,31 @@ describe('GameHandler smoke', () => {
     expect(message).toContain('📜 Книга путей');
     expect(message).toContain('В книге: 1 запись ждёт награду');
     expect(message).toContain('Пробуждение Пустого мастера');
+  });
+
+  it('открывает бестиарий отдельной кнопкой', async () => {
+    const services = createServices();
+    const handler = new GameHandler(services);
+    const ctx = createFakeContext({ command: 'бестиарий' });
+
+    await handler.handle(ctx as never);
+
+    const message = getReplyCalls(ctx)[0]?.message ?? '';
+    expect(services.getBestiary.execute).toHaveBeenCalledWith(1001, 1);
+    expect(message).toContain('📖 Бестиарий');
+    expect(message).toContain('Порог Инициации');
+    expect(message).toContain('Учебный огонёк');
+  });
+
+  it('перелистывает бестиарий через payload страницы', async () => {
+    const services = createServices();
+    const handler = new GameHandler(services);
+    const ctx = createFakeContext({ command: 'бестиарий страница 2' });
+
+    await handler.handle(ctx as never);
+
+    expect(services.getBestiary.execute).toHaveBeenCalledWith(1001, 2);
+    expect(getReplyCalls(ctx)[0]?.message).toContain('📖 Бестиарий');
   });
 
   it('забирает награду квеста из inline-кнопки', async () => {

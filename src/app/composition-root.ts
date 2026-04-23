@@ -26,6 +26,7 @@ import { UnequipCurrentRune } from '../modules/runes/application/use-cases/Unequ
 import { PrismaGameRepository } from '../modules/shared/infrastructure/prisma/PrismaGameRepository';
 import { SystemGameRandom } from '../modules/shared/infrastructure/random/SystemGameRandom';
 import { RepositoryGameTelemetry } from '../modules/shared/infrastructure/telemetry/RepositoryGameTelemetry';
+import { GetBestiary } from '../modules/world/application/use-cases/GetBestiary';
 import { prisma } from '../database/client';
 import type { GameTelemetry } from '../modules/shared/application/ports/GameTelemetry';
 
@@ -38,6 +39,7 @@ export interface AppServices {
   deletePlayer: DeletePlayer;
   getPlayerProfile: GetPlayerProfile;
   getQuestBook: GetQuestBook;
+  getBestiary: GetBestiary;
   claimQuestReward: ClaimQuestReward;
   enterTutorialMode: EnterTutorialMode;
   returnToAdventure: ReturnToAdventure;
@@ -72,6 +74,7 @@ export const createAppServices = (): AppServices => {
     deletePlayer: new DeletePlayer(repository),
     getPlayerProfile: new GetPlayerProfile(repository),
     getQuestBook: new GetQuestBook(repository, telemetry),
+    getBestiary: new GetBestiary(repository, worldCatalog),
     claimQuestReward: new ClaimQuestReward(repository, telemetry),
     enterTutorialMode: new EnterTutorialMode(repository),
     returnToAdventure: new ReturnToAdventure(repository, telemetry),

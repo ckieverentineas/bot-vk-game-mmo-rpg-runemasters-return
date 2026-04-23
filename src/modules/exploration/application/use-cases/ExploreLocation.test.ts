@@ -95,6 +95,7 @@ const createMobTemplate = (): MobTemplateView => ({
 });
 
 const createWorldCatalog = (overrides: Partial<WorldCatalog> = {}): WorldCatalog => ({
+  listBiomes: vi.fn().mockReturnValue([createBiome()]),
   findBiomeForLocationLevel: vi.fn().mockReturnValue(createBiome()),
   listMobTemplatesForBiome: vi.fn().mockReturnValue([createMobTemplate()]),
   ...overrides,

@@ -13,6 +13,7 @@ describe('normalizeCommand', () => {
     expect(normalizeCommand('в мир')).toBe(gameCommands.returnToAdventure);
     expect(normalizeCommand('проверить школу')).toBe(gameCommands.explore);
     expect(normalizeCommand('блок')).toBe(gameCommands.defend);
+    expect(normalizeCommand('книга зверей')).toBe(gameCommands.bestiary);
   });
 
   it('нормализует исторические алиасы навигации по рунам', () => {

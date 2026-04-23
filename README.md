@@ -11,6 +11,7 @@ Runemasters Return — VK MMO RPG на TypeScript с модульным игро
 - защита от дублирования наград, отрицательных остатков инвентаря и повторного создания активных боёв;
 - более ясные сообщения onboarding/боя с явным следующим шагом для игрока;
 - единый paged rune hub: до 5 рун на странице, явное состояние `выбрана / надета` и быстрые действия без листания по одной штуке;
+- `📖 Бестиарий` с каруселью локаций по 5: враги раскрываются после первой встречи, а их добыча и шанс руны — после первого обработанного трофея;
 - event-first экран боя: компактный HUD, отдельные HP/mana/stat блоки участников, читаемые последние события и явный CTA после результата;
 - исследование теперь может завершиться отдельной non-combat сценой без создания боя: передышкой, находкой маршрута, следом Мастера испытаний или school-aware подсказкой без FOMO;
 - если исследование приводит к бою, игрок сначала видит встречу с врагом и выбирает `⚔️ В бой` или `💨 Отступить`, а не мгновенно падает в первый ход;
@@ -76,10 +77,10 @@ Runemasters Return — VK MMO RPG на TypeScript с модульным игро
 ## Рельсы проекта
 
 - `src/vk/commands/catalog.ts` — единый источник правды для команд, алиасов и динамических действий;
-- `src/vk/keyboards/*` — сценарные VK-клавиатуры (`main`, `battle`, `runes`, `rewards`, `quests`, `tutorial`) с общим builder'ом и совместимым barrel `index.ts`;
-- `src/vk/presenters/*` — player-facing тексты: общий barrel `messages.ts`, сценарные presenters для trophy/quest/rune/battle/home/profile/exploration flow и общие чистые formatter'ы для повторяемых строк, прогресса школ и навыков;
+- `src/vk/keyboards/*` — сценарные VK-клавиатуры (`main`, `battle`, `runes`, `rewards`, `quests`, `bestiary`, `tutorial`) с общим builder'ом и совместимым barrel `index.ts`;
+- `src/vk/presenters/*` — player-facing тексты: общий barrel `messages.ts`, сценарные presenters для trophy/quest/bestiary/rune/battle/home/profile/exploration flow и общие чистые formatter'ы для повторяемых строк, прогресса школ и навыков;
 - `src/vk/handlers/gameCommandRoutes.ts`, `src/vk/handlers/routes/*` и `src/vk/handlers/gameCommandRecovery.ts` — агрегатор маршрутов, сценарные command routes и recoverable stale/retry контексты отдельно от `GameHandler`;
-- `src/vk/handlers/responders/*` — сценарные reply-flow, которые собирают presenter + keyboard для home/profile/location, рун, quest book, pending trophy rewards, battle result и exploration result без раздувания `GameHandler`;
+- `src/vk/handlers/responders/*` — сценарные reply-flow, которые собирают presenter + keyboard для home/profile/location, рун, quest book, bestiary, pending trophy rewards, battle result и exploration result без раздувания `GameHandler`;
 - `src/vk/handlers/gameHandlerTelemetry.ts` — transport-level telemetry composer для return recap, school presentation и post-session next-goal событий без смешивания analytics payload'ов с маршрутизацией;
 - `src/content/validation/validate-game-content.ts` — автоматическая проверка file-first биомов, мобов, рунного контента и игрового баланса перед быстрыми обновлениями;
 - `src/content/runes/schools.ts` — canonical school identity seed, из которого выводится player-facing school presentation;
@@ -102,6 +103,7 @@ Runemasters Return — VK MMO RPG на TypeScript с модульным игро
 - `docs/testing/release-evidence-report.md` — локально сгенерированный markdown-отчёт для release evidence pass по onboarding coverage, school payoff, next-goal/return clarity и QA/exploit signals;
 - `src/modules/player/application/read-models/next-goal.ts` — canonical read-model ближайшей school-вехи и next-step guidance для `main menu`, `return recap`, `rune hub` и `battle result`;
 - `src/modules/quests/application/read-models/quest-book.ts` — read-model `Книги путей`, который выводит прогресс и готовность наград из `PlayerState`, content definitions и `RewardLedgerRecord`;
+- `src/modules/world/domain/bestiary.ts` и `src/modules/world/application/use-cases/GetBestiary.ts` — read-model бестиария поверх file-first world catalog, `BattleSession` и `RewardLedgerRecord` без отдельной таблицы прогресса;
 - `src/modules/shared/infrastructure/telemetry/RepositoryGameTelemetry.ts` — typed telemetry adapter над `GameLog` для `onboarding_started`, `tutorial_path_chosen`, `first_school_presented`, `first_school_committed`, `loadout_changed`, `school_novice_elite_encounter_started`, `school_novice_follow_up_action_taken`, `return_recap_shown`, `post_session_next_goal_shown`;
 - `src/modules/shared/infrastructure/prisma/player-state-hydration.ts` — compatibility-safe hydration layer для persisted player state с current / legacy / future fixtures;
 - `src/modules/shared/infrastructure/prisma/prisma-game-mappers.ts` — чистые Prisma → runtime мапперы для player/battle records, отделённые от транзакционной логики `PrismaGameRepository`;
