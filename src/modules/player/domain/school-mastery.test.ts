@@ -5,8 +5,10 @@ import {
   applySchoolMasteryExperience,
   createSchoolMasteryView,
   getPlayerSchoolMasteryForArchetype,
+  listSchoolMasteryMilestoneStates,
   listMissingStarterSchoolMasteries,
   resolveUnlockedRuneSlotCountFromSchoolMasteries,
+  resolveNextSchoolMasteryMilestone,
   resolveNextSchoolMasteryThreshold,
   resolveSchoolMasteryRewardGain,
 } from './school-mastery';
@@ -115,5 +117,19 @@ describe('school mastery', () => {
     });
 
     expect(resolveUnlockedRuneSlotCountFromSchoolMasteries(player, 1)).toBe(2);
+  });
+
+  it('exposes a compact early milestone branch from current battle mastery experience', () => {
+    const mastery = createSchoolMasteryView('ember', 3);
+
+    expect(listSchoolMasteryMilestoneStates(mastery)).toEqual([
+      expect.objectContaining({ threshold: 1, title: 'Первый жар', status: 'unlocked' }),
+      expect.objectContaining({ threshold: 3, title: 'Разогрев дожима', status: 'unlocked' }),
+      expect.objectContaining({ threshold: 5, title: 'Связка давления', status: 'next' }),
+      expect.objectContaining({ threshold: 7, title: 'Печать давления', status: 'locked' }),
+    ]);
+    expect(resolveNextSchoolMasteryMilestone(mastery)).toEqual(
+      expect.objectContaining({ threshold: 5, title: 'Связка давления' }),
+    );
   });
 });

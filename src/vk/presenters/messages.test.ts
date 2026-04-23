@@ -457,6 +457,21 @@ describe('messages school-first onboarding framing', () => {
     expect(message).not.toContain('ранг 0 · 1/100');
   });
 
+  it('shows early school mastery milestones in the profile', () => {
+    const message = renderProfile(createPlayer({
+      tutorialState: 'SKIPPED',
+      schoolMasteries: [{ schoolCode: 'ember', experience: 3, rank: 1 }],
+      runes: [createEquippedRune()],
+    }));
+
+    expect(message).toContain('Вехи мастерства: Пламя');
+    expect(message).toContain('✓ 1/1 · Первый жар');
+    expect(message).toContain('✓ 3/3 · Разогрев дожима');
+    expect(message).toContain('→ 3/5 · Связка давления');
+    expect(message).toContain('· 3/7 · Печать давления');
+    expect(message).toContain('Следующая веха: Пламя уже держит темп');
+  });
+
   it('keeps the profile explicit when action-based skills are still empty', () => {
     const message = renderProfile(createPlayer());
 
@@ -569,6 +584,19 @@ describe('messages school-first onboarding framing', () => {
 
     expect(message).toContain('🎯 След: откройте «🔮 Руны» и наденьте первый знак школы Пламени.');
     expect(message).toContain('В фокусе: «Необычная руна Пламени».');
+  });
+
+  it('shows the mastery milestone branch in the rune hub', () => {
+    const message = renderRuneScreen(createPlayer({
+      tutorialState: 'SKIPPED',
+      schoolMasteries: [{ schoolCode: 'ember', experience: 0, rank: 0 }],
+      runes: [createEquippedRune()],
+    }));
+
+    expect(message).toContain('Вехи мастерства: Пламя');
+    expect(message).toContain('→ 0/1 · Первый жар');
+    expect(message).toContain('· 0/3 · Разогрев дожима');
+    expect(message).toContain('Следующая веха: Первая победа с руной Пламени');
   });
 
   it('keeps the first-sign follow-up under the normal explore CTA', () => {

@@ -7,20 +7,54 @@ export interface SchoolMasteryUnlockDefinition {
   readonly description: string;
 }
 
+export interface SchoolMasteryMinorMilestoneDefinition {
+  readonly threshold: number;
+  readonly title: string;
+  readonly description: string;
+}
+
+export type SchoolMasteryMilestoneKind = 'milestone' | 'rank_unlock';
+export type SchoolMasteryMilestoneStatus = 'unlocked' | 'next' | 'locked';
+
+export interface SchoolMasteryMilestoneDefinition {
+  readonly threshold: number;
+  readonly title: string;
+  readonly description: string;
+  readonly kind: SchoolMasteryMilestoneKind;
+}
+
+export interface SchoolMasteryMilestoneState extends SchoolMasteryMilestoneDefinition {
+  readonly status: SchoolMasteryMilestoneStatus;
+}
+
 export interface SchoolMasteryDefinition {
   readonly schoolCode: string;
   readonly title: string;
+  readonly minorMilestones: readonly SchoolMasteryMinorMilestoneDefinition[];
   readonly unlocks: readonly SchoolMasteryUnlockDefinition[];
 }
 
 const maxSchoolMasteryRank = 2;
 export const firstMasteryRuneSlotFloorRank = 1;
 export const firstMasteryRuneSlotFloorCount = 2;
+const schoolMasteryThresholds = [0, 3, 7] as const;
 
 const schoolMasteryDefinitions: readonly SchoolMasteryDefinition[] = [
   {
     schoolCode: 'ember',
     title: 'Мастерство Пламени',
+    minorMilestones: [
+      {
+        threshold: 1,
+        title: 'Первый жар',
+        description: 'Первая победа с руной Пламени закрепляет путь давления и дожима.',
+      },
+      {
+        threshold: 5,
+        title: 'Связка давления',
+        description: 'Пламя уже держит темп: продолжайте атаковать раскрытые окна и врагов ниже половины здоровья.',
+      },
+    ],
     unlocks: [
       {
         rank: 1,
@@ -37,6 +71,18 @@ const schoolMasteryDefinitions: readonly SchoolMasteryDefinition[] = [
   {
     schoolCode: 'stone',
     title: 'Мастерство Тверди',
+    minorMilestones: [
+      {
+        threshold: 1,
+        title: 'Первый устой',
+        description: 'Первая победа с руной Тверди закрепляет путь стойки и спокойного ответа.',
+      },
+      {
+        threshold: 5,
+        title: 'Верная опора',
+        description: 'Твердь уже держит линию: читайте тяжёлые удары и отвечайте из защиты.',
+      },
+    ],
     unlocks: [
       {
         rank: 1,
@@ -53,6 +99,18 @@ const schoolMasteryDefinitions: readonly SchoolMasteryDefinition[] = [
   {
     schoolCode: 'gale',
     title: 'Мастерство Бури',
+    minorMilestones: [
+      {
+        threshold: 1,
+        title: 'Первый порыв',
+        description: 'Первая победа с руной Бури закрепляет путь темпа и быстрого ответа.',
+      },
+      {
+        threshold: 5,
+        title: 'Связка шквала',
+        description: 'Буря уже держит инициативу: чередуйте давление, руну и осторожный следующий ход.',
+      },
+    ],
     unlocks: [
       {
         rank: 1,
@@ -69,6 +127,18 @@ const schoolMasteryDefinitions: readonly SchoolMasteryDefinition[] = [
   {
     schoolCode: 'echo',
     title: 'Мастерство Прорицания',
+    minorMilestones: [
+      {
+        threshold: 1,
+        title: 'Первый знак',
+        description: 'Первая победа с руной Прорицания закрепляет путь чтения угрозы.',
+      },
+      {
+        threshold: 5,
+        title: 'Верная примета',
+        description: 'Прорицание уже увереннее читает бой: раскрытый intent становится главным окном ответа.',
+      },
+    ],
     unlocks: [
       {
         rank: 1,
@@ -84,13 +154,88 @@ const schoolMasteryDefinitions: readonly SchoolMasteryDefinition[] = [
   },
 ];
 
-const schoolMasteryThresholds = [0, 3, 7] as const;
-
 export const listSchoolMasteryDefinitions = (): readonly SchoolMasteryDefinition[] => schoolMasteryDefinitions;
 
 export const getSchoolMasteryDefinition = (schoolCode: string | null | undefined): SchoolMasteryDefinition | null => (
   schoolMasteryDefinitions.find((entry) => entry.schoolCode === schoolCode) ?? null
 );
+
+const mapUnlockToMilestone = (unlock: SchoolMasteryUnlockDefinition): SchoolMasteryMilestoneDefinition | null => {
+  const threshold = schoolMasteryThresholds[unlock.rank];
+  if (typeof threshold !== 'number') {
+    return null;
+  }
+
+  return {
+    threshold,
+    title: unlock.title,
+    description: unlock.description,
+    kind: 'rank_unlock',
+  };
+};
+
+export const listSchoolMasteryMilestones = (
+  schoolCode: string | null | undefined,
+): readonly SchoolMasteryMilestoneDefinition[] => {
+  const definition = getSchoolMasteryDefinition(schoolCode);
+  if (!definition) {
+    return [];
+  }
+
+  return [
+    ...definition.minorMilestones.map((milestone): SchoolMasteryMilestoneDefinition => ({
+      ...milestone,
+      kind: 'milestone',
+    })),
+    ...definition.unlocks
+      .map(mapUnlockToMilestone)
+      .filter((milestone): milestone is SchoolMasteryMilestoneDefinition => milestone !== null),
+  ].sort((left, right) => left.threshold - right.threshold);
+};
+
+export const resolveNextSchoolMasteryMilestone = (
+  mastery: Pick<SchoolMasteryView, 'schoolCode' | 'experience'> | null | undefined,
+): SchoolMasteryMilestoneDefinition | null => {
+  if (!mastery) {
+    return null;
+  }
+
+  return listSchoolMasteryMilestones(mastery.schoolCode)
+    .find((milestone) => mastery.experience < milestone.threshold) ?? null;
+};
+
+export const resolveCurrentSchoolMasteryMilestone = (
+  mastery: Pick<SchoolMasteryView, 'schoolCode' | 'experience'> | null | undefined,
+): SchoolMasteryMilestoneDefinition | null => {
+  if (!mastery) {
+    return null;
+  }
+
+  return [...listSchoolMasteryMilestones(mastery.schoolCode)]
+    .reverse()
+    .find((milestone) => mastery.experience >= milestone.threshold) ?? null;
+};
+
+export const listSchoolMasteryMilestoneStates = (
+  mastery: Pick<SchoolMasteryView, 'schoolCode' | 'experience'> | null | undefined,
+): readonly SchoolMasteryMilestoneState[] => {
+  if (!mastery) {
+    return [];
+  }
+
+  const nextMilestone = resolveNextSchoolMasteryMilestone(mastery);
+
+  return listSchoolMasteryMilestones(mastery.schoolCode).map((milestone): SchoolMasteryMilestoneState => {
+    if (mastery.experience >= milestone.threshold) {
+      return { ...milestone, status: 'unlocked' };
+    }
+
+    return {
+      ...milestone,
+      status: nextMilestone?.threshold === milestone.threshold ? 'next' : 'locked',
+    };
+  });
+};
 
 export const resolveSchoolMasteryRank = (experience: number): number => {
   let resolvedRank = 0;
