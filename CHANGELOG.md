@@ -25,6 +25,7 @@
 - bootstrap recovery [`RecoverPendingRewardsOnStart`](src/modules/rewards/application/use-cases/RecoverPendingRewardsOnStart.ts) восстанавливает отсутствующие pending reward ledger-записи для уже завершённых победных боёв до регистрации VK handlers;
 - единый school-aware next-goal read-model в [`src/modules/player/application/read-models/next-goal.ts`](src/modules/player/application/read-models/next-goal.ts), чтобы `main menu`, `return recap`, `rune hub` и `battle result` опирались на одну и ту же ближайшую school-веху;
 - read-model [`src/modules/player/application/read-models/acquisition-summary.ts`](src/modules/player/application/read-models/acquisition-summary.ts) для короткого player-facing recap'а “что изменилось?” после новой руны, новой редкости или unlock'а сборки;
+- school bible v1 в `docs/product/school-bible-v1.md`: product lock по идентичности четырёх школ, allowed/forbidden overlap и безопасным направлениям school hidden trophy pools;
 - два ранних school-specific elite encounter hooks в `dark-forest`: `Пепельная ведунья` для pressure/detonation path Пламени и `Камнерогий таран` для guard/counter path Тверди;
 - первый targeted same-school reward hook для этих элит: aligned победа теперь может гарантировать первую `необычную` руну нужной школы вместо полного упора в случайный drop;
 - school novice guidance loop для `Пламени` и `Тверди`: next-goal теперь может вести игрока к первому испытанию школы и первой unusual rune без отдельной quest-системы;

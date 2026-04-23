@@ -90,6 +90,7 @@ Runemasters Return — VK MMO RPG на TypeScript с модульным игро
 - `docs/platform/command-intent-rules.md` — intent-based replay policy для guarded mutation families: рун, обучения, исследования, боя, удаления персонажа и legacy text claim наград `Книги путей`;
 - `docs/product/lore-quests-home-continuation.md` — source-of-truth по `Книге путей`, quest reward copy, exact-once claim rail и границе до отдельного `PlayerQuestState`;
 - `docs/product/1-0-release-charter.md` — утверждённое обещание релиза 1.0, explicit out-of-scope и ethical retention red lines;
+- `docs/product/school-bible-v1.md` — product lock по четырём стартовым школам: identity, tactical ask, allowed/forbidden overlap и safe hidden trophy directions;
 - `docs/product/action-based-progression-and-trophy-loot.md` — дизайн pending trophy rewards, action-based навыков, скрытого дропа от школ/рун/ролей и узких специализаций;
 - `docs/reviews/phase-1-exit-gate.md` — единый gate-review для перехода из Foundation & Platform к Vertical Slice scope lock;
 - `docs/reviews/progression-rework-v1.md` — решение по уходу от новых stat points за уровни к school mastery как следующей оси роста;

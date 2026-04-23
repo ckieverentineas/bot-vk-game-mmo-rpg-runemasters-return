@@ -7,10 +7,10 @@
 - Дата review: `2026-04-19`
 - Primary owners: `Producer / Product`, `Gameplay / Platform`
 - Support owners: `Game Design`, `Balance`, `Content / UX`, `QA / Release`
-- Gate verdict: `iterate`
+- Gate verdict: `ship`
 - Scope-lock verdict: `ship`
 
-Итог: **scope Vertical Slice зафиксирован**, risky breadth вынесена из ближайшего delivery order, но **Phase 1 exit gate ещё не считается полностью закрытым**, пока не добит оставшийся product lock gap.
+Итог: **scope Vertical Slice зафиксирован**, risky breadth вынесена из ближайшего delivery order, а Phase 1 exit gate по product/platform lock считается закрытым. Релизная готовность всё ещё определяется актуальными evidence gates из `PLAN.md`.
 
 Update after Q-035:
 
@@ -40,11 +40,17 @@ Update after Q-046:
 - historical two-school Vertical Slice scope and the deferred status for `Буря` / `Прорицание` are superseded by current `PLAN.md`, `README.md` and `CHANGELOG.md`;
 - current runtime has first early school paths for `Буря` / `Прорицание` and novice trial/payoff evidence for four schools, while this review remains a historical scope-lock snapshot for high-risk exclusions and Phase 1 sign-off caveats.
 
+Update after Q-034:
+
+- school bible v1 закрыт документом `docs/product/school-bible-v1.md`;
+- product lock теперь явно фиксирует identity, tactical ask, allowed overlap, forbidden overlap и hidden trophy boundaries для четырёх стартовых школ;
+- gate verdict moved to `ship` for Phase 1 product/platform lock; runtime release status remains governed by `PLAN.md` and release evidence.
+
 ## Exit criteria summary
 
 | Exit criterion | Status | Decision | Evidence |
 |---|---|---|---|
-| Пиллары продукта согласованы и не конфликтуют друг с другом | `partial` | конфликтов в locked slice не осталось; rarity ladder v1 заморожен, school bible / overlap rules ещё открыты | `PLAN.md`, `README.md`, `docs/product/rarity-ladder-v1.md`, этот review |
+| Пиллары продукта согласованы и не конфликтуют друг с другом | `done` | rarity ladder v1 и school bible v1 заморожены; overlap / uniqueness rules теперь имеют source-of-truth | `PLAN.md`, `README.md`, `docs/product/rarity-ladder-v1.md`, `docs/product/school-bible-v1.md`, этот review |
 | Platform contracts готовы к Vertical Slice | `done` | battle/loadout/reward/retry baseline, player-state versioning policy, source-of-truth/read-model split и battle fallback retirement policy готовы | `ARCHITECTURE.md`, `docs/platform/player-state-versioning-policy.md`, `docs/platform/state-read-model-boundaries.md`, `docs/platform/battle-fallback-retirement-policy.md`, `docs/platform/*`, этот review |
 | Vertical Slice scope заперт и не расползается | `done` | committed scope сведён к одному доказуемому school-first PvE journey | этот review, `PLAN.md` |
 | High-risk out-of-scope вынесен из ближайшего delivery order | `done` | social-lite, PvP beyond locked slice и unsafe breadth явно вырезаны из near-term committed work | этот review, `PLAN.md` |
@@ -62,10 +68,11 @@ Update after Q-046:
 | `PvP is optional and late` | PvP не входит в locked Vertical Slice; synchronous / mandatory forms вынесены из 1.0 scope, async candidate допускается только после отдельного evidence review | ok |
 | `Ethical retention only` | return recap / next goals остаются curiosity-driven, без streak pressure | ok |
 
-### Current tension points still open
+### Current tension points
 
-- school bible v1 и overlap / uniqueness rules ещё не заморожены как production source-of-truth;
-- оставшийся school bible gap не ломает scope lock, но пока не позволяет честно закрыть весь Phase 1 exit gate.
+- school bible v1 и overlap / uniqueness rules теперь заморожены как production source-of-truth;
+- no open product-platform blocker remains for this Phase 1 exit gate;
+- runtime release status remains separate and follows `PLAN.md`, `RELEASE_CHECKLIST.md` and generated evidence.
 
 ## Platform contract readiness
 
@@ -134,10 +141,10 @@ No open domain-platform blocker remains for this gate after Q-038. The future ba
 
 ## Dependencies and accepted delivery debt
 
-### Must close before full Phase 1 exit sign-off
+### Closed before full Phase 1 exit sign-off
 
 - `11.1 Product lock`:
-  - school bible / overlap rules.
+  - school bible / overlap rules closed by `docs/product/school-bible-v1.md`.
 - `11.2 Domain platform`: closed by Q-036, Q-037, and Q-038 docs-first policies.
 
 ### Must not reopen scope lock
@@ -168,4 +175,5 @@ No open domain-platform blocker remains for this gate after Q-038. The future ba
 ## Decision summary
 
 - **Можно** считать scope lock для Vertical Slice v1 зафиксированным.
-- **Нельзя** считать Phase 1 exit gate полностью закрытым, пока school bible / overlap rules не доведены до explicit sign-off.
+- **Можно** считать Phase 1 exit gate product/platform lock закрытым после school bible v1.
+- **Нельзя** считать это автоматическим release-green: актуальный релизный статус остаётся за `PLAN.md`, `RELEASE_CHECKLIST.md` и generated evidence.

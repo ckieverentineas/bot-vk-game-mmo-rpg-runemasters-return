@@ -484,7 +484,7 @@ npm run release:preflight
 
 ### Q-034. Write school bible v1
 
-- Status: `ready`
+- Status: `done`
 - Source: `docs/reviews/phase-1-exit-gate.md`, `docs/product/1-0-release-charter.md`
 - Goal: закрыть product-lock gap по school overlap/uniqueness rules.
 - Scope:
