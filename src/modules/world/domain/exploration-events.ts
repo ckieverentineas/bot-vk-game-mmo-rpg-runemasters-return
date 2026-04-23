@@ -151,6 +151,17 @@ const standaloneExplorationScenes: readonly ExplorationSceneDefinition[] = [
     effect: inventoryFindEffect({ leather: 1 }, 'Найдено: кожа +1.'),
   },
   {
+    code: 'safe-cache',
+    kind: 'resource_find',
+    kindLabel: explorationSceneKindLabels.resource_find,
+    minLocationLevel: 2,
+    title: '🧺 Безопасная находка',
+    description: 'За камнями спрятан маленький дорожный запас: сухая трава, чистая ткань и щепоть пыли без следов свежей угрозы.',
+    outcomeLine: 'Боя нет: вы забираете только малую полезную часть и не превращаете находку в обязательную охоту за тайниками.',
+    nextStepLine: 'Дальше маршрут снова ведёт к обычному выбору: бой, след школы или спокойная передышка.',
+    effect: inventoryFindEffect({ herb: 1 }, 'Найдено: трава +1.'),
+  },
+  {
     code: 'old-snare',
     kind: 'resource_find',
     kindLabel: explorationSceneKindLabels.resource_find,

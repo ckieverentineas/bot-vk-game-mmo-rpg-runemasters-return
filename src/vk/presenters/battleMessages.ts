@@ -174,13 +174,18 @@ const resolveBattleEnemyRankLabel = (battle: BattleView): string => {
 
 const renderBattleEncounterChoice = (battle: BattleView): string[] => {
   const fleeChancePercent = battle.encounter?.fleeChancePercent ?? 0;
+  const encounterTitle = battle.encounter?.title ?? 'Встреча';
+  const encounterDescription = battle.encounter?.description
+    ?? `${battle.enemy.name} замечает вас на маршруте.`;
+  const encounterEffectLine = battle.encounter?.effectLine ?? null;
   const firstMoveLine = battle.encounter?.initialTurnOwner === 'PLAYER'
     ? 'Если вступить в бой, первый ход будет за вами.'
     : 'Если вступить в бой, враг успеет начать первым.';
 
   return [
-    `👁️ Встреча: ${battle.enemy.name} замечает вас на маршруте.`,
+    `👁️ ${encounterTitle}: ${encounterDescription}`,
     `Угроза: ${resolveBattleEnemyRankLabel(battle)} · ${battle.enemy.kind}.`,
+    ...(encounterEffectLine ? [`🧭 Условие встречи: ${encounterEffectLine}`] : []),
     `💨 Тропа назад: ${fleeChancePercent}% · ваша ЛВК ${battle.player.dexterity}, враг ${battle.enemy.dexterity}.`,
     firstMoveLine,
     'До первой стычки ещё можно принять бой или уйти в сторону.',

@@ -151,6 +151,7 @@ describe('resolveStandaloneExplorationEvent', () => {
     const expectedFinds = [
       ['abandoned-camp', { herb: 1 }, 'Найдено: трава +1.'],
       ['torn-satchel', { leather: 1 }, 'Найдено: кожа +1.'],
+      ['safe-cache', { herb: 1 }, 'Найдено: трава +1.'],
       ['old-snare', { bone: 1 }, 'Найдено: кость +1.'],
       ['cold-iron-chip', { metal: 1 }, 'Найдено: металл +1.'],
     ] as const;
@@ -165,6 +166,18 @@ describe('resolveStandaloneExplorationEvent', () => {
       expect(getExplorationSceneInventoryDelta(event!)).toEqual(delta);
       expect(getExplorationSceneEffectLine(event!)).toBe(effectLine);
     }
+  });
+
+  it('can return a safe-find scene without starting a battle', () => {
+    const event = pickStandaloneSceneByCode('safe-cache');
+
+    expect(event).toMatchObject({
+      code: 'safe-cache',
+      kind: 'resource_find',
+      title: '🧺 Безопасная находка',
+    });
+    expect(event?.outcomeLine).toContain('Боя нет');
+    expect(event?.nextStepLine).toContain('бой');
   });
 
   it('can return a danger-sign scene before a future encounter', () => {

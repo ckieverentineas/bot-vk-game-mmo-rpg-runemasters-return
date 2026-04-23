@@ -158,6 +158,98 @@ describe('resolveExplorationOutcome', () => {
     expect(outcome.openingLog[1]).toContain('Путевой эпизод');
   });
 
+  it('can turn a normal route into an ambush encounter variant', () => {
+    const random = {
+      rollPercentage: vi.fn()
+        .mockReturnValueOnce(false)
+        .mockReturnValueOnce(false)
+        .mockReturnValueOnce(true),
+      pickOne: vi.fn(<T>(items: readonly T[]) => items[0]!),
+    };
+
+    const outcome = resolveExplorationOutcome({
+      player: createPlayer({ victories: 4 }),
+      biome: createBiome(),
+      templates: [createMobTemplate()],
+      locationLevel: 4,
+      currentSchoolCode: null,
+    }, random);
+
+    expect(outcome.kind).toBe('battle');
+    expect(outcome.kind === 'battle' ? outcome.encounterVariant?.kind : null).toBe('AMBUSH');
+    expect(outcome.kind === 'battle' ? outcome.encounterVariant?.initialTurnOwner : null).toBe('ENEMY');
+    expect(outcome.kind === 'battle' ? outcome.encounterVariant?.fleeChanceModifierPercent : null).toBe(-10);
+  });
+
+  it('can make a lower-pressure battle start against a weary enemy', () => {
+    const random = {
+      rollPercentage: vi.fn()
+        .mockReturnValueOnce(false)
+        .mockReturnValueOnce(false)
+        .mockReturnValueOnce(true),
+      pickOne: vi.fn(<T>(items: readonly T[]) => items[0]!),
+    };
+
+    const outcome = resolveExplorationOutcome({
+      player: createPlayer(),
+      biome: createBiome(),
+      templates: [createMobTemplate()],
+      locationLevel: 3,
+      currentSchoolCode: null,
+    }, random);
+
+    expect(outcome.kind).toBe('battle');
+    if (outcome.kind !== 'battle') {
+      return;
+    }
+
+    expect(outcome.encounterVariant?.kind).toBe('WEARY_ENEMY');
+    expect(outcome.enemy.currentHealth).toBeLessThan(outcome.enemy.maxHealth);
+    expect(outcome.enemy.currentHealth).toBe(Math.ceil(outcome.enemy.maxHealth * 0.75));
+  });
+
+  it('uses a safe trail variant while the player is recovering from defeat', () => {
+    const random = {
+      rollPercentage: vi.fn()
+        .mockReturnValueOnce(false)
+        .mockReturnValueOnce(false),
+      pickOne: vi.fn(<T>(items: readonly T[]) => items[0]!),
+    };
+
+    const outcome = resolveExplorationOutcome({
+      player: createPlayer({ defeatStreak: 1 }),
+      biome: createBiome(),
+      templates: [createMobTemplate()],
+      locationLevel: 4,
+      currentSchoolCode: null,
+    }, random);
+
+    expect(outcome.kind).toBe('battle');
+    expect(outcome.kind === 'battle' ? outcome.encounterVariant?.kind : null).toBe('TRAIL');
+    expect(outcome.kind === 'battle' ? outcome.encounterVariant?.initialTurnOwner : null).toBe('PLAYER');
+  });
+
+  it('marks elite enemies as an elite trail instead of a plain random encounter', () => {
+    const random = {
+      rollPercentage: vi.fn()
+        .mockReturnValueOnce(false)
+        .mockReturnValueOnce(false),
+      pickOne: vi.fn(<T>(items: readonly T[]) => items[0]!),
+    };
+
+    const outcome = resolveExplorationOutcome({
+      player: createPlayer(),
+      biome: createBiome(),
+      templates: [createMobTemplate({ isElite: true })],
+      locationLevel: 4,
+      currentSchoolCode: null,
+    }, random);
+
+    expect(outcome.kind).toBe('battle');
+    expect(outcome.kind === 'battle' ? outcome.encounterVariant?.kind : null).toBe('ELITE_TRAIL');
+    expect(outcome.kind === 'battle' ? outcome.encounterVariant?.fleeChanceModifierPercent : null).toBe(-5);
+  });
+
   it('keeps school miniboss preference inside the pure outcome resolver', () => {
     const player = createPlayer({
       victories: 4,

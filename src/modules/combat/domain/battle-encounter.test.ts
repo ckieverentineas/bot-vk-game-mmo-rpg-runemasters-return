@@ -18,6 +18,33 @@ describe('battle encounter', () => {
     });
   });
 
+  it('applies encounter variant pacing without leaving safe flee bounds', () => {
+    const encounter = createBattleEncounter(
+      { dexterity: 4 },
+      { dexterity: 2, isElite: false, isBoss: false },
+      'PLAYER',
+      {
+        kind: 'AMBUSH',
+        title: 'Засада',
+        description: 'Враг выходит из укрытия.',
+        effectLine: 'Враг начнёт первым, шанс отступить ниже: -10%.',
+        fleeChanceModifierPercent: -10,
+        initialTurnOwner: 'ENEMY',
+      },
+    );
+
+    expect(encounter).toEqual({
+      status: 'OFFERED',
+      initialTurnOwner: 'ENEMY',
+      canFlee: true,
+      fleeChancePercent: 49,
+      kind: 'AMBUSH',
+      title: 'Засада',
+      description: 'Враг выходит из укрытия.',
+      effectLine: 'Враг начнёт первым, шанс отступить ниже: -10%.',
+    });
+  });
+
   it('penalizes elite and boss enemies without leaving safe chance bounds', () => {
     expect(resolveFleeChancePercent(
       { dexterity: 2 },

@@ -1,4 +1,5 @@
 import type {
+  BattleEncounterKind,
   BattleEnemySnapshot,
   BiomeView,
   MobTemplateView,
@@ -48,6 +49,16 @@ export interface ExplorationEventOutcome {
   readonly event: ExplorationSceneView;
 }
 
+export interface ExplorationEncounterVariant {
+  readonly kind: BattleEncounterKind;
+  readonly title: string;
+  readonly description: string;
+  readonly effectLine: string;
+  readonly fleeChanceModifierPercent?: number;
+  readonly initialTurnOwner?: TurnOwner;
+  readonly enemyHealthMultiplier?: number;
+}
+
 export interface ExplorationBattleOutcome {
   readonly kind: 'battle';
   readonly biome: BiomeView;
@@ -58,6 +69,7 @@ export interface ExplorationBattleOutcome {
   readonly openingLog: string[];
   readonly locationLevel: number;
   readonly currentSchoolCode: string | null;
+  readonly encounterVariant: ExplorationEncounterVariant | null;
 }
 
 export type ExplorationOutcome = ExplorationEventOutcome | ExplorationBattleOutcome;
@@ -132,6 +144,99 @@ const pickRoamingPool = (
   )) ?? null
 );
 
+const ambushChancePercent = 12;
+const wearyEnemyChancePercent = 18;
+const trailChancePercent = 25;
+const ambushMinLocationLevel = 4;
+const ambushMinVictories = 3;
+const wearyEnemyMinLocationLevel = 2;
+const wearyEnemyHealthMultiplier = 0.75;
+
+const createTrailVariant = (enemy: BattleEnemySnapshot): ExplorationEncounterVariant => ({
+  kind: 'TRAIL',
+  title: 'Свежий след',
+  description: `${enemy.name} ещё не вышел на вас: следы дают выбрать темп.`,
+  effectLine: 'Первый ход за вами, отступить проще: +10% к шансу ухода.',
+  fleeChanceModifierPercent: 10,
+  initialTurnOwner: 'PLAYER',
+});
+
+const createAmbushVariant = (enemy: BattleEnemySnapshot): ExplorationEncounterVariant => ({
+  kind: 'AMBUSH',
+  title: 'Засада',
+  description: `${enemy.name} выходит из укрытия ближе обычного.`,
+  effectLine: 'Враг начнёт первым, шанс отступить ниже: -10%.',
+  fleeChanceModifierPercent: -10,
+  initialTurnOwner: 'ENEMY',
+});
+
+const createWearyEnemyVariant = (enemy: BattleEnemySnapshot): ExplorationEncounterVariant => ({
+  kind: 'WEARY_ENEMY',
+  title: 'Усталый враг',
+  description: `${enemy.name} уже потрёпан дорогой и входит в бой не на полном здоровье.`,
+  effectLine: 'Враг начинает с 75% HP, отступить чуть проще: +5%.',
+  fleeChanceModifierPercent: 5,
+  enemyHealthMultiplier: wearyEnemyHealthMultiplier,
+});
+
+const createEliteTrailVariant = (enemy: BattleEnemySnapshot): ExplorationEncounterVariant => ({
+  kind: 'ELITE_TRAIL',
+  title: 'Элитный след',
+  description: `${enemy.name} оставил слишком явные знаки силы: это не случайная стычка.`,
+  effectLine: 'Элитная цель заметна заранее, но отступить сложнее: -5%.',
+  fleeChanceModifierPercent: -5,
+});
+
+const resolveEncounterVariant = (
+  context: ResolveExplorationOutcomeContext,
+  enemy: BattleEnemySnapshot,
+  random: ExplorationOutcomeRandom,
+): ExplorationEncounterVariant | null => {
+  if (context.locationLevel <= 0) {
+    return null;
+  }
+
+  if (enemy.isElite || enemy.isBoss) {
+    return createEliteTrailVariant(enemy);
+  }
+
+  if (context.player.defeatStreak > 0) {
+    return createTrailVariant(enemy);
+  }
+
+  if (
+    context.player.victories >= ambushMinVictories
+    && context.locationLevel >= ambushMinLocationLevel
+    && random.rollPercentage(ambushChancePercent)
+  ) {
+    return createAmbushVariant(enemy);
+  }
+
+  if (context.locationLevel >= wearyEnemyMinLocationLevel && random.rollPercentage(wearyEnemyChancePercent)) {
+    return createWearyEnemyVariant(enemy);
+  }
+
+  if (random.rollPercentage(trailChancePercent)) {
+    return createTrailVariant(enemy);
+  }
+
+  return null;
+};
+
+const applyEncounterVariantToEnemy = (
+  enemy: BattleEnemySnapshot,
+  variant: ExplorationEncounterVariant | null,
+): BattleEnemySnapshot => {
+  if (!variant?.enemyHealthMultiplier) {
+    return enemy;
+  }
+
+  return {
+    ...enemy,
+    currentHealth: Math.max(1, Math.ceil(enemy.maxHealth * variant.enemyHealthMultiplier)),
+  };
+};
+
 const resolveBattleOutcome = (
   context: ResolveExplorationOutcomeContext,
   random: ExplorationOutcomeRandom,
@@ -154,20 +259,23 @@ const resolveBattleOutcome = (
       }, random);
   const playerStats = derivePlayerStats(context.player);
   const enemy = buildEnemySnapshot(template, context.locationLevel);
+  const openingLog = buildOpeningLog({
+    ...context,
+    roamingOriginBiome: roamingPool?.biome ?? null,
+  }, enemy, random);
+  const encounterVariant = resolveEncounterVariant(context, enemy, random);
 
   return {
     kind: 'battle',
     biome: context.biome,
     template,
-    enemy,
+    enemy: applyEncounterVariantToEnemy(enemy, encounterVariant),
     playerStats,
     turnOwner: resolveInitialTurnOwner(playerStats.dexterity, enemy.dexterity),
-    openingLog: buildOpeningLog({
-      ...context,
-      roamingOriginBiome: roamingPool?.biome ?? null,
-    }, enemy, random),
+    openingLog,
     locationLevel: context.locationLevel,
     currentSchoolCode: context.currentSchoolCode,
+    encounterVariant,
   };
 };
 

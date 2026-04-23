@@ -223,11 +223,21 @@ export interface BattleEnemyIntentSnapshot {
   shattersGuard?: boolean;
 }
 
+export type BattleEncounterKind =
+  | 'TRAIL'
+  | 'AMBUSH'
+  | 'WEARY_ENEMY'
+  | 'ELITE_TRAIL';
+
 export interface BattleEncounterView {
   status: 'OFFERED' | 'ENGAGED' | 'FLED';
   initialTurnOwner: TurnOwner;
   canFlee: boolean;
   fleeChancePercent: number;
+  kind?: BattleEncounterKind;
+  title?: string;
+  description?: string;
+  effectLine?: string;
 }
 
 export interface BattleRewardView {

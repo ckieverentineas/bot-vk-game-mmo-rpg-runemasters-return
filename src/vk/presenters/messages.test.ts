@@ -915,6 +915,28 @@ describe('messages school-first onboarding framing', () => {
     expect(message).not.toContain('⚔️ Ответ мастера:');
   });
 
+  it('shows encounter variety copy when the route changes the battle setup', () => {
+    const message = renderBattle(createBattle({
+      status: 'ACTIVE',
+      result: null,
+      rewards: null,
+      encounter: {
+        status: 'OFFERED',
+        initialTurnOwner: 'ENEMY',
+        canFlee: true,
+        fleeChancePercent: 42,
+        kind: 'AMBUSH',
+        title: 'Засада',
+        description: 'Учебный огонёк выходит из укрытия ближе обычного.',
+        effectLine: 'Враг начнёт первым, шанс отступить ниже: -10%.',
+      },
+    }));
+
+    expect(message).toContain('👁️ Засада: Учебный огонёк выходит из укрытия ближе обычного.');
+    expect(message).toContain('🧭 Условие встречи: Враг начнёт первым, шанс отступить ниже: -10%.');
+    expect(message).toContain('Тропа назад: 42%');
+  });
+
   it('shows the full battle log newest-first while it remains short enough to read', () => {
     const message = renderBattle(createBattle({
       status: 'ACTIVE',

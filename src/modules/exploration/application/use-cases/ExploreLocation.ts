@@ -259,7 +259,7 @@ export class ExploreLocation {
     const playerSnapshot = buildBattlePlayerSnapshot(currentPlayer.playerId, vkId, outcome.playerStats, currentPlayer);
     const shouldOfferEncounterChoice = outcome.locationLevel > 0 && currentPlayer.tutorialState !== 'ACTIVE';
     const encounter = shouldOfferEncounterChoice
-      ? createBattleEncounter(playerSnapshot, outcome.enemy, outcome.turnOwner)
+      ? createBattleEncounter(playerSnapshot, outcome.enemy, outcome.turnOwner, outcome.encounterVariant)
       : null;
     const battle = await this.repository.createBattle(currentPlayer.playerId, {
       status: 'ACTIVE',

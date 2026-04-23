@@ -344,6 +344,10 @@ describe('battle platform contracts', () => {
         initialTurnOwner: 'ENEMY',
         canFlee: true,
         fleeChancePercent: 52,
+        kind: 'AMBUSH',
+        title: 'Засада',
+        description: 'Враг вышел из укрытия.',
+        effectLine: 'Враг начнёт первым.',
       },
     });
 
@@ -354,6 +358,10 @@ describe('battle platform contracts', () => {
       initialTurnOwner: 'ENEMY',
       canFlee: true,
       fleeChancePercent: 52,
+      kind: 'AMBUSH',
+      title: 'Засада',
+      description: 'Враг вышел из укрытия.',
+      effectLine: 'Враг начнёт первым.',
     });
   });
 });

@@ -1,5 +1,6 @@
 import type {
   BattleEnemyIntentCode,
+  BattleEncounterKind,
   BattleEnemySnapshot,
   BattleEncounterView,
   BattlePlayerSnapshot,
@@ -31,6 +32,7 @@ export interface BattleSnapshotV1 {
 export type BattleSnapshot = BattleSnapshotV1;
 
 const battleEnemyIntentCodes: readonly BattleEnemyIntentCode[] = ['HEAVY_STRIKE', 'GUARD_BREAK'];
+const battleEncounterKinds: readonly BattleEncounterKind[] = ['TRAIL', 'AMBUSH', 'WEARY_ENEMY', 'ELITE_TRAIL'];
 const rewardRarities: readonly RuneRarity[] = ['USUAL', 'UNUSUAL', 'RARE', 'EPIC', 'LEGENDARY', 'MYTHICAL'];
 const materialFields: readonly MaterialField[] = ['leather', 'bone', 'herb', 'essence', 'metal', 'crystal'];
 
@@ -143,6 +145,10 @@ const isBattleEncounterView = (value: unknown): value is BattleEncounterView => 
   && (value.initialTurnOwner === 'PLAYER' || value.initialTurnOwner === 'ENEMY')
   && typeof value.canFlee === 'boolean'
   && isNumber(value.fleeChancePercent)
+  && (value.kind === undefined || (isString(value.kind) && battleEncounterKinds.includes(value.kind as BattleEncounterKind)))
+  && (value.title === undefined || isString(value.title))
+  && (value.description === undefined || isString(value.description))
+  && (value.effectLine === undefined || isString(value.effectLine))
 );
 
 const isRewardShardMap = (value: unknown): value is BattleRewardView['shards'] => (

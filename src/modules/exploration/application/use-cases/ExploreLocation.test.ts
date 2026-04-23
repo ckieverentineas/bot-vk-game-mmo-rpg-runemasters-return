@@ -268,6 +268,56 @@ describe('ExploreLocation', () => {
     expect(repository.saveBattle).not.toHaveBeenCalled();
   });
 
+  it('passes encounter variety into the offered battle decision', async () => {
+    const player = createPlayer({ tutorialState: 'SKIPPED', locationLevel: 4, level: 4, victories: 4 });
+    const repository = {
+      findPlayerByVkId: vi.fn().mockResolvedValue(player),
+      getCommandIntentResult: vi.fn().mockResolvedValue(null),
+      getActiveBattle: vi.fn().mockResolvedValue(null),
+      createBattle: vi.fn().mockImplementation(async (_playerId: number, battle: Omit<BattleView, 'id' | 'playerId' | 'createdAt' | 'updatedAt'>) => ({
+        id: 'battle-offered-ambush',
+        playerId: player.playerId,
+        createdAt: '2026-04-12T00:00:00.000Z',
+        updatedAt: '2026-04-12T00:00:00.000Z',
+        ...battle,
+      })),
+      saveBattle: vi.fn(),
+    } as unknown as GameRepository;
+    const random: GameRandom = {
+      nextInt: vi.fn().mockReturnValue(1),
+      rollPercentage: vi.fn()
+        .mockReturnValueOnce(false)
+        .mockReturnValueOnce(false)
+        .mockReturnValueOnce(true),
+      pickOne: vi.fn(<T>(items: readonly T[]) => items[0]!),
+    };
+    const worldCatalog = createWorldCatalog({
+      findBiomeForLocationLevel: vi.fn().mockReturnValue(createBiome({
+        code: 'dark-forest',
+        name: 'Тёмный лес',
+        minLevel: 1,
+        maxLevel: 15,
+      })),
+      listMobTemplatesForBiome: vi.fn().mockReturnValue([createMobTemplate({
+        biomeCode: 'dark-forest',
+        name: 'Лесной волк',
+        kind: 'beast',
+      })]),
+    });
+    const useCase = new ExploreLocation(repository, worldCatalog, random);
+
+    const battle = await useCase.execute(player.vkId, 'intent-explore-ambush-1', buildExploreLocationIntentStateKey(player), 'payload') as BattleView;
+
+    expect(battle.turnOwner).toBe('PLAYER');
+    expect(battle.encounter).toMatchObject({
+      status: 'OFFERED',
+      kind: 'AMBUSH',
+      initialTurnOwner: 'ENEMY',
+      title: 'Засада',
+    });
+    expect(repository.saveBattle).not.toHaveBeenCalled();
+  });
+
   it('can add a path episode before the generated battle', async () => {
     const player = createPlayer({ tutorialState: 'SKIPPED', locationLevel: 1 });
     const repository = {
