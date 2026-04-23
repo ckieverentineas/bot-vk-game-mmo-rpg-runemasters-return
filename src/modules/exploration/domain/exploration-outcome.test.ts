@@ -192,6 +192,41 @@ describe('resolveExplorationOutcome', () => {
     expect(outcome.kind === 'battle' ? outcome.enemy.code : null).toBe('ash-matron');
   });
 
+  it('uses a normal encounter instead of a school miniboss while recovering from defeat', () => {
+    const player = createPlayer({
+      victories: 4,
+      locationLevel: 6,
+      defeats: 1,
+      defeatStreak: 1,
+      runes: [createEmberRune('UNUSUAL')],
+    });
+    const random = {
+      rollPercentage: vi.fn()
+        .mockReturnValueOnce(false)
+        .mockReturnValue(true),
+      pickOne: vi.fn(<T>(items: readonly T[]) => items[0]!),
+    };
+
+    const outcome = resolveExplorationOutcome({
+      player,
+      biome: createBiome(),
+      templates: [
+        createMobTemplate(),
+        createMobTemplate({
+          code: 'ash-matron',
+          name: 'Пепельная матрона',
+          isElite: true,
+          isBoss: true,
+        }),
+      ],
+      locationLevel: 6,
+      currentSchoolCode: 'ember',
+    }, random);
+
+    expect(outcome.kind).toBe('battle');
+    expect(outcome.kind === 'battle' ? outcome.enemy.code : null).toBe('blue-slime');
+  });
+
   it('can pull an old-location mob into a higher-level route as a roaming encounter', () => {
     const random = {
       rollPercentage: vi.fn()

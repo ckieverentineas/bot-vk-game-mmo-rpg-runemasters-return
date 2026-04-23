@@ -153,6 +153,26 @@ describe('pickEncounterTemplate', () => {
     expect(picked.code).toBe('ash-matron');
   });
 
+  it('suppresses preferred school challenges for the post-defeat recovery step', () => {
+    const templates = [
+      createTemplate(),
+      createTemplate({ code: 'ash-seer', name: 'Пепельная ведунья', kind: 'mage', isElite: true }),
+      createTemplate({ code: 'ash-matron', name: 'Пепельная матрона', kind: 'mage', isElite: true, isBoss: true }),
+    ];
+
+    const picked = pickEncounterTemplate(templates, 20, {
+      schoolCode: 'ember',
+      preferMiniboss: true,
+      suppressChallengeEncounters: true,
+    }, {
+      rollPercentage: () => true,
+      pickOne: (items) => items[0]!,
+    });
+
+    expect(picked.isElite).toBe(false);
+    expect(picked.code).toBe('blue-slime');
+  });
+
   it('prefers the gale school miniboss once the first sign is already equipped', () => {
     const templates = [
       createTemplate(),

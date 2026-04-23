@@ -3,6 +3,7 @@ import { isBattleEncounterOffered } from '../../modules/combat/domain/battle-enc
 import { listBattleRuneLoadouts } from '../../modules/combat/domain/battle-rune-loadouts';
 import { resolveDefendGuardGain } from '../../modules/combat/domain/battle-tactics';
 import type { AcquisitionSummaryView } from '../../modules/player/application/read-models/acquisition-summary';
+import { buildDefeatFlowView } from '../../modules/player/application/read-models/defeat-flow';
 import { buildBattleResultNextGoalView } from '../../modules/player/application/read-models/next-goal';
 import { getRuneSchoolPresentation } from '../../modules/runes/domain/rune-schools';
 import type { BattleView, PlayerState, StatBlock } from '../../shared/types/game';
@@ -272,6 +273,22 @@ const renderBattleRewardLines = (battle: BattleView): string[] => {
   ];
 };
 
+const renderBattleDefeatFlowLines = (battle: BattleView, player?: PlayerState): string[] => {
+  const defeatFlow = buildDefeatFlowView(battle, player);
+  if (!defeatFlow) {
+    return [];
+  }
+
+  return [
+    '',
+    '🛟 После поражения',
+    defeatFlow.consequenceLine,
+    defeatFlow.preservedLine,
+    defeatFlow.recoveryLine,
+    defeatFlow.safeRouteLine,
+  ];
+};
+
 export const renderBattle = (
   battle: BattleView,
   player?: PlayerState,
@@ -283,6 +300,7 @@ export const renderBattle = (
   const isEncounterOffered = battle.status === 'ACTIVE' && isBattleEncounterOffered(battle);
   const battleStateLine = resolveBattleStateLine(battle, isEncounterOffered);
   const rewardLines = renderBattleRewardLines(battle);
+  const defeatFlowLines = renderBattleDefeatFlowLines(battle, player);
   const postSessionLines = battle.status === 'COMPLETED'
     ? ['', ...renderBattleNextGoal(battle, player)]
     : [];
@@ -313,6 +331,7 @@ export const renderBattle = (
     'Летопись схватки',
     ...battleLogLines.map(renderBattleLogLine),
     ...rewardLines,
+    ...defeatFlowLines,
     ...renderAcquisitionSummary(acquisitionSummary),
     ...postSessionLines,
   ].join('\n');

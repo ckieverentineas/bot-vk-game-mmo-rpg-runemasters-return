@@ -502,4 +502,17 @@ describe('next goal read-model', () => {
     expect(goal?.goalType).toBe('equip_school_sign');
     expect(goal?.objectiveText).toContain('наденьте первый знак школы Пламени');
   });
+
+  it('guides defeat recovery through runes and an осторожная встреча', () => {
+    const goal = buildBattleResultNextGoalView(createBattle({
+      result: 'DEFEAT',
+      rewards: null,
+      log: ['💥 Поражение.'],
+    }), createPlayer({ defeats: 1, defeatStreak: 1 }));
+
+    expect(goal?.goalType).toBe('review_runes_after_defeat');
+    expect(goal?.primaryActionLabel).toBe('🔮 Руны');
+    expect(goal?.objectiveText).toContain('проверьте «🔮 Руны», затем вернитесь через осторожную встречу');
+    expect(goal?.whyText).toContain('руны и прогресс остаются');
+  });
 });

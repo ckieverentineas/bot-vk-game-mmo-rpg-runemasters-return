@@ -9,6 +9,7 @@ interface EncounterRandomSource {
 interface PreferredSchoolEncounterOptions {
   readonly schoolCode: string | null;
   readonly preferMiniboss?: boolean;
+  readonly suppressChallengeEncounters?: boolean;
 }
 
 const randomInt = (min: number, max: number): number => Math.floor(Math.random() * (max - min + 1)) + min;
@@ -99,10 +100,11 @@ export const pickEncounterTemplate = (
   const elites = templates.filter((template) => template.isElite && !template.isBoss);
   const normals = templates.filter((template) => !template.isElite && !template.isBoss);
 
-  const bossChance = locationLevel >= 20
+  const challengeEncountersSuppressed = preferredSchool.suppressChallengeEncounters === true;
+  const bossChance = !challengeEncountersSuppressed && locationLevel >= 20
     ? Math.min(18, 4 + Math.floor(locationLevel / 20) * 2)
     : 0;
-  const eliteChance = locationLevel >= randomEliteMinLocationLevel
+  const eliteChance = !challengeEncountersSuppressed && locationLevel >= randomEliteMinLocationLevel
     ? Math.min(28, 8 + Math.floor(locationLevel / 15) * 3)
     : 0;
   const preferredEliteCode = preferredSchool.schoolCode ? preferredSchoolEliteCodes[preferredSchool.schoolCode] ?? null : null;
@@ -113,8 +115,8 @@ export const pickEncounterTemplate = (
   const preferredBoss = preferredBossCode
     ? bosses.find((template) => template.code === preferredBossCode) ?? null
     : null;
-  const preferredEliteChance = locationLevel >= 3 ? 50 : 0;
-  const preferredBossChance = locationLevel >= 5 ? 45 : 0;
+  const preferredEliteChance = !challengeEncountersSuppressed && locationLevel >= 3 ? 50 : 0;
+  const preferredBossChance = !challengeEncountersSuppressed && locationLevel >= 5 ? 45 : 0;
 
   if (preferredSchool.preferMiniboss && preferredBoss && preferredBossChance > 0 && random.rollPercentage(preferredBossChance)) {
     return preferredBoss;

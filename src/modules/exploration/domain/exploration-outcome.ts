@@ -121,7 +121,9 @@ const resolveBattleOutcome = (
   context: ResolveExplorationOutcomeContext,
   random: ExplorationOutcomeRandom,
 ): ExplorationBattleOutcome => {
-  const preferMiniboss = shouldPreferSchoolMiniboss(context.player, context.currentSchoolCode);
+  const suppressChallengeEncounters = context.player.defeatStreak > 0;
+  const preferMiniboss = shouldPreferSchoolMiniboss(context.player, context.currentSchoolCode)
+    && !suppressChallengeEncounters;
   const roamingPool = preferMiniboss
     ? null
     : pickRoamingPool(context.roamingTemplatePools ?? [], random);
@@ -130,6 +132,7 @@ const resolveBattleOutcome = (
     : pickEncounterTemplate(context.templates, context.locationLevel, {
         schoolCode: context.currentSchoolCode,
         preferMiniboss,
+        suppressChallengeEncounters,
       }, random);
   const playerStats = derivePlayerStats(context.player);
   const enemy = buildEnemySnapshot(template, context.locationLevel);

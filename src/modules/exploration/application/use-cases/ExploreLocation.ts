@@ -98,6 +98,7 @@ const buildRoamingTemplatePools = (
   worldCatalog: WorldCatalog,
   currentBiome: BiomeView,
   locationLevel: number,
+  options: { readonly suppressHigherBiomeRoaming?: boolean } = {},
 ): readonly ExplorationRoamingTemplatePool[] => {
   const biomes = sortBiomesByLevel(worldCatalog.listBiomes());
   const currentIndex = biomes.findIndex((biome) => biome.code === currentBiome.code);
@@ -121,7 +122,9 @@ const buildRoamingTemplatePools = (
     {
       biome: higherBiome,
       templates: listRoamingMobTemplates(worldCatalog, higherBiome),
-      chancePercent: resolveHigherBiomeRoamingChancePercent(locationLevel),
+      chancePercent: options.suppressHigherBiomeRoaming
+        ? 0
+        : resolveHigherBiomeRoamingChancePercent(locationLevel),
       direction: 'HIGHER_BIOME',
     },
   ].filter((pool): pool is ExplorationRoamingTemplatePool => (
@@ -230,7 +233,9 @@ export class ExploreLocation {
       templates: this.worldCatalog.listMobTemplatesForBiome(biome.code),
       roamingTemplatePools: currentPlayer.tutorialState === 'ACTIVE'
         ? []
-        : buildRoamingTemplatePools(this.worldCatalog, biome, locationLevel),
+        : buildRoamingTemplatePools(this.worldCatalog, biome, locationLevel, {
+            suppressHigherBiomeRoaming: currentPlayer.defeatStreak > 0,
+          }),
       currentSchoolCode,
       locationLevel,
     }, this.random);

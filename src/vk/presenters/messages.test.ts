@@ -512,9 +512,22 @@ describe('messages school-first onboarding framing', () => {
       result: 'DEFEAT',
       rewards: null,
       log: ['💥 Поражение.'],
-    }), createPlayer({ tutorialState: 'SKIPPED', runes: [createEquippedRune()] }));
+    }), createPlayer({
+      tutorialState: 'SKIPPED',
+      currentHealth: 3,
+      currentMana: 2,
+      defeatStreak: 1,
+      runes: [createEquippedRune()],
+    }));
 
-    expect(message).toContain('🎯 След: проверьте «🔮 Руны» и текущую школу или спокойно продолжите исследование снова.');
+    expect(message).toContain('🛟 После поражения');
+    expect(message).toContain('Не получено: победная добыча за «Учебный огонёк» не начислена');
+    expect(message).toContain('Сохранено: руны, пыль, материалы, уровень, школа и задания остаются у вас.');
+    expect(message).toContain('Восстановление: вы поднялись до 3/9 HP и 2/4 маны.');
+    expect(message).toContain('Безопасный путь: сначала «🔮 Руны»');
+    expect(message).toContain('«⚔️ Осторожно дальше»');
+    expect(message).toContain('без школьного испытания и верхнего бродяги');
+    expect(message).toContain('🎯 След: проверьте «🔮 Руны», затем вернитесь через осторожную встречу.');
     expect(message).toContain('👉 Дальше: «🔮 Руны».');
   });
 

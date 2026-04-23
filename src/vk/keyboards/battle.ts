@@ -96,9 +96,11 @@ const createBattleActionLayout = (battle: BattleView): KeyboardLayout => {
 const createBattleResultLayout = (battle: BattleView, player?: PlayerState): KeyboardLayout => {
   const exploreStateKey = player ? buildExploreLocationIntentStateKey(player) : undefined;
   const nextGoal = player ? buildBattleResultNextGoalView(battle, player) : null;
-  const exploreLabel = nextGoal?.primaryAction === 'explore'
-    ? nextGoal.primaryActionLabel
-    : resolveSchoolContinuationLabel(player, '⚔️ Исследовать');
+  const exploreLabel = battle.result === 'DEFEAT'
+    ? '⚔️ Осторожно дальше'
+    : nextGoal?.primaryAction === 'explore'
+      ? nextGoal.primaryActionLabel
+      : resolveSchoolContinuationLabel(player, '⚔️ Исследовать');
 
   return [
     battle.rewards?.droppedRune || nextGoal?.primaryAction === 'open_runes'

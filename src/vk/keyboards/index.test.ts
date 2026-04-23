@@ -495,6 +495,7 @@ describe('profile keyboard', () => {
     }), player));
 
     expect(battleResultLabels).toContain('🔮 Руны');
+    expect(battleResultLabels).toContain('⚔️ Осторожно дальше');
     expect(battleResultLabels).not.toContain('⚔️ Проверить школу');
   });
 

@@ -432,6 +432,74 @@ describe('ExploreLocation', () => {
     expect(battle.log.some((entry) => entry.includes('Забытые пещеры'))).toBe(false);
   });
 
+  it('does not pull a higher-biome roaming mob during post-defeat recovery', async () => {
+    const player = createPlayer({
+      tutorialState: 'SKIPPED',
+      locationLevel: 15,
+      level: 15,
+      defeats: 1,
+      defeatStreak: 1,
+    });
+    const darkForest = createBiome({
+      id: 2,
+      code: 'dark-forest',
+      name: 'Тёмный лес',
+      minLevel: 1,
+      maxLevel: 15,
+    });
+    const forgottenCaves = createBiome({
+      id: 3,
+      code: 'forgotten-caves',
+      name: 'Забытые пещеры',
+      minLevel: 16,
+      maxLevel: 35,
+    });
+    const repository = {
+      findPlayerByVkId: vi.fn().mockResolvedValue(player),
+      getCommandIntentResult: vi.fn().mockResolvedValue(null),
+      getActiveBattle: vi.fn().mockResolvedValue(null),
+      createBattle: vi.fn().mockImplementation(async (_playerId: number, battle: Omit<BattleView, 'id' | 'playerId' | 'createdAt' | 'updatedAt'>) => ({
+        id: 'battle-defeat-no-higher-roaming',
+        playerId: player.playerId,
+        createdAt: '2026-04-12T00:00:00.000Z',
+        updatedAt: '2026-04-12T00:00:00.000Z',
+        ...battle,
+      })),
+    } as unknown as GameRepository;
+    const random: GameRandom = {
+      nextInt: vi.fn().mockReturnValue(1),
+      rollPercentage: vi.fn()
+        .mockReturnValueOnce(false)
+        .mockReturnValue(true),
+      pickOne: vi.fn(<T>(items: readonly T[]) => items[0]!),
+    };
+    const worldCatalog = createWorldCatalog({
+      listBiomes: vi.fn().mockReturnValue([darkForest, forgottenCaves]),
+      findBiomeForLocationLevel: vi.fn().mockReturnValue(darkForest),
+      listMobTemplatesForBiome: vi.fn((biomeCode: string) => {
+        if (biomeCode === 'forgotten-caves') {
+          return [createMobTemplate({
+            code: 'cave-goblin',
+            biomeCode: 'forgotten-caves',
+            name: 'Пещерный гоблин',
+          })];
+        }
+
+        return [createMobTemplate({
+          code: 'forest-wolf',
+          biomeCode: 'dark-forest',
+          name: 'Лесной волк',
+        })];
+      }),
+    });
+    const useCase = new ExploreLocation(repository, worldCatalog, random);
+
+    const battle = await useCase.execute(player.vkId, 'intent-explore-defeat-no-higher-roaming-1', buildExploreLocationIntentStateKey(player), 'payload') as BattleView;
+
+    expect(battle.enemyCode).toBe('forest-wolf');
+    expect(battle.log.some((entry) => entry.includes('Забытые пещеры'))).toBe(false);
+  });
+
   it('can resolve a standalone exploration event without creating a battle', async () => {
     const player = createPlayer({ tutorialState: 'SKIPPED', locationLevel: 1 });
     const stateKey = buildExploreLocationIntentStateKey(player);
