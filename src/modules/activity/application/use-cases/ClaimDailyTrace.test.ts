@@ -15,6 +15,7 @@ const createPlayer = (overrides: Partial<PlayerState> = {}): PlayerState => ({
   level: 2,
   experience: 0,
   gold: 10,
+  radiance: 0,
   baseStats: {
     health: 30,
     attack: 5,
@@ -46,6 +47,7 @@ const createPlayer = (overrides: Partial<PlayerState> = {}): PlayerState => ({
 const applyReward = (player: PlayerState): PlayerState => ({
   ...player,
   gold: player.gold + 6,
+  radiance: player.radiance + 1,
   inventory: {
     ...player.inventory,
     usualShards: player.inventory.usualShards + 1,
@@ -92,17 +94,19 @@ describe('ClaimDailyTrace', () => {
       player.playerId,
       'soft_daily_trace',
       '2026-04-23',
-      { gold: 6, inventoryDelta: { usualShards: 1, leather: 1 } },
+      { gold: 6, radiance: 1, inventoryDelta: { usualShards: 1, leather: 1 } },
       undefined,
     );
     expect(result.claimedNow).toBe(true);
     expect(result.player.gold).toBe(16);
+    expect(result.player.radiance).toBe(1);
     expect(telemetry.dailyTraceClaimed).toHaveBeenCalledWith(player.userId, {
       playerId: player.playerId,
       activityCode: 'soft_daily_trace',
       gameDay: '2026-04-23',
       claimedNow: true,
       rewardDustDelta: 6,
+      rewardRadianceDelta: 1,
       rewardShardsDelta: 1,
     });
     expect(telemetry.economyTransactionCommitted).toHaveBeenCalledWith(player.userId, {
@@ -110,6 +114,7 @@ describe('ClaimDailyTrace', () => {
       sourceType: 'DAILY_TRACE',
       sourceId: 'soft_daily_trace:2026-04-23',
       resourceDustDelta: 6,
+      resourceRadianceDelta: 1,
       resourceShardsDelta: 1,
       runeDelta: 0,
       playerLevel: 2,
@@ -130,6 +135,7 @@ describe('ClaimDailyTrace', () => {
       gameDay: '2026-04-23',
       claimedNow: false,
       rewardDustDelta: 6,
+      rewardRadianceDelta: 1,
       rewardShardsDelta: 1,
     });
     expect(telemetry.economyTransactionCommitted).not.toHaveBeenCalled();
@@ -150,7 +156,7 @@ describe('ClaimDailyTrace', () => {
       player.playerId,
       'soft_daily_trace',
       '2026-04-23',
-      { gold: 6, inventoryDelta: { usualShards: 1, leather: 1 } },
+      { gold: 6, radiance: 1, inventoryDelta: { usualShards: 1, leather: 1 } },
       {
         commandKey: 'CLAIM_DAILY_TRACE',
         intentId: 'legacy-text:2000000001:1001:101:след дня',
@@ -169,7 +175,7 @@ describe('ClaimDailyTrace', () => {
         player,
         activityCode: 'soft_daily_trace',
         gameDay: '2026-04-23',
-        reward: { gold: 6, inventoryDelta: { usualShards: 1, leather: 1 } },
+        reward: { gold: 6, radiance: 1, inventoryDelta: { usualShards: 1, leather: 1 } },
         claimed: true,
       },
     });

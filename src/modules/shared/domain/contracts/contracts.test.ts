@@ -273,6 +273,7 @@ describe('battle platform contracts', () => {
   it('creates a canonical daily activity ledger entry', () => {
     const reward = {
       gold: 6,
+      radiance: 1,
       inventoryDelta: {
         usualShards: 1,
         herb: 1,

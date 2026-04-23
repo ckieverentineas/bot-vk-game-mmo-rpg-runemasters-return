@@ -22,6 +22,7 @@ model Player {
   level            Int                   @default(1)
   experience       Int                   @default(0)
   gold             Int                   @default(0)
+  radiance         Int                   @default(0)
   baseHealth       Int                   @default(4)
   baseAttack       Int                   @default(2)
   baseDefence      Int                   @default(3)

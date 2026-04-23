@@ -32,6 +32,7 @@ export interface PersistedPlayerStateHydrationInput {
   readonly level: number;
   readonly experience: number;
   readonly gold: number;
+  readonly radiance?: number | null;
   readonly baseStats: StatBlock;
   readonly progress?: {
     readonly locationLevel?: number | null;
@@ -188,6 +189,7 @@ export const hydratePlayerStateFromPersistence = (
     level: persisted.level,
     experience: persisted.experience,
     gold: persisted.gold,
+    radiance: clampNonNegativeInteger(persisted.radiance, 0),
     baseStats: persisted.baseStats,
     locationLevel,
     currentRuneIndex: normalizeCurrentRuneIndex(persisted.progress?.currentRuneIndex, runes.length),

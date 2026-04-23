@@ -40,6 +40,7 @@ const buildDailyTraceTelemetryPayload = (
   gameDay: trace.gameDay,
   claimedNow,
   rewardDustDelta: trace.reward.gold ?? 0,
+  rewardRadianceDelta: trace.reward.radiance ?? 0,
   rewardShardsDelta: sumResourceRewardShardDelta(trace.reward),
 });
 
@@ -149,6 +150,7 @@ export class ClaimDailyTrace {
         sourceType: 'DAILY_TRACE',
         sourceId: buildDailyTraceEconomySourceId(trace),
         resourceDustDelta: reward.gold ?? 0,
+        resourceRadianceDelta: reward.radiance ?? 0,
         resourceShardsDelta: sumResourceRewardShardDelta(reward),
         runeDelta: 0,
         playerLevel: player.level,

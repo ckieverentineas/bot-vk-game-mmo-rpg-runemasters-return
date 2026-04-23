@@ -15,6 +15,7 @@ describe('RepositoryGameTelemetry', () => {
       sourceType: 'QUEST_REWARD',
       sourceId: 'awakening_empty_master',
       resourceDustDelta: 5,
+      resourceRadianceDelta: 0,
       resourceShardsDelta: 1,
       runeDelta: 0,
       playerLevel: 1,
@@ -26,6 +27,7 @@ describe('RepositoryGameTelemetry', () => {
       sourceType: 'QUEST_REWARD',
       sourceId: 'awakening_empty_master',
       resourceDustDelta: 5,
+      resourceRadianceDelta: 0,
       resourceShardsDelta: 1,
       runeDelta: 0,
       playerLevel: 1,
@@ -44,6 +46,7 @@ describe('RepositoryGameTelemetry', () => {
       gameDay: '2026-04-23',
       claimedNow: true,
       rewardDustDelta: 6,
+      rewardRadianceDelta: 1,
       rewardShardsDelta: 1,
     });
 
@@ -54,6 +57,7 @@ describe('RepositoryGameTelemetry', () => {
       gameDay: '2026-04-23',
       claimedNow: true,
       rewardDustDelta: 6,
+      rewardRadianceDelta: 1,
       rewardShardsDelta: 1,
     });
   });

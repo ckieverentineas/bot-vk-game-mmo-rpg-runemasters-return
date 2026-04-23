@@ -123,6 +123,7 @@ describe('ClaimQuestReward', () => {
       sourceType: 'QUEST_REWARD',
       sourceId: 'awakening_empty_master',
       resourceDustDelta: 5,
+      resourceRadianceDelta: 0,
       resourceShardsDelta: 1,
       runeDelta: 0,
       playerLevel: 1,

@@ -131,6 +131,7 @@ export const renderMainMenu = (player: PlayerState): string => {
       ? '📘 Учебный круг: открыт'
       : `🎯 Зов угрозы: ${resolveAdaptiveAdventureLocationLevel(player)}`,
     `💰 Руная пыль: ${player.gold}`,
+    `✨ Сияние: ${player.radiance}`,
     `🧭 Самый дальний след: ${player.highestLocationLevel}`,
     `🧩 Слоты рун: ${getUnlockedRuneSlotCount(player)} открыто`,
     renderPlayerVitalsLine(player),

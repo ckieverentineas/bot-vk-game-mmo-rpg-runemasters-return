@@ -359,6 +359,7 @@ describe('summarizeReleaseEvidence', () => {
           sourceType: 'QUEST_REWARD',
           sourceId: 'awakening_empty_master',
           resourceDustDelta: 5,
+          resourceRadianceDelta: 1,
           resourceShardsDelta: 1,
           runeDelta: 0,
           playerLevel: 1,
@@ -373,6 +374,7 @@ describe('summarizeReleaseEvidence', () => {
           sourceType: 'QUEST_REWARD',
           sourceId: 'first_school_sign',
           resourceDustDelta: 3,
+          resourceRadianceDelta: 2,
           resourceShardsDelta: 2,
           runeDelta: 0,
           playerLevel: 2,
@@ -394,6 +396,7 @@ describe('summarizeReleaseEvidence', () => {
         eventCount: 2,
         uniqueUsers: 2,
         resourceDustDelta: 8,
+        resourceRadianceDelta: 3,
         resourceShardsDelta: 3,
         runeDelta: 0,
         sourceIds: ['awakening_empty_master', 'first_school_sign'],
@@ -1025,6 +1028,7 @@ describe('buildReleaseEvidenceMarkdown', () => {
           sourceType: 'QUEST_REWARD',
           sourceId: 'awakening_empty_master',
           resourceDustDelta: 5,
+          resourceRadianceDelta: 1,
           resourceShardsDelta: 1,
           runeDelta: 0,
           playerLevel: 1,
@@ -1039,7 +1043,7 @@ describe('buildReleaseEvidenceMarkdown', () => {
     expect(markdown).toContain('## Economy health');
     expect(markdown).toContain('## QA / exploit guardrails');
     expect(markdown).toContain('| Quest signal | Events | Unique users | Quest codes | Latest event |');
-    expect(markdown).toContain('| Transaction | Source | Events | Unique users | Dust delta | Shards delta | Rune delta | Source IDs | Latest event |');
+    expect(markdown).toContain('| Transaction | Source | Events | Unique users | Dust delta | Radiance delta | Shards delta | Rune delta | Source IDs | Latest event |');
     expect(markdown).toContain('| Школа | Novice elite | UNUSUAL reward | Open runes | Equip sign | Follow-up battle | RARE seal | Latest event |');
   });
 });

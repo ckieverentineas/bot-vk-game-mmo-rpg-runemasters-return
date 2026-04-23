@@ -46,6 +46,7 @@ export const renderProfile = (player: PlayerState): string => {
     `⭐ Уровень: ${player.level}`,
     `📊 Опыт: ${player.experience}/${nextLevelXp}`,
     `💰 Руная пыль: ${player.gold}`,
+    `✨ Сияние: ${player.radiance}`,
     `💓 Состояние: ${vitals.currentHealth}/${vitals.maxHealth} HP · ${vitals.currentMana}/${vitals.maxMana} маны`,
     `🏆 Победы / Поражения: ${player.victories}/${player.defeats}`,
     `🧩 Слоты рун: ${getUnlockedRuneSlotCount(player)} открыто`,
@@ -61,6 +62,9 @@ export const renderProfile = (player: PlayerState): string => {
 
 export const renderInventory = (player: PlayerState): string => [
   '🎒 Инвентарь',
+  '',
+  `Сияние: ${player.radiance}`,
+  `Рунная пыль: ${player.gold}`,
   '',
   `Обычные осколки: ${player.inventory.usualShards}`,
   `Необычные осколки: ${player.inventory.unusualShards}`,

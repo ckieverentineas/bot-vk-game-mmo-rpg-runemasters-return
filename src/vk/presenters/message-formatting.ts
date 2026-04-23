@@ -78,6 +78,7 @@ const formatInventoryFieldLabel = (field: string, amount: number): string => {
 export const formatResourceReward = (reward: ResourceReward): string => {
   const parts = [
     reward.gold !== undefined && reward.gold > 0 ? `+${reward.gold} пыли` : null,
+    reward.radiance !== undefined && reward.radiance > 0 ? `+${reward.radiance} сияния` : null,
     reward.inventoryDelta ? formatInventoryDelta(reward.inventoryDelta) : null,
   ].filter((part): part is string => Boolean(part) && part !== 'без дополнительных материалов');
 

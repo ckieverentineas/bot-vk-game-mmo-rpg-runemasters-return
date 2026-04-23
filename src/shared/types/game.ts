@@ -80,6 +80,7 @@ export type InventoryLoot = Partial<Record<MaterialField, number>>;
 
 export interface ResourceReward {
   readonly gold?: number;
+  readonly radiance?: number;
   readonly inventoryDelta?: InventoryDelta;
 }
 
@@ -106,6 +107,7 @@ export interface PlayerState {
   level: number;
   experience: number;
   gold: number;
+  radiance: number;
   baseStats: StatBlock;
   currentHealth?: number;
   currentMana?: number;

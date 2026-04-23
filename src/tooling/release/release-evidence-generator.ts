@@ -82,6 +82,7 @@ interface QuestBookAccumulator {
 interface EconomyTransactionAccumulator {
   eventCount: number;
   resourceDustDelta: number;
+  resourceRadianceDelta: number;
   resourceShardsDelta: number;
   runeDelta: number;
   latestEventAt: string | null;
@@ -161,6 +162,7 @@ export interface ReleaseEvidenceEconomyRow {
   readonly eventCount: number;
   readonly uniqueUsers: number;
   readonly resourceDustDelta: number;
+  readonly resourceRadianceDelta: number;
   readonly resourceShardsDelta: number;
   readonly runeDelta: number;
   readonly sourceIds: readonly string[];
@@ -262,6 +264,7 @@ const createQuestBookAccumulator = (): QuestBookAccumulator => ({
 const createEconomyTransactionAccumulator = (): EconomyTransactionAccumulator => ({
   eventCount: 0,
   resourceDustDelta: 0,
+  resourceRadianceDelta: 0,
   resourceShardsDelta: 0,
   runeDelta: 0,
   latestEventAt: null,
@@ -614,6 +617,7 @@ export const summarizeReleaseEvidence = (
       accumulator.eventCount += 1;
       accumulator.users.add(entry.userId);
       accumulator.resourceDustDelta += normalizeNumberField(details.resourceDustDelta);
+      accumulator.resourceRadianceDelta += normalizeNumberField(details.resourceRadianceDelta);
       accumulator.resourceShardsDelta += normalizeNumberField(details.resourceShardsDelta);
       accumulator.runeDelta += normalizeNumberField(details.runeDelta);
       accumulator.latestEventAt = timestamp;
@@ -910,6 +914,7 @@ export const summarizeReleaseEvidence = (
         eventCount: accumulator.eventCount,
         uniqueUsers: accumulator.users.size,
         resourceDustDelta: accumulator.resourceDustDelta,
+        resourceRadianceDelta: accumulator.resourceRadianceDelta,
         resourceShardsDelta: accumulator.resourceShardsDelta,
         runeDelta: accumulator.runeDelta,
         sourceIds: [...accumulator.sourceIds].sort((left, right) => left.localeCompare(right)),
@@ -1118,13 +1123,14 @@ export const buildReleaseEvidenceMarkdown = (report: ReleaseEvidenceReport): str
     '## Economy health',
     '',
     ...buildTable(
-      ['Transaction', 'Source', 'Events', 'Unique users', 'Dust delta', 'Shards delta', 'Rune delta', 'Source IDs', 'Latest event'],
+      ['Transaction', 'Source', 'Events', 'Unique users', 'Dust delta', 'Radiance delta', 'Shards delta', 'Rune delta', 'Source IDs', 'Latest event'],
       report.economyRows.map((row) => [
         row.transactionType,
         row.sourceType,
         row.eventCount,
         row.uniqueUsers,
         row.resourceDustDelta,
+        row.resourceRadianceDelta,
         row.resourceShardsDelta,
         row.runeDelta,
         row.sourceIds.length > 0 ? row.sourceIds.join(', ') : 'none',

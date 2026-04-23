@@ -18,6 +18,7 @@ export interface EconomyTransactionTelemetryPayload {
   readonly sourceType: EconomyTransactionSourceType;
   readonly sourceId: string;
   readonly resourceDustDelta: number;
+  readonly resourceRadianceDelta: number;
   readonly resourceShardsDelta: number;
   readonly runeDelta: number;
   readonly playerLevel: number;
@@ -29,6 +30,7 @@ export interface DailyTraceTelemetryPayload {
   readonly gameDay: string;
   readonly claimedNow: boolean;
   readonly rewardDustDelta: number;
+  readonly rewardRadianceDelta: number;
   readonly rewardShardsDelta: number;
 }
 

@@ -37,6 +37,7 @@ export const buildQuestRewardEconomyTelemetryPayload = (
   sourceType: 'QUEST_REWARD',
   sourceId,
   resourceDustDelta: reward.gold ?? 0,
+  resourceRadianceDelta: reward.radiance ?? 0,
   resourceShardsDelta: sumResourceRewardShardDelta(reward),
   runeDelta: 0,
   playerLevel,

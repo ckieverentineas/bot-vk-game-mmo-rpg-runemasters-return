@@ -185,6 +185,7 @@ export const mapPlayerRecord = (player: PlayerRecord): PlayerState => hydratePla
   level: player.level,
   experience: player.experience,
   gold: player.gold,
+  radiance: player.radiance,
   baseStats: {
     health: player.baseHealth,
     attack: player.baseAttack,

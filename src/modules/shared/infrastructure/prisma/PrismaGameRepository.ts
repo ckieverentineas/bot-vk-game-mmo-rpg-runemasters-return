@@ -1503,6 +1503,7 @@ export class PrismaGameRepository implements GameRepository {
               level: env.game.startingLevel,
               experience: 0,
               gold: 0,
+              radiance: 0,
               baseHealth: 8,
               baseAttack: 4,
               baseDefence: 3,
@@ -2062,6 +2063,17 @@ export class PrismaGameRepository implements GameRepository {
         data: {
           gold: {
             increment: reward.gold,
+          },
+        },
+      });
+    }
+
+    if (reward.radiance !== undefined && reward.radiance !== 0) {
+      await client.player.update({
+        where: { id: playerId },
+        data: {
+          radiance: {
+            increment: reward.radiance,
           },
         },
       });

@@ -32,5 +32,6 @@ export const isInventoryDeltaSnapshot = (value: unknown): value is InventoryDelt
 export const isResourceRewardSnapshot = (value: unknown): value is ResourceReward => (
   isJsonRecord(value)
   && (value.gold === undefined || isNumber(value.gold))
+  && (value.radiance === undefined || isNumber(value.radiance))
   && (value.inventoryDelta === undefined || isInventoryDeltaSnapshot(value.inventoryDelta))
 );

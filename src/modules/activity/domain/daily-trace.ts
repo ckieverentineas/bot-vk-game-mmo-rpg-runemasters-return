@@ -41,6 +41,7 @@ const dailyTraceTemplates: readonly DailyTraceTemplate[] = [
 ];
 
 const dailyTraceGoldReward = 6;
+const dailyTraceRadianceReward = 1;
 
 export const formatGameDay = (date: Date): string => date.toISOString().slice(0, 10);
 
@@ -50,6 +51,7 @@ const hashGameDay = (gameDay: string): number => (
 
 const buildDailyTraceReward = (materialField: MaterialField): ResourceReward => ({
   gold: dailyTraceGoldReward,
+  radiance: dailyTraceRadianceReward,
   inventoryDelta: {
     usualShards: 1,
     [materialField]: 1,
