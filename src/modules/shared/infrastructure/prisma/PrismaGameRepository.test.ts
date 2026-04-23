@@ -510,6 +510,8 @@ const createPrismaMock = () => {
     $transaction: vi.fn(async (callback: (client: typeof tx) => Promise<unknown>) => callback(tx)),
   };
 
+  tx.player.updateMany.mockResolvedValue({ count: 1 });
+
   return {
     prisma,
     tx,
@@ -1787,6 +1789,19 @@ describe('PrismaGameRepository release hardening', () => {
     expect(tx.rune.updateMany).not.toHaveBeenCalled();
   });
 
+  it('does not reroll rune stats when rune dust is already spent', async () => {
+    const { repository, tx } = createPrismaMock();
+
+    tx.player.updateMany.mockResolvedValue({ count: 0 });
+
+    await expect(repository.rerollRuneStat(1, 'rune-1', 'USUAL', createStats())).rejects.toMatchObject({
+      code: 'not_enough_rune_resources',
+    });
+
+    expect(tx.playerInventory.updateMany).not.toHaveBeenCalled();
+    expect(tx.rune.updateMany).not.toHaveBeenCalled();
+  });
+
   it('does not refund shards when the rune was already destroyed', async () => {
     const { repository, tx } = createPrismaMock();
 
@@ -2277,6 +2292,19 @@ describe('PrismaGameRepository release hardening', () => {
         activeBattleId: null,
       }),
     }));
+  });
+
+  it('does not craft a rune when rune dust is already spent', async () => {
+    const { repository, tx } = createPrismaMock();
+
+    tx.player.updateMany.mockResolvedValue({ count: 0 });
+
+    await expect(repository.craftRune(1, 'USUAL', createRuneDraft())).rejects.toMatchObject({
+      code: 'not_enough_rune_resources',
+    });
+
+    expect(tx.playerInventory.updateMany).not.toHaveBeenCalled();
+    expect(tx.rune.create).not.toHaveBeenCalled();
   });
 
   it('persists defeat recovery vitals on player progress for the next encounter', async () => {

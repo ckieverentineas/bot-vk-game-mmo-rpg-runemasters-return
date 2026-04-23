@@ -52,6 +52,10 @@ import type {
   TrophyActionSkillExperienceMap,
 } from '../../../rewards/domain/trophy-actions';
 import { getSchoolDefinitionForArchetype } from '../../../runes/domain/rune-schools';
+import {
+  resolveRuneCraftSpend,
+  resolveRuneRerollSpend,
+} from '../../../runes/domain/rune-economy';
 import { buildLoadoutSnapshotFromBattle } from '../../domain/contracts/loadout-snapshot';
 import {
   createAppliedPendingRewardLedgerEntry,
@@ -126,6 +130,31 @@ const buildInventoryAvailabilityWhere = (playerId: number, delta: InventoryDelta
   }
 
   return where;
+};
+
+const spendRuneDust = async (
+  client: TransactionClient,
+  playerId: number,
+  amount: number,
+  message: string,
+): Promise<void> => {
+  if (amount <= 0) {
+    return;
+  }
+
+  const spent = await client.player.updateMany({
+    where: {
+      id: playerId,
+      gold: { gte: amount },
+    },
+    data: {
+      gold: { decrement: amount },
+    },
+  });
+
+  if (spent.count === 0) {
+    throw new AppError('not_enough_rune_resources', message);
+  }
 };
 
 const aggregatePlayerSkillPointGains = (
@@ -1791,16 +1820,17 @@ export class PrismaGameRepository implements GameRepository {
   ): Promise<PlayerState> {
     return this.prisma.$transaction(async (tx) => {
       return this.runWithCommandIntent(tx, playerId, 'CRAFT_RUNE', intentId, intentStateKey, currentStateKey, async () => {
-        const shardField = gameBalance.runes.profiles[rarity].shardField;
+        const spend = resolveRuneCraftSpend(rarity);
+        await spendRuneDust(tx, playerId, spend.gold, 'Пыли уже не хватает для новой руны. Вернитесь к алтарю после пары побед.');
+
+        const inventorySpend = buildInventoryDeltaInput(spend.inventoryDelta);
         const spent = await tx.playerInventory.updateMany({
-          where: buildInventoryAvailabilityWhere(playerId, { [shardField]: -gameBalance.runes.craftCost }),
-          data: {
-            [shardField]: { increment: -gameBalance.runes.craftCost },
-          } as Prisma.PlayerInventoryUpdateManyMutationInput,
+          where: buildInventoryAvailabilityWhere(playerId, spend.inventoryDelta),
+          data: inventorySpend as Prisma.PlayerInventoryUpdateManyMutationInput,
         });
 
         if (spent.count === 0) {
-          throw new AppError('not_enough_shards', 'Осколков уже не хватает для новой руны. Вернитесь к алтарю.');
+          throw new AppError('not_enough_shards', 'Осколков или материалов уже не хватает для новой руны. Вернитесь к алтарю.');
         }
 
         await tx.rune.create({
@@ -1863,12 +1893,13 @@ export class PrismaGameRepository implements GameRepository {
   ): Promise<PlayerState> {
     return this.prisma.$transaction(async (tx) => {
       return this.runWithCommandIntent(tx, playerId, 'REROLL_RUNE_STAT', intentId, intentStateKey, currentStateKey, async () => {
-        const shardField = gameBalance.runes.profiles[rarity].shardField;
+        const spend = resolveRuneRerollSpend(rarity);
+        await spendRuneDust(tx, playerId, spend.gold, 'Пыли уже не хватает для перековки. Вернитесь к алтарю после пары побед.');
+
+        const inventorySpend = buildInventoryDeltaInput(spend.inventoryDelta);
         const spent = await tx.playerInventory.updateMany({
-          where: buildInventoryAvailabilityWhere(playerId, { [shardField]: -1 }),
-          data: {
-            [shardField]: { increment: -1 },
-          } as Prisma.PlayerInventoryUpdateManyMutationInput,
+          where: buildInventoryAvailabilityWhere(playerId, spend.inventoryDelta),
+          data: inventorySpend as Prisma.PlayerInventoryUpdateManyMutationInput,
         });
 
         if (spent.count === 0) {

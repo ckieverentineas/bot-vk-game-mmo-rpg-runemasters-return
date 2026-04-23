@@ -1,5 +1,5 @@
 import { env } from './env';
-import type { InventoryView, RuneRarity, ShardField } from '../shared/types/game';
+import type { InventoryView, MaterialField, RuneRarity, ShardField } from '../shared/types/game';
 
 export interface RuneProfile {
   weight: number;
@@ -55,6 +55,31 @@ export const gameBalance = Object.freeze({
   } satisfies InventoryView,
   runes: {
     craftCost: 10,
+    rerollShardCost: 1,
+    craftDustCosts: {
+      USUAL: 18,
+      UNUSUAL: 30,
+      RARE: 52,
+      EPIC: 90,
+      LEGENDARY: 150,
+      MYTHICAL: 240,
+    } satisfies Record<RuneRarity, number>,
+    rerollDustCosts: {
+      USUAL: 5,
+      UNUSUAL: 8,
+      RARE: 13,
+      EPIC: 21,
+      LEGENDARY: 34,
+      MYTHICAL: 55,
+    } satisfies Record<RuneRarity, number>,
+    craftMaterialCosts: {
+      USUAL: {},
+      UNUSUAL: { essence: 1 },
+      RARE: { essence: 2, crystal: 1 },
+      EPIC: { essence: 3, crystal: 2, metal: 1 },
+      LEGENDARY: { essence: 5, crystal: 3, metal: 2 },
+      MYTHICAL: { essence: 8, crystal: 5, metal: 3 },
+    } satisfies Record<RuneRarity, Partial<Record<MaterialField, number>>>,
     profiles: {
       USUAL: { weight: 60, maxStatRoll: 2, lines: 1, shardField: 'usualShards', title: 'Обычная руна' },
       UNUSUAL: { weight: 30, maxStatRoll: 4, lines: 2, shardField: 'unusualShards', title: 'Необычная руна' },

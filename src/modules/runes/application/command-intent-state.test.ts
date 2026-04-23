@@ -110,6 +110,13 @@ describe('command intent state keys', () => {
     expect(buildCraftIntentStateKey(strandedAtIntro)).toBe(buildCraftIntentStateKey(onAdventurePath));
   });
 
+  it('changes craft state key when dust budget changes', () => {
+    const before = createPlayer({ gold: 18 });
+    const after = createPlayer({ gold: 17 });
+
+    expect(buildCraftIntentStateKey(before)).not.toBe(buildCraftIntentStateKey(after));
+  });
+
   it('changes equip state key when selected rune changes', () => {
     const before = createPlayer({
       currentRuneIndex: 0,

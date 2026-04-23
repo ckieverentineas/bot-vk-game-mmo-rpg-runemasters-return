@@ -13,7 +13,7 @@ const createPlayer = (overrides: Partial<PlayerState> = {}): PlayerState => ({
   playerId: 1,
   level: 1,
   experience: 0,
-  gold: 0,
+  gold: 100,
   baseStats: { health: 8, attack: 4, defence: 3, magicDefence: 1, dexterity: 2, intelligence: 1 },
   locationLevel: 1,
   currentRuneIndex: 0,
@@ -167,5 +167,46 @@ describe('CraftRune', () => {
         player: expect.any(Object),
       }),
     );
+  });
+
+  it('waits for dust before crafting from an otherwise ready shard stack', async () => {
+    const player = createPlayer({ gold: 0 });
+    const repository = {
+      findPlayerByVkId: vi.fn().mockResolvedValue(player),
+      getCommandIntentResult: vi.fn().mockResolvedValue(null),
+      storeCommandIntentResult: vi.fn().mockResolvedValue(undefined),
+      craftRune: vi.fn(),
+    } as unknown as GameRepository;
+    const useCase = new CraftRune(repository, createRandom());
+
+    await expect(useCase.execute(player.vkId, 'legacy-text:2000000001:1001:77:создать', undefined, 'legacy_text')).rejects.toMatchObject({
+      code: 'not_enough_rune_resources',
+    });
+
+    expect(repository.craftRune).not.toHaveBeenCalled();
+  });
+
+  it('requires essence before spending unusual shards on an unusual rune craft', async () => {
+    const player = createPlayer({
+      inventory: {
+        ...createPlayer().inventory,
+        usualShards: 0,
+        unusualShards: 10,
+        essence: 0,
+      },
+    });
+    const repository = {
+      findPlayerByVkId: vi.fn().mockResolvedValue(player),
+      getCommandIntentResult: vi.fn().mockResolvedValue(null),
+      storeCommandIntentResult: vi.fn().mockResolvedValue(undefined),
+      craftRune: vi.fn(),
+    } as unknown as GameRepository;
+    const useCase = new CraftRune(repository, createRandom());
+
+    await expect(useCase.execute(player.vkId, 'legacy-text:2000000001:1001:77:создать', undefined, 'legacy_text')).rejects.toMatchObject({
+      code: 'not_enough_rune_resources',
+    });
+
+    expect(repository.craftRune).not.toHaveBeenCalled();
   });
 });

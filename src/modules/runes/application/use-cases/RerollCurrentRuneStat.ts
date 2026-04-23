@@ -9,6 +9,7 @@ import { requirePlayerByVkId } from '../../../shared/application/require-player'
 import type { GameRepository } from '../../../shared/application/ports/GameRepository';
 import { buildRerollIntentStateKey } from '../command-intent-state';
 import { RuneFactory } from '../../domain/rune-factory';
+import { canPayRuneSpend, resolveRuneRerollSpend } from '../../domain/rune-economy';
 
 export class RerollCurrentRuneStat {
   public constructor(
@@ -36,8 +37,16 @@ export class RerollCurrentRuneStat {
     }
 
     const shardField = gameBalance.runes.profiles[rune.rarity].shardField;
-    if (player.inventory[shardField] <= 0) {
+    if (player.inventory[shardField] < gameBalance.runes.rerollShardCost) {
       throw new AppError('not_enough_shards', 'Для изменения стата нужен хотя бы один осколок той же редкости.');
+    }
+
+    const spend = resolveRuneRerollSpend(rune.rarity);
+    if (!canPayRuneSpend(player, spend)) {
+      throw new AppError(
+        'not_enough_rune_resources',
+        `Для перековки нужно ${spend.gold} пыли и ${gameBalance.runes.rerollShardCost} осколок той же редкости.`,
+      );
     }
 
     const currentStateKey = buildRerollIntentStateKey(player, stat, rune);

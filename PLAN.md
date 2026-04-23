@@ -24,6 +24,7 @@
 
 ## Что уже является базой
 
+- Economy balance pass для пыли/осколков/эссенций включён: крафт тратит осколки и пыль, UNUSUAL+ требует материалы вроде эссенции, перековка стала ранним пылевым sink'ом, а `rune-economy` тесты держат 30-60 минут ранних боёв в проверяемом ресурсном коридоре.
 - Проект собран как TypeScript/VK bot с модульными слоями `application`, `domain`, `infrastructure`, `transport`.
 - Prisma/SQLite используются для изменяемого runtime state: игроки, прогресс, руны, бои, reward ledger, command intents и telemetry.
 - Статический world/rune content живёт в `src/content/**` и валидируется через `content:validate`.

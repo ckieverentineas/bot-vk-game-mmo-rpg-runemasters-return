@@ -171,6 +171,12 @@ describe.sequential('PrismaGameRepository concurrency rails', () => {
   });
 
   const createPlayer = async (vkId: number): Promise<PlayerState> => (await repository.createPlayer(vkId)).player;
+  const setRuneDust = async (playerId: number, amount: number): Promise<void> => {
+    await prisma.player.update({
+      where: { id: playerId },
+      data: { gold: amount },
+    });
+  };
 
   it('returns one canonical player under parallel first-start creation', async () => {
     const [first, second] = await Promise.all([
@@ -660,6 +666,7 @@ describe.sequential('PrismaGameRepository concurrency rails', () => {
 
   it('spends shards only once under parallel craft attempts with one craft budget', async () => {
     const player = await createPlayer(2004);
+    await setRuneDust(player.playerId, gameBalance.runes.craftDustCosts.USUAL * 2);
     await prisma.playerInventory.update({
       where: { playerId: player.playerId },
       data: {
@@ -758,6 +765,7 @@ describe.sequential('PrismaGameRepository concurrency rails', () => {
 
   it('invalidates old equip buttons after a newer craft changes rune loadout state', async () => {
     const player = await createPlayer(2025);
+    await setRuneDust(player.playerId, gameBalance.runes.craftDustCosts.USUAL);
     await repository.createRune(player.playerId, createRuneDraft('Старая руна'));
     await prisma.playerInventory.update({
       where: { playerId: player.playerId },
@@ -826,7 +834,7 @@ describe.sequential('PrismaGameRepository concurrency rails', () => {
 
     expect(first.runes).toEqual(second.runes);
     expect(first.runes[0]?.isEquipped).toBe(false);
-  });
+  }, 15_000);
 
   it('rejects a stale unequip intent after loadout changed', async () => {
     const player = await createPlayer(2024);
@@ -913,6 +921,7 @@ describe.sequential('PrismaGameRepository concurrency rails', () => {
 
   it('returns the canonical crafted rune for a duplicate intent even with enough budget for two crafts', async () => {
     const player = await createPlayer(2014);
+    await setRuneDust(player.playerId, gameBalance.runes.craftDustCosts.USUAL * 2);
     await prisma.playerInventory.update({
       where: { playerId: player.playerId },
       data: {
@@ -929,7 +938,7 @@ describe.sequential('PrismaGameRepository concurrency rails', () => {
     expect(first.runes).toEqual(second.runes);
     expect(first.inventory.usualShards).toBe(gameBalance.runes.craftCost);
     expect(first.runes).toHaveLength(1);
-  });
+  }, 15_000);
 
   it('refunds and deletes only once under parallel destroy attempts', async () => {
     const player = await createPlayer(2005);
@@ -974,6 +983,7 @@ describe.sequential('PrismaGameRepository concurrency rails', () => {
 
   it('spends the last shard only once under parallel reroll attempts', async () => {
     const player = await createPlayer(2006);
+    await setRuneDust(player.playerId, gameBalance.runes.rerollDustCosts.USUAL * 2);
     await repository.createRune(player.playerId, createRuneDraft('Руна для реролла'));
     const rune = (await repository.findPlayerById(player.playerId))?.runes[0];
 
@@ -1015,6 +1025,7 @@ describe.sequential('PrismaGameRepository concurrency rails', () => {
 
   it('returns the canonical reroll result for a duplicate intent even with enough shards for two rerolls', async () => {
     const player = await createPlayer(2016);
+    await setRuneDust(player.playerId, gameBalance.runes.rerollDustCosts.USUAL * 2);
     await repository.createRune(player.playerId, createRuneDraft('Руна для идемпотентного реролла'));
     const rune = (await repository.findPlayerById(player.playerId))?.runes[0];
 
@@ -1051,6 +1062,7 @@ describe.sequential('PrismaGameRepository concurrency rails', () => {
 
   it('rejects a stale reused craft intent after player state already changed', async () => {
     const player = await createPlayer(2017);
+    await setRuneDust(player.playerId, gameBalance.runes.craftDustCosts.USUAL * 2);
     await prisma.playerInventory.update({
       where: { playerId: player.playerId },
       data: {

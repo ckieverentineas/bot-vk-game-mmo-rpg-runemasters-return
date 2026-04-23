@@ -9,18 +9,11 @@ import {
 } from '../../player/domain/player-stats';
 import type { PlayerState, StatKey } from '../../../shared/types/game';
 import type { RunePageSlot } from '../domain/rune-collection';
-
-const rarityPriority = ['MYTHICAL', 'LEGENDARY', 'EPIC', 'RARE', 'UNUSUAL', 'USUAL'] as const;
+import { resolveHighestCraftableRuneRarity } from '../domain/rune-economy';
 
 const serializeStateKey = (value: unknown): string => createHash('sha1').update(JSON.stringify(value)).digest('hex');
 
-const resolveCraftRarity = (player: PlayerState): string | null => {
-  const rarity = rarityPriority.find((candidate) => (
-    player.inventory[gameBalance.runes.profiles[candidate].shardField] >= gameBalance.runes.craftCost
-  ));
-
-  return rarity ?? null;
-};
+const resolveCraftRarity = (player: PlayerState): string | null => resolveHighestCraftableRuneRarity(player);
 
 const buildRuneLoadoutState = (player: PlayerState) => ({
   currentRuneIndex: player.currentRuneIndex,
@@ -46,6 +39,7 @@ export const buildCraftIntentStateKey = (player: PlayerState): string => seriali
   rarity: resolveCraftRarity(player),
   locationLevel: resolveCurrentProgressionLocationLevel(player),
   currentRuneIndex: player.currentRuneIndex,
+  dustBudget: player.gold,
   shardBudgets: {
     usual: player.inventory.usualShards,
     unusual: player.inventory.unusualShards,
@@ -68,6 +62,7 @@ export const buildRerollIntentStateKey = (
     stat,
     runeId: rune.id,
     currentRuneIndex: player.currentRuneIndex,
+    dustBudget: player.gold,
     shardBudget: player.inventory[shardField],
     stats: {
       health: rune.health,

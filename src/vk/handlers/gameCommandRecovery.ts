@@ -41,6 +41,8 @@ export const recoverableCommandErrorCodes = new Set([
   'stale_command_intent',
   'command_retry_pending',
   'rune_slot_not_found',
+  'not_enough_rune_resources',
+  'not_enough_shards',
   'battle_in_progress',
 ]);
 

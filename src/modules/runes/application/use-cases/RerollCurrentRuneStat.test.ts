@@ -13,7 +13,7 @@ const createPlayer = (overrides: Partial<PlayerState> = {}): PlayerState => ({
   playerId: 1,
   level: 1,
   experience: 0,
-  gold: 0,
+  gold: 100,
   baseStats: { health: 8, attack: 4, defence: 3, magicDefence: 1, dexterity: 2, intelligence: 1 },
   locationLevel: 1,
   currentRuneIndex: 0,
@@ -143,5 +143,21 @@ describe('RerollCurrentRuneStat', () => {
       'legacy-text:2000000001:1001:78:~атк',
       undefined,
     );
+  });
+
+  it('waits for dust before spending a shard on reroll', async () => {
+    const player = createPlayer({ gold: 0 });
+    const repository = {
+      findPlayerByVkId: vi.fn().mockResolvedValue(player),
+      getCommandIntentResult: vi.fn().mockResolvedValue(null),
+      rerollRuneStat: vi.fn(),
+    } as unknown as GameRepository;
+    const useCase = new RerollCurrentRuneStat(repository, createRandom());
+
+    await expect(useCase.execute(player.vkId, 'attack', 'legacy-text:2000000001:1001:78:~атк', undefined, 'legacy_text')).rejects.toMatchObject({
+      code: 'not_enough_rune_resources',
+    });
+
+    expect(repository.rerollRuneStat).not.toHaveBeenCalled();
   });
 });

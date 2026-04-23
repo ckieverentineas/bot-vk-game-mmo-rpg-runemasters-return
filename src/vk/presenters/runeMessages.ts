@@ -14,6 +14,10 @@ import {
 import { describeRuneContent } from '../../modules/runes/domain/rune-abilities';
 import { buildRuneCollectionPage } from '../../modules/runes/domain/rune-collection';
 import {
+  resolveRuneCraftSpend,
+  resolveRuneRerollSpend,
+} from '../../modules/runes/domain/rune-economy';
+import {
   getRuneSchoolPresentation,
   getSchoolDefinitionForArchetype,
 } from '../../modules/runes/domain/rune-schools';
@@ -215,6 +219,19 @@ const renderRuneHandoff = (player: PlayerState): readonly string[] => {
   ];
 };
 
+const renderRuneEconomyLines = (selectedRune?: RuneView | null): readonly string[] => {
+  const usualCraftSpend = resolveRuneCraftSpend('USUAL');
+  const unusualCraftSpend = resolveRuneCraftSpend('UNUSUAL');
+
+  return [
+    `Алтарь: создание от ${gameBalance.runes.craftCost} осколков и ${usualCraftSpend.gold} пыли.`,
+    `Необычная руна: ${unusualCraftSpend.gold} пыли и 1 эссенция.`,
+    ...(selectedRune
+      ? [`Перековка выбранной: ${gameBalance.runes.rerollShardCost} осколок и ${resolveRuneRerollSpend(selectedRune.rarity).gold} пыли.`]
+      : []),
+  ];
+};
+
 export const renderRuneScreen = (
   player: PlayerState,
   acquisitionSummary?: AcquisitionSummaryView | null,
@@ -228,7 +245,7 @@ export const renderRuneScreen = (
       'У вас пока нет рун.',
       'Первая боевая руна откроет школу рун и задаст ваш ранний стиль боя.',
       renderStarterSchoolLine(),
-      `Создание руны стоит ${gameBalance.runes.craftCost} осколков одной редкости.`,
+      ...renderRuneEconomyLines(),
       'Новая редкость позже расширит сборку, а сейчас важнее открыть первую школу рун.',
       'Победы и алтарь помогут собрать первую руну.',
     ].join('\n');
@@ -268,6 +285,8 @@ export const renderRuneDetailScreen = (
     ...renderRuneHandoff(player),
     '',
     formatRune(selectedRune),
+    '',
+    ...renderRuneEconomyLines(selectedRune),
   ].join('\n');
 };
 
