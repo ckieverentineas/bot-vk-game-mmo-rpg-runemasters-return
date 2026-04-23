@@ -1,7 +1,9 @@
 import type { BattleView } from '../../../../shared/types/game';
+import { listBattleRuneLoadouts } from '../../domain/battle-rune-loadouts';
 
 export interface BattleClarityView {
   readonly stateLine: string;
+  readonly choiceLine: string | null;
   readonly schoolHintLine: string | null;
 }
 
@@ -19,6 +21,33 @@ const resolveEnemyRiskLabel = (battle: BattleView): string => {
   }
 
   return 'следующий ход врага пока без особого телеграфа';
+};
+
+const hasReadyRuneAction = (battle: BattleView): boolean => (
+  listBattleRuneLoadouts(battle.player).some(({ loadout }) => {
+    const activeAbility = loadout.activeAbility;
+    return !!activeAbility
+      && activeAbility.currentCooldown <= 0
+      && battle.player.currentMana >= activeAbility.manaCost;
+  })
+);
+
+const resolveChoiceLine = (battle: BattleView): string | null => {
+  const readyRuneAction = hasReadyRuneAction(battle);
+
+  if (battle.enemy.intent?.code === 'HEAVY_STRIKE') {
+    return readyRuneAction
+      ? '🎲 Выбор: тяжёлый удар лучше встретить защитой; готовая руна тоже получает окно по раскрытому замыслу.'
+      : '🎲 Выбор: тяжёлый удар лучше встретить защитой; голая атака рискованнее.';
+  }
+
+  if (battle.enemy.intent?.code === 'GUARD_BREAK') {
+    return readyRuneAction
+      ? '🎲 Выбор: пробивающий удар ломает стойку — отвечайте атакой или готовой руной, чистую защиту оставьте на другой ход.'
+      : '🎲 Выбор: пробивающий удар ломает стойку — отвечайте атакой, чистая защита рискованна.';
+  }
+
+  return null;
 };
 
 const resolveSchoolHint = (battle: BattleView): string | null => {
@@ -92,5 +121,6 @@ const resolveSchoolHint = (battle: BattleView): string | null => {
 
 export const buildBattleClarityView = (battle: BattleView): BattleClarityView => ({
   stateLine: `📌 Сейчас: вы ${battle.player.currentHealth}/${battle.player.maxHealth} HP · ${battle.player.currentMana}/${battle.player.maxMana} маны${buildGuardLine(battle)} | враг ${battle.enemy.currentHealth}/${battle.enemy.maxHealth} HP · ${resolveEnemyRiskLabel(battle)}.`,
+  choiceLine: resolveChoiceLine(battle),
   schoolHintLine: resolveSchoolHint(battle),
 });

@@ -210,6 +210,29 @@ describe('BattleEngine', () => {
     expect(resolved.log.some((entry) => entry.includes('Шаг шквала'))).toBe(true);
   });
 
+  it('активная руна получает малый бонус по раскрытому намерению врага', () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0.5);
+    const battle = createBattle({
+      enemy: {
+        ...createBattle().enemy,
+        maxHealth: 8,
+        currentHealth: 8,
+        intent: {
+          code: 'GUARD_BREAK',
+          title: 'Кислотный прорыв',
+          description: 'Следующий удар разобьёт защиту.',
+          bonusAttack: 1,
+          shattersGuard: true,
+        },
+      },
+    });
+
+    const resolved = BattleEngine.useRuneSkill(battle);
+
+    expect(resolved.enemy.currentHealth).toBe(1);
+    expect(resolved.log.some((entry) => entry.includes('по раскрытому замыслу'))).toBe(true);
+  });
+
   it('школа пламени усиливает базовую атаку постоянным давлением', () => {
     vi.spyOn(Math, 'random').mockReturnValue(0.5);
     const battle = createBattle({
@@ -312,6 +335,26 @@ describe('BattleEngine', () => {
     expect(resolved.turnOwner).toBe('ENEMY');
     expect(resolved.player.guardPoints).toBeGreaterThan(0);
     expect(resolved.log.some((entry) => entry.includes('защитную стойку'))).toBe(true);
+  });
+
+  it('усиливает защиту, если игрок читает тяжёлый удар и выбирает стойку', () => {
+    const battle = createBattle({
+      enemy: {
+        ...createBattle().enemy,
+        kind: 'wolf',
+        intent: {
+          code: 'HEAVY_STRIKE',
+          title: 'Тяжёлый удар',
+          description: 'Следующая атака врага будет сильнее обычной.',
+          bonusAttack: 3,
+        },
+      },
+    });
+
+    const resolved = BattleEngine.defend(battle);
+
+    expect(resolved.player.guardPoints).toBe(4);
+    expect(resolved.log.some((entry) => entry.includes('встать плотнее обычного'))).toBe(true);
   });
 
   it('школа тверди усиливает защитную стойку', () => {
@@ -563,6 +606,24 @@ describe('BattleEngine', () => {
     expect(resolved.log.some((entry) => entry.includes('готовит'))).toBe(true);
   });
 
+  it('телеграфирует тяжёлый удар раньше, чтобы выбор появился до почти мёртвого врага', () => {
+    const battle = createBattle({
+      turnOwner: 'ENEMY',
+      enemy: {
+        ...createBattle().enemy,
+        kind: 'wolf',
+        name: 'Лесной волк',
+        currentHealth: 9,
+        maxHealth: 12,
+      },
+    });
+
+    const resolved = BattleEngine.resolveEnemyTurn(battle);
+
+    expect(resolved.turnOwner).toBe('PLAYER');
+    expect(resolved.enemy.intent?.code).toBe('HEAVY_STRIKE');
+  });
+
   it('телеграфирует тяжёлый удар у камнерогого тарана, чтобы школа тверди читалась по делу', () => {
     const battle = createBattle({
       turnOwner: 'ENEMY',
@@ -630,6 +691,24 @@ describe('BattleEngine', () => {
     expect(resolved.turnOwner).toBe('PLAYER');
     expect(resolved.enemy.intent?.code).toBe('GUARD_BREAK');
     expect(resolved.log.some((entry) => entry.includes('сработает хуже'))).toBe(true);
+  });
+
+  it('телеграфирует пробивающий удар раньше, чтобы защита не была автопилотом', () => {
+    const battle = createBattle({
+      turnOwner: 'ENEMY',
+      enemy: {
+        ...createBattle().enemy,
+        kind: 'lich',
+        name: 'Лич',
+        currentHealth: 9,
+        maxHealth: 12,
+      },
+    });
+
+    const resolved = BattleEngine.resolveEnemyTurn(battle);
+
+    expect(resolved.turnOwner).toBe('PLAYER');
+    expect(resolved.enemy.intent?.code).toBe('GUARD_BREAK');
   });
 
   it('пробивающий удар ломает защиту перед уроном', () => {

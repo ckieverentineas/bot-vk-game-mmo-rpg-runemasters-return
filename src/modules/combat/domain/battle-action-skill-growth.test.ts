@@ -103,6 +103,39 @@ describe('resolveBattleActionSkillGains', () => {
     ]);
   });
 
+  it('grows guard from the state change when defend answers a revealed heavy strike', () => {
+    const before = createBattle({
+      enemy: {
+        ...createBattle().enemy,
+        intent: {
+          code: 'HEAVY_STRIKE',
+          title: 'Heavy strike',
+          description: 'Next hit is stronger.',
+          bonusAttack: 2,
+        },
+      },
+    });
+    const afterPlayerAction = createBattle({
+      player: {
+        ...before.player,
+        guardPoints: 4,
+      },
+      enemy: before.enemy,
+      log: [],
+    });
+
+    expect(resolveBattleActionSkillGains({
+      action: 'DEFEND',
+      before,
+      afterPlayerAction,
+    })).toEqual([
+      {
+        skillCode: 'combat.guard',
+        points: 1,
+      },
+    ]);
+  });
+
   it('grows active rune use from a rune skill that spends mana and starts cooldown', () => {
     const activeAbility = {
       code: 'ember_pulse',
@@ -140,6 +173,68 @@ describe('resolveBattleActionSkillGains', () => {
 
     expect(resolveBattleActionSkillGains({
       action: 'RUNE_SKILL_SLOT_2',
+      before,
+      afterPlayerAction,
+    })).toEqual([
+      {
+        skillCode: 'rune.active_use',
+        points: 1,
+      },
+    ]);
+  });
+
+  it('grows active rune use from resource facts when a rune answers revealed intent', () => {
+    const activeAbility = {
+      code: 'ember_pulse',
+      name: 'Ember pulse',
+      manaCost: 2,
+      cooldownTurns: 2,
+      currentCooldown: 0,
+    };
+    const before = createBattle({
+      player: {
+        ...createBattle().player,
+        runeLoadout: {
+          runeId: 'rune-1',
+          runeName: 'Primary rune',
+          archetypeCode: 'ember',
+          archetypeName: 'Ember',
+          passiveAbilityCodes: [],
+          activeAbility,
+        },
+      },
+      enemy: {
+        ...createBattle().enemy,
+        intent: {
+          code: 'GUARD_BREAK',
+          title: 'Guard break',
+          description: 'Breaks guard.',
+          bonusAttack: 1,
+          shattersGuard: true,
+        },
+      },
+    });
+    const afterPlayerAction = createBattle({
+      player: {
+        ...before.player,
+        currentMana: 6,
+        runeLoadout: {
+          ...before.player.runeLoadout!,
+          activeAbility: {
+            ...activeAbility,
+            currentCooldown: 2,
+          },
+        },
+      },
+      enemy: {
+        ...before.enemy,
+        currentHealth: 7,
+      },
+      log: [],
+    });
+
+    expect(resolveBattleActionSkillGains({
+      action: 'RUNE_SKILL_SLOT_1',
       before,
       afterPlayerAction,
     })).toEqual([

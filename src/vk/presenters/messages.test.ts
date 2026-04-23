@@ -802,6 +802,8 @@ describe('messages school-first onboarding framing', () => {
     expect(message).toContain('❤️ 🟨🟨🟨🟨🟨⬛⬛⬛⬛⬛ 3/6 HP');
     expect(message).toContain('📊 Черты: ⚔️ 2 · 🛡️ 0 · 🔮 0 · 💨 2 · 🧠 1');
     expect(message).toContain('Чтение боя');
+    expect(message).toContain('🎲 Выбор: тяжёлый удар лучше встретить защитой');
+    expect(message).toContain('🛡️ Защита (+4 щит)');
     expect(message).toContain('🔥 Пламя: враг уже просел');
   });
 
@@ -910,6 +912,7 @@ describe('messages school-first onboarding framing', () => {
       },
     }));
 
+    expect(message).toContain('🎲 Выбор: пробивающий удар ломает стойку');
     expect(message).toContain('🧠 Прорицание: раскрытая угроза даёт лучшее окно для точного ответа');
   });
 

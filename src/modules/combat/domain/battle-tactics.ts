@@ -16,7 +16,12 @@ const heavyStrikeEnemyKinds = new Set<BattleEnemySnapshot['kind']>([
 const guardBreakEnemyKinds = new Set<BattleEnemySnapshot['kind']>([
   'slime',
   'mage',
+  'lich',
 ]);
+
+const intentPreparationHealthRatio = 0.75;
+const heavyStrikeDefendGuardBonus = 2;
+const revealedIntentRuneDamageBonus = 1;
 
 export const resolveGuardCap = (player: Pick<BattlePlayerSnapshot, 'defence' | 'dexterity'>): number => (
   4 + player.defence + Math.floor(player.dexterity / 2)
@@ -38,6 +43,11 @@ export const resolveManaRegeneration = (player: Pick<BattlePlayerSnapshot, 'inte
   return Math.min(3, Math.max(1, Math.floor(player.intelligence / 4)));
 };
 
+const isEnemyInIntentWindow = (enemy: Pick<BattleEnemySnapshot, 'currentHealth' | 'maxHealth'>): boolean => (
+  enemy.currentHealth > 0
+  && enemy.currentHealth <= Math.ceil(enemy.maxHealth * intentPreparationHealthRatio)
+);
+
 export const enemySupportsHeavyStrike = (enemy: Pick<BattleEnemySnapshot, 'kind' | 'isElite' | 'isBoss'>): boolean => (
   enemy.isBoss || enemy.isElite || heavyStrikeEnemyKinds.has(enemy.kind)
 );
@@ -46,8 +56,7 @@ export const shouldEnemyPrepareHeavyStrike = (enemy: BattleEnemySnapshot): boole
   enemySupportsHeavyStrike(enemy)
   && !enemy.intent
   && !(enemy.hasUsedSignatureMove ?? false)
-  && enemy.currentHealth > 0
-  && enemy.currentHealth <= Math.ceil(enemy.maxHealth * 0.6)
+  && isEnemyInIntentWindow(enemy)
 );
 
 export const enemySupportsGuardBreak = (enemy: Pick<BattleEnemySnapshot, 'kind' | 'isElite' | 'isBoss'>): boolean => (
@@ -58,8 +67,19 @@ export const shouldEnemyPrepareGuardBreak = (enemy: BattleEnemySnapshot): boolea
   enemySupportsGuardBreak(enemy)
   && !enemy.intent
   && !(enemy.hasUsedSignatureMove ?? false)
-  && enemy.currentHealth > 0
-  && enemy.currentHealth <= Math.ceil(enemy.maxHealth * 0.6)
+  && isEnemyInIntentWindow(enemy)
+);
+
+export const resolveIntentDefendGuardBonus = (
+  intent: Pick<BattleEnemyIntentSnapshot, 'code'> | null | undefined,
+): number => (
+  intent?.code === 'HEAVY_STRIKE' ? heavyStrikeDefendGuardBonus : 0
+);
+
+export const resolveRuneIntentDamageBonus = (
+  intent: Pick<BattleEnemyIntentSnapshot, 'code'> | null | undefined,
+): number => (
+  intent ? revealedIntentRuneDamageBonus : 0
 );
 
 export const createHeavyStrikeIntent = (enemy: Pick<BattleEnemySnapshot, 'attack'>): BattleEnemyIntentSnapshot => ({

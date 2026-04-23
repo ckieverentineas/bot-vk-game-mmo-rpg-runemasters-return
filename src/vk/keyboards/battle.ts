@@ -7,7 +7,7 @@ import {
   resolveBattleRuneSkillAction,
   type BattleRuneSlotIndex,
 } from '../../modules/combat/domain/battle-rune-loadouts';
-import { resolveDefendGuardGain } from '../../modules/combat/domain/battle-tactics';
+import { resolveDefendGuardGain, resolveIntentDefendGuardBonus } from '../../modules/combat/domain/battle-tactics';
 import { buildExploreLocationIntentStateKey } from '../../modules/exploration/application/command-intent-state';
 import { buildBattleResultNextGoalView } from '../../modules/player/application/read-models/next-goal';
 import type { BattleView, PlayerState } from '../../shared/types/game';
@@ -28,6 +28,7 @@ const createBattleSkillButton = (
   const action = resolveBattleRuneSkillAction(slot);
   const stateKey = buildBattleActionIntentStateKey(battle, action);
   const isReady = activeAbility.currentCooldown <= 0 && battle.player.currentMana >= activeAbility.manaCost;
+  const isRuneAnswerHighlighted = isReady && battle.enemy.intent !== null && battle.enemy.intent !== undefined;
   const labelSuffix = activeAbility.currentCooldown > 0
     ? ` · КД ${activeAbility.currentCooldown}`
     : battle.player.currentMana < activeAbility.manaCost
@@ -37,7 +38,11 @@ const createBattleSkillButton = (
   return {
     label: `🌀 ${slot + 1} ${activeAbility.name}${labelSuffix}`,
     command: slot === 0 ? gameCommands.skillSlot1 : gameCommands.skillSlot2,
-    color: isReady ? Keyboard.PRIMARY_COLOR : Keyboard.SECONDARY_COLOR,
+    color: isRuneAnswerHighlighted
+      ? Keyboard.POSITIVE_COLOR
+      : isReady
+        ? Keyboard.PRIMARY_COLOR
+        : Keyboard.SECONDARY_COLOR,
     intentScoped: true,
     stateKey,
   };
@@ -71,20 +76,27 @@ const createBattleActionLayout = (battle: BattleView): KeyboardLayout => {
   const skillButtons = ([0, 1] as const)
     .map((slot) => createBattleSkillButton(battle, slot))
     .filter((button): button is KeyboardButtonDefinition => button !== null);
+  const defendGuardGain = resolveDefendGuardGain(battle.player) + resolveIntentDefendGuardBonus(battle.enemy.intent);
 
   return [
     [
       {
         label: '⚔️ Атака',
         command: gameCommands.attack,
-        color: Keyboard.POSITIVE_COLOR,
+        color: battle.enemy.intent?.code === 'HEAVY_STRIKE'
+          ? Keyboard.SECONDARY_COLOR
+          : Keyboard.POSITIVE_COLOR,
         intentScoped: true,
         stateKey: buildBattleActionIntentStateKey(battle, 'ATTACK'),
       },
       {
-        label: `🛡️ Защита (+${resolveDefendGuardGain(battle.player)} щит)`,
+        label: `🛡️ Защита (+${defendGuardGain} щит)`,
         command: gameCommands.defend,
-        color: Keyboard.PRIMARY_COLOR,
+        color: battle.enemy.intent?.code === 'HEAVY_STRIKE'
+          ? Keyboard.POSITIVE_COLOR
+          : battle.enemy.intent?.code === 'GUARD_BREAK'
+            ? Keyboard.SECONDARY_COLOR
+            : Keyboard.PRIMARY_COLOR,
         intentScoped: true,
         stateKey: buildBattleActionIntentStateKey(battle, 'DEFEND'),
       },

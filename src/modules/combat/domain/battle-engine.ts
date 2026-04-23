@@ -19,7 +19,9 @@ import {
   resolveDefendGuardGain,
   resolveGaleGuardGain,
   resolveGuardCap,
+  resolveIntentDefendGuardBonus,
   resolveManaRegeneration,
+  resolveRuneIntentDamageBonus,
   shouldEnemyPrepareGuardBreak,
   shouldEnemyPrepareHeavyStrike,
 } from './battle-tactics';
@@ -45,6 +47,7 @@ interface GuardDamageResult {
 interface DefendOutcome {
   readonly guardGain: number;
   readonly guardCap: number;
+  readonly intentGuardBonus: number;
   readonly stoneMasteryGuardGainBonus: number;
 }
 
@@ -212,16 +215,19 @@ const finishEnemyPreparation = (battle: BattleView): BattleView => {
 
 const resolveDefendOutcome = (battle: BattleView): DefendOutcome => {
   const stoneMasteryGuardGainBonus = resolveStoneMasteryGuardGainBonus(battle);
+  const intentGuardBonus = resolveIntentDefendGuardBonus(battle.enemy.intent);
 
   return {
     guardGain: sum([
       resolveDefendGuardGain(battle.player),
+      intentGuardBonus,
       resolveStoneGuardGainBonus(battle),
       stoneMasteryGuardGainBonus,
     ]),
     guardCap: resolveGuardCapWithBonuses(battle, [
       resolveStoneGuardCapBonus(battle),
     ]),
+    intentGuardBonus,
     stoneMasteryGuardGainBonus,
   };
 };
@@ -292,6 +298,7 @@ export class BattleEngine {
     nextBattle.log = appendBattleLog(
       nextBattle.log,
       `🛡️ Вы занимаете защитную стойку и готовите защиту на ${outcome.guardGain} урона.`,
+      ...messageWhen(outcome.intentGuardBonus > 0, '🛡️ Раскрытый тяжёлый удар даёт время встать плотнее обычного.'),
       ...messageWhen(outcome.stoneMasteryGuardGainBonus > 0, '🪨 Мастерство Тверди усиливает защитную стойку.'),
     );
     nextBattle.turnOwner = 'ENEMY';
@@ -450,13 +457,15 @@ export class BattleEngine {
 
   private static performEmberPulse(nextBattle: BattleView, activeAbility: BattleRuneActionSnapshot): BattleView {
     const spellPower = nextBattle.player.attack + nextBattle.player.intelligence + 1;
-    const damage = calculatePhysicalDamage(spellPower, nextBattle.enemy.magicDefence);
+    const intentDamageBonus = resolveRuneIntentDamageBonus(nextBattle.enemy.intent);
+    const damage = calculatePhysicalDamage(spellPower, nextBattle.enemy.magicDefence) + intentDamageBonus;
     applyDamageToEnemy(nextBattle, damage);
     spendRuneManaAndSetCooldown(nextBattle, activeAbility);
 
     nextBattle.log = appendBattleLog(
       nextBattle.log,
       `🌀 ${activeAbility.name} прожигает ${nextBattle.enemy.name} на ${damage} урона.`,
+      ...messageWhen(intentDamageBonus > 0, '🔮 Руна бьёт точнее по раскрытому замыслу врага.'),
       `💙 Мана: ${nextBattle.player.currentMana}/${nextBattle.player.maxMana}.`,
     );
 
@@ -466,10 +475,11 @@ export class BattleEngine {
   private static performStoneBastion(nextBattle: BattleView, activeAbility: BattleRuneActionSnapshot): BattleView {
     const synergyDamageBonus = resolveStoneSynergyDamageBonus(nextBattle);
     const synergyGuardBonus = resolveStoneSynergyGuardBonus(nextBattle);
+    const intentDamageBonus = resolveRuneIntentDamageBonus(nextBattle.enemy.intent);
     const damage = calculatePhysicalDamage(
       Math.max(1, Math.floor(nextBattle.player.attack * 0.6) + Math.floor(nextBattle.player.defence / 2)),
       nextBattle.enemy.defence,
-    ) + synergyDamageBonus;
+    ) + synergyDamageBonus + intentDamageBonus;
     const intentBonus = nextBattle.enemy.intent?.code === 'HEAVY_STRIKE' ? 2 : 0;
     const guardGain = sum([
       resolveDefendGuardGain(nextBattle.player),
@@ -490,6 +500,7 @@ export class BattleEngine {
       nextBattle.log,
       `🌀 ${activeAbility.name} наносит ${damage} урона и поднимает каменную защиту на ${guardGain}.`,
       ...(intentBonus > 0 ? ['🪨 Школа Тверди укрепляется ещё сильнее против заранее раскрытой угрозы.'] : []),
+      ...messageWhen(intentDamageBonus > 0, '🔮 Руна бьёт точнее по раскрытому замыслу врага.'),
       ...(synergyDamageBonus > 0 ? ['🪨 Ответ стойки превращает накопленную защиту в более жёсткий контрудар.'] : []),
       `💙 Мана: ${nextBattle.player.currentMana}/${nextBattle.player.maxMana}.`,
     );
@@ -499,7 +510,8 @@ export class BattleEngine {
 
   private static performGaleStep(nextBattle: BattleView, activeAbility: BattleRuneActionSnapshot): BattleView {
     const strikePower = Math.max(1, Math.floor(nextBattle.player.attack * 0.75) + Math.floor(nextBattle.player.dexterity / 2));
-    const damage = calculatePhysicalDamage(strikePower, nextBattle.enemy.defence);
+    const intentDamageBonus = resolveRuneIntentDamageBonus(nextBattle.enemy.intent);
+    const damage = calculatePhysicalDamage(strikePower, nextBattle.enemy.defence) + intentDamageBonus;
     const guardGain = resolveGaleGuardGain(nextBattle.player);
     const guardCap = resolveGuardCap(nextBattle.player);
 
@@ -510,6 +522,7 @@ export class BattleEngine {
     nextBattle.log = appendBattleLog(
       nextBattle.log,
       `🌀 ${activeAbility.name} наносит ${damage} урона и готовит защиту на ${guardGain} урона.`,
+      ...messageWhen(intentDamageBonus > 0, '🔮 Руна бьёт точнее по раскрытому замыслу врага.'),
       `💙 Мана: ${nextBattle.player.currentMana}/${nextBattle.player.maxMana}.`,
     );
 

@@ -643,6 +643,22 @@ describe('profile keyboard', () => {
     expect(labels).toContain('🌀 1 Пульс Пламени');
   });
 
+  it('shows the larger defend payoff when heavy strike is revealed', () => {
+    const labels = collectLabels(createBattleKeyboard(createBattle({
+      enemy: {
+        ...createBattle().enemy,
+        intent: {
+          code: 'HEAVY_STRIKE',
+          title: 'Тяжёлый удар',
+          description: 'Следующая атака врага будет сильнее.',
+          bonusAttack: 2,
+        },
+      },
+    })));
+
+    expect(labels).toContain('🛡️ Защита (+4 щит)');
+  });
+
   it('shows rune skill availability directly on the battle keyboard', () => {
     const cooldownLabels = collectLabels(createBattleKeyboard(createBattle({
       player: {

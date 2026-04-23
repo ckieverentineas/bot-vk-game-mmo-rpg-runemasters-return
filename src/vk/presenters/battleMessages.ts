@@ -1,7 +1,7 @@
 import { buildBattleClarityView } from '../../modules/combat/application/read-models/battle-clarity';
 import { isBattleEncounterOffered } from '../../modules/combat/domain/battle-encounter';
 import { listBattleRuneLoadouts } from '../../modules/combat/domain/battle-rune-loadouts';
-import { resolveDefendGuardGain } from '../../modules/combat/domain/battle-tactics';
+import { resolveDefendGuardGain, resolveIntentDefendGuardBonus } from '../../modules/combat/domain/battle-tactics';
 import type { AcquisitionSummaryView } from '../../modules/player/application/read-models/acquisition-summary';
 import { buildDefeatFlowView } from '../../modules/player/application/read-models/defeat-flow';
 import { buildBattleResultNextGoalView } from '../../modules/player/application/read-models/next-goal';
@@ -126,7 +126,7 @@ const renderBattleEnemyIntent = (battle: BattleView): string | null => {
 };
 
 const renderBattleActionState = (battle: BattleView): string => {
-  const defendGain = resolveDefendGuardGain(battle.player);
+  const defendGain = resolveDefendGuardGain(battle.player) + resolveIntentDefendGuardBonus(battle.enemy.intent);
   const actions = ['⚔️ Атака', `🛡️ Защита (+${defendGain} щит)`];
 
   actions.push(
@@ -322,6 +322,7 @@ export const renderBattle = (
       ? [
           'Чтение боя',
           ...(enemyIntentLine ? [enemyIntentLine] : []),
+          ...(clarity.choiceLine ? [clarity.choiceLine] : []),
           ...(clarity.schoolHintLine ? [clarity.schoolHintLine] : []),
           renderBattleRuneState(battle),
           ...(battle.turnOwner === 'PLAYER' ? [renderBattleActionState(battle)] : []),

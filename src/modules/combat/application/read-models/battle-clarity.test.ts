@@ -93,6 +93,25 @@ describe('buildBattleClarityView', () => {
 
     expect(clarity.stateLine).toContain('guard 3');
     expect(clarity.stateLine).toContain('враг готовит тяжёлый удар');
+    expect(clarity.choiceLine).toContain('тяжёлый удар лучше встретить защитой');
+  });
+
+  it('shows a rune window when a ready active rune can answer revealed intent', () => {
+    const clarity = buildBattleClarityView(createBattle({
+      enemy: {
+        ...createBattle().enemy,
+        intent: {
+          code: 'GUARD_BREAK',
+          title: 'Пробивающий удар',
+          description: 'Следующий удар разобьёт защиту.',
+          bonusAttack: 1,
+          shattersGuard: true,
+        },
+      },
+    }));
+
+    expect(clarity.choiceLine).toContain('атакой или готовой руной');
+    expect(clarity.choiceLine).toContain('чистую защиту оставьте');
   });
 
   it('builds a gale-specific hint on ready gale step', () => {
