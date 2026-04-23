@@ -514,7 +514,7 @@ const createServices = (): AppServices => {
           id: 'crafted-test-1',
           playerId: basePlayer.playerId,
           itemCode: 'skinning_kit',
-          itemClass: 'COMMON',
+          itemClass: 'UL',
           slot: 'tool',
           status: 'ACTIVE',
           equipped: false,
@@ -559,6 +559,56 @@ const createServices = (): AppServices => {
         message: 'Предмет восстановлен.',
       }),
     } as unknown as AppServices['repairWorkshopItem'],
+    equipWorkshopItem: {
+      execute: vi.fn().mockResolvedValue({
+        view: workshopView,
+        equippedItem: {
+          id: 'crafted-test-1',
+          playerId: basePlayer.playerId,
+          itemCode: 'skinning_kit',
+          itemClass: 'UL',
+          slot: 'tool',
+          status: 'ACTIVE',
+          equipped: true,
+          durability: 12,
+          maxDurability: 12,
+          createdAt: '2026-04-12T00:00:00.000Z',
+          updatedAt: '2026-04-12T00:00:00.000Z',
+        },
+        acquisitionSummary: {
+          kind: 'equipped_workshop_item',
+          itemId: 'crafted-test-1',
+          title: 'Предмет экипирован',
+          changeLine: 'Предмет надет.',
+        },
+        message: 'Предмет надет.',
+      }),
+    } as unknown as AppServices['equipWorkshopItem'],
+    unequipWorkshopItem: {
+      execute: vi.fn().mockResolvedValue({
+        view: workshopView,
+        unequippedItem: {
+          id: 'crafted-test-1',
+          playerId: basePlayer.playerId,
+          itemCode: 'skinning_kit',
+          itemClass: 'UL',
+          slot: 'tool',
+          status: 'ACTIVE',
+          equipped: false,
+          durability: 12,
+          maxDurability: 12,
+          createdAt: '2026-04-12T00:00:00.000Z',
+          updatedAt: '2026-04-12T00:00:00.000Z',
+        },
+        acquisitionSummary: {
+          kind: 'unequipped_workshop_item',
+          itemId: 'crafted-test-1',
+          title: 'Предмет снят',
+          changeLine: 'Предмет снят.',
+        },
+        message: 'Предмет снят.',
+      }),
+    } as unknown as AppServices['unequipWorkshopItem'],
   };
 };
 

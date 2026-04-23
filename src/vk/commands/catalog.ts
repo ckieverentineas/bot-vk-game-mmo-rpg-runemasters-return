@@ -83,19 +83,26 @@ export const questBookPageCommandPrefix = 'книга путей страниц�
 export const workshopCraftCommandPrefix = 'мастерская чертеж ';
 export const workshopRepairCommandPrefix = 'мастерская ремонт ';
 
+export const workshopEquipCommandPrefix = 'workshop equip ';
+export const workshopUnequipCommandPrefix = 'workshop unequip ';
+
 export type StaticGameCommand = (typeof gameCommands)[keyof typeof gameCommands];
 export type BestiaryPageCommand = `${typeof bestiaryPageCommandPrefix}${number}`;
 export type BestiaryLocationCommand = `${typeof bestiaryLocationCommandPrefix}${string}`;
 export type QuestBookPageCommand = `${typeof questBookPageCommandPrefix}${number}`;
 export type WorkshopCraftCommand = `${typeof workshopCraftCommandPrefix}${WorkshopBlueprintCode}`;
 export type WorkshopRepairCommand = `${typeof workshopRepairCommandPrefix}${string} ${WorkshopBlueprintCode}`;
+export type WorkshopEquipCommand = `${typeof workshopEquipCommandPrefix}${string}`;
+export type WorkshopUnequipCommand = `${typeof workshopUnequipCommandPrefix}${string}`;
 export type GameCommand =
   | StaticGameCommand
   | BestiaryPageCommand
   | BestiaryLocationCommand
   | QuestBookPageCommand
   | WorkshopCraftCommand
-  | WorkshopRepairCommand;
+  | WorkshopRepairCommand
+  | WorkshopEquipCommand
+  | WorkshopUnequipCommand;
 
 export interface WorkshopRepairCommandPayload {
   readonly itemId: string;
@@ -402,6 +409,36 @@ export const resolveWorkshopRepairCommand = (command: string): WorkshopRepairCom
   }
 
   return { itemId, repairBlueprintCode };
+};
+
+export const createWorkshopEquipCommand = (itemId: string): WorkshopEquipCommand => (
+  `${workshopEquipCommandPrefix}${itemId}` as WorkshopEquipCommand
+);
+
+export const resolveWorkshopEquipCommand = (command: string): string | null => {
+  const trimmedCommand = command.trim();
+
+  if (!trimmedCommand.startsWith(workshopEquipCommandPrefix)) {
+    return null;
+  }
+
+  const itemId = trimmedCommand.slice(workshopEquipCommandPrefix.length).trim();
+  return itemId.length > 0 ? itemId : null;
+};
+
+export const createWorkshopUnequipCommand = (itemId: string): WorkshopUnequipCommand => (
+  `${workshopUnequipCommandPrefix}${itemId}` as WorkshopUnequipCommand
+);
+
+export const resolveWorkshopUnequipCommand = (command: string): string | null => {
+  const trimmedCommand = command.trim();
+
+  if (!trimmedCommand.startsWith(workshopUnequipCommandPrefix)) {
+    return null;
+  }
+
+  const itemId = trimmedCommand.slice(workshopUnequipCommandPrefix.length).trim();
+  return itemId.length > 0 ? itemId : null;
 };
 
 export const resolveTrophyActionCommand = (command: string): TrophyActionCode | null => {

@@ -102,6 +102,16 @@ const summarizeWorkshopState = (
   items: summarizeItems(items),
 });
 
+const summarizeWorkshopEquipmentState = (
+  player: Pick<PlayerState, 'playerId' | 'updatedAt' | 'activeBattleId'>,
+  items: readonly CraftedItemStateView[],
+) => ({
+  playerId: player.playerId,
+  playerUpdatedAt: player.updatedAt,
+  activeBattleId: player.activeBattleId,
+  items: summarizeItems(items),
+});
+
 export const buildCraftWorkshopItemIntentStateKey = (
   player: Pick<PlayerState, 'playerId' | 'updatedAt' | 'inventory'>,
   blueprintCode: WorkshopBlueprintCode,
@@ -122,4 +132,24 @@ export const buildRepairWorkshopItemIntentStateKey = (
   action: 'repair_workshop_item',
   itemId,
   ...summarizeWorkshopState(player, blueprints, items, repairBlueprintCode),
+});
+
+export const buildEquipWorkshopItemIntentStateKey = (
+  player: Pick<PlayerState, 'playerId' | 'updatedAt' | 'activeBattleId'>,
+  itemId: string,
+  items: readonly CraftedItemStateView[],
+): string => serializeStateKey({
+  action: 'equip_workshop_item',
+  itemId,
+  ...summarizeWorkshopEquipmentState(player, items),
+});
+
+export const buildUnequipWorkshopItemIntentStateKey = (
+  player: Pick<PlayerState, 'playerId' | 'updatedAt' | 'activeBattleId'>,
+  itemId: string,
+  items: readonly CraftedItemStateView[],
+): string => serializeStateKey({
+  action: 'unequip_workshop_item',
+  itemId,
+  ...summarizeWorkshopEquipmentState(player, items),
 });

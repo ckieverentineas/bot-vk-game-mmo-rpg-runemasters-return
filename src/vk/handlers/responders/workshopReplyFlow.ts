@@ -2,7 +2,9 @@ import type { Context } from 'vk-io';
 
 import type { CraftItemResultView } from '../../../modules/crafting/application/use-cases/CraftItem';
 import type { CraftWorkshopItemResultView } from '../../../modules/workshop/application/use-cases/CraftWorkshopItem';
+import type { EquipWorkshopItemResultView } from '../../../modules/workshop/application/use-cases/EquipWorkshopItem';
 import type { RepairWorkshopItemResultView } from '../../../modules/workshop/application/use-cases/RepairWorkshopItem';
+import type { UnequipWorkshopItemResultView } from '../../../modules/workshop/application/use-cases/UnequipWorkshopItem';
 import type { WorkshopView } from '../../../modules/workshop/application/workshop-view';
 import { createWorkshopKeyboard } from '../../keyboards';
 import { renderWorkshop } from '../../presenters/messages';
@@ -11,6 +13,8 @@ import type { WorkshopScreenSummary } from '../../presenters/workshopMessages';
 export type WorkshopReplyState =
   | WorkshopView
   | CraftWorkshopItemResultView
+  | EquipWorkshopItemResultView
+  | UnequipWorkshopItemResultView
   | RepairWorkshopItemResultView
   | {
       readonly view: WorkshopView;

@@ -105,7 +105,7 @@ describe('GetWorkshop', () => {
     const completeItem = createItem({
       id: 'crafted-rare-1',
       itemCode: 'hunter_cleaver',
-      itemClass: 'RARE',
+      itemClass: 'L',
       slot: 'weapon',
       durability: 14,
       maxDurability: 14,

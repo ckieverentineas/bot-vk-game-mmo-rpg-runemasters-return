@@ -91,7 +91,7 @@ const createItem = (overrides: Partial<PlayerCraftedItemView> = {}): PlayerCraft
   id: 'crafted-hunter_cleaver-1',
   playerId: 1,
   itemCode: 'hunter_cleaver',
-  itemClass: 'RARE',
+  itemClass: 'L',
   slot: 'weapon',
   status: 'ACTIVE',
   equipped: false,

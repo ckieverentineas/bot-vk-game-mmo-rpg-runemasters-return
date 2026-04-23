@@ -20,6 +20,8 @@ import type { GameTelemetry } from '../../../shared/application/ports/GameTeleme
 import { requirePlayerByVkId } from '../../../shared/application/require-player';
 import type { GameRandom } from '../../../shared/application/ports/GameRandom';
 import type { GameRepository } from '../../../shared/application/ports/GameRepository';
+import type { PlayerCraftedItemView } from '../../../workshop/application/workshop-persistence';
+import type { WorkshopEquippedItemView } from '../../../workshop/domain/workshop-catalog';
 import type { WorldCatalog } from '../../../world/application/ports/WorldCatalog';
 import {
   getExplorationSceneInventoryDelta,
@@ -55,6 +57,17 @@ interface ExploreLocationCommandOptions {
   readonly intentStateKey?: string;
   readonly currentStateKey?: string;
 }
+
+const toWorkshopEquippedItem = (item: PlayerCraftedItemView): WorkshopEquippedItemView => ({
+  id: item.id,
+  code: item.itemCode,
+  itemClass: item.itemClass,
+  slot: item.slot,
+  status: item.status,
+  equipped: item.equipped,
+  durability: item.durability,
+  maxDurability: item.maxDurability,
+});
 
 export const isExploreLocationEventResult = (result: unknown): result is ExploreLocationEventResult => (
   typeof result === 'object' && result !== null && 'event' in result
@@ -236,6 +249,7 @@ export class ExploreLocation {
     } as const;
 
     const currentPlayer = player;
+    const workshopItems = await this.listWorkshopItems(currentPlayer.playerId);
 
     const locationLevel = resolveEncounterLocationLevel(currentPlayer);
     const currentSchoolCode = resolveExplorationSchoolCode(currentPlayer);
@@ -255,6 +269,7 @@ export class ExploreLocation {
           }),
       currentSchoolCode,
       locationLevel,
+      workshopItems,
     }, this.random);
 
     if (outcome.kind === 'event') {
@@ -264,7 +279,16 @@ export class ExploreLocation {
       }, commandOptions);
     }
 
-    return this.startBattleFromOutcome(vkId, currentPlayer, outcome, commandOptions);
+    return this.startBattleFromOutcome(vkId, currentPlayer, outcome, commandOptions, workshopItems);
+  }
+
+  private async listWorkshopItems(playerId: number): Promise<readonly WorkshopEquippedItemView[]> {
+    const repository = this.repository as GameRepository & {
+      readonly listPlayerCraftedItems?: GameRepository['listPlayerCraftedItems'];
+    };
+    const craftedItems = await repository.listPlayerCraftedItems?.(playerId) ?? [];
+
+    return craftedItems.map(toWorkshopEquippedItem);
   }
 
   private async startBattleFromOutcome(
@@ -272,8 +296,16 @@ export class ExploreLocation {
     currentPlayer: PlayerState,
     outcome: ExplorationBattleOutcome,
     commandOptions: ExploreLocationCommandOptions,
+    workshopItems: readonly WorkshopEquippedItemView[],
   ): Promise<BattleView> {
-    const playerSnapshot = buildBattlePlayerSnapshot(currentPlayer.playerId, vkId, outcome.playerStats, currentPlayer);
+    const playerSnapshot = buildBattlePlayerSnapshot(
+      currentPlayer.playerId,
+      vkId,
+      outcome.playerStats,
+      currentPlayer,
+      workshopItems,
+      { applyWorkshopStatBonus: false },
+    );
     const shouldOfferEncounterChoice = outcome.locationLevel > 0 && currentPlayer.tutorialState !== 'ACTIVE';
     const encounter = shouldOfferEncounterChoice
       ? createBattleEncounter(playerSnapshot, outcome.enemy, outcome.turnOwner, outcome.encounterVariant)

@@ -325,7 +325,7 @@ describe('RepairWorkshopItem', () => {
       }),
     });
     const blueprints = [createBlueprint({ blueprintCode: 'resonance_tool', quantity: 1 })];
-    const items = [createItem({ id: 'crafted-rare-1', itemClass: 'RARE', durability: 5, maxDurability: 12 })];
+    const items = [createItem({ id: 'crafted-rare-1', itemClass: 'L', durability: 5, maxDurability: 12 })];
     const repository = new InMemoryRepairWorkshopRepository(player, blueprints, items);
     const useCase = new RepairWorkshopItem(repository.asGameRepository());
     const stateKey = buildRepairWorkshopItemIntentStateKey(player, 'crafted-rare-1', 'resonance_tool', blueprints, items);

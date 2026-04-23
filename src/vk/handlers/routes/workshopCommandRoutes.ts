@@ -2,7 +2,9 @@ import {
   gameCommands,
   resolveCraftingRecipeCommand,
   resolveWorkshopCraftCommand,
+  resolveWorkshopEquipCommand,
   resolveWorkshopRepairCommand,
+  resolveWorkshopUnequipCommand,
 } from '../../commands/catalog';
 import {
   createDynamicCommandRoute,
@@ -52,6 +54,32 @@ export const workshopDynamicCommandRoutes = [
         vkId,
         payload.itemId,
         payload.repairBlueprintCode,
+        context.intentId ?? undefined,
+        context.stateKey ?? undefined,
+        context.intentSource,
+      );
+      await handler.replyWithWorkshop(ctx, result);
+    },
+  ),
+  createDynamicCommandRoute(
+    resolveWorkshopEquipCommand,
+    async (handler, ctx, vkId, itemId, context) => {
+      const result = await handler.services.equipWorkshopItem.execute(
+        vkId,
+        itemId,
+        context.intentId ?? undefined,
+        context.stateKey ?? undefined,
+        context.intentSource,
+      );
+      await handler.replyWithWorkshop(ctx, result);
+    },
+  ),
+  createDynamicCommandRoute(
+    resolveWorkshopUnequipCommand,
+    async (handler, ctx, vkId, itemId, context) => {
+      const result = await handler.services.unequipWorkshopItem.execute(
+        vkId,
+        itemId,
         context.intentId ?? undefined,
         context.stateKey ?? undefined,
         context.intentSource,

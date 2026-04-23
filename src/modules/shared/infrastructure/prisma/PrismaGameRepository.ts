@@ -60,14 +60,17 @@ import {
 } from '../../../runes/domain/rune-economy';
 import {
   getWorkshopBlueprint,
+  canEquipWorkshopItem,
   isWorkshopBlueprintCode,
   isWorkshopItemClass,
   isWorkshopItemCode,
   isWorkshopItemSlot,
   isWorkshopItemStatus,
+  resolveWorkshopItemDecay,
   type WorkshopBlueprintCode,
   type WorkshopBlueprintCost,
   type WorkshopBlueprintDefinition,
+  type WorkshopEquippedItemView,
   type WorkshopCraftItemBlueprintDefinition,
   type WorkshopRepairToolBlueprintDefinition,
 } from '../../../workshop/domain/workshop-catalog';
@@ -310,11 +313,31 @@ const spendWorkshopInventoryCost = async (
   }
 };
 
-const canRepairCraftedItemRecord = (item: Pick<PlayerCraftedItem, 'itemClass' | 'status' | 'durability' | 'maxDurability'>): boolean => (
-  item.itemClass === 'UL'
-  && item.status === 'ACTIVE'
-  && item.durability > 0
-  && item.durability < item.maxDurability
+const toWorkshopEquippedItem = (item: PlayerCraftedItem): WorkshopEquippedItemView => ({
+  id: item.id,
+  code: requireKnownWorkshopValue(item.itemCode, isWorkshopItemCode, 'itemCode'),
+  itemClass: requireKnownWorkshopValue(item.itemClass, isWorkshopItemClass, 'itemClass'),
+  slot: requireKnownWorkshopValue(item.slot, isWorkshopItemSlot, 'slot'),
+  status: requireKnownWorkshopValue(item.status, isWorkshopItemStatus, 'status'),
+  equipped: item.equipped,
+  durability: item.durability,
+  maxDurability: item.maxDurability,
+});
+
+const canRepairCraftedItemRecord = (item: PlayerCraftedItem): boolean => {
+  if (item.itemClass !== 'UL' || item.durability >= item.maxDurability) {
+    return false;
+  }
+
+  if (item.status === 'BROKEN') {
+    return item.durability === 0;
+  }
+
+  return item.status === 'ACTIVE' && item.durability > 0;
+};
+
+const canEquipCraftedItemRecord = (item: PlayerCraftedItem): boolean => (
+  canEquipWorkshopItem(toWorkshopEquippedItem(item))
 );
 
 const buildPlayerStatDeltaInput = (delta: StatBlock): Prisma.PlayerUpdateInput => {
@@ -2575,13 +2598,13 @@ export class PrismaGameRepository implements GameRepository {
             id: itemId,
             playerId,
             itemClass: 'UL',
-            status: 'ACTIVE',
+            status: { in: ['ACTIVE', 'BROKEN'] },
             durability: {
-              gt: 0,
               lt: item.maxDurability,
             },
           },
           data: {
+            status: 'ACTIVE',
             durability: item.maxDurability,
           },
         });
@@ -2607,6 +2630,131 @@ export class PrismaGameRepository implements GameRepository {
         });
 
         return mapPlayerCraftedItemRecord(repairedItem);
+      },
+    ));
+  }
+
+  public async equipWorkshopItem(
+    playerId: number,
+    itemId: string,
+    options?: WorkshopMutationOptions,
+  ): Promise<PlayerCraftedItemView> {
+    return this.prisma.$transaction((tx) => this.runWithCommandIntent(
+      tx,
+      playerId,
+      'EQUIP_WORKSHOP_ITEM',
+      options?.intentId,
+      options?.intentStateKey,
+      options?.currentStateKey,
+      async () => {
+        const item = await tx.playerCraftedItem.findFirst({
+          where: {
+            id: itemId,
+            playerId,
+          },
+        });
+
+        if (!item || !canEquipCraftedItemRecord(item)) {
+          throw new AppError('workshop_item_not_equippable', 'Этот предмет нельзя экипировать.');
+        }
+
+        await tx.playerCraftedItem.updateMany({
+          where: {
+            playerId,
+            slot: item.slot,
+            equipped: true,
+          },
+          data: { equipped: false },
+        });
+
+        const equipped = await tx.playerCraftedItem.updateMany({
+          where: {
+            id: itemId,
+            playerId,
+            status: 'ACTIVE',
+            durability: { gt: 0 },
+          },
+          data: { equipped: true },
+        });
+
+        if (equipped.count === 0) {
+          throw new AppError('workshop_item_not_equippable', 'Этот предмет уже нельзя экипировать.');
+        }
+
+        const updatedItem = await tx.playerCraftedItem.findFirst({
+          where: {
+            id: itemId,
+            playerId,
+          },
+        });
+
+        if (!updatedItem) {
+          throw new AppError('workshop_item_not_found', 'Предмет мастерской уже не найден.');
+        }
+
+        await tx.player.update({
+          where: { id: playerId },
+          data: { updatedAt: new Date() },
+        });
+
+        return mapPlayerCraftedItemRecord(updatedItem);
+      },
+    ));
+  }
+
+  public async unequipWorkshopItem(
+    playerId: number,
+    itemId: string,
+    options?: WorkshopMutationOptions,
+  ): Promise<PlayerCraftedItemView> {
+    return this.prisma.$transaction((tx) => this.runWithCommandIntent(
+      tx,
+      playerId,
+      'UNEQUIP_WORKSHOP_ITEM',
+      options?.intentId,
+      options?.intentStateKey,
+      options?.currentStateKey,
+      async () => {
+        const item = await tx.playerCraftedItem.findFirst({
+          where: {
+            id: itemId,
+            playerId,
+          },
+        });
+
+        if (!item) {
+          throw new AppError('workshop_item_not_found', 'Предмет мастерской уже не найден.');
+        }
+
+        const unequipped = await tx.playerCraftedItem.updateMany({
+          where: {
+            id: itemId,
+            playerId,
+          },
+          data: { equipped: false },
+        });
+
+        if (unequipped.count === 0) {
+          throw new AppError('workshop_item_not_found', 'Предмет мастерской уже не найден.');
+        }
+
+        const updatedItem = await tx.playerCraftedItem.findFirst({
+          where: {
+            id: itemId,
+            playerId,
+          },
+        });
+
+        if (!updatedItem) {
+          throw new AppError('workshop_item_not_found', 'Предмет мастерской уже не найден.');
+        }
+
+        await tx.player.update({
+          where: { id: playerId },
+          data: { updatedAt: new Date() },
+        });
+
+        return mapPlayerCraftedItemRecord(updatedItem);
       },
     ));
   }
@@ -2707,6 +2855,44 @@ export class PrismaGameRepository implements GameRepository {
     }
 
     return mapPlayerRecord(await this.requirePlayerRecord(client, playerId));
+  }
+
+  private async decayWorkshopLoadout(
+    client: TransactionClient,
+    playerId: number,
+    battle: BattleView,
+  ): Promise<void> {
+    const itemIds = [...new Set((battle.player.workshopLoadout ?? []).map((item) => item.id))];
+    if (itemIds.length === 0) {
+      return;
+    }
+
+    const items = await client.playerCraftedItem.findMany({
+      where: {
+        playerId,
+        id: { in: itemIds },
+        status: 'ACTIVE',
+        durability: { gt: 0 },
+      },
+    });
+
+    for (const item of items) {
+      const decayed = resolveWorkshopItemDecay(toWorkshopEquippedItem(item));
+
+      await client.playerCraftedItem.updateMany({
+        where: {
+          id: item.id,
+          playerId,
+          status: 'ACTIVE',
+          durability: { gt: 0 },
+        },
+        data: {
+          status: decayed.status,
+          equipped: decayed.equipped,
+          durability: decayed.durability,
+        },
+      });
+    }
   }
 
   public async createBattle(playerId: number, battle: CreateBattleInput, options?: CreateBattleOptions): Promise<BattleView> {
@@ -3172,6 +3358,7 @@ export class PrismaGameRepository implements GameRepository {
         });
       }
 
+      await this.decayWorkshopLoadout(tx, playerId, battle);
       await this.persistPlayerSkillGains(tx, playerId, options?.playerSkillGains);
 
       const updatedPlayer = await this.requirePlayerRecord(tx, playerId);

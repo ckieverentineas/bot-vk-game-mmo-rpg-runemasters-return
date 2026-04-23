@@ -171,6 +171,7 @@ export interface BattlePlayerSnapshot {
   currentMana: number;
   runeLoadout?: BattleRuneLoadoutSnapshot | null;
   supportRuneLoadout?: BattleRuneLoadoutSnapshot | null;
+  workshopLoadout?: BattleWorkshopItemSnapshot[];
   guardPoints?: number;
 }
 
@@ -193,6 +194,15 @@ export interface BattleRuneLoadoutSnapshot {
   schoolMasteryRank?: number;
   passiveAbilityCodes: string[];
   activeAbility: BattleRuneActionSnapshot | null;
+}
+
+export interface BattleWorkshopItemSnapshot {
+  id: string;
+  itemCode: string;
+  itemClass: string;
+  slot: string;
+  durability: number;
+  maxDurability: number;
 }
 
 export interface BattleEnemySnapshot {

@@ -307,6 +307,16 @@ export interface GameRepository {
     repairBlueprintCode: WorkshopBlueprintCode,
     options?: WorkshopMutationOptions,
   ): Promise<PlayerCraftedItemView>;
+  equipWorkshopItem(
+    playerId: number,
+    itemId: string,
+    options?: WorkshopMutationOptions,
+  ): Promise<PlayerCraftedItemView>;
+  unequipWorkshopItem(
+    playerId: number,
+    itemId: string,
+    options?: WorkshopMutationOptions,
+  ): Promise<PlayerCraftedItemView>;
   adjustInventory(playerId: number, delta: InventoryDelta): Promise<PlayerState>;
   createBattle(playerId: number, battle: CreateBattleInput, options?: CreateBattleOptions): Promise<BattleView>;
   getActiveBattle(playerId: number): Promise<BattleView | null>;

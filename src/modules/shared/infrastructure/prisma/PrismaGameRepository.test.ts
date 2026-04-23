@@ -353,7 +353,7 @@ const createCraftedItemRecord = (
   id: 'crafted-1',
   playerId: 1,
   itemCode: 'skinning_kit',
-  itemClass: 'COMMON',
+  itemClass: 'UL',
   slot: 'tool',
   status: 'ACTIVE',
   equipped: false,
@@ -370,7 +370,7 @@ const createCraftedItemViewSnapshot = (
   id: 'crafted-1',
   playerId: 1,
   itemCode: 'skinning_kit',
-  itemClass: 'COMMON',
+  itemClass: 'UL',
   slot: 'tool',
   status: 'ACTIVE',
   equipped: false,
@@ -648,7 +648,7 @@ describe('PrismaGameRepository release hardening', () => {
       createCraftedItemRecord({
         id: 'crafted-weapon-1',
         itemCode: 'hunter_cleaver',
-        itemClass: 'RARE',
+        itemClass: 'L',
         slot: 'weapon',
         durability: 14,
         maxDurability: 14,
@@ -659,7 +659,7 @@ describe('PrismaGameRepository release hardening', () => {
       createCraftedItemViewSnapshot({
         id: 'crafted-weapon-1',
         itemCode: 'hunter_cleaver',
-        itemClass: 'RARE',
+        itemClass: 'L',
         slot: 'weapon',
         durability: 14,
         maxDurability: 14,
@@ -779,7 +779,7 @@ describe('PrismaGameRepository release hardening', () => {
     tx.playerCraftedItem.create.mockResolvedValue(createCraftedItemRecord({
       id: 'crafted-cleaver-1',
       itemCode: 'hunter_cleaver',
-      itemClass: 'RARE',
+      itemClass: 'L',
       slot: 'weapon',
       durability: 14,
       maxDurability: 14,
@@ -795,7 +795,7 @@ describe('PrismaGameRepository release hardening', () => {
     expect(item).toMatchObject({
       id: 'crafted-cleaver-1',
       itemCode: 'hunter_cleaver',
-      itemClass: 'RARE',
+      itemClass: 'L',
       slot: 'weapon',
       status: 'ACTIVE',
       equipped: false,
@@ -829,7 +829,7 @@ describe('PrismaGameRepository release hardening', () => {
       data: {
         playerId: 1,
         itemCode: 'hunter_cleaver',
-        itemClass: 'RARE',
+        itemClass: 'L',
         slot: 'weapon',
         status: 'ACTIVE',
         equipped: false,
@@ -861,7 +861,7 @@ describe('PrismaGameRepository release hardening', () => {
       resultSnapshot: JSON.stringify(createCraftedItemViewSnapshot({
         id: 'crafted-cleaver-1',
         itemCode: 'hunter_cleaver',
-        itemClass: 'RARE',
+        itemClass: 'L',
         slot: 'weapon',
         durability: 14,
         maxDurability: 14,
@@ -890,7 +890,7 @@ describe('PrismaGameRepository release hardening', () => {
       resultSnapshot: JSON.stringify(createCraftedItemViewSnapshot({
         id: 'crafted-cleaver-1',
         itemCode: 'hunter_cleaver',
-        itemClass: 'RARE',
+        itemClass: 'L',
         slot: 'weapon',
         durability: 14,
         maxDurability: 14,
@@ -906,6 +906,96 @@ describe('PrismaGameRepository release hardening', () => {
     });
     expect(tx.playerBlueprint.updateMany).not.toHaveBeenCalled();
     expect(tx.playerCraftedItem.create).not.toHaveBeenCalled();
+  });
+
+  it('equips one active workshop item per slot under a command intent', async () => {
+    const { repository, tx } = createPrismaMock();
+    const targetItem = createCraftedItemRecord({
+      id: 'crafted-weapon-1',
+      itemCode: 'hunter_cleaver',
+      itemClass: 'L',
+      slot: 'weapon',
+      equipped: false,
+      durability: 14,
+      maxDurability: 14,
+    });
+    const equippedItem = {
+      ...targetItem,
+      equipped: true,
+      updatedAt: new Date('2026-04-22T12:30:00.000Z'),
+    };
+
+    tx.commandIntentRecord.findUnique.mockResolvedValue(null);
+    tx.commandIntentRecord.create.mockResolvedValue({});
+    tx.commandIntentRecord.update.mockResolvedValue({});
+    tx.playerCraftedItem.findFirst
+      .mockResolvedValueOnce(targetItem)
+      .mockResolvedValueOnce(equippedItem);
+    tx.playerCraftedItem.updateMany.mockResolvedValue({ count: 1 });
+    tx.player.update.mockResolvedValue({});
+
+    const item = await repository.equipWorkshopItem(1, 'crafted-weapon-1', {
+      intentId: 'intent-workshop-equip-1',
+      intentStateKey: 'state-workshop-equip-1',
+      currentStateKey: 'state-workshop-equip-1',
+    });
+
+    expect(item.equipped).toBe(true);
+    expect(tx.playerCraftedItem.updateMany).toHaveBeenCalledWith({
+      where: {
+        playerId: 1,
+        slot: 'weapon',
+        equipped: true,
+      },
+      data: { equipped: false },
+    });
+    expect(tx.playerCraftedItem.updateMany).toHaveBeenCalledWith({
+      where: {
+        id: 'crafted-weapon-1',
+        playerId: 1,
+        status: 'ACTIVE',
+        durability: { gt: 0 },
+      },
+      data: { equipped: true },
+    });
+  });
+
+  it('unequips a workshop item under a command intent', async () => {
+    const { repository, tx } = createPrismaMock();
+    const equippedItem = createCraftedItemRecord({
+      id: 'crafted-tool-1',
+      itemClass: 'UL',
+      equipped: true,
+    });
+    const unequippedItem = {
+      ...equippedItem,
+      equipped: false,
+      updatedAt: new Date('2026-04-22T12:30:00.000Z'),
+    };
+
+    tx.commandIntentRecord.findUnique.mockResolvedValue(null);
+    tx.commandIntentRecord.create.mockResolvedValue({});
+    tx.commandIntentRecord.update.mockResolvedValue({});
+    tx.playerCraftedItem.findFirst
+      .mockResolvedValueOnce(equippedItem)
+      .mockResolvedValueOnce(unequippedItem);
+    tx.playerCraftedItem.updateMany.mockResolvedValue({ count: 1 });
+    tx.player.update.mockResolvedValue({});
+
+    const item = await repository.unequipWorkshopItem(1, 'crafted-tool-1', {
+      intentId: 'intent-workshop-unequip-1',
+      intentStateKey: 'state-workshop-unequip-1',
+      currentStateKey: 'state-workshop-unequip-1',
+    });
+
+    expect(item.equipped).toBe(false);
+    expect(tx.playerCraftedItem.updateMany).toHaveBeenCalledWith({
+      where: {
+        id: 'crafted-tool-1',
+        playerId: 1,
+      },
+      data: { equipped: false },
+    });
   });
 
   it('repairs a damaged active UL workshop item with a repair blueprint', async () => {
@@ -966,13 +1056,13 @@ describe('PrismaGameRepository release hardening', () => {
         id: 'crafted-ul-1',
         playerId: 1,
         itemClass: 'UL',
-        status: 'ACTIVE',
+        status: { in: ['ACTIVE', 'BROKEN'] },
         durability: {
-          gt: 0,
           lt: 12,
         },
       },
       data: {
+        status: 'ACTIVE',
         durability: 12,
       },
     });
@@ -1023,22 +1113,47 @@ describe('PrismaGameRepository release hardening', () => {
     expect(tx.playerCraftedItem.updateMany).not.toHaveBeenCalled();
   });
 
-  it('does not repair depleted workshop items', async () => {
+  it('repairs broken depleted UL workshop items', async () => {
     const { repository, tx } = createPrismaMock();
-
-    tx.playerCraftedItem.findFirst.mockResolvedValue(createCraftedItemRecord({
+    const brokenItem = createCraftedItemRecord({
+      id: 'crafted-broken-ul-1',
       itemClass: 'UL',
+      status: 'BROKEN',
       durability: 0,
       maxDurability: 12,
-    }));
-
-    await expect(repository.repairWorkshopItem(1, 'crafted-1', 'resonance_tool')).rejects.toMatchObject({
-      code: 'workshop_item_not_repairable',
     });
+    const repairedItem = {
+      ...brokenItem,
+      status: 'ACTIVE',
+      durability: 12,
+      updatedAt: new Date('2026-04-22T12:00:00.000Z'),
+    };
 
-    expect(tx.playerBlueprint.updateMany).not.toHaveBeenCalled();
-    expect(tx.playerInventory.updateMany).not.toHaveBeenCalled();
-    expect(tx.playerCraftedItem.updateMany).not.toHaveBeenCalled();
+    tx.playerCraftedItem.findFirst
+      .mockResolvedValueOnce(brokenItem)
+      .mockResolvedValueOnce(repairedItem);
+    tx.playerBlueprint.updateMany.mockResolvedValue({ count: 1 });
+    tx.playerInventory.updateMany.mockResolvedValue({ count: 1 });
+    tx.playerCraftedItem.updateMany.mockResolvedValue({ count: 1 });
+    tx.player.update.mockResolvedValue({});
+
+    await expect(repository.repairWorkshopItem(1, 'crafted-broken-ul-1', 'resonance_tool')).resolves.toMatchObject({
+      status: 'ACTIVE',
+      durability: 12,
+    });
+    expect(tx.playerCraftedItem.updateMany).toHaveBeenCalledWith({
+      where: {
+        id: 'crafted-broken-ul-1',
+        playerId: 1,
+        itemClass: 'UL',
+        status: { in: ['ACTIVE', 'BROKEN'] },
+        durability: { lt: 12 },
+      },
+      data: {
+        status: 'ACTIVE',
+        durability: 12,
+      },
+    });
   });
 
   it('does not repair destroyed workshop items', async () => {
@@ -2640,6 +2755,103 @@ describe('PrismaGameRepository release hardening', () => {
     expect(tx.playerInventory.update).not.toHaveBeenCalled();
     expect(tx.rune.create).not.toHaveBeenCalled();
     expect(tx.rewardLedgerRecord.create).not.toHaveBeenCalled();
+  });
+
+  it('decays workshop loadout durability once when finalizing battle', async () => {
+    const { repository, tx } = createPrismaMock();
+    const battleView = createBattleView({
+      player: {
+        ...createBattleView().player,
+        workshopLoadout: [
+          {
+            id: 'limited-weapon-1',
+            itemCode: 'hunter_cleaver',
+            itemClass: 'L',
+            slot: 'weapon',
+            durability: 1,
+            maxDurability: 14,
+          },
+          {
+            id: 'ul-tool-1',
+            itemCode: 'skinning_kit',
+            itemClass: 'UL',
+            slot: 'tool',
+            durability: 2,
+            maxDurability: 12,
+          },
+        ],
+      },
+    });
+    const persistedBattle = createBattleRow({
+      status: 'COMPLETED',
+      result: 'VICTORY',
+      rewardsSnapshot: JSON.stringify(battleView.rewards),
+    });
+
+    tx.battleSession.updateMany.mockResolvedValue({ count: 1 });
+    tx.player.findUnique.mockResolvedValue(createPlayerRecord());
+    tx.player.update.mockResolvedValue({});
+    tx.playerProgress.update.mockResolvedValue({});
+    tx.playerInventory.update.mockResolvedValue({});
+    tx.battleSession.findFirst.mockResolvedValue(persistedBattle);
+    tx.playerCraftedItem.findMany.mockResolvedValue([
+      createCraftedItemRecord({
+        id: 'limited-weapon-1',
+        itemCode: 'hunter_cleaver',
+        itemClass: 'L',
+        slot: 'weapon',
+        equipped: true,
+        durability: 1,
+        maxDurability: 14,
+      }),
+      createCraftedItemRecord({
+        id: 'ul-tool-1',
+        itemCode: 'skinning_kit',
+        itemClass: 'UL',
+        slot: 'tool',
+        equipped: true,
+        durability: 2,
+        maxDurability: 12,
+      }),
+    ]);
+    tx.playerCraftedItem.updateMany.mockResolvedValue({ count: 1 });
+
+    await repository.finalizeBattle(1, battleView);
+
+    expect(tx.playerCraftedItem.findMany).toHaveBeenCalledWith({
+      where: {
+        playerId: 1,
+        id: { in: ['limited-weapon-1', 'ul-tool-1'] },
+        status: 'ACTIVE',
+        durability: { gt: 0 },
+      },
+    });
+    expect(tx.playerCraftedItem.updateMany).toHaveBeenCalledWith({
+      where: {
+        id: 'limited-weapon-1',
+        playerId: 1,
+        status: 'ACTIVE',
+        durability: { gt: 0 },
+      },
+      data: {
+        status: 'DESTROYED',
+        equipped: false,
+        durability: 0,
+      },
+    });
+    expect(tx.playerCraftedItem.updateMany).toHaveBeenCalledWith({
+      where: {
+        id: 'ul-tool-1',
+        playerId: 1,
+        status: 'ACTIVE',
+        durability: { gt: 0 },
+      },
+      data: {
+        status: 'ACTIVE',
+        equipped: true,
+        durability: 1,
+      },
+    });
   });
 
   it('creates a pending reward ledger entry for the canonical victory reward', async () => {

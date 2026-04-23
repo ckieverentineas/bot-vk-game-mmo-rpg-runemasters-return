@@ -7,7 +7,9 @@ import {
 } from '../../modules/crafting/domain/crafting-recipes';
 import {
   buildCraftWorkshopItemIntentStateKey,
+  buildEquipWorkshopItemIntentStateKey,
   buildRepairWorkshopItemIntentStateKey,
+  buildUnequipWorkshopItemIntentStateKey,
 } from '../../modules/workshop/application/command-intent-state';
 import type {
   WorkshopBlueprintEntryView,
@@ -17,7 +19,9 @@ import type {
 import type { WorkshopRepairToolBlueprintDefinition } from '../../modules/workshop/domain/workshop-catalog';
 import {
   createWorkshopCraftCommand,
+  createWorkshopEquipCommand,
   createWorkshopRepairCommand,
+  createWorkshopUnequipCommand,
   gameCommands,
   resolveCraftingRecipeCodeCommand,
 } from '../commands/catalog';
@@ -29,6 +33,7 @@ import { buildKeyboard } from './builder';
 import type { KeyboardBuilder, KeyboardLayout } from './types';
 
 const rowSize = 2;
+const equipmentButtonLimit = 4;
 const repairButtonLimit = 4;
 
 const chunkRows = <T>(items: readonly T[], size: number): readonly (readonly T[])[] => {
@@ -82,6 +87,36 @@ const createWorkshopCraftRows = (view: WorkshopView): KeyboardLayout => {
   return chunkRows(buttons, rowSize);
 };
 
+const createEquipmentButtonLabel = (entry: WorkshopCraftedItemEntryView): string => {
+  const action = entry.item.equipped ? 'Снять' : 'Надеть';
+  return truncateLabel(`${action} ${resolveWorkshopItemTitle(entry.item.itemCode)}`, 40);
+};
+
+const createWorkshopEquipmentRows = (view: WorkshopView): KeyboardLayout => {
+  const craftedItemStateEntries = createCraftedItemStateEntries(view);
+  const buttons = view.craftedItems
+    .filter((entry) => entry.item.equipped || entry.equippable)
+    .map((entry) => {
+      const command = entry.item.equipped
+        ? createWorkshopUnequipCommand(entry.item.id)
+        : createWorkshopEquipCommand(entry.item.id);
+      const stateKey = entry.item.equipped
+        ? buildUnequipWorkshopItemIntentStateKey(view.player, entry.item.id, craftedItemStateEntries)
+        : buildEquipWorkshopItemIntentStateKey(view.player, entry.item.id, craftedItemStateEntries);
+
+      return {
+        label: createEquipmentButtonLabel(entry),
+        command,
+        color: entry.item.equipped ? Keyboard.SECONDARY_COLOR : Keyboard.POSITIVE_COLOR,
+        intentScoped: true,
+        stateKey,
+      };
+    })
+    .slice(0, equipmentButtonLimit);
+
+  return chunkRows(buttons, rowSize);
+};
+
 const createRepairButtonLabel = (
   entry: WorkshopCraftedItemEntryView,
   repairBlueprint: WorkshopRepairToolBlueprintDefinition,
@@ -125,6 +160,7 @@ const createPillCraftingRows = (view: WorkshopView): KeyboardLayout => {
 
 const createWorkshopLayout = (view: WorkshopView): KeyboardLayout => [
   ...createWorkshopCraftRows(view),
+  ...createWorkshopEquipmentRows(view),
   ...createWorkshopRepairRows(view),
   ...createPillCraftingRows(view),
   [

@@ -29,8 +29,10 @@ import { PrismaGameRepository } from '../modules/shared/infrastructure/prisma/Pr
 import { SystemGameRandom } from '../modules/shared/infrastructure/random/SystemGameRandom';
 import { RepositoryGameTelemetry } from '../modules/shared/infrastructure/telemetry/RepositoryGameTelemetry';
 import { CraftWorkshopItem } from '../modules/workshop/application/use-cases/CraftWorkshopItem';
+import { EquipWorkshopItem } from '../modules/workshop/application/use-cases/EquipWorkshopItem';
 import { GetWorkshop } from '../modules/workshop/application/use-cases/GetWorkshop';
 import { RepairWorkshopItem } from '../modules/workshop/application/use-cases/RepairWorkshopItem';
+import { UnequipWorkshopItem } from '../modules/workshop/application/use-cases/UnequipWorkshopItem';
 import { GetBestiary } from '../modules/world/application/use-cases/GetBestiary';
 import { prisma } from '../database/client';
 import type { GameTelemetry } from '../modules/shared/application/ports/GameTelemetry';
@@ -65,6 +67,8 @@ export interface AppServices {
   getWorkshop: GetWorkshop;
   craftWorkshopItem: CraftWorkshopItem;
   repairWorkshopItem: RepairWorkshopItem;
+  equipWorkshopItem: EquipWorkshopItem;
+  unequipWorkshopItem: UnequipWorkshopItem;
 }
 
 export const createAppServices = (): AppServices => {
@@ -105,5 +109,7 @@ export const createAppServices = (): AppServices => {
     getWorkshop: new GetWorkshop(repository),
     craftWorkshopItem: new CraftWorkshopItem(repository),
     repairWorkshopItem: new RepairWorkshopItem(repository),
+    equipWorkshopItem: new EquipWorkshopItem(repository),
+    unequipWorkshopItem: new UnequipWorkshopItem(repository),
   };
 };

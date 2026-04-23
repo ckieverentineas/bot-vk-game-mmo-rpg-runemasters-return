@@ -14,8 +14,12 @@ import {
   hasRuneOfSchoolAtLeastRarity,
 } from '../../player/domain/school-novice-path';
 import { getPlayerSchoolMastery } from '../../player/domain/school-mastery';
-import { derivePlayerStats, getEquippedRune } from '../../player/domain/player-stats';
+import { addStats, derivePlayerStats, getEquippedRune } from '../../player/domain/player-stats';
 import { getSchoolDefinitionForArchetype } from '../../runes/domain/rune-schools';
+import {
+  resolveWorkshopEquipmentStatBonus,
+  type WorkshopEquippedItemView,
+} from '../../workshop/domain/workshop-catalog';
 import { buildEnemySnapshot, describeEncounter, pickEncounterTemplate, resolveInitialTurnOwner } from '../../world/domain/enemy-scaling';
 import {
   type ExplorationSceneView,
@@ -37,6 +41,7 @@ export interface ResolveExplorationOutcomeContext {
   readonly roamingTemplatePools?: readonly ExplorationRoamingTemplatePool[];
   readonly locationLevel: number;
   readonly currentSchoolCode: string | null;
+  readonly workshopItems?: readonly WorkshopEquippedItemView[];
 }
 
 export interface ExplorationRoamingTemplatePool {
@@ -297,7 +302,10 @@ const resolveBattleOutcome = (
         preferSealTarget,
         suppressChallengeEncounters,
       }, random);
-  const playerStats = derivePlayerStats(context.player);
+  const playerStats = addStats(
+    derivePlayerStats(context.player),
+    resolveWorkshopEquipmentStatBonus(context.workshopItems ?? []),
+  );
   const enemy = buildEnemySnapshot(template, context.locationLevel);
   const openingLog = buildOpeningLog({
     ...context,

@@ -4,6 +4,7 @@ import type { BattleView, BiomeView, MobTemplateView, PlayerState } from '../../
 import type { GameTelemetry } from '../../../../shared/application/ports/GameTelemetry';
 import type { GameRandom } from '../../../../shared/application/ports/GameRandom';
 import type { GameRepository } from '../../../../shared/application/ports/GameRepository';
+import type { PlayerCraftedItemView } from '../../../../workshop/application/workshop-persistence';
 import type { WorldCatalog } from '../../../../world/application/ports/WorldCatalog';
 import { resolveEncounterLocationLevel } from '../../../player/domain/player-stats';
 
@@ -158,6 +159,23 @@ const createBattle = (overrides: Partial<BattleView> = {}): BattleView => ({
   ...overrides,
 });
 
+const createCraftedItem = (
+  overrides: Partial<PlayerCraftedItemView> = {},
+): PlayerCraftedItemView => ({
+  id: 'crafted-1',
+  playerId: 1,
+  itemCode: 'hunter_cleaver',
+  itemClass: 'L',
+  slot: 'weapon',
+  status: 'ACTIVE',
+  equipped: true,
+  durability: 14,
+  maxDurability: 14,
+  createdAt: '2026-04-12T00:00:00.000Z',
+  updatedAt: '2026-04-12T00:00:00.000Z',
+  ...overrides,
+});
+
 const createRandom = (): GameRandom => ({
   nextInt: vi.fn().mockReturnValue(1),
   rollPercentage: vi.fn().mockReturnValue(false),
@@ -236,6 +254,46 @@ describe('ExploreLocation', () => {
         intentStateKey: stateKey,
         currentStateKey: stateKey,
       }),
+    );
+  });
+
+  it('loads crafted workshop items into the next battle snapshot', async () => {
+    const player = createPlayer();
+    const repository = {
+      findPlayerByVkId: vi.fn().mockResolvedValue(player),
+      getCommandIntentResult: vi.fn().mockResolvedValue(null),
+      getActiveBattle: vi.fn().mockResolvedValue(null),
+      listPlayerCraftedItems: vi.fn().mockResolvedValue([
+        createCraftedItem({ id: 'weapon-1' }),
+      ]),
+      createBattle: vi.fn().mockImplementation(async (_playerId: number, battle: Omit<BattleView, 'id' | 'playerId' | 'createdAt' | 'updatedAt'>) => ({
+        id: 'battle-workshop',
+        playerId: player.playerId,
+        createdAt: '2026-04-12T00:00:00.000Z',
+        updatedAt: '2026-04-12T00:00:00.000Z',
+        ...battle,
+      })),
+    } as unknown as GameRepository;
+    const useCase = new ExploreLocation(repository, createWorldCatalog(), createRandom());
+    const stateKey = buildExploreLocationIntentStateKey(player);
+
+    await useCase.execute(player.vkId, 'intent-explore-workshop-1', stateKey, 'payload');
+
+    expect(repository.listPlayerCraftedItems).toHaveBeenCalledWith(player.playerId);
+    expect(repository.createBattle).toHaveBeenCalledWith(
+      player.playerId,
+      expect.objectContaining({
+        player: expect.objectContaining({
+          attack: 6,
+          workshopLoadout: [
+            expect.objectContaining({
+              id: 'weapon-1',
+              itemCode: 'hunter_cleaver',
+            }),
+          ],
+        }),
+      }),
+      expect.anything(),
     );
   });
 

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import type { PlayerState, StatBlock } from '../../../shared/types/game';
+import type { WorkshopEquippedItemView } from '../../workshop/domain/workshop-catalog';
 import { buildBattlePlayerSnapshot } from './build-battle-player-snapshot';
 
 const createStats = (): StatBlock => ({
@@ -51,6 +52,20 @@ const createPlayer = (overrides: Partial<PlayerState> = {}): PlayerState => ({
   ...overrides,
 });
 
+const createWorkshopItem = (
+  overrides: Partial<WorkshopEquippedItemView> = {},
+): WorkshopEquippedItemView => ({
+  id: 'item-1',
+  code: 'hunter_cleaver',
+  itemClass: 'L',
+  slot: 'weapon',
+  status: 'ACTIVE',
+  equipped: true,
+  durability: 14,
+  maxDurability: 14,
+  ...overrides,
+});
+
 describe('buildBattlePlayerSnapshot', () => {
   it('starts the next battle from persisted player vitals', () => {
     const snapshot = buildBattlePlayerSnapshot(1, 1001, createStats(), createPlayer({
@@ -69,5 +84,55 @@ describe('buildBattlePlayerSnapshot', () => {
 
     expect(snapshot.currentHealth).toBe(snapshot.maxHealth);
     expect(snapshot.currentMana).toBe(snapshot.maxMana);
+  });
+
+  it('adds equipped workshop item bonuses and records their battle loadout', () => {
+    const snapshot = buildBattlePlayerSnapshot(1, 1001, createStats(), createPlayer(), [
+      createWorkshopItem({
+        id: 'weapon-1',
+        code: 'hunter_cleaver',
+        itemClass: 'L',
+        slot: 'weapon',
+      }),
+      createWorkshopItem({
+        id: 'armor-1',
+        code: 'tracker_jacket',
+        itemClass: 'L',
+        slot: 'armor',
+        durability: 18,
+        maxDurability: 18,
+      }),
+      createWorkshopItem({
+        id: 'tool-1',
+        code: 'skinning_kit',
+        itemClass: 'UL',
+        slot: 'tool',
+        equipped: false,
+        durability: 12,
+        maxDurability: 12,
+      }),
+    ]);
+
+    expect(snapshot.attack).toBe(6);
+    expect(snapshot.defence).toBe(4);
+    expect(snapshot.maxHealth).toBe(15);
+    expect(snapshot.workshopLoadout).toEqual([
+      {
+        id: 'weapon-1',
+        itemCode: 'hunter_cleaver',
+        itemClass: 'L',
+        slot: 'weapon',
+        durability: 14,
+        maxDurability: 14,
+      },
+      {
+        id: 'armor-1',
+        itemCode: 'tracker_jacket',
+        itemClass: 'L',
+        slot: 'armor',
+        durability: 18,
+        maxDurability: 18,
+      },
+    ]);
   });
 });

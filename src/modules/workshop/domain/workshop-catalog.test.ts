@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
 import type { InventoryView } from '../../../shared/types/game';
-import type { WorkshopItemView } from './workshop-catalog';
+import type { WorkshopEquippedItemView, WorkshopItemView } from './workshop-catalog';
 import {
   canCraftWorkshopBlueprint,
+  canEquipWorkshopItem,
   canRepairWorkshopItem,
   getWorkshopBlueprint,
   isWorkshopBlueprintCode,
@@ -12,7 +13,9 @@ import {
   isWorkshopItemSlot,
   isWorkshopItemStatus,
   listWorkshopBlueprints,
+  resolveWorkshopEquipmentStatBonus,
   resolveWorkshopCraftInventoryDelta,
+  resolveWorkshopItemDecay,
   resolveWorkshopMissingCost,
 } from './workshop-catalog';
 
@@ -42,6 +45,20 @@ const createWorkshopItem = (overrides: Partial<WorkshopItemView> = {}): Workshop
   ...overrides,
 });
 
+const createEquippedWorkshopItem = (
+  overrides: Partial<WorkshopEquippedItemView> = {},
+): WorkshopEquippedItemView => ({
+  id: 'item-1',
+  code: 'skinning_kit',
+  itemClass: 'UL',
+  slot: 'tool',
+  status: 'ACTIVE',
+  equipped: true,
+  durability: 7,
+  maxDurability: 12,
+  ...overrides,
+});
+
 describe('workshop catalog', () => {
   it('lists the starter workshop blueprints in a stable order', () => {
     expect(listWorkshopBlueprints().map((blueprint) => blueprint.code)).toEqual([
@@ -60,7 +77,8 @@ describe('workshop catalog', () => {
       kind: 'craft_item',
       resultItemCode: 'hunter_cleaver',
       slot: 'weapon',
-      itemClass: 'RARE',
+      itemClass: 'L',
+      rarity: 'RARE',
       maxDurability: 14,
       cost: {
         leather: 4,
@@ -117,10 +135,85 @@ describe('workshop catalog', () => {
 
     expect(canRepairWorkshopItem(createWorkshopItem(), repairBlueprint)).toBe(true);
     expect(canRepairWorkshopItem(createWorkshopItem(), craftBlueprint)).toBe(false);
-    expect(canRepairWorkshopItem(createWorkshopItem({ status: 'BROKEN' }), repairBlueprint)).toBe(false);
+    expect(canRepairWorkshopItem(createWorkshopItem({ status: 'BROKEN', durability: 0 }), repairBlueprint)).toBe(true);
     expect(canRepairWorkshopItem(createWorkshopItem({ status: 'DESTROYED' }), repairBlueprint)).toBe(false);
-    expect(canRepairWorkshopItem(createWorkshopItem({ itemClass: 'UNCOMMON' }), repairBlueprint)).toBe(false);
-    expect(canRepairWorkshopItem(createWorkshopItem({ durability: 0 }), repairBlueprint)).toBe(false);
+    expect(canRepairWorkshopItem(createWorkshopItem({ itemClass: 'L' }), repairBlueprint)).toBe(false);
     expect(canRepairWorkshopItem(createWorkshopItem({ durability: 12 }), repairBlueprint)).toBe(false);
+  });
+
+  it('allows equipping only active items with durability left', () => {
+    expect(canEquipWorkshopItem(createWorkshopItem({ status: 'ACTIVE', durability: 1 }))).toBe(true);
+    expect(canEquipWorkshopItem(createWorkshopItem({ status: 'BROKEN', durability: 0 }))).toBe(false);
+    expect(canEquipWorkshopItem(createWorkshopItem({ status: 'DESTROYED', durability: 0 }))).toBe(false);
+    expect(canEquipWorkshopItem(createWorkshopItem({ status: 'ACTIVE', durability: 0 }))).toBe(false);
+  });
+
+  it('applies only equipped and usable workshop item stat bonuses', () => {
+    const bonus = resolveWorkshopEquipmentStatBonus([
+      createEquippedWorkshopItem({
+        id: 'weapon-1',
+        code: 'hunter_cleaver',
+        itemClass: 'L',
+        slot: 'weapon',
+        maxDurability: 14,
+      }),
+      createEquippedWorkshopItem({
+        id: 'armor-1',
+        code: 'tracker_jacket',
+        itemClass: 'L',
+        slot: 'armor',
+        maxDurability: 18,
+      }),
+      createEquippedWorkshopItem({
+        id: 'tool-1',
+        code: 'skinning_kit',
+        equipped: false,
+      }),
+      createEquippedWorkshopItem({
+        id: 'tool-2',
+        code: 'skinning_kit',
+        status: 'BROKEN',
+        durability: 0,
+      }),
+    ]);
+
+    expect(bonus).toEqual({
+      health: 3,
+      attack: 2,
+      defence: 1,
+      magicDefence: 0,
+      dexterity: 0,
+      intelligence: 0,
+    });
+  });
+
+  it('decays L items into destruction and UL items into repairable broken state', () => {
+    expect(resolveWorkshopItemDecay(createEquippedWorkshopItem({
+      itemClass: 'L',
+      durability: 1,
+      maxDurability: 14,
+    }))).toMatchObject({
+      status: 'DESTROYED',
+      durability: 0,
+      equipped: false,
+    });
+    expect(resolveWorkshopItemDecay(createEquippedWorkshopItem({
+      itemClass: 'UL',
+      durability: 1,
+      maxDurability: 12,
+    }))).toMatchObject({
+      status: 'BROKEN',
+      durability: 0,
+      equipped: false,
+    });
+    expect(resolveWorkshopItemDecay(createEquippedWorkshopItem({
+      itemClass: 'UL',
+      durability: 3,
+      maxDurability: 12,
+    }))).toMatchObject({
+      status: 'ACTIVE',
+      durability: 2,
+      equipped: true,
+    });
   });
 });

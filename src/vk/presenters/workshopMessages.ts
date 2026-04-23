@@ -5,7 +5,9 @@ import {
 } from '../../modules/crafting/domain/crafting-recipes';
 import type { AcquisitionSummaryView } from '../../modules/player/application/read-models/acquisition-summary';
 import type { WorkshopCraftedItemSummaryView } from '../../modules/workshop/application/use-cases/CraftWorkshopItem';
+import type { WorkshopEquippedItemSummaryView } from '../../modules/workshop/application/use-cases/EquipWorkshopItem';
 import type { WorkshopRepairedItemSummaryView } from '../../modules/workshop/application/use-cases/RepairWorkshopItem';
+import type { WorkshopUnequippedItemSummaryView } from '../../modules/workshop/application/use-cases/UnequipWorkshopItem';
 import type {
   WorkshopBlueprintEntryView,
   WorkshopCraftedItemEntryView,
@@ -28,6 +30,8 @@ import {
 export type WorkshopScreenSummary =
   | AcquisitionSummaryView
   | WorkshopCraftedItemSummaryView
+  | WorkshopEquippedItemSummaryView
+  | WorkshopUnequippedItemSummaryView
   | WorkshopRepairedItemSummaryView;
 
 const materialTitles: Readonly<Record<MaterialField, string>> = {
@@ -82,6 +86,7 @@ const formatRepairToolEntry = (entry: WorkshopRepairToolEntryView): string => {
 const formatCraftedItemEntry = (entry: WorkshopCraftedItemEntryView): string => {
   const item = entry.item;
   const title = resolveWorkshopItemTitle(item.itemCode);
+  const equippedLine = item.equipped ? 'надет' : 'в сумке';
   const repairLine = entry.availableRepairTools.length > 0
     ? 'ремонт доступен'
     : entry.repairable
@@ -95,6 +100,7 @@ const formatCraftedItemEntry = (entry: WorkshopCraftedItemEntryView): string => 
     resolveWorkshopItemSlotTitle(item.slot),
     resolveWorkshopItemClassTitle(item.itemClass),
     resolveWorkshopItemStatusTitle(item.status),
+    equippedLine,
     `прочность ${item.durability}/${item.maxDurability}`,
     repairLine,
   ].join(' · ');

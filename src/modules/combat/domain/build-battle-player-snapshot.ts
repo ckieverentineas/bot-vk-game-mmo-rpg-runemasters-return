@@ -1,9 +1,14 @@
-import type { BattlePlayerSnapshot, PlayerState, StatBlock } from '../../../shared/types/game';
+import type { BattlePlayerSnapshot, BattleWorkshopItemSnapshot, PlayerState, StatBlock } from '../../../shared/types/game';
 import { buildLoadoutSnapshot, projectBattleRuneLoadout } from '../../shared/domain/contracts/loadout-snapshot';
 import { getSchoolNovicePathDefinition, hasRuneOfSchoolAtLeastRarity } from '../../player/domain/school-novice-path';
 import { getPlayerSchoolMasteryForArchetype } from '../../player/domain/school-mastery';
 import { getSchoolDefinitionForArchetype } from '../../runes/domain/rune-schools';
-import { derivePlayerVitals, getEquippedRune } from '../../player/domain/player-stats';
+import { addStats, derivePlayerVitals, getEquippedRune } from '../../player/domain/player-stats';
+import {
+  canEquipWorkshopItem,
+  resolveWorkshopEquipmentStatBonus,
+  type WorkshopEquippedItemView,
+} from '../../workshop/domain/workshop-catalog';
 
 const resolveSchoolProgressStage = (
   player: Pick<PlayerState, 'runes'>,
@@ -29,11 +34,32 @@ const resolveSchoolProgressStage = (
   return null;
 };
 
+const buildWorkshopLoadoutSnapshot = (
+  items: readonly WorkshopEquippedItemView[],
+): BattleWorkshopItemSnapshot[] => (
+  items
+    .filter((item) => item.equipped && canEquipWorkshopItem(item))
+    .map((item) => ({
+      id: item.id,
+      itemCode: item.code,
+      itemClass: item.itemClass,
+      slot: item.slot,
+      durability: item.durability,
+      maxDurability: item.maxDurability,
+    }))
+);
+
+export interface BuildBattlePlayerSnapshotOptions {
+  readonly applyWorkshopStatBonus?: boolean;
+}
+
 export const buildBattlePlayerSnapshot = (
   playerId: number,
   vkId: number,
   stats: StatBlock,
   player: Pick<PlayerState, 'runes' | 'schoolMasteries' | 'currentHealth' | 'currentMana'>,
+  workshopItems: readonly WorkshopEquippedItemView[] = [],
+  options: BuildBattlePlayerSnapshotOptions = {},
 ): BattlePlayerSnapshot => {
   const equippedRune = getEquippedRune(player as PlayerState, 0);
   const secondaryRune = getEquippedRune(player as PlayerState, 1);
@@ -53,22 +79,27 @@ export const buildBattlePlayerSnapshot = (
   });
   const projectedLoadout = projectBattleRuneLoadout(loadoutSnapshot);
   const projectedSecondaryLoadout = projectBattleRuneLoadout(secondaryLoadoutSnapshot);
-  const vitals = derivePlayerVitals(player, stats);
+  const applyWorkshopStatBonus = options.applyWorkshopStatBonus ?? true;
+  const battleStats = applyWorkshopStatBonus
+    ? addStats(stats, resolveWorkshopEquipmentStatBonus(workshopItems))
+    : stats;
+  const vitals = derivePlayerVitals(player, battleStats);
 
   return {
     playerId,
     name: `Рунный мастер #${vkId}`,
-    attack: stats.attack,
-    defence: stats.defence,
-    magicDefence: stats.magicDefence,
-    dexterity: stats.dexterity,
-    intelligence: stats.intelligence,
+    attack: battleStats.attack,
+    defence: battleStats.defence,
+    magicDefence: battleStats.magicDefence,
+    dexterity: battleStats.dexterity,
+    intelligence: battleStats.intelligence,
     maxHealth: vitals.maxHealth,
     currentHealth: vitals.currentHealth,
     maxMana: vitals.maxMana,
     currentMana: vitals.currentMana,
     runeLoadout: projectedLoadout,
     supportRuneLoadout: projectedSecondaryLoadout,
+    workshopLoadout: buildWorkshopLoadoutSnapshot(workshopItems),
     guardPoints: 0,
   };
 };

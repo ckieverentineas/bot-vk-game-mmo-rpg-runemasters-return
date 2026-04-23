@@ -1,6 +1,7 @@
-import type { InventoryDelta, InventoryView, MaterialField } from '../../../shared/types/game';
+import type { InventoryDelta, InventoryView, MaterialField, StatBlock } from '../../../shared/types/game';
 
 export type WorkshopItemClass = 'COMMON' | 'UNCOMMON' | 'RARE' | 'EPIC' | 'L' | 'UL';
+export type WorkshopBlueprintRarity = 'COMMON' | 'UNCOMMON' | 'RARE' | 'EPIC';
 export type WorkshopItemSlot = 'weapon' | 'armor' | 'trinket' | 'tool';
 export type WorkshopItemStatus = 'ACTIVE' | 'BROKEN' | 'DESTROYED';
 export type WorkshopBlueprintKind = 'craft_item' | 'repair_tool';
@@ -56,6 +57,7 @@ export const workshopItemStatuses = [
 interface BaseWorkshopBlueprintDefinition {
   readonly code: WorkshopBlueprintCode;
   readonly itemClass: WorkshopItemClass;
+  readonly rarity: WorkshopBlueprintRarity;
   readonly cost: WorkshopBlueprintCost;
 }
 
@@ -74,6 +76,14 @@ export type WorkshopBlueprintDefinition =
   | WorkshopCraftItemBlueprintDefinition
   | WorkshopRepairToolBlueprintDefinition;
 
+export interface WorkshopItemDefinition {
+  readonly code: WorkshopItemCode;
+  readonly itemClass: WorkshopItemClass;
+  readonly slot: WorkshopItemSlot;
+  readonly maxDurability: number;
+  readonly statBonus: StatBlock;
+}
+
 export interface WorkshopItemView {
   readonly code: WorkshopItemCode;
   readonly itemClass: WorkshopItemClass;
@@ -83,13 +93,71 @@ export interface WorkshopItemView {
   readonly maxDurability: number;
 }
 
+export interface WorkshopEquippedItemView extends WorkshopItemView {
+  readonly id: string;
+  readonly equipped: boolean;
+}
+
+const emptyStatBonus = (): StatBlock => ({
+  health: 0,
+  attack: 0,
+  defence: 0,
+  magicDefence: 0,
+  dexterity: 0,
+  intelligence: 0,
+});
+
+const addStatBlocks = (left: StatBlock, right: StatBlock): StatBlock => ({
+  health: left.health + right.health,
+  attack: left.attack + right.attack,
+  defence: left.defence + right.defence,
+  magicDefence: left.magicDefence + right.magicDefence,
+  dexterity: left.dexterity + right.dexterity,
+  intelligence: left.intelligence + right.intelligence,
+});
+
+const workshopItemDefinitions = [
+  {
+    code: 'hunter_cleaver',
+    itemClass: 'L',
+    slot: 'weapon',
+    maxDurability: 14,
+    statBonus: {
+      ...emptyStatBonus(),
+      attack: 2,
+    },
+  },
+  {
+    code: 'tracker_jacket',
+    itemClass: 'L',
+    slot: 'armor',
+    maxDurability: 18,
+    statBonus: {
+      ...emptyStatBonus(),
+      health: 3,
+      defence: 1,
+    },
+  },
+  {
+    code: 'skinning_kit',
+    itemClass: 'UL',
+    slot: 'tool',
+    maxDurability: 12,
+    statBonus: {
+      ...emptyStatBonus(),
+      dexterity: 1,
+    },
+  },
+] satisfies readonly WorkshopItemDefinition[];
+
 const workshopBlueprints = [
   {
     code: 'hunter_cleaver',
     kind: 'craft_item',
     resultItemCode: 'hunter_cleaver',
     slot: 'weapon',
-    itemClass: 'RARE',
+    itemClass: 'L',
+    rarity: 'RARE',
     maxDurability: 14,
     cost: {
       leather: 4,
@@ -102,7 +170,8 @@ const workshopBlueprints = [
     kind: 'craft_item',
     resultItemCode: 'tracker_jacket',
     slot: 'armor',
-    itemClass: 'UNCOMMON',
+    itemClass: 'L',
+    rarity: 'UNCOMMON',
     maxDurability: 18,
     cost: {
       leather: 5,
@@ -114,7 +183,8 @@ const workshopBlueprints = [
     kind: 'craft_item',
     resultItemCode: 'skinning_kit',
     slot: 'tool',
-    itemClass: 'COMMON',
+    itemClass: 'UL',
+    rarity: 'COMMON',
     maxDurability: 12,
     cost: {
       leather: 2,
@@ -125,6 +195,7 @@ const workshopBlueprints = [
     code: 'resonance_tool',
     kind: 'repair_tool',
     itemClass: 'UL',
+    rarity: 'EPIC',
     cost: {
       crystal: 2,
       essence: 2,
@@ -134,6 +205,10 @@ const workshopBlueprints = [
 
 const blueprintByCode = new Map<string, WorkshopBlueprintDefinition>(
   workshopBlueprints.map((blueprint) => [blueprint.code, blueprint]),
+);
+
+const itemByCode = new Map<string, WorkshopItemDefinition>(
+  workshopItemDefinitions.map((item) => [item.code, item]),
 );
 
 const materialFields: readonly MaterialField[] = [
@@ -177,6 +252,8 @@ export const isWorkshopItemStatus = (value: string): value is WorkshopItemStatus
 
 export const listWorkshopBlueprints = (): readonly WorkshopBlueprintDefinition[] => workshopBlueprints;
 
+export const listWorkshopItemDefinitions = (): readonly WorkshopItemDefinition[] => workshopItemDefinitions;
+
 export const getWorkshopBlueprint = (code: string): WorkshopBlueprintDefinition => {
   const blueprint = blueprintByCode.get(code);
 
@@ -185,6 +262,16 @@ export const getWorkshopBlueprint = (code: string): WorkshopBlueprintDefinition 
   }
 
   return blueprint;
+};
+
+export const getWorkshopItemDefinition = (code: string): WorkshopItemDefinition => {
+  const item = itemByCode.get(code);
+
+  if (!item) {
+    throw new Error(`Unknown workshop item: ${code}`);
+  }
+
+  return item;
 };
 
 export const canCraftWorkshopBlueprint = (
@@ -247,9 +334,55 @@ export const canRepairWorkshopItem = (
     return false;
   }
 
-  if (item.status !== 'ACTIVE') {
+  if (item.durability >= item.maxDurability) {
     return false;
   }
 
-  return item.durability > 0 && item.durability < item.maxDurability;
+  if (item.status === 'BROKEN') {
+    return item.durability === 0;
+  }
+
+  return item.status === 'ACTIVE' && item.durability > 0;
+};
+
+export const canEquipWorkshopItem = (item: WorkshopItemView): boolean => (
+  item.status === 'ACTIVE' && item.durability > 0
+);
+
+export const resolveWorkshopItemStatBonus = (item: WorkshopItemView): StatBlock => (
+  canEquipWorkshopItem(item) ? getWorkshopItemDefinition(item.code).statBonus : emptyStatBonus()
+);
+
+export const resolveWorkshopEquipmentStatBonus = (
+  items: readonly WorkshopEquippedItemView[],
+): StatBlock => (
+  items
+    .filter((item) => item.equipped)
+    .reduce((bonus, item) => addStatBlocks(bonus, resolveWorkshopItemStatBonus(item)), emptyStatBonus())
+);
+
+export const resolveWorkshopItemDecay = <TItem extends WorkshopEquippedItemView>(item: TItem): TItem => {
+  if (!canEquipWorkshopItem(item)) {
+    return {
+      ...item,
+      equipped: false,
+    };
+  }
+
+  const durability = Math.max(0, item.durability - 1);
+
+  if (durability > 0) {
+    return {
+      ...item,
+      status: 'ACTIVE',
+      durability,
+    };
+  }
+
+  return {
+    ...item,
+    status: item.itemClass === 'UL' ? 'BROKEN' : 'DESTROYED',
+    equipped: false,
+    durability: 0,
+  };
 };

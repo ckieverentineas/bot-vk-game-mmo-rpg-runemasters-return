@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import type { BiomeView, MobTemplateView, PlayerState } from '../../../shared/types/game';
+import type { WorkshopEquippedItemView } from '../../workshop/domain/workshop-catalog';
 import { resolveExplorationOutcome, resolveExplorationSchoolCode } from './exploration-outcome';
 
 const createPlayer = (overrides: Partial<PlayerState> = {}): PlayerState => ({
@@ -112,6 +113,20 @@ const createEmberRune = (rarity: 'USUAL' | 'UNUSUAL' | 'RARE') => ({
   createdAt: '2026-04-12T00:00:00.000Z',
 });
 
+const createWorkshopItem = (
+  overrides: Partial<WorkshopEquippedItemView> = {},
+): WorkshopEquippedItemView => ({
+  id: 'item-1',
+  code: 'hunter_cleaver',
+  itemClass: 'L',
+  slot: 'weapon',
+  status: 'ACTIVE',
+  equipped: true,
+  durability: 14,
+  maxDurability: 14,
+  ...overrides,
+});
+
 describe('resolveExplorationOutcome', () => {
   it('can resolve a standalone scene before encounter generation', () => {
     const random = {
@@ -175,6 +190,54 @@ describe('resolveExplorationOutcome', () => {
     expect(outcome.turnOwner).toBe('PLAYER');
     expect(outcome.openingLog[0]).toContain('Тёмный лес');
     expect(outcome.openingLog[1]).toContain('Путевой эпизод');
+  });
+
+  it('uses equipped workshop bonuses for the next battle plan', () => {
+    const random = {
+      rollPercentage: vi.fn()
+        .mockReturnValueOnce(false)
+        .mockReturnValueOnce(true),
+      pickOne: vi.fn(<T>(items: readonly T[]) => items[0]!),
+    };
+
+    const outcome = resolveExplorationOutcome({
+      player: createPlayer(),
+      biome: createBiome(),
+      templates: [createMobTemplate()],
+      locationLevel: 1,
+      currentSchoolCode: null,
+      workshopItems: [
+        createWorkshopItem({ id: 'weapon-1' }),
+        createWorkshopItem({
+          id: 'armor-1',
+          code: 'tracker_jacket',
+          slot: 'armor',
+          durability: 18,
+          maxDurability: 18,
+        }),
+        createWorkshopItem({
+          id: 'tool-1',
+          code: 'skinning_kit',
+          itemClass: 'UL',
+          slot: 'tool',
+          equipped: false,
+          durability: 12,
+          maxDurability: 12,
+        }),
+      ],
+    }, random);
+
+    expect(outcome.kind).toBe('battle');
+    if (outcome.kind !== 'battle') {
+      return;
+    }
+
+    expect(outcome.playerStats).toMatchObject({
+      health: 11,
+      attack: 6,
+      defence: 4,
+      dexterity: 2,
+    });
   });
 
   it('can turn a normal route into an ambush encounter variant', () => {

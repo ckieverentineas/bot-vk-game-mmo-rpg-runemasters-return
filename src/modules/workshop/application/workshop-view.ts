@@ -3,6 +3,7 @@ import type { PlayerBlueprintView, PlayerCraftedItemView } from './workshop-pers
 import {
   canCraftWorkshopBlueprint,
   canRepairWorkshopItem,
+  canEquipWorkshopItem,
   listWorkshopBlueprints,
   resolveWorkshopMissingCost,
   type WorkshopBlueprintCost,
@@ -27,6 +28,7 @@ export interface WorkshopRepairToolEntryView {
 
 export interface WorkshopCraftedItemEntryView {
   readonly item: PlayerCraftedItemView;
+  readonly equippable: boolean;
   readonly repairable: boolean;
   readonly availableRepairTools: readonly WorkshopRepairToolEntryView[];
 }
@@ -109,6 +111,7 @@ const buildCraftedItemEntry = (
 
   return {
     item,
+    equippable: canEquipWorkshopItem(toWorkshopItemView(item)),
     repairable: repairTools.some((repairTool) => canRepairPlayerCraftedItem(item, repairTool.blueprint)),
     availableRepairTools,
   };
