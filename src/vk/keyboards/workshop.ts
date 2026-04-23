@@ -24,7 +24,7 @@ import {
 import {
   resolveWorkshopBlueprintTitle,
   resolveWorkshopItemTitle,
-} from '../presenters/workshopMessages';
+} from '../presenters/workshopLabels';
 import { buildKeyboard } from './builder';
 import type { KeyboardBuilder, KeyboardLayout } from './types';
 

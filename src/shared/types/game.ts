@@ -77,11 +77,13 @@ export interface InventoryView {
 
 export type InventoryDelta = Partial<Record<InventoryField, number>>;
 export type InventoryLoot = Partial<Record<MaterialField, number>>;
+export type BlueprintDelta = Partial<Record<string, number>>;
 
 export interface ResourceReward {
   readonly gold?: number;
   readonly radiance?: number;
   readonly inventoryDelta?: InventoryDelta;
+  readonly blueprintDelta?: BlueprintDelta;
 }
 
 export interface RuneDraft extends StatBlock {

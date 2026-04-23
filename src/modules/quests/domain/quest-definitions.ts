@@ -461,6 +461,7 @@ const questDefinitions: readonly QuestDefinition[] = [
     reward: {
       gold: 9,
       inventoryDelta: { leather: 1, bone: 1 },
+      blueprintDelta: { skinning_kit: 1 },
     },
     progress: (player) => clampProgress(highestGatheringSkillExperience(player), 1),
   },

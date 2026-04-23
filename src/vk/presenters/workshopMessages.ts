@@ -13,15 +13,17 @@ import type {
   WorkshopView,
 } from '../../modules/workshop/application/workshop-view';
 import type {
-  WorkshopBlueprintCode,
   WorkshopBlueprintCost,
-  WorkshopItemClass,
-  WorkshopItemCode,
-  WorkshopItemSlot,
-  WorkshopItemStatus,
 } from '../../modules/workshop/domain/workshop-catalog';
 import type { MaterialField } from '../../shared/types/game';
 import { withSentencePeriod } from './message-formatting';
+import {
+  resolveWorkshopBlueprintTitle,
+  resolveWorkshopItemClassTitle,
+  resolveWorkshopItemSlotTitle,
+  resolveWorkshopItemStatusTitle,
+  resolveWorkshopItemTitle,
+} from './workshopLabels';
 
 export type WorkshopScreenSummary =
   | AcquisitionSummaryView
@@ -36,49 +38,6 @@ const materialTitles: Readonly<Record<MaterialField, string>> = {
   metal: 'металл',
   crystal: 'кристалл',
 };
-
-const blueprintTitles: Readonly<Record<WorkshopBlueprintCode, string>> = {
-  hunter_cleaver: 'Охотничий тесак',
-  tracker_jacket: 'Куртка следопыта',
-  skinning_kit: 'Набор свежевателя',
-  resonance_tool: 'Резонансный инструмент',
-};
-
-const itemTitles: Readonly<Record<WorkshopItemCode, string>> = {
-  hunter_cleaver: 'Охотничий тесак',
-  tracker_jacket: 'Куртка следопыта',
-  skinning_kit: 'Набор свежевателя',
-};
-
-const itemClassTitles: Readonly<Record<WorkshopItemClass, string>> = {
-  COMMON: 'обычный',
-  UNCOMMON: 'необычный',
-  RARE: 'редкий',
-  EPIC: 'эпический',
-  L: 'L',
-  UL: 'UL',
-};
-
-const itemSlotTitles: Readonly<Record<WorkshopItemSlot, string>> = {
-  weapon: 'оружие',
-  armor: 'броня',
-  trinket: 'талисман',
-  tool: 'инструмент',
-};
-
-const itemStatusTitles: Readonly<Record<WorkshopItemStatus, string>> = {
-  ACTIVE: 'целый',
-  BROKEN: 'сломан',
-  DESTROYED: 'разрушен',
-};
-
-export const resolveWorkshopBlueprintTitle = (blueprintCode: WorkshopBlueprintCode): string => (
-  blueprintTitles[blueprintCode]
-);
-
-export const resolveWorkshopItemTitle = (itemCode: WorkshopItemCode): string => (
-  itemTitles[itemCode]
-);
 
 const formatWorkshopCost = (cost: WorkshopBlueprintCost): string => {
   const parts = Object.entries(cost)
@@ -103,8 +62,8 @@ const formatBlueprintEntry = (entry: WorkshopBlueprintEntryView): string => {
       ? formatMissingCost(entry.missingCost)
       : 'ищите чертеж в наградах';
   const resultLine = blueprint.kind === 'craft_item'
-    ? `${itemSlotTitles[blueprint.slot]} · ${itemClassTitles[blueprint.itemClass]} · прочность ${blueprint.maxDurability}`
-    : `${itemClassTitles[blueprint.itemClass]} · ремонт`;
+    ? `${resolveWorkshopItemSlotTitle(blueprint.slot)} · ${resolveWorkshopItemClassTitle(blueprint.itemClass)} · прочность ${blueprint.maxDurability}`
+    : `${resolveWorkshopItemClassTitle(blueprint.itemClass)} · ремонт`;
 
   return `- ${title}: ${ownedLine} · ${resultLine} · ${formatWorkshopCost(blueprint.cost)} · ${craftState}.`;
 };
@@ -133,9 +92,9 @@ const formatCraftedItemEntry = (entry: WorkshopCraftedItemEntryView): string => 
 
   return [
     `- ${title} #${item.id.slice(0, 8)}`,
-    itemSlotTitles[item.slot],
-    itemClassTitles[item.itemClass],
-    itemStatusTitles[item.status],
+    resolveWorkshopItemSlotTitle(item.slot),
+    resolveWorkshopItemClassTitle(item.itemClass),
+    resolveWorkshopItemStatusTitle(item.status),
     `прочность ${item.durability}/${item.maxDurability}`,
     repairLine,
   ].join(' · ');

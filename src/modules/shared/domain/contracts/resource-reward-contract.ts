@@ -1,4 +1,10 @@
-import type { InventoryDelta, InventoryField, ResourceReward } from '../../../../shared/types/game';
+import type {
+  BlueprintDelta,
+  InventoryDelta,
+  InventoryField,
+  ResourceReward,
+} from '../../../../shared/types/game';
+import { isWorkshopBlueprintCode } from '../../../workshop/domain/workshop-catalog';
 
 import { isJsonRecord } from './versioned-contract';
 
@@ -29,9 +35,17 @@ export const isInventoryDeltaSnapshot = (value: unknown): value is InventoryDelt
   && Object.entries(value).every(([field, amount]) => isInventoryField(field) && isNumber(amount))
 );
 
+export const isBlueprintDeltaSnapshot = (value: unknown): value is BlueprintDelta => (
+  isJsonRecord(value)
+  && Object.entries(value).every(([blueprintCode, amount]) => (
+    isWorkshopBlueprintCode(blueprintCode) && isNumber(amount)
+  ))
+);
+
 export const isResourceRewardSnapshot = (value: unknown): value is ResourceReward => (
   isJsonRecord(value)
   && (value.gold === undefined || isNumber(value.gold))
   && (value.radiance === undefined || isNumber(value.radiance))
   && (value.inventoryDelta === undefined || isInventoryDeltaSnapshot(value.inventoryDelta))
+  && (value.blueprintDelta === undefined || isBlueprintDeltaSnapshot(value.blueprintDelta))
 );

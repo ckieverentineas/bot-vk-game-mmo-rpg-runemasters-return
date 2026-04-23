@@ -1,7 +1,9 @@
 import type { AcquisitionSummaryView } from '../../modules/player/application/read-models/acquisition-summary';
 import type { NextGoalView } from '../../modules/player/application/read-models/next-goal';
 import { listSchoolDefinitions } from '../../modules/runes/domain/rune-schools';
-import type { ResourceReward, RuneDraft } from '../../shared/types/game';
+import { isWorkshopBlueprintCode } from '../../modules/workshop/domain/workshop-catalog';
+import type { BlueprintDelta, ResourceReward, RuneDraft } from '../../shared/types/game';
+import { resolveWorkshopBlueprintTitle } from './workshopLabels';
 
 interface AmountLabel {
   readonly one: string;
@@ -54,6 +56,19 @@ export const formatInventoryDelta = (delta: Record<string, number | undefined>):
   return parts.length > 0 ? parts.join(' · ') : 'без дополнительных материалов';
 };
 
+const formatBlueprintDelta = (delta: BlueprintDelta): string => {
+  const parts = Object.entries(delta)
+    .reduce<string[]>((result, [blueprintCode, amount]) => {
+      if (amount === undefined || amount <= 0 || !isWorkshopBlueprintCode(blueprintCode)) {
+        return result;
+      }
+
+      return [...result, `+${amount} чертеж «${resolveWorkshopBlueprintTitle(blueprintCode)}»`];
+    }, []);
+
+  return parts.length > 0 ? parts.join(' · ') : 'без чертежей';
+};
+
 const resolveAmountForm = (amount: number): keyof AmountLabel => {
   const absolute = Math.abs(amount);
   const remainder10 = absolute % 10;
@@ -80,7 +95,12 @@ export const formatResourceReward = (reward: ResourceReward): string => {
     reward.gold !== undefined && reward.gold > 0 ? `+${reward.gold} пыли` : null,
     reward.radiance !== undefined && reward.radiance > 0 ? `+${reward.radiance} сияния` : null,
     reward.inventoryDelta ? formatInventoryDelta(reward.inventoryDelta) : null,
-  ].filter((part): part is string => Boolean(part) && part !== 'без дополнительных материалов');
+    reward.blueprintDelta ? formatBlueprintDelta(reward.blueprintDelta) : null,
+  ].filter((part): part is string => (
+    Boolean(part)
+    && part !== 'без дополнительных материалов'
+    && part !== 'без чертежей'
+  ));
 
   return parts.length > 0 ? parts.join(' · ') : 'без награды';
 };

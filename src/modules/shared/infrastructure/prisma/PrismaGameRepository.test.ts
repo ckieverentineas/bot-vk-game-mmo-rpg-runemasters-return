@@ -1391,7 +1391,7 @@ describe('PrismaGameRepository release hardening', () => {
     const result = await repository.claimQuestReward(
       1,
       'awakening_empty_master',
-      { gold: 5, inventoryDelta: { usualShards: 1 } },
+      { gold: 5, inventoryDelta: { usualShards: 1 }, blueprintDelta: { skinning_kit: 1 } },
       {
         commandKey: 'CLAIM_QUEST_REWARD',
         intentId: 'legacy-text:2000000001:1001:94:забрать награду',
@@ -1437,6 +1437,23 @@ describe('PrismaGameRepository release hardening', () => {
       reward: {
         gold: 5,
         inventoryDelta: { usualShards: 1 },
+        blueprintDelta: { skinning_kit: 1 },
+      },
+    });
+    expect(tx.playerBlueprint.upsert).toHaveBeenCalledWith({
+      where: {
+        playerId_blueprintCode: {
+          playerId: 1,
+          blueprintCode: 'skinning_kit',
+        },
+      },
+      update: {
+        quantity: { increment: 1 },
+      },
+      create: {
+        playerId: 1,
+        blueprintCode: 'skinning_kit',
+        quantity: 1,
       },
     });
     expect(result.claimed).toBe(true);

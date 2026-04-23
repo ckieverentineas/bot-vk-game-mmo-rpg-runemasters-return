@@ -228,6 +228,9 @@ describe('battle platform contracts', () => {
         usualShards: 2,
         leather: 1,
       },
+      blueprintDelta: {
+        skinning_kit: 1,
+      },
     };
 
     const ledger = createQuestRewardLedgerEntry(

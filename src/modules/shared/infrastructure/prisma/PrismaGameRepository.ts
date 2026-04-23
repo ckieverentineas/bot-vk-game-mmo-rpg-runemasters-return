@@ -6,6 +6,7 @@ import { AppError } from '../../../../shared/domain/AppError';
 import { parseJson, stringifyJson } from '../../../../shared/utils/json';
 import type {
   BattleView,
+  BlueprintDelta,
   CreateBattleInput,
   InventoryDelta,
   MaterialField,
@@ -2614,6 +2615,40 @@ export class PrismaGameRepository implements GameRepository {
     return this.applyInventoryDelta(this.prisma, playerId, delta);
   }
 
+  private async applyBlueprintDelta(
+    client: TransactionClient | PrismaClient,
+    playerId: number,
+    delta: BlueprintDelta,
+  ): Promise<void> {
+    for (const [rawBlueprintCode, rawQuantity] of Object.entries(delta)) {
+      if (!isWorkshopBlueprintCode(rawBlueprintCode)) {
+        throw new AppError('invalid_blueprint_reward', 'Награда содержит неизвестный чертеж мастерской.');
+      }
+
+      const quantity = rawQuantity ?? 0;
+      if (quantity <= 0) {
+        continue;
+      }
+
+      await client.playerBlueprint.upsert({
+        where: {
+          playerId_blueprintCode: {
+            playerId,
+            blueprintCode: rawBlueprintCode,
+          },
+        },
+        update: {
+          quantity: { increment: quantity },
+        },
+        create: {
+          playerId,
+          blueprintCode: rawBlueprintCode,
+          quantity,
+        },
+      });
+    }
+  }
+
   private async applyResourceReward(
     client: TransactionClient | PrismaClient,
     playerId: number,
@@ -2642,7 +2677,11 @@ export class PrismaGameRepository implements GameRepository {
     }
 
     if (reward.inventoryDelta) {
-      return this.applyInventoryDelta(client, playerId, reward.inventoryDelta);
+      await this.applyInventoryDelta(client, playerId, reward.inventoryDelta);
+    }
+
+    if (reward.blueprintDelta) {
+      await this.applyBlueprintDelta(client, playerId, reward.blueprintDelta);
     }
 
     return mapPlayerRecord(await this.requirePlayerRecord(client, playerId));
