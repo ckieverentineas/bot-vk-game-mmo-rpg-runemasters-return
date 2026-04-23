@@ -6,6 +6,8 @@ import { describe, expect, it, vi } from 'vitest';
 import type { BattleView, PlayerState, RuneDraft, StatBlock } from '../../../../shared/types/game';
 import { createPendingRewardSnapshot, type PendingRewardAppliedResultSnapshot } from '../../../rewards/domain/pending-reward-snapshot';
 import type { TrophyActionDefinition } from '../../../rewards/domain/trophy-actions';
+import { BESTIARY_ENEMY_KILL_MILESTONE_SOURCE_TYPE } from '../../domain/contracts/bestiary-enemy-kill-milestone-ledger';
+import { BESTIARY_LOCATION_DISCOVERY_SOURCE_TYPE } from '../../domain/contracts/bestiary-location-discovery-ledger';
 import { createAppliedPendingRewardLedgerEntry, createPendingRewardLedgerEntry } from '../../domain/contracts/reward-ledger';
 import type { RewardIntent } from '../../domain/contracts/reward-intent';
 import { PrismaGameRepository } from './PrismaGameRepository';
@@ -964,15 +966,24 @@ describe('PrismaGameRepository release hardening', () => {
       { id: 'battle-3', enemyCode: 'blue-slime' },
     ]);
     tx.rewardLedgerRecord.findMany.mockResolvedValue([
-      { sourceId: 'battle-2' },
-      { sourceId: 'battle-missing' },
+      { sourceType: 'BATTLE_VICTORY', sourceId: 'battle-2' },
+      { sourceType: 'BATTLE_VICTORY', sourceId: 'battle-3' },
+      { sourceType: 'BATTLE_VICTORY', sourceId: 'battle-missing' },
+      { sourceType: BESTIARY_LOCATION_DISCOVERY_SOURCE_TYPE, sourceId: 'initium' },
+      { sourceType: BESTIARY_ENEMY_KILL_MILESTONE_SOURCE_TYPE, sourceId: 'blue-slime:1' },
     ]);
 
     const discovery = await repository.listBestiaryDiscovery(1);
 
     expect(discovery).toEqual({
       discoveredEnemyCodes: ['blue-slime', 'forest-wolf'],
-      rewardedEnemyCodes: ['forest-wolf'],
+      rewardedEnemyCodes: ['forest-wolf', 'blue-slime'],
+      enemyVictoryCounts: [
+        { enemyCode: 'forest-wolf', victoryCount: 1 },
+        { enemyCode: 'blue-slime', victoryCount: 1 },
+      ],
+      claimedLocationRewardCodes: ['initium'],
+      claimedKillMilestones: [{ enemyCode: 'blue-slime', threshold: 1 }],
     });
     expect(tx.battleSession.findMany).toHaveBeenCalledWith({
       where: { playerId: 1 },
@@ -987,15 +998,111 @@ describe('PrismaGameRepository release hardening', () => {
     expect(tx.rewardLedgerRecord.findMany).toHaveBeenCalledWith({
       where: {
         playerId: 1,
-        sourceType: 'BATTLE_VICTORY',
+        sourceType: {
+          in: [
+            'BATTLE_VICTORY',
+            BESTIARY_LOCATION_DISCOVERY_SOURCE_TYPE,
+            BESTIARY_ENEMY_KILL_MILESTONE_SOURCE_TYPE,
+          ],
+        },
         status: 'APPLIED',
       },
       select: {
+        sourceType: true,
         sourceId: true,
       },
       orderBy: {
         appliedAt: 'asc',
       },
+    });
+  });
+
+  it('claims a bestiary location discovery reward exactly once', async () => {
+    const { repository, tx } = createPrismaMock();
+
+    tx.rewardLedgerRecord.create.mockResolvedValue({});
+    tx.player.update.mockResolvedValue({});
+    tx.player.findUnique.mockResolvedValue({
+      ...createPlayerRecord(),
+      radiance: 1,
+    });
+
+    const result = await repository.claimBestiaryLocationDiscoveryReward(1, 'initium', { radiance: 1 });
+
+    expect(result).toMatchObject({
+      biomeCode: 'initium',
+      reward: { radiance: 1 },
+      claimed: true,
+    });
+    expect(result.player.radiance).toBe(1);
+    expect(tx.rewardLedgerRecord.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        playerId: 1,
+        ledgerKey: 'bestiary_location:1:initium',
+        sourceType: BESTIARY_LOCATION_DISCOVERY_SOURCE_TYPE,
+        sourceId: 'initium',
+        status: 'APPLIED',
+      }),
+    });
+    expect(tx.player.update).toHaveBeenCalledWith({
+      where: { id: 1 },
+      data: {
+        radiance: {
+          increment: 1,
+        },
+      },
+    });
+  });
+
+  it('does not apply a duplicate bestiary location discovery reward', async () => {
+    const { repository, tx } = createPrismaMock();
+
+    tx.rewardLedgerRecord.create.mockRejectedValueOnce(new Prisma.PrismaClientKnownRequestError('Unique conflict', {
+      code: 'P2002',
+      clientVersion: 'test',
+      meta: {
+        target: ['ledgerKey'],
+      },
+    }));
+    tx.player.findUnique.mockResolvedValue(createPlayerRecord());
+
+    const result = await repository.claimBestiaryLocationDiscoveryReward(1, 'initium', { radiance: 1 });
+
+    expect(result).toMatchObject({
+      biomeCode: 'initium',
+      reward: { radiance: 1 },
+      claimed: false,
+    });
+    expect(tx.player.update).not.toHaveBeenCalled();
+  });
+
+  it('claims a bestiary enemy kill milestone reward exactly once', async () => {
+    const { repository, tx } = createPrismaMock();
+
+    tx.rewardLedgerRecord.create.mockResolvedValue({});
+    tx.player.update.mockResolvedValue({});
+    tx.player.findUnique.mockResolvedValue({
+      ...createPlayerRecord(),
+      radiance: 2,
+    });
+
+    const result = await repository.claimBestiaryEnemyKillMilestoneReward(1, 'blue-slime', 10, { radiance: 2 });
+
+    expect(result).toMatchObject({
+      enemyCode: 'blue-slime',
+      threshold: 10,
+      reward: { radiance: 2 },
+      claimed: true,
+    });
+    expect(result.player.radiance).toBe(2);
+    expect(tx.rewardLedgerRecord.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        playerId: 1,
+        ledgerKey: 'bestiary_kill:1:blue-slime:10',
+        sourceType: BESTIARY_ENEMY_KILL_MILESTONE_SOURCE_TYPE,
+        sourceId: 'blue-slime:10',
+        status: 'APPLIED',
+      }),
     });
   });
 

@@ -72,12 +72,14 @@ export const gameCommands = {
 } as const;
 
 export const bestiaryPageCommandPrefix = 'бестиарий страница ';
+export const bestiaryLocationCommandPrefix = 'бестиарий локация ';
 export const questBookPageCommandPrefix = 'книга путей страница ';
 
 export type StaticGameCommand = (typeof gameCommands)[keyof typeof gameCommands];
 export type BestiaryPageCommand = `${typeof bestiaryPageCommandPrefix}${number}`;
+export type BestiaryLocationCommand = `${typeof bestiaryLocationCommandPrefix}${string}`;
 export type QuestBookPageCommand = `${typeof questBookPageCommandPrefix}${number}`;
-export type GameCommand = StaticGameCommand | BestiaryPageCommand | QuestBookPageCommand;
+export type GameCommand = StaticGameCommand | BestiaryPageCommand | BestiaryLocationCommand | QuestBookPageCommand;
 
 type RuneStatRerollCommand =
   | typeof gameCommands.rerollAttack
@@ -299,6 +301,21 @@ export const resolveBestiaryPageCommand = (command: string): number | null => {
   }
 
   return Number(match[1]);
+};
+
+export const createBestiaryLocationCommand = (biomeCode: string): BestiaryLocationCommand => (
+  `${bestiaryLocationCommandPrefix}${biomeCode}` as BestiaryLocationCommand
+);
+
+export const resolveBestiaryLocationCommand = (command: string): string | null => {
+  const trimmedCommand = command.trim();
+
+  if (!trimmedCommand.startsWith(bestiaryLocationCommandPrefix)) {
+    return null;
+  }
+
+  const biomeCode = trimmedCommand.slice(bestiaryLocationCommandPrefix.length).trim();
+  return biomeCode.length > 0 ? biomeCode : null;
 };
 
 export const createQuestBookPageCommand = (pageNumber: number): QuestBookPageCommand => {

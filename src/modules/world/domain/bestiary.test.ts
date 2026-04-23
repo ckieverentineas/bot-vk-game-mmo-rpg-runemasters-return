@@ -3,6 +3,8 @@ import { describe, expect, it } from 'vitest';
 import type { BiomeView, MobTemplateView } from '../../../shared/types/game';
 import {
   bestiaryLocationPageSize,
+  buildBestiaryLocationDetailView,
+  buildBestiaryOverviewView,
   buildBestiaryView,
   normalizeBestiaryPageNumber,
 } from './bestiary';
@@ -74,6 +76,42 @@ describe('bestiary', () => {
     expect(bestiary.totalPages).toBe(2);
   });
 
+  it('shows five location summaries with first discovery rewards and progress locks', () => {
+    const biomes = Array.from({ length: bestiaryLocationPageSize }, (_, index) => createBiome(index));
+    const bestiary = buildBestiaryOverviewView({
+      biomes,
+      listMobTemplatesForBiome: (biomeCode) => [createMob(`${biomeCode}-enemy`, biomeCode)],
+      discovery: {
+        discoveredEnemyCodes: ['biome-0-enemy', 'biome-1-enemy'],
+        rewardedEnemyCodes: ['biome-0-enemy'],
+      },
+      requestedPageNumber: 1,
+      highestLocationLevel: 10,
+      claimedLocationRewardCodes: ['biome-0'],
+      newlyClaimedLocationRewardCodes: ['biome-1'],
+    });
+
+    expect(bestiary.locations).toHaveLength(5);
+    expect(bestiary.locations[0]).not.toHaveProperty('enemies');
+    expect(bestiary.locations.map(({ biome }) => biome.code)).toEqual([
+      'biome-0',
+      'biome-1',
+      'biome-2',
+      'biome-3',
+      'biome-4',
+    ]);
+    expect(bestiary.locations.map(({ isUnlocked }) => isUnlocked)).toEqual([true, true, false, false, false]);
+    expect(bestiary.locations.map(({ discoveryReward }) => discoveryReward.reward.radiance)).toEqual([1, 2, 3, 4, 5]);
+    expect(bestiary.locations.map(({ discoveryReward }) => discoveryReward.isClaimed)).toEqual([
+      true,
+      true,
+      false,
+      false,
+      false,
+    ]);
+    expect(bestiary.locations[1]?.discoveryReward.claimedNow).toBe(true);
+  });
+
   it('reveals enemy info after encounter and drop after applied reward', () => {
     const biome = createBiome(1);
     const knownWithoutDrop = createMob('known-without-drop', biome.code);
@@ -102,5 +140,44 @@ describe('bestiary', () => {
       revealedDropCount: 1,
       totalEnemyCount: 3,
     });
+  });
+
+  it('builds selected location enemy detail with kill milestone progress', () => {
+    const biome = createBiome(0);
+    const knownWithDrop = createMob('known-with-drop', biome.code, { lootTable: { leather: 2, bone: 1 } });
+    const unknown = createMob('unknown', biome.code);
+
+    const bestiary = buildBestiaryLocationDetailView({
+      biomeCode: biome.code,
+      biomes: [biome],
+      listMobTemplatesForBiome: () => [knownWithDrop, unknown],
+      discovery: {
+        discoveredEnemyCodes: [knownWithDrop.code],
+        rewardedEnemyCodes: [knownWithDrop.code],
+        enemyVictoryCounts: [{ enemyCode: knownWithDrop.code, victoryCount: 5 }],
+        claimedKillMilestones: [{ enemyCode: knownWithDrop.code, threshold: 1 }],
+      },
+      highestLocationLevel: 0,
+      claimedLocationRewardCodes: [biome.code],
+      newlyClaimedLocationRewardCodes: [],
+      newlyClaimedKillMilestones: [{ enemyCode: knownWithDrop.code, threshold: 5 }],
+    });
+
+    expect(bestiary.location.biome.code).toBe(biome.code);
+    expect(bestiary.location.discoveryReward).toMatchObject({ isClaimed: true, claimedNow: false });
+    expect(bestiary.enemies.map(({ isDiscovered }) => isDiscovered)).toEqual([true, false]);
+    expect(bestiary.enemies[0]?.victoryCount).toBe(5);
+    expect(bestiary.enemies[0]?.killMilestones.map(({ threshold, isClaimed, claimedNow }) => ({
+      threshold,
+      isClaimed,
+      claimedNow,
+    }))).toEqual([
+      { threshold: 1, isClaimed: true, claimedNow: false },
+      { threshold: 5, isClaimed: true, claimedNow: true },
+      { threshold: 10, isClaimed: false, claimedNow: false },
+      { threshold: 25, isClaimed: false, claimedNow: false },
+    ]);
+    expect(bestiary.enemies[1]?.victoryCount).toBe(0);
+    expect(bestiary.enemies[1]?.killMilestones.every(({ isClaimed }) => !isClaimed)).toBe(true);
   });
 });

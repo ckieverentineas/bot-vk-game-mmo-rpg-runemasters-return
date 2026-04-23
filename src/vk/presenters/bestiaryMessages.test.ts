@@ -1,157 +1,150 @@
 import { describe, expect, it } from 'vitest';
 
-import type { BestiaryView } from '../../modules/world/application/read-models/bestiary';
-import { renderBestiary } from './bestiaryMessages';
+import type {
+  BestiaryEnemyView,
+  BestiaryLocationDetailView,
+  BestiaryLocationSummaryView,
+  BestiaryOverviewView,
+} from '../../modules/world/application/read-models/bestiary';
+import type { BiomeView, MobTemplateView } from '../../shared/types/game';
+import {
+  renderBestiaryLocationDetail,
+  renderBestiaryOverview,
+} from './bestiaryMessages';
 
-const createBestiary = (): BestiaryView => ({
-  pageNumber: 1,
-  totalPages: 1,
-  totalLocations: 1,
-  locations: [
-    {
-      biome: {
-        id: 1,
-        code: 'dark-forest',
-        name: 'Тёмный лес',
-        description: 'Стартовая чаща.',
-        minLevel: 1,
-        maxLevel: 15,
-      },
-      discoveredEnemyCount: 2,
-      revealedDropCount: 1,
-      totalEnemyCount: 3,
+const createBiome = (overrides: Partial<BiomeView> = {}): BiomeView => ({
+  id: 1,
+  code: 'dark-forest',
+  name: 'Темный лес',
+  description: 'Стартовая чаща.',
+  minLevel: 1,
+  maxLevel: 15,
+  ...overrides,
+});
+
+const createLocation = (
+  overrides: Partial<BestiaryLocationSummaryView> = {},
+): BestiaryLocationSummaryView => ({
+  biome: createBiome(),
+  isUnlocked: true,
+  unlockLocationLevel: 1,
+  discoveryReward: {
+    reward: { radiance: 2 },
+    isClaimed: true,
+    claimedNow: true,
+  },
+  discoveredEnemyCount: 2,
+  revealedDropCount: 1,
+  totalEnemyCount: 3,
+  ...overrides,
+});
+
+const createMobTemplate = (overrides: Partial<MobTemplateView> = {}): MobTemplateView => ({
+  code: 'forest-wolf',
+  biomeCode: 'dark-forest',
+  name: 'Лесной волк',
+  kind: 'wolf',
+  isElite: false,
+  isBoss: false,
+  baseStats: {
+    health: 15,
+    attack: 4,
+    defence: 1,
+    magicDefence: 0,
+    dexterity: 4,
+    intelligence: 2,
+  },
+  scales: {
+    health: 1,
+    attack: 1,
+    defence: 1,
+    magicDefence: 1,
+    dexterity: 1,
+    intelligence: 1,
+  },
+  baseExperience: 14,
+  baseGold: 5,
+  runeDropChance: 22,
+  lootTable: { leather: 2, bone: 1 },
+  attackText: 'впивается клыками',
+  ...overrides,
+});
+
+const createEnemy = (overrides: Partial<BestiaryEnemyView> = {}): BestiaryEnemyView => ({
+  isDiscovered: true,
+  isDropRevealed: true,
+  tacticalProfile: {
+    code: 'HEAVY_STRIKE',
+    habitLine: 'готовит тяжелый удар',
+    answerLine: 'встречайте угрозу защитой',
+  },
+  template: createMobTemplate(),
+  victoryCount: 5,
+  killMilestones: [
+    { threshold: 1, reward: { radiance: 1 }, isCompleted: true, isClaimed: true, claimedNow: false },
+    { threshold: 5, reward: { radiance: 1 }, isCompleted: true, isClaimed: true, claimedNow: true },
+    { threshold: 10, reward: { radiance: 2 }, isCompleted: false, isClaimed: false, claimedNow: false },
+    { threshold: 25, reward: { radiance: 3 }, isCompleted: false, isClaimed: false, claimedNow: false },
+  ],
+  ...overrides,
+});
+
+describe('bestiary messages', () => {
+  it('renders location overview without enemy detail noise', () => {
+    const overview: BestiaryOverviewView = {
+      pageNumber: 1,
+      totalPages: 1,
+      totalLocations: 1,
+      locations: [createLocation()],
+    };
+
+    const message = renderBestiaryOverview(overview);
+
+    expect(message).toContain('📖 Бестиарий');
+    expect(message).toContain('Темный лес · ур. 1-15');
+    expect(message).toContain('Следы: 2/3 · добыча: 1/3');
+    expect(message).toContain('Первое открытие: +2 сияния · получено сейчас');
+    expect(message).not.toContain('Лесной волк');
+  });
+
+  it('renders selected location enemies with drops and kill rewards', () => {
+    const detail: BestiaryLocationDetailView = {
+      location: createLocation({
+        discoveryReward: {
+          reward: { radiance: 2 },
+          isClaimed: true,
+          claimedNow: false,
+        },
+      }),
       enemies: [
-        {
-          isDiscovered: true,
-          isDropRevealed: false,
-          tacticalProfile: {
-            code: 'HEAVY_STRIKE',
-            habitLine: 'на просадке готовит тяжёлый удар сильнее обычного',
-            answerLine: 'встречайте угрозу защитой; готовая руна тоже хорошо бьёт по раскрытому замыслу',
-          },
-          template: {
-            code: 'forest-wolf',
-            biomeCode: 'dark-forest',
-            name: 'Лесной волк',
-            kind: 'wolf',
-            isElite: false,
-            isBoss: false,
-            baseStats: {
-              health: 15,
-              attack: 4,
-              defence: 1,
-              magicDefence: 0,
-              dexterity: 4,
-              intelligence: 2,
-            },
-            scales: {
-              health: 1,
-              attack: 1,
-              defence: 1,
-              magicDefence: 1,
-              dexterity: 1,
-              intelligence: 1,
-            },
-            baseExperience: 14,
-            baseGold: 5,
-            runeDropChance: 22,
-            lootTable: { leather: 2, bone: 1 },
-            attackText: 'впивается клыками',
-          },
-        },
-        {
-          isDiscovered: true,
-          isDropRevealed: true,
-          tacticalProfile: {
-            code: 'GUARD_BREAK',
-            habitLine: 'на просадке готовит пробивающий удар и сбивает накопленную защиту',
-            answerLine: 'отвечайте атакой или готовой руной; чистую стойку оставьте на другой ход',
-          },
-          template: {
-            code: 'ash-seer',
-            biomeCode: 'dark-forest',
-            name: 'Пепельная ведунья',
-            kind: 'mage',
-            isElite: true,
-            isBoss: false,
-            baseStats: {
-              health: 24,
-              attack: 7,
-              defence: 2,
-              magicDefence: 4,
-              dexterity: 5,
-              intelligence: 8,
-            },
-            scales: {
-              health: 1,
-              attack: 1,
-              defence: 1,
-              magicDefence: 1,
-              dexterity: 1,
-              intelligence: 1,
-            },
-            baseExperience: 24,
-            baseGold: 9,
-            runeDropChance: 28,
-            lootTable: { herb: 2, essence: 1 },
-            attackText: 'выпускает пепельный прорыв',
-          },
-        },
-        {
+        createEnemy(),
+        createEnemy({
           isDiscovered: false,
           isDropRevealed: false,
           tacticalProfile: null,
-          template: {
+          template: createMobTemplate({
             code: 'secret-enemy',
-            biomeCode: 'dark-forest',
             name: 'Секретный след',
             kind: 'spirit',
-            isElite: false,
-            isBoss: false,
-            baseStats: {
-              health: 10,
-              attack: 2,
-              defence: 1,
-              magicDefence: 1,
-              dexterity: 3,
-              intelligence: 2,
-            },
-            scales: {
-              health: 1,
-              attack: 1,
-              defence: 1,
-              magicDefence: 1,
-              dexterity: 1,
-              intelligence: 1,
-            },
-            baseExperience: 10,
-            baseGold: 4,
-            runeDropChance: 18,
             lootTable: { essence: 1 },
-            attackText: 'шепчет',
-          },
-        },
+          }),
+          victoryCount: 0,
+          killMilestones: [
+            { threshold: 1, reward: { radiance: 1 }, isCompleted: false, isClaimed: false, claimedNow: false },
+            { threshold: 5, reward: { radiance: 1 }, isCompleted: false, isClaimed: false, claimedNow: false },
+          ],
+        }),
       ],
-    },
-  ],
-});
+    };
 
-describe('renderBestiary', () => {
-  it('keeps enemy and drop information hidden until the player unlocks it', () => {
-    const message = renderBestiary(createBestiary());
+    const message = renderBestiaryLocationDetail(detail);
 
-    expect(message).toContain('📖 Бестиарий');
-    expect(message).toContain('📍 Тёмный лес · ур. 1-15');
-    expect(message).toContain('Следы: 2/3 · добыча: 1/3');
+    expect(message).toContain('📖 Бестиарий / Темный лес');
     expect(message).toContain('Лесной волк · обычный · зверь');
-    expect(message).toContain('опасность: на просадке готовит тяжёлый удар сильнее обычного');
-    expect(message).toContain('ответ: встречайте угрозу защитой; готовая руна тоже хорошо бьёт по раскрытому замыслу');
-    expect(message).toContain('добыча скрыта до первого разобранного трофея');
-    expect(message).toContain('Пепельная ведунья · элита · заклинатель');
-    expect(message).toContain('опасность: на просадке готовит пробивающий удар и сбивает накопленную защиту');
-    expect(message).toContain('ответ: отвечайте атакой или готовой руной; чистую стойку оставьте на другой ход');
-    expect(message).toContain('добыча: +2 травы · +1 эссенция · шанс руны: 28%');
-    expect(message).toContain('3. ??? — след не встречен');
+    expect(message).toContain('Побед: 5');
+    expect(message).toContain('добыча: +2 кожи · +1 кость · шанс руны: 22%');
+    expect(message).toContain('5 побед: +1 сияния · получено сейчас');
+    expect(message).toContain('2. ??? - след не встречен');
     expect(message).not.toContain('Секретный след');
   });
 });

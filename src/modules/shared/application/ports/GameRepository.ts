@@ -140,6 +140,31 @@ export interface DailyActivityRewardClaimResult {
   readonly claimed: boolean;
 }
 
+export interface BestiaryEnemyVictoryCountView {
+  readonly enemyCode: string;
+  readonly victoryCount: number;
+}
+
+export interface BestiaryEnemyKillMilestoneClaimView {
+  readonly enemyCode: string;
+  readonly threshold: number;
+}
+
+export interface BestiaryLocationDiscoveryRewardClaimResult {
+  readonly player: PlayerState;
+  readonly biomeCode: string;
+  readonly reward: ResourceReward;
+  readonly claimed: boolean;
+}
+
+export interface BestiaryEnemyKillMilestoneRewardClaimResult {
+  readonly player: PlayerState;
+  readonly enemyCode: string;
+  readonly threshold: number;
+  readonly reward: ResourceReward;
+  readonly claimed: boolean;
+}
+
 export interface PendingRewardSourceView {
   readonly battleId: string;
   readonly enemyCode: string;
@@ -156,6 +181,9 @@ export interface PendingRewardView {
 export interface BestiaryDiscoveryView {
   readonly discoveredEnemyCodes: readonly string[];
   readonly rewardedEnemyCodes: readonly string[];
+  readonly enemyVictoryCounts: readonly BestiaryEnemyVictoryCountView[];
+  readonly claimedLocationRewardCodes: readonly string[];
+  readonly claimedKillMilestones: readonly BestiaryEnemyKillMilestoneClaimView[];
 }
 
 export interface RecoverPendingRewardsResult {
@@ -211,6 +239,17 @@ export interface GameRepository {
   applyPlayerSkillExperience(playerId: number, gains: readonly PlayerSkillPointGain[]): Promise<PlayerState>;
   listClaimedQuestRewardCodes(playerId: number): Promise<readonly string[]>;
   listBestiaryDiscovery(playerId: number): Promise<BestiaryDiscoveryView>;
+  claimBestiaryLocationDiscoveryReward(
+    playerId: number,
+    biomeCode: string,
+    reward: ResourceReward,
+  ): Promise<BestiaryLocationDiscoveryRewardClaimResult>;
+  claimBestiaryEnemyKillMilestoneReward(
+    playerId: number,
+    enemyCode: string,
+    threshold: number,
+    reward: ResourceReward,
+  ): Promise<BestiaryEnemyKillMilestoneRewardClaimResult>;
   claimQuestReward(
     playerId: number,
     questCode: string,

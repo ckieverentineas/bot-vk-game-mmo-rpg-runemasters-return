@@ -53,6 +53,7 @@ import {
 } from './responders/homeReplyFlow';
 import {
   replyWithBestiary as sendBestiary,
+  replyWithBestiaryLocation as sendBestiaryLocation,
 } from './responders/bestiaryReplyFlow';
 import {
   replyWithAltar as sendAltar,
@@ -232,6 +233,11 @@ export class GameHandler {
   public async openBestiary(ctx: Context, vkId: number, pageNumber = 1): Promise<void> {
     const bestiary = await this.services.getBestiary.execute(vkId, pageNumber);
     await sendBestiary(ctx, bestiary);
+  }
+
+  public async openBestiaryLocation(ctx: Context, vkId: number, biomeCode: string): Promise<void> {
+    const bestiaryLocation = await this.services.getBestiary.executeLocation(vkId, biomeCode);
+    await sendBestiaryLocation(ctx, bestiaryLocation);
   }
 
   public async claimQuestReward(ctx: Context, vkId: number, context: CommandIntentContext): Promise<void> {

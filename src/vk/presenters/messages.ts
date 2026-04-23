@@ -1,6 +1,10 @@
 export { renderBattle } from './battleMessages';
 
-export { renderBestiary } from './bestiaryMessages';
+export {
+  renderBestiary,
+  renderBestiaryLocationDetail,
+  renderBestiaryOverview,
+} from './bestiaryMessages';
 
 export { renderDailyTrace } from './activityMessages';
 

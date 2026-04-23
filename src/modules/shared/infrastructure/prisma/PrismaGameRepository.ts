@@ -70,14 +70,25 @@ import {
   QUEST_REWARD_SOURCE_TYPE,
 } from '../../domain/contracts/quest-reward-ledger';
 import { createDailyActivityLedgerEntry } from '../../domain/contracts/daily-activity-ledger';
+import {
+  BESTIARY_ENEMY_KILL_MILESTONE_SOURCE_TYPE,
+  createBestiaryEnemyKillMilestoneLedgerEntry,
+  parseBestiaryEnemyKillMilestoneSourceId,
+} from '../../domain/contracts/bestiary-enemy-kill-milestone-ledger';
+import {
+  BESTIARY_LOCATION_DISCOVERY_SOURCE_TYPE,
+  createBestiaryLocationDiscoveryLedgerEntry,
+} from '../../domain/contracts/bestiary-location-discovery-ledger';
 import { createBattleVictoryRewardIntent } from '../../domain/contracts/reward-intent';
 import type {
+  BestiaryEnemyKillMilestoneRewardClaimResult,
   ClaimQuestRewardOptions,
   ClaimDailyActivityRewardOptions,
   CollectPendingRewardResult,
   CreateBattleOptions,
   FinalizeBattleResult,
   BestiaryDiscoveryView,
+  BestiaryLocationDiscoveryRewardClaimResult,
   GameCommandIntentKey,
   GameRepository,
   DailyActivityRewardClaimResult,
@@ -986,10 +997,17 @@ export class PrismaGameRepository implements GameRepository {
       this.prisma.rewardLedgerRecord.findMany({
         where: {
           playerId,
-          sourceType: 'BATTLE_VICTORY',
+          sourceType: {
+            in: [
+              'BATTLE_VICTORY',
+              BESTIARY_LOCATION_DISCOVERY_SOURCE_TYPE,
+              BESTIARY_ENEMY_KILL_MILESTONE_SOURCE_TYPE,
+            ],
+          },
           status: 'APPLIED',
         },
         select: {
+          sourceType: true,
           sourceId: true,
         },
         orderBy: {
@@ -997,22 +1015,190 @@ export class PrismaGameRepository implements GameRepository {
         },
       }),
     ]);
-    const rewardedBattleIds = new Set(rewardRows.map((record) => record.sourceId));
+    const battlesById = new Map(battleRows.map((battleRow) => [battleRow.id, battleRow]));
     const discoveredEnemyCodes = new Set<string>();
     const rewardedEnemyCodes = new Set<string>();
+    const victoryCountsByEnemyCode = new Map<string, number>();
+    const claimedLocationRewardCodes = new Set<string>();
+    const claimedKillMilestoneKeys = new Set<string>();
+    const claimedKillMilestones: Array<BestiaryDiscoveryView['claimedKillMilestones'][number]> = [];
 
     for (const battleRow of battleRows) {
       discoveredEnemyCodes.add(battleRow.enemyCode);
+    }
 
-      if (rewardedBattleIds.has(battleRow.id)) {
-        rewardedEnemyCodes.add(battleRow.enemyCode);
+    for (const rewardRow of rewardRows) {
+      if (rewardRow.sourceType === 'BATTLE_VICTORY') {
+        const battleRow = battlesById.get(rewardRow.sourceId);
+
+        if (battleRow) {
+          rewardedEnemyCodes.add(battleRow.enemyCode);
+          victoryCountsByEnemyCode.set(
+            battleRow.enemyCode,
+            (victoryCountsByEnemyCode.get(battleRow.enemyCode) ?? 0) + 1,
+          );
+        }
+
+        continue;
+      }
+
+      if (rewardRow.sourceType === BESTIARY_LOCATION_DISCOVERY_SOURCE_TYPE) {
+        claimedLocationRewardCodes.add(rewardRow.sourceId);
+        continue;
+      }
+
+      if (rewardRow.sourceType === BESTIARY_ENEMY_KILL_MILESTONE_SOURCE_TYPE) {
+        const milestone = parseBestiaryEnemyKillMilestoneSourceId(rewardRow.sourceId);
+
+        if (!milestone) {
+          continue;
+        }
+
+        const milestoneKey = `${milestone.enemyCode}:${milestone.threshold}`;
+        if (!claimedKillMilestoneKeys.has(milestoneKey)) {
+          claimedKillMilestoneKeys.add(milestoneKey);
+          claimedKillMilestones.push(milestone);
+        }
       }
     }
 
     return {
       discoveredEnemyCodes: [...discoveredEnemyCodes],
       rewardedEnemyCodes: [...rewardedEnemyCodes],
+      enemyVictoryCounts: [...victoryCountsByEnemyCode.entries()].map(([enemyCode, victoryCount]) => ({
+        enemyCode,
+        victoryCount,
+      })),
+      claimedLocationRewardCodes: [...claimedLocationRewardCodes],
+      claimedKillMilestones,
     };
+  }
+
+  public async claimBestiaryLocationDiscoveryReward(
+    playerId: number,
+    biomeCode: string,
+    reward: ResourceReward,
+  ): Promise<BestiaryLocationDiscoveryRewardClaimResult> {
+    const appliedAt = new Date();
+    const ledger = createBestiaryLocationDiscoveryLedgerEntry(
+      playerId,
+      biomeCode,
+      reward,
+      appliedAt.toISOString(),
+    );
+
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        try {
+          await tx.rewardLedgerRecord.create({
+            data: {
+              playerId,
+              ledgerKey: ledger.ledgerKey,
+              sourceType: ledger.sourceType,
+              sourceId: ledger.sourceId,
+              status: ledger.status,
+              entrySnapshot: stringifyJson(ledger, '{}'),
+              appliedAt,
+            },
+          });
+        } catch (error) {
+          if (!isPrismaUniqueConstraintError(error)) {
+            throw error;
+          }
+
+          return {
+            player: mapPlayerRecord(await this.requirePlayerRecord(tx, playerId)),
+            biomeCode,
+            reward,
+            claimed: false,
+          };
+        }
+
+        return {
+          player: await this.applyResourceReward(tx, playerId, reward),
+          biomeCode,
+          reward,
+          claimed: true,
+        };
+      });
+    } catch (error) {
+      if (isPrismaUniqueConstraintError(error)) {
+        return {
+          player: mapPlayerRecord(await this.requirePlayerRecord(this.prisma, playerId)),
+          biomeCode,
+          reward,
+          claimed: false,
+        };
+      }
+
+      throw error;
+    }
+  }
+
+  public async claimBestiaryEnemyKillMilestoneReward(
+    playerId: number,
+    enemyCode: string,
+    threshold: number,
+    reward: ResourceReward,
+  ): Promise<BestiaryEnemyKillMilestoneRewardClaimResult> {
+    const appliedAt = new Date();
+    const ledger = createBestiaryEnemyKillMilestoneLedgerEntry(
+      playerId,
+      enemyCode,
+      threshold,
+      reward,
+      appliedAt.toISOString(),
+    );
+
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        try {
+          await tx.rewardLedgerRecord.create({
+            data: {
+              playerId,
+              ledgerKey: ledger.ledgerKey,
+              sourceType: ledger.sourceType,
+              sourceId: ledger.sourceId,
+              status: ledger.status,
+              entrySnapshot: stringifyJson(ledger, '{}'),
+              appliedAt,
+            },
+          });
+        } catch (error) {
+          if (!isPrismaUniqueConstraintError(error)) {
+            throw error;
+          }
+
+          return {
+            player: mapPlayerRecord(await this.requirePlayerRecord(tx, playerId)),
+            enemyCode,
+            threshold,
+            reward,
+            claimed: false,
+          };
+        }
+
+        return {
+          player: await this.applyResourceReward(tx, playerId, reward),
+          enemyCode,
+          threshold,
+          reward,
+          claimed: true,
+        };
+      });
+    } catch (error) {
+      if (isPrismaUniqueConstraintError(error)) {
+        return {
+          player: mapPlayerRecord(await this.requirePlayerRecord(this.prisma, playerId)),
+          enemyCode,
+          threshold,
+          reward,
+          claimed: false,
+        };
+      }
+
+      throw error;
+    }
   }
 
   public async claimQuestReward(

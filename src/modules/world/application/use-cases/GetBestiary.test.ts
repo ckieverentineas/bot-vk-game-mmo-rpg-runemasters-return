@@ -1,6 +1,7 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { GameRepository } from '../../../shared/application/ports/GameRepository';
+import type { BestiaryDiscoveryState } from '../../domain/bestiary';
 import type { WorldCatalog } from '../ports/WorldCatalog';
 import { GetBestiary } from './GetBestiary';
 
@@ -46,6 +47,15 @@ const createPlayer = () => ({
   runes: [],
   createdAt: '2026-04-12T00:00:00.000Z',
   updatedAt: '2026-04-12T00:00:00.000Z',
+});
+
+const createDiscovery = (overrides: Partial<BestiaryDiscoveryState> = {}) => ({
+  discoveredEnemyCodes: [],
+  rewardedEnemyCodes: [],
+  enemyVictoryCounts: [],
+  claimedLocationRewardCodes: [],
+  claimedKillMilestones: [],
+  ...overrides,
 });
 
 const catalog = {
@@ -94,13 +104,26 @@ const catalog = {
 } satisfies WorldCatalog;
 
 describe('GetBestiary', () => {
-  it('builds bestiary from player discovery records and world catalog', async () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('builds location overview and claims newly unlocked discovery rewards once', async () => {
     const repository = {
       findPlayerByVkId: vi.fn().mockResolvedValue(createPlayer()),
-      listBestiaryDiscovery: vi.fn().mockResolvedValue({
-        discoveredEnemyCodes: ['training-wisp'],
-        rewardedEnemyCodes: [],
+      listBestiaryDiscovery: vi.fn()
+        .mockResolvedValueOnce(createDiscovery({ discoveredEnemyCodes: ['training-wisp'] }))
+        .mockResolvedValueOnce(createDiscovery({
+          discoveredEnemyCodes: ['training-wisp'],
+          claimedLocationRewardCodes: ['initium'],
+        })),
+      claimBestiaryLocationDiscoveryReward: vi.fn().mockResolvedValue({
+        player: { ...createPlayer(), radiance: 1 },
+        biomeCode: 'initium',
+        reward: { radiance: 1 },
+        claimed: true,
       }),
+      claimBestiaryEnemyKillMilestoneReward: vi.fn(),
     } as unknown as GameRepository;
     const useCase = new GetBestiary(repository, catalog);
 
@@ -109,9 +132,87 @@ describe('GetBestiary', () => {
     expect(repository.findPlayerByVkId).toHaveBeenCalledWith(1001);
     expect(repository.listBestiaryDiscovery).toHaveBeenCalledWith(1);
     expect(catalog.listBiomes).toHaveBeenCalled();
-    expect(bestiary.locations[0]?.enemies[0]).toMatchObject({
+    expect(repository.claimBestiaryLocationDiscoveryReward).toHaveBeenCalledWith(1, 'initium', { radiance: 1 });
+    expect(bestiary.locations[0]).toMatchObject({
+      biome: expect.objectContaining({ code: 'initium' }),
+      isUnlocked: true,
+      discoveryReward: {
+        reward: { radiance: 1 },
+        isClaimed: true,
+        claimedNow: true,
+      },
+    });
+  });
+
+  it('does not claim a location discovery reward that is already recorded', async () => {
+    const repository = {
+      findPlayerByVkId: vi.fn().mockResolvedValue(createPlayer()),
+      listBestiaryDiscovery: vi.fn().mockResolvedValue(createDiscovery({
+        claimedLocationRewardCodes: ['initium'],
+      })),
+      claimBestiaryLocationDiscoveryReward: vi.fn(),
+      claimBestiaryEnemyKillMilestoneReward: vi.fn(),
+    } as unknown as GameRepository;
+    const useCase = new GetBestiary(repository, catalog);
+
+    const bestiary = await useCase.execute(1001);
+
+    expect(repository.claimBestiaryLocationDiscoveryReward).not.toHaveBeenCalled();
+    expect(bestiary.locations[0]?.discoveryReward).toMatchObject({
+      isClaimed: true,
+      claimedNow: false,
+    });
+  });
+
+  it('builds selected location detail and claims qualified kill milestone rewards once', async () => {
+    const repository = {
+      findPlayerByVkId: vi.fn().mockResolvedValue(createPlayer()),
+      listBestiaryDiscovery: vi.fn()
+        .mockResolvedValueOnce(createDiscovery({
+          discoveredEnemyCodes: ['training-wisp'],
+          rewardedEnemyCodes: ['training-wisp'],
+          claimedLocationRewardCodes: ['initium'],
+          enemyVictoryCounts: [{ enemyCode: 'training-wisp', victoryCount: 5 }],
+          claimedKillMilestones: [{ enemyCode: 'training-wisp', threshold: 1 }],
+        }))
+        .mockResolvedValueOnce(createDiscovery({
+          discoveredEnemyCodes: ['training-wisp'],
+          rewardedEnemyCodes: ['training-wisp'],
+          claimedLocationRewardCodes: ['initium'],
+          enemyVictoryCounts: [{ enemyCode: 'training-wisp', victoryCount: 5 }],
+          claimedKillMilestones: [
+            { enemyCode: 'training-wisp', threshold: 1 },
+            { enemyCode: 'training-wisp', threshold: 5 },
+          ],
+        })),
+      claimBestiaryLocationDiscoveryReward: vi.fn(),
+      claimBestiaryEnemyKillMilestoneReward: vi.fn().mockResolvedValue({
+        player: { ...createPlayer(), radiance: 1 },
+        enemyCode: 'training-wisp',
+        threshold: 5,
+        reward: { radiance: 1 },
+        claimed: true,
+      }),
+    } as unknown as GameRepository;
+    const useCase = new GetBestiary(repository, catalog);
+
+    const detail = await useCase.executeLocation(1001, 'initium');
+
+    expect(repository.claimBestiaryEnemyKillMilestoneReward).toHaveBeenCalledWith(
+      1,
+      'training-wisp',
+      5,
+      { radiance: 1 },
+    );
+    expect(detail.location.biome.code).toBe('initium');
+    expect(detail.enemies[0]).toMatchObject({
       isDiscovered: true,
-      isDropRevealed: false,
+      isDropRevealed: true,
+      victoryCount: 5,
+    });
+    expect(detail.enemies[0]?.killMilestones.find(({ threshold }) => threshold === 5)).toMatchObject({
+      isClaimed: true,
+      claimedNow: true,
     });
   });
 });

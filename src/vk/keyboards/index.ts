@@ -8,7 +8,10 @@ export {
   createBattleKeyboard,
   createBattleResultKeyboard,
 } from './battle';
-export { createBestiaryKeyboard } from './bestiary';
+export {
+  createBestiaryKeyboard,
+  createBestiaryLocationKeyboard,
+} from './bestiary';
 export { createPendingRewardKeyboard } from './rewards';
 export { createQuestBookKeyboard } from './quests';
 export {

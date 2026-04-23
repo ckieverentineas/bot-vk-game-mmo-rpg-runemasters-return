@@ -6,6 +6,7 @@ import type { PendingRewardView } from '../../modules/shared/application/ports/G
 import type { GameTelemetry } from '../../modules/shared/application/ports/GameTelemetry';
 import { AppError } from '../../shared/domain/AppError';
 import type { BattleView, PlayerState } from '../../shared/types/game';
+import { createBestiaryLocationCommand } from '../commands/catalog';
 import { createRuneKeyboard } from '../keyboards';
 import { GameHandler } from './gameHandler';
 
@@ -293,44 +294,64 @@ const createServices = (): AppServices => {
           minLevel: 0,
           maxLevel: 0,
         },
+        isUnlocked: true,
+        unlockLocationLevel: 0,
+        discoveryReward: {
+          reward: { radiance: 1 },
+          isClaimed: true,
+          claimedNow: true,
+        },
         discoveredEnemyCount: 1,
         revealedDropCount: 0,
         totalEnemyCount: 1,
-        enemies: [
-          {
-            isDiscovered: true,
-            isDropRevealed: false,
-            template: {
-              code: 'training-wisp',
-              biomeCode: 'initium',
-              name: 'Учебный огонёк',
-              kind: 'spirit',
-              isElite: false,
-              isBoss: false,
-              baseStats: {
-                health: 8,
-                attack: 1,
-                defence: 0,
-                magicDefence: 0,
-                dexterity: 2,
-                intelligence: 1,
-              },
-              scales: {
-                health: 1,
-                attack: 1,
-                defence: 1,
-                magicDefence: 1,
-                dexterity: 1,
-                intelligence: 1,
-              },
-              baseExperience: 6,
-              baseGold: 2,
-              runeDropChance: 10,
-              lootTable: { essence: 1 },
-              attackText: 'касается искрой',
-            },
-          },
+      },
+    ],
+  };
+  const bestiaryLocation = {
+    location: bestiary.locations[0],
+    enemies: [
+      {
+        isDiscovered: true,
+        isDropRevealed: false,
+        tacticalProfile: {
+          code: 'BASIC_PRESSURE',
+          habitLine: 'держит простой натиск',
+          answerLine: 'сбейте темп атакой',
+        },
+        victoryCount: 1,
+        killMilestones: [
+          { threshold: 1, reward: { radiance: 1 }, isCompleted: true, isClaimed: true, claimedNow: true },
+          { threshold: 5, reward: { radiance: 1 }, isCompleted: false, isClaimed: false, claimedNow: false },
         ],
+        template: {
+          code: 'training-wisp',
+          biomeCode: 'initium',
+          name: 'Учебный огонёк',
+          kind: 'spirit',
+          isElite: false,
+          isBoss: false,
+          baseStats: {
+            health: 8,
+            attack: 1,
+            defence: 0,
+            magicDefence: 0,
+            dexterity: 2,
+            intelligence: 1,
+          },
+          scales: {
+            health: 1,
+            attack: 1,
+            defence: 1,
+            magicDefence: 1,
+            dexterity: 1,
+            intelligence: 1,
+          },
+          baseExperience: 6,
+          baseGold: 2,
+          runeDropChance: 10,
+          lootTable: { essence: 1 },
+          attackText: 'касается искрой',
+        },
       },
     ],
   };
@@ -380,6 +401,7 @@ const createServices = (): AppServices => {
     } as unknown as AppServices['getQuestBook'],
     getBestiary: {
       execute: vi.fn().mockResolvedValue(bestiary),
+      executeLocation: vi.fn().mockResolvedValue(bestiaryLocation),
     } as unknown as AppServices['getBestiary'],
     claimQuestReward: {
       execute: vi.fn().mockResolvedValue({
@@ -545,7 +567,8 @@ describe('GameHandler smoke', () => {
     expect(services.getBestiary.execute).toHaveBeenCalledWith(1001, 1);
     expect(message).toContain('📖 Бестиарий');
     expect(message).toContain('Порог Инициации');
-    expect(message).toContain('Учебный огонёк');
+    expect(message).toContain('Первое открытие');
+    expect(message).not.toContain('Учебный огонёк');
   });
 
   it('перелистывает бестиарий через payload страницы', async () => {
@@ -557,6 +580,19 @@ describe('GameHandler smoke', () => {
 
     expect(services.getBestiary.execute).toHaveBeenCalledWith(1001, 2);
     expect(getReplyCalls(ctx)[0]?.message).toContain('📖 Бестиарий');
+  });
+
+  it('открывает мобов выбранной локации бестиария', async () => {
+    const services = createServices();
+    const handler = new GameHandler(services);
+    const ctx = createFakeContext({ command: createBestiaryLocationCommand('initium') });
+
+    await handler.handle(ctx as never);
+
+    const message = getReplyCalls(ctx)[0]?.message ?? '';
+    expect(services.getBestiary.executeLocation).toHaveBeenCalledWith(1001, 'initium');
+    expect(message).toContain('Учебный огонёк');
+    expect(message).toContain('Побед: 1');
   });
 
   it('забирает награду квеста из inline-кнопки', async () => {

@@ -1,5 +1,6 @@
 import {
   gameCommands,
+  resolveBestiaryLocationCommand,
   resolveBestiaryPageCommand,
 } from '../../commands/catalog';
 import {
@@ -13,6 +14,10 @@ export const bestiaryCommandRoutes = {
 } satisfies StaticCommandRouteConfig;
 
 export const bestiaryDynamicCommandRoutes = [
+  createDynamicCommandRoute<string>(
+    resolveBestiaryLocationCommand,
+    (handler, ctx, vkId, biomeCode) => handler.openBestiaryLocation(ctx, vkId, biomeCode),
+  ),
   createDynamicCommandRoute<number>(
     resolveBestiaryPageCommand,
     (handler, ctx, vkId, pageNumber) => handler.openBestiary(ctx, vkId, pageNumber),
