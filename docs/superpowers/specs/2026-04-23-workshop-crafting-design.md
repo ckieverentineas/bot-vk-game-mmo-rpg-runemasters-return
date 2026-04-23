@@ -9,7 +9,7 @@ The first implementation slice covers:
 - a dedicated workshop entry point outside the rune altar;
 - consumable blueprints for one-time crafts;
 - crafted equipment with durability;
-- rare repair components;
+- repair tools crafted from consumable blueprints;
 - reward hooks for combat drops, quests, bestiary rewards, and future non-combat events.
 
 This spec intentionally keeps co-op PvE, full item set balance, marketplace purchases, and advanced profession trees out of the first slice.
@@ -23,7 +23,7 @@ Loot should create decisions, not only accumulate in inventory. A player should 
 - what is missing for a desired craft;
 - why crafted items are different from runes;
 - when an item is wearing down;
-- when spending a rare repair component is worth it.
+- why `L` items are consumable prestige and `UL` items are long-term repair targets.
 
 ## Altar And Workshop Boundary
 
@@ -82,7 +82,7 @@ Initial categories:
 
 - `📜 Чертежи` shows owned consumable blueprints and whether each craft is ready.
 - `⚒ Снаряжение` shows crafted items, equipped state, durability, and break risk.
-- `🧰 Ремонт` shows damaged items and available repair components.
+- `🧰 Ремонт` shows damaged `UL` items and available repair tool blueprints.
 
 Future categories may add `🧪 Расходники` and `🎒 Материалы`, but the first slice should avoid a noisy inventory wall.
 
@@ -100,14 +100,20 @@ Blueprint properties:
 - result item definition;
 - source tags for reward tables.
 
-Initial rarities:
+Workshop item classes use a separate progression language from rune rarity.
+
+Initial blueprint and item classes:
 
 - `COMMON`;
 - `UNCOMMON`;
 - `RARE`;
 - `EPIC`;
-- `LEGENDARY`;
-- `MYTHIC`.
+- `L` for `Limited`;
+- `UL` for `Unlimited`.
+
+`L` means a strong limited item. It has durability, does not accept repair, and is gone when destroyed.
+
+`UL` means an unlimited-grade item. It still has durability pressure, but it can be repaired through a crafted repair tool.
 
 Blueprints should be stored as player-owned stacks by code. Most blueprints stack, even though each craft consumes one copy.
 
@@ -179,19 +185,26 @@ If an item breaks:
 
 ## Repair
 
-Repair uses ultra-rare components.
+Repair is reserved for `UL` items.
 
-Initial repair resource:
+Repair tools are represented as one-time repair blueprints in the first slice. They are player-facing tools, not a generic wallet currency and not a separate persisted item type yet.
 
-- `repairCatalyst`, shown to the player as `Сердцевина ремонта`.
+Initial repair tool examples:
+
+- `🔨 Молот мастера`;
+- `🧰 Набор тонкой правки`;
+- `🔥 Закалочный молот`;
+- `💎 Резонансный инструмент`.
 
 Repair behavior:
 
-- repair restores one damaged item to max durability;
+- repair restores one damaged `UL` item to max durability;
+- repair consumes one matching repair tool blueprint;
+- repair cannot target `COMMON`, `UNCOMMON`, `RARE`, `EPIC`, or `L` items;
 - repair cannot restore destroyed items in the first slice;
-- repair components should be rare enough to make item decay meaningful.
+- repair tool blueprints should be rare enough to make item decay meaningful.
 
-Repair component sources:
+Repair tool blueprint sources:
 
 - rare bestiary milestones;
 - rare non-combat events;
@@ -199,12 +212,11 @@ Repair component sources:
 
 ## Rewards
 
-Reward payloads should support blueprint and repair drops without forcing every reward source to know workshop internals.
+Reward payloads should support blueprint drops without forcing every reward source to know workshop internals.
 
 Extend reward modeling with optional fields:
 
 - blueprint drops;
-- repair component drops;
 - crafted item drops only if a future event grants a finished item directly.
 
 All exact-once rewards, such as quests and bestiary milestones, must keep exact-once ledger behavior.
@@ -217,11 +229,10 @@ The likely first-slice persistence additions are:
 
 - `PlayerBlueprint` with `playerId`, `blueprintCode`, `quantity`, and `updatedAt`;
 - `PlayerCraftedItem` with `id`, `playerId`, `itemCode`, `rarity`, `slot`, `durability`, `maxDurability`, `status`, `equipped`, and timestamps;
-- one repair material field in inventory: `repairCatalyst`.
+- repair tool ownership reuses `PlayerBlueprint` in the first slice by treating repair tools as one-time repair blueprints.
 
-Because the current inventory is column-based, the first implementation should choose the smallest safe migration:
+Because the current inventory is column-based, the first implementation should avoid adding a repair currency column:
 
-- add one `repairCatalyst` inventory column;
 - use a dedicated blueprint table because blueprint codes are content-driven and should not become many inventory columns.
 
 ## Commands And Navigation
@@ -238,7 +249,7 @@ Workshop commands:
 - open repair category;
 - craft selected blueprint;
 - equip or unequip crafted item;
-- repair selected damaged item;
+- repair selected damaged `UL` item with a matching repair blueprint;
 - return to main menu.
 
 Craft and repair commands must use command intent state keys. State keys should include owned blueprint quantity, material cost, target item id, durability, and relevant inventory fields.
@@ -271,7 +282,8 @@ Equipment list row:
 Repair list row:
 
 ```text
-🧰 Охотничий тесак · 11/14 -> 14/14 · нужна Сердцевина ремонта x1
+🧰 Резонансный клинок · UL · 11/20 -> 20/20
+   Нужно: 💎 Резонансный инструмент x1
 ```
 
 Main menu, battle result, runes, bestiary, and mastery should not show full workshop details. They may show one short next-step line when the player has a ready blueprint.
@@ -285,7 +297,7 @@ The workshop must handle:
 - missing blueprint;
 - missing materials;
 - stale repair target;
-- destroyed item selected for repair;
+- non-UL or destroyed item selected for repair;
 - duplicate command retry;
 - item already equipped or no longer owned.
 
@@ -306,7 +318,8 @@ Add tests before implementation for:
 - equipment list shows durability and equipped state;
 - battle or trophy use reduces relevant item durability;
 - item at zero durability is no longer usable;
-- repair consumes one rare component and restores durability;
+- `L` item cannot be repaired;
+- `UL` item can be repaired with a matching repair tool blueprint;
 - repair cannot restore destroyed items in the first slice;
 - quest and bestiary rewards can grant blueprints exactly once;
 - repeatable battle/trophy drops can grant blueprints without exact-once quest semantics.
@@ -315,14 +328,14 @@ Add tests before implementation for:
 
 1. Add content definitions for blueprint and crafted item definitions.
 2. Add persistence for owned blueprints and crafted items.
-3. Extend reward payloads for blueprint and repair component grants.
+3. Extend reward payloads for blueprint grants, including repair tool blueprints.
 4. Add workshop read models and use cases.
 5. Add VK commands, keyboards, and presenters for the workshop hub.
 6. Remove pill actions from the altar and replace the first visible non-rune crafts with equipment blueprints.
 7. Implement blueprint crafting with command intent replay.
 8. Add equipment viewing and equip or unequip flow.
 9. Add durability loss for one narrow trigger, then expand only with tests.
-10. Add repair flow.
+10. Add `UL`-only repair flow through repair tool blueprints.
 11. Wire blueprint rewards into quests, bestiary milestones, and selected trophy rewards.
 
 ## First Slice Acceptance
@@ -335,6 +348,7 @@ The first slice is complete when:
 - players can craft at least one equipment item from a consumable blueprint;
 - crafted equipment has durability;
 - at least one gameplay action reduces durability;
-- repair exists for damaged but not destroyed items;
+- `L` items do not accept repair;
+- `UL` repair exists for damaged but not destroyed items;
 - at least one exact-once reward source grants a blueprint;
 - tests cover idempotency and stale commands.
