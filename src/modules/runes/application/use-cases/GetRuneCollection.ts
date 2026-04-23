@@ -1,4 +1,5 @@
 import type { PlayerState } from '../../../../shared/types/game';
+import { resolveNextGoalRuneFocusIndex } from '../../../player/application/read-models/next-goal';
 import { normalizeRuneIndex } from '../../../player/domain/player-stats';
 
 import { requirePlayerByVkId } from '../../../shared/application/require-player';
@@ -15,8 +16,11 @@ export class GetRuneCollection {
     }
 
     const normalizedIndex = normalizeRuneIndex(player.currentRuneIndex, player.runes.length);
-    return normalizedIndex === player.currentRuneIndex
+    const nextGoalRuneFocusIndex = resolveNextGoalRuneFocusIndex(player);
+    const targetIndex = nextGoalRuneFocusIndex ?? normalizedIndex;
+
+    return targetIndex === player.currentRuneIndex
       ? player
-      : this.repository.saveRuneCursor(player.playerId, normalizedIndex);
+      : this.repository.saveRuneCursor(player.playerId, targetIndex);
   }
 }

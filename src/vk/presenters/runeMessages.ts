@@ -1,6 +1,10 @@
 import { gameBalance } from '../../config/game-balance';
 import type { AcquisitionSummaryView } from '../../modules/player/application/read-models/acquisition-summary';
 import {
+  buildPlayerNextGoalView,
+  resolveNextGoalRuneFocusIndex,
+} from '../../modules/player/application/read-models/next-goal';
+import {
   getEquippedRune,
   getRuneEquippedSlot,
   getSelectedRune,
@@ -194,6 +198,22 @@ const renderEquippedRuneCounter = (player: PlayerState): string => {
   return `🧩 Рун надето ✅${countEquippedRunes(player)}/${unlockedSlotCount}`;
 };
 
+const renderRuneHandoff = (player: PlayerState): readonly string[] => {
+  const nextGoal = buildPlayerNextGoalView(player);
+  if (nextGoal.goalType !== 'equip_school_sign') {
+    return [];
+  }
+
+  const focusIndex = resolveNextGoalRuneFocusIndex(player);
+  const focusedRune = focusIndex === null ? getSelectedRune(player) : player.runes[focusIndex] ?? null;
+
+  return [
+    '',
+    `🎯 След: ${withSentencePeriod(nextGoal.objectiveText)}`,
+    ...(focusedRune ? [`В фокусе: «${formatRuneDisplayName(focusedRune)}».`] : []),
+  ];
+};
+
 export const renderRuneScreen = (
   player: PlayerState,
   acquisitionSummary?: AcquisitionSummaryView | null,
@@ -217,6 +237,7 @@ export const renderRuneScreen = (
     '🔮 Руны:',
     renderEquippedRuneCounter(player),
     ...renderAcquisitionSummary(acquisitionSummary),
+    ...renderRuneHandoff(player),
     '',
     ...page.entries.map((entry) => formatRunePageEntry(entry.slot, entry.rune)),
     '',
@@ -241,6 +262,7 @@ export const renderRuneDetailScreen = (
     `Руна ${selectedRuneNumber} из ${player.runes.length}`,
     renderEquippedRuneSlots(player),
     ...renderAcquisitionSummary(acquisitionSummary),
+    ...renderRuneHandoff(player),
     '',
     formatRune(selectedRune),
   ].join('\n');

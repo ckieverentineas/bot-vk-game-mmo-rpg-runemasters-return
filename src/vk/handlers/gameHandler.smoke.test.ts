@@ -613,6 +613,135 @@ describe('GameHandler smoke', () => {
     }));
   });
 
+  it('логирует post-session goal и при переходе победы в pending trophy card', async () => {
+    const services = createServices();
+    const player = createPlayer({
+      tutorialState: 'SKIPPED',
+      victories: 3,
+      schoolMasteries: [{ schoolCode: 'ember', experience: 1, rank: 0 }],
+      runes: [
+        {
+          id: 'rune-ember-usual',
+          runeCode: 'rune-ember-usual',
+          archetypeCode: 'ember',
+          passiveAbilityCodes: ['ember_heart'],
+          activeAbilityCodes: ['ember_pulse'],
+          name: 'Обычная руна Пламени',
+          rarity: 'USUAL',
+          isEquipped: true,
+          equippedSlot: 0,
+          health: 1,
+          attack: 2,
+          defence: 0,
+          magicDefence: 0,
+          dexterity: 0,
+          intelligence: 0,
+          createdAt: '2026-04-12T00:00:00.000Z',
+        },
+        {
+          id: 'rune-ember-unusual',
+          runeCode: 'rune-ember-unusual',
+          archetypeCode: 'ember',
+          passiveAbilityCodes: ['ember_heart'],
+          activeAbilityCodes: ['ember_pulse'],
+          name: 'Первый знак Пламени',
+          rarity: 'UNUSUAL',
+          isEquipped: false,
+          equippedSlot: null,
+          health: 2,
+          attack: 3,
+          defence: 0,
+          magicDefence: 0,
+          dexterity: 0,
+          intelligence: 0,
+          createdAt: '2026-04-13T00:00:00.000Z',
+        },
+      ],
+    });
+    vi.mocked(services.performBattleAction.execute).mockResolvedValueOnce({
+      battle: createBattle({
+        id: 'battle-school-pending-1',
+        status: 'COMPLETED',
+        result: 'VICTORY',
+        locationLevel: 3,
+        player: {
+          ...createBattle().player,
+          runeLoadout: {
+            runeId: 'rune-ember-usual',
+            runeName: 'Обычная руна Пламени',
+            runeRarity: 'USUAL',
+            schoolProgressStage: null,
+            archetypeCode: 'ember',
+            archetypeName: 'Штурм',
+            schoolCode: 'ember',
+            passiveAbilityCodes: ['ember_heart'],
+            activeAbility: null,
+          },
+        },
+        enemy: {
+          ...createBattle().enemy,
+          code: 'ash-seer',
+          name: 'Пепельная ведунья',
+          kind: 'mage',
+          isElite: true,
+          currentHealth: 0,
+        },
+        rewards: {
+          experience: 14,
+          gold: 5,
+          shards: { UNUSUAL: 1 },
+          droppedRune: {
+            runeCode: 'drop-school-sign-1',
+            archetypeCode: 'ember',
+            passiveAbilityCodes: ['ember_heart'],
+            activeAbilityCodes: ['ember_pulse'],
+            name: 'Первый знак Пламени',
+            rarity: 'UNUSUAL',
+            isEquipped: false,
+            health: 2,
+            attack: 3,
+            defence: 0,
+            magicDefence: 0,
+            dexterity: 0,
+            intelligence: 0,
+          },
+        },
+      }),
+      player,
+      acquisitionSummary: {
+        kind: 'school_trial_completed',
+        title: 'Испытание школы пройдено',
+        changeLine: 'Пламя признало вашу решимость.',
+        nextStepLine: 'Откройте «🔮 Руны», наденьте первый знак школы и закрепите стиль в следующем бою.',
+      },
+    });
+    vi.mocked(services.getPendingReward.execute).mockResolvedValueOnce({
+      player,
+      pendingReward: createPendingReward({
+        source: {
+          battleId: 'battle-school-pending-1',
+          enemyCode: 'ash-seer',
+          enemyName: 'Пепельная ведунья',
+          enemyKind: 'mage',
+        },
+      }),
+    });
+    const handler = new GameHandler(services);
+    const ctx = createFakeContext({ command: 'атака' });
+
+    await handler.handle(ctx as never);
+
+    expect(getReplyCalls(ctx)[0]?.message).toContain('🏁 Трофеи победы');
+    expect(getReplyCalls(ctx)[0]?.message).toContain('👉 Следом: Откройте «🔮 Руны», наденьте первый знак школы');
+    expect(services.telemetry.postSessionNextGoalShown).toHaveBeenCalledWith(1, expect.objectContaining({
+      battleOutcome: 'VICTORY',
+      suggestedGoalType: 'equip_school_sign',
+      enemyCode: 'ash-seer',
+      battleSchoolCode: 'ember',
+      isSchoolNoviceElite: true,
+    }));
+  });
+
   it('проходит сценарий обучения и входа в бой', async () => {
     const services = createServices();
     const handler = new GameHandler(services);

@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
 import type { BattleView, PlayerState } from '../../../../shared/types/game';
-import { buildBattleResultNextGoalView, buildPlayerNextGoalView } from './next-goal';
+import {
+  buildBattleResultNextGoalView,
+  buildPlayerNextGoalView,
+  resolveNextGoalRuneFocusIndex,
+} from './next-goal';
 
 const createPlayer = (overrides: Partial<PlayerState> = {}): PlayerState => ({
   userId: 1,
@@ -219,7 +223,7 @@ describe('next goal read-model', () => {
   });
 
   it('guides the player to equip the first school sign after novice completion if it is still in reserve', () => {
-    const goal = buildPlayerNextGoalView(createPlayer({
+    const player = createPlayer({
       victories: 3,
       runes: [
         createPlayer().runes[0]!,
@@ -234,12 +238,14 @@ describe('next goal read-model', () => {
           createdAt: '2026-04-13T00:00:00.000Z',
         },
       ],
-    }));
+    });
+    const goal = buildPlayerNextGoalView(player);
 
     expect(goal.goalType).toBe('equip_school_sign');
     expect(goal.primaryActionLabel).toBe('🔮 Руны');
     expect(goal.objectiveText).toContain('наденьте первый знак школы Пламени');
     expect(goal.milestoneProgressText).toContain('«Необычная руна Пламени»');
+    expect(resolveNextGoalRuneFocusIndex(player)).toBe(1);
   });
 
   it('guides the player to equip the school seal after the miniboss reward if the rare rune is still in reserve', () => {
@@ -446,5 +452,54 @@ describe('next goal read-model', () => {
 
     expect(goal?.goalType).toBe('equip_dropped_rune');
     expect(goal?.primaryActionLabel).toBe('🔮 Руны');
+  });
+
+  it('turns an aligned novice reward drop into the school-sign equip goal', () => {
+    const player = createPlayer({
+      victories: 3,
+      runes: [
+        createPlayer().runes[0]!,
+        {
+          ...createPlayer().runes[0]!,
+          id: 'rune-2',
+          runeCode: 'rune-2',
+          name: 'Первый знак Пламени',
+          rarity: 'UNUSUAL',
+          isEquipped: false,
+          equippedSlot: null,
+          createdAt: '2026-04-13T00:00:00.000Z',
+        },
+      ],
+    });
+    const goal = buildBattleResultNextGoalView(createBattle({
+      enemy: {
+        ...createBattle().enemy,
+        code: 'ash-seer',
+        name: 'Пепельная ведунья',
+        kind: 'mage',
+        isElite: true,
+      },
+      rewards: {
+        ...createBattle().rewards!,
+        droppedRune: {
+          runeCode: 'drop-school-sign-1',
+          archetypeCode: 'ember',
+          passiveAbilityCodes: ['ember_heart'],
+          activeAbilityCodes: ['ember_pulse'],
+          name: 'Первый знак Пламени',
+          rarity: 'UNUSUAL',
+          isEquipped: false,
+          health: 2,
+          attack: 3,
+          defence: 0,
+          magicDefence: 0,
+          dexterity: 0,
+          intelligence: 0,
+        },
+      },
+    }), player);
+
+    expect(goal?.goalType).toBe('equip_school_sign');
+    expect(goal?.objectiveText).toContain('наденьте первый знак школы Пламени');
   });
 });

@@ -94,6 +94,7 @@ export const renderAcquisitionSummary = (
   return [
     '',
     `✨ Перемена: ${withSentencePeriod(summary.title)}`,
+    `🜂 ${withSentencePeriod(summary.changeLine)}`,
     ...(summary.nextStepLine ? [`👉 Следом: ${withSentencePeriod(summary.nextStepLine)}`] : []),
   ];
 };

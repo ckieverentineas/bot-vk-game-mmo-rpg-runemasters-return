@@ -219,7 +219,7 @@ npm run release:preflight
 
 ### Q-012. Quest book copy density pass
 
-- Status: `next`
+- Status: `done`
 - Source: `src/vk/presenters/questMessages.ts`
 - Goal: проверить, что после добавления новых глав экран не выглядит как административный список.
 - Scope:

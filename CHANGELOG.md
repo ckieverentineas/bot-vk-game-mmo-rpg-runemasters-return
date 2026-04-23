@@ -30,6 +30,7 @@
 - минимальный telemetry/evidence слой для early school loop: `school_novice_elite_encounter_started` и enriched `reward_claim_applied` payload теперь позволяют измерять старт и aligned payoff этого novice path;
 - первая aligned unusual rune для `Пламени` и `Тверди` теперь закрепляется как `испытание школы пройдено`, а main menu / return recap / rune hub перестают вести себя так, будто игрок всё ещё просто ищет первую meaningful school-веху;
 - после school trial recognition игра теперь умеет вести игрока к установке первого знака школы, если unusual руна уже получена, но ещё не надета;
+- после aligned novice reward путь `UNUSUAL знак -> 🔮 Руны -> надеть знак` доведён до короткого handoff: battle/pending reward copy ведёт к rune hub, rune hub фокусирует новый школьный знак, а следующий goal после экипировки уводит к school miniboss;
 - early school evidence теперь ловит и follow-up шаги после novice payoff: открыл ли игрок руны, надел ли знак школы и начал ли следующий бой после признания школы;
 - после установки первого знака школы `Пламя` и `Твердь` теперь получают первый school-aligned miniboss continuation с targeted `RARE` reward hook и school-specific battle framing;
 - первая targeted `RARE` руна после school miniboss теперь подаётся как `печать школы`, а recognition/next-goal слой ведёт игрока к её установке вместо немого возврата в общий гринд;
@@ -71,6 +72,7 @@
 ### Changed
 
 - player-facing copy в бою, трофеях, return recap, main menu, exploration-сценах и stale/retry ответах переписан ближе к языку мира: меньше “нажмите”, “режим”, “статы”, “тип” и служебных UI-ярлыков, больше следа, трофеев, развилки и летописи схватки;
+- `Книга путей` теперь рендерится по плотным приоритетным секциям: готовые награды компактно сгруппированы по главам, раскрывается только один ближайший незавершённый след, а закрытые записи уходят в компактный архив по главам;
 - documentation reset: `PLAN.md`, `QUICKSTART.md` и `RELEASE_CHECKLIST.md` теперь описывают фактический runtime, текущие release blockers и недоказанные evidence-gate пункты вместо устаревших stat allocation / DB seed сценариев;
 - `release:status`, `release:summary` и `release:preflight` больше не превращают ошибку чтения Git-истории в ложную версию `0.00`; commit count читается от корня проекта с одноразовым `safe.directory`, а некорректный вывод Git теперь падает явно;
 - player-facing версия игры закреплена за commit-based политикой `release:status`, а `package.json` остаётся технической npm-метаинформацией;

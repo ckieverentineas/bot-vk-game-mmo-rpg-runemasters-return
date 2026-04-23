@@ -112,7 +112,7 @@ const createBook = (): QuestBookView => ({
 });
 
 describe('renderQuestBook', () => {
-  it('renders path records without administrative list tone', () => {
+  it('renders the quest book by priority without full text for every record', () => {
     const message = renderQuestBook(createBook());
 
     expect(message).toMatchInlineSnapshot(`
@@ -122,27 +122,29 @@ describe('renderQuestBook', () => {
 
 В книге: 1 запись ждёт награду · 1 след ещё тянется · 1 запись уже закрыта.
 
-🌑 Пробуждение Пустого мастера · 🎁 Награда ждёт
-Первые руны услышали зов.
-След: Принять первое испытание круга.
-Шаг завершён. Награда ждёт в книге.
-Награда: +5 пыли · +1 обычный осколок.
+🎁 Готово
 
+Глава: Первый круг
+• 🌑 Пробуждение Пустого мастера · 🎁 Награда ждёт · +5 пыли · +1 обычный осколок
+
+🌒 Ближайший след
+
+Глава: Первое имя
 🚪 Имя на границе · 🌒 В пути
-Учебный круг остаётся позади.
 След: Выйти из Учебного круга на первую дорогу.
 Отметка пути: 0/1.
 Награда: +7 пыли.
 
-🔮 Первый знак · ✅ Закрыто
-Школа оставила ответ в рунах.
-След: Пройти первый школьный след.
-Запись закрыта.
-Награда: +8 пыли · +1 трава."
+✅ Закрыто
+
+Первый круг: 🔮 Первый знак."
 `);
 
     expect(message).toContain('След: Выйти из Учебного круга на первую дорогу.');
     expect(message).toContain('Отметка пути: 0/1.');
+    expect(message).not.toContain('Первые руны услышали зов.');
+    expect(message).not.toContain('Школа оставила ответ в рунах.');
+    expect(message).not.toContain('След: Пройти первый школьный след.');
     expect(message).not.toMatch(/\n\d+\./);
     expect(message).not.toContain('Цель:');
     expect(message).not.toContain('Прогресс:');
@@ -150,7 +152,7 @@ describe('renderQuestBook', () => {
     expect(message).not.toContain('система выдала');
   });
 
-  it('renders world trail entries as path records', () => {
+  it('renders ready world trail entries compactly and keeps only the nearest unfinished trail expanded', () => {
     const book = buildQuestBookView(createPlayer({
       highestLocationLevel: 3,
       mobsKilled: 2,
@@ -158,13 +160,69 @@ describe('renderQuestBook', () => {
 
     const message = renderQuestBook(book);
 
+    expect(message).toContain('Глава: Тёмный лес');
     expect(message).toContain('Вторая тень леса');
-    expect(message).toContain('След: Дойти до 3-го следа Тёмного леса.');
+    expect(message).toContain('• 🌲 Вторая тень леса · 🎁 Награда ждёт');
     expect(message).toContain('Пять отметин дороги');
+    expect(message).toContain('🌒 Ближайший след');
     expect(message).toContain('Отметка пути: 2/5.');
-    expect(message).toContain('Костёр среди чащи');
-    expect(message).toContain('Отметка пути: 3/10.');
+    expect(message).not.toContain('След: Дойти до 3-го следа Тёмного леса.');
+    expect(message).not.toContain('След: Дойти до 10-го следа Тёмного леса.');
     expect(message).not.toContain('locationLevel');
     expect(message).not.toContain('mobsKilled');
+  });
+
+  it('collapses closed records per chapter when the archive grows', () => {
+    const book: QuestBookView = {
+      player: {} as PlayerState,
+      readyToClaimCount: 0,
+      inProgressCount: 0,
+      claimedCount: 4,
+      quests: [
+        createQuest({
+          code: 'awakening_empty_master',
+          icon: '🌑',
+          title: 'Пробуждение Пустого мастера',
+          story: 'Первые руны услышали зов.',
+          objective: 'Принять первое испытание круга.',
+          status: 'CLAIMED',
+          progress: { current: 1, required: 1, completed: true },
+        }),
+        createQuest({
+          code: 'first_sign',
+          icon: '🔮',
+          title: 'Первый знак',
+          story: 'Школа оставила ответ в рунах.',
+          objective: 'Надеть любую руну.',
+          status: 'CLAIMED',
+          progress: { current: 1, required: 1, completed: true },
+        }),
+        createQuest({
+          code: 'voice_of_school',
+          icon: '🜁',
+          title: 'Голос школы',
+          story: 'Школа стала стилем боя.',
+          objective: 'Победить с боевой руной.',
+          status: 'CLAIMED',
+          progress: { current: 1, required: 1, completed: true },
+        }),
+        createQuest({
+          code: 'two_sockets',
+          icon: '🧩',
+          title: 'Два гнезда',
+          story: 'Два знака спорят в сборке.',
+          objective: 'Надеть две руны.',
+          status: 'CLAIMED',
+          progress: { current: 2, required: 2, completed: true },
+        }),
+      ],
+    };
+
+    const message = renderQuestBook(book);
+
+    expect(message).toContain('✅ Закрыто');
+    expect(message).toContain('Первый круг: 🌑 Пробуждение Пустого мастера, 🔮 Первый знак, 🜁 Голос школы, ещё 1 запись.');
+    expect(message).not.toContain('Два знака спорят в сборке.');
+    expect(message).not.toContain('Награда:');
   });
 });

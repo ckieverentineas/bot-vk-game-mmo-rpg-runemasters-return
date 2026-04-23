@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import type { PlayerState } from '../../../../../shared/types/game';
+import { buildPlayerNextGoalView } from '../../../player/application/read-models/next-goal';
 import type { GameTelemetry } from '../../../../shared/application/ports/GameTelemetry';
 import type { GameRepository } from '../../../../shared/application/ports/GameRepository';
 import { buildEquipIntentStateKey } from '../command-intent-state';
@@ -391,7 +392,8 @@ describe('EquipCurrentRune', () => {
     } as unknown as GameRepository;
     const useCase = new EquipCurrentRune(repository, telemetry);
 
-    await useCase.execute(player.vkId, 0, 'intent-equip-sign-1', buildEquipIntentStateKey(player, 0));
+    const result = await useCase.execute(player.vkId, 0, 'intent-equip-sign-1', buildEquipIntentStateKey(player, 0));
+    const resultPlayer = 'player' in result ? result.player : result;
 
     expect(telemetry.firstSchoolCommitted).toHaveBeenCalledWith(updatedPlayer.userId, {
       schoolCode: 'ember',
@@ -408,6 +410,8 @@ describe('EquipCurrentRune', () => {
       battleId: null,
       enemyCode: null,
     });
+    expect('acquisitionSummary' in result ? result.acquisitionSummary?.kind : null).toBe('school_style_committed');
+    expect(buildPlayerNextGoalView(resultPlayer).goalType).toBe('challenge_school_miniboss');
   });
 
   it('logs first school commit even when the sign is equipped from an empty primary slot', async () => {

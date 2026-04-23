@@ -98,6 +98,7 @@ export const replyWithBattle = async (
         { keyboard: createPendingRewardKeyboard(pendingReward.pendingReward) },
       );
       await telemetry.trackFirstSchoolPresented(player, result.acquisitionSummary);
+      await telemetry.trackPostSessionNextGoalShown(player, battle);
       return;
     }
   }

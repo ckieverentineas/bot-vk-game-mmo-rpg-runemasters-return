@@ -2,6 +2,7 @@ import type { BattleView, PlayerState } from '../../../../shared/types/game';
 import {
   findBestRuneOfSchoolAtLeastRarity,
   getSchoolNovicePathDefinition,
+  getSchoolNovicePathDefinitionForEnemy,
   hasRuneOfSchoolAtLeastRarity,
 } from '../../domain/school-novice-path';
 import { describeRuneContent } from '../../../runes/domain/rune-abilities';
@@ -267,6 +268,30 @@ export const buildPlayerNextGoalView = (player: PlayerState): NextGoalView => {
   );
 };
 
+export const resolveNextGoalRuneFocusIndex = (player: PlayerState): number | null => {
+  const nextGoal = buildPlayerNextGoalView(player);
+  if (nextGoal.goalType !== 'equip_school_sign' || !nextGoal.schoolCode) {
+    return null;
+  }
+
+  const novicePath = getSchoolNovicePathDefinition(nextGoal.schoolCode);
+  if (!novicePath) {
+    return null;
+  }
+
+  const rune = findBestRuneOfSchoolAtLeastRarity(
+    player,
+    novicePath.schoolCode,
+    novicePath.rewardRarity,
+  );
+  if (!rune) {
+    return null;
+  }
+
+  const runeIndex = player.runes.findIndex((entry) => entry.id === rune.id);
+  return runeIndex >= 0 ? runeIndex : null;
+};
+
 export const buildBattleResultNextGoalView = (
   battle: BattleView,
   player?: PlayerState,
@@ -276,6 +301,22 @@ export const buildBattleResultNextGoalView = (
   }
 
   if (battle.result === 'VICTORY' && battle.rewards?.droppedRune) {
+    const novicePath = getSchoolNovicePathDefinitionForEnemy(battle.enemy.code);
+    const droppedRuneSchoolCode = getSchoolDefinitionForArchetype(battle.rewards.droppedRune.archetypeCode)?.code ?? null;
+    const droppedRuneRarity = battle.rewards.droppedRune.rarity;
+    const requiredRarity = novicePath?.minibossEnemyCode === battle.enemy.code
+      ? novicePath.minibossRewardRarity
+      : novicePath?.rewardRarity;
+    const isSchoolPathReward = player
+      && novicePath
+      && requiredRarity
+      && droppedRuneSchoolCode === novicePath.schoolCode
+      && droppedRuneRarity === requiredRarity;
+
+    if (isSchoolPathReward) {
+      return buildPlayerNextGoalView(player);
+    }
+
     return createGoalView(
       'equip_dropped_rune',
       'open_runes',

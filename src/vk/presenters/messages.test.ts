@@ -545,6 +545,19 @@ describe('messages school-first onboarding framing', () => {
     expect(message).toContain('👉 Сделать шаг: «🔮 Руны».');
   });
 
+  it('keeps the school sign visible when the rune hub is opened from the payoff handoff', () => {
+    const message = renderRuneScreen(createPlayer({
+      tutorialState: 'SKIPPED',
+      victories: 3,
+      currentRuneIndex: 0,
+      schoolMasteries: [{ schoolCode: 'ember', experience: 1, rank: 0 }],
+      runes: [createEquippedRune(), createUnusualReserveRune()],
+    }));
+
+    expect(message).toContain('🎯 След: откройте «🔮 Руны» и наденьте первый знак школы Пламени.');
+    expect(message).toContain('В фокусе: «Необычная руна Пламени».');
+  });
+
   it('keeps the first-sign follow-up under the normal explore CTA', () => {
     const player = createPlayer({
       tutorialState: 'SKIPPED',
@@ -965,5 +978,40 @@ describe('messages school-first onboarding framing', () => {
     expect(message).toContain('В сумке: +2 кожи · +1 кость.');
     expect(message).toContain('Свежевание: 3 → 4');
     expect(message).toContain('👉 Дальше: «⚔️ Исследовать».');
+  });
+
+  it('renders the collected trophy result as a handoff to equipping the school sign', () => {
+    const player = createPlayer({
+      tutorialState: 'SKIPPED',
+      locationLevel: 3,
+      victories: 3,
+      schoolMasteries: [{ schoolCode: 'ember', experience: 1, rank: 0 }],
+      runes: [createEquippedRune(), createUnusualReserveRune()],
+    });
+    const result: CollectPendingRewardView = {
+      player,
+      playerBeforeCollect: createPlayer({
+        tutorialState: 'SKIPPED',
+        locationLevel: 3,
+        victories: 3,
+        schoolMasteries: [{ schoolCode: 'ember', experience: 1, rank: 0 }],
+        runes: [createEquippedRune()],
+      }),
+      pendingReward: createPendingReward(),
+      ledgerKey: 'battle-victory:battle-school-1',
+      selectedActionCode: 'extract_essence',
+      appliedResult: {
+        baseRewardApplied: true,
+        inventoryDelta: { essence: 1 },
+        skillUps: [],
+        statUps: [],
+        schoolUps: [],
+      },
+    };
+
+    const message = renderCollectedPendingReward(result);
+
+    expect(message).toContain('🎯 След: откройте «🔮 Руны» и наденьте первый знак школы Пламени.');
+    expect(message).toContain('👉 Дальше: «🔮 Руны».');
   });
 });

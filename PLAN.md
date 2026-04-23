@@ -24,7 +24,7 @@
 - Боевой экран показывает состояние, тактические подсказки и инвертированный журнал: свежие события сверху, начало боя снизу как контекст.
 - Player-facing тексты держатся в языке мира: без “нажмите”, “режим”, “статы”, “тип” и другой служебной воды там, где игрок должен читать след, бой, трофеи и путь мастера.
 - Onboarding получил лорную завязку Пустого мастера: игрок просыпается в Рунном Пределе, слышит первый осколок и выходит в учебный бой за первую руну.
-- `📜 Книга путей` имеет первый vertical slice постоянных квестов: игрок читает записи пути, видит готовые награды и забирает их через inline-кнопки exact-once поверх reward ledger.
+- `📜 Книга путей` имеет первый vertical slice постоянных квестов: игрок видит готовые награды по главам, один ближайший незавершённый след и компактный архив закрытых записей, а награды забирает через inline-кнопки exact-once поверх reward ledger.
 - Рунная сборка стартует с двух равноправных слотов. Обе надетые руны дают боевые черты, пассивы и активное действие, если оно есть.
 - Экран рун показывает компактный список со счётчиком надетых рун, иконками школ, ролью архетипа и отдельной карточкой выбранной руны.
 - VK-клавиатуры разнесены по сценариям (`main`, `battle`, `runes`, `rewards`, `quests`, `tutorial`) с общим builder'ом и совместимым public barrel `src/vk/keyboards/index.ts`.
@@ -34,11 +34,12 @@
 - Есть защита от повторных наград, отрицательных остатков инвентаря, stale battle overwrite и повторного применения command intent.
 - Есть smoke/regression/concurrency tests и release tooling для content validation, локального first-session playtest, summary, evidence и preflight.
 - School novice trial evidence закрыт для четырёх школ: `release:school-evidence` показывает `Novice elite` и `UNUSUAL reward` по Пламени, Тверди, Бури и Прорицанию.
+- Post-payoff school loop получил кодовый vertical slice: aligned `UNUSUAL` novice reward ведёт игрока в `🔮 Руны`, фокусирует новый школьный знак, экипировка знака переключает next-goal на school miniboss, а pending trophy card не теряет `post_session_next_goal_shown`.
 - `Книга путей` имеет local handler manual evidence и release-evidence funnel по open/claim/replay: `quest_book_opened`, `quest_reward_claimed` и `quest_reward_replayed` уже видны в `docs/testing/release-evidence-report.md`.
 
 ## Что не считаем доказанным
 
-- School novice trial/payoff по четырём школам уже подтверждён автоматическим runtime evidence, но весь school-first path ещё не считается release-green: `release:evidence` сейчас возвращает `warn`, потому что `first_school_committed` покрывает не все first-school reveal случаи, после novice payoff не подтверждены equip sign/loadout engagement по школам и `return_recap_shown` не показывает follow-up proxy.
+- School novice trial/payoff по четырём школам уже подтверждён автоматическим runtime evidence, а post-payoff `UNUSUAL знак -> экипировка -> school miniboss goal` закрыт тестами. Весь school-first path всё ещё не считается release-green до свежего `release:evidence`: нужно подтвердить реальные follow-up события equip sign/loadout engagement по школам и `return_recap_shown` в актуальном окне.
 - Игровая версия считается только по commit-based правилу из `release:status`; `package.json` остаётся технической npm-метаинформацией и не является player-facing версией игры.
 - Production database rollout не считается оформленным, пока нет явной процедуры backup + migration/deploy для SQLite.
 - Action-based trophy rewards имеют local handler manual evidence для pending trophy collect/replay в `docs/testing/pending-trophy-manual-playtest-q022.md`, но ещё не считаются полностью release-proven без release evidence или release-owner решения. Hidden drop pools и skill-threshold unlocks за пределами первых узких срезов, а также stat growth остаются будущими работами.
