@@ -49,6 +49,7 @@ import {
   replyWithMainMenu as sendMainMenu,
   replyWithProfile as sendProfile,
   replyWithReturnRecap as sendReturnRecap,
+  replyWithSchoolMastery as sendSchoolMastery,
   replyWithWelcome as sendWelcome,
 } from './responders/homeReplyFlow';
 import {
@@ -167,6 +168,11 @@ export class GameHandler {
   public async showProfile(ctx: Context, vkId: number): Promise<void> {
     const player = await this.services.getPlayerProfile.execute(vkId);
     await sendProfile(ctx, player);
+  }
+
+  public async showSchoolMastery(ctx: Context, vkId: number): Promise<void> {
+    const player = await this.services.getPlayerProfile.execute(vkId);
+    await sendSchoolMastery(ctx, player);
   }
 
   private async tryRecoverCommandContext(ctx: Context, vkId: number, command: string, error: AppError): Promise<boolean> {

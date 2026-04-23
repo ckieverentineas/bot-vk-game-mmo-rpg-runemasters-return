@@ -6,10 +6,6 @@ import {
 } from '../../modules/player/domain/player-stats';
 import type { PlayerState, StatBlock } from '../../shared/types/game';
 import { formatPlayerSkillProgressLine } from './player-skill-formatting';
-import {
-  renderSchoolMasteryLine,
-  renderSchoolMasteryMilestonesBlock,
-} from './player-progress-formatting';
 
 const formatStatBlock = (stats: StatBlock): string => [
   `❤️ Здоровье: ${stats.health}`,
@@ -50,9 +46,7 @@ export const renderProfile = (player: PlayerState): string => {
     `💓 Состояние: ${vitals.currentHealth}/${vitals.maxHealth} HP · ${vitals.currentMana}/${vitals.maxMana} маны`,
     `🏆 Победы / Поражения: ${player.victories}/${player.defeats}`,
     `🧩 Слоты рун: ${getUnlockedRuneSlotCount(player)} открыто`,
-    renderSchoolMasteryLine(player),
-    ...renderSchoolMasteryMilestonesBlock(player),
-    'Сила растёт через руны, школу и мастерство, а не через сухую раздачу чисел.',
+    'Путь школы: подробности в «📜 Мастерство».',
     '',
     ...renderPlayerSkillsBlock(player),
     '',

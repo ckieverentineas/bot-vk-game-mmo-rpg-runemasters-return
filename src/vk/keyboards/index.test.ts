@@ -11,6 +11,7 @@ import {
   createProfileKeyboard,
   createRuneDetailKeyboard,
   createRuneKeyboard,
+  createSchoolMasteryKeyboard,
   createTutorialKeyboard,
 } from './index';
 import { gameCommands } from '../commands/catalog';
@@ -217,6 +218,7 @@ const serializeKeyboard = (
     | ReturnType<typeof createProfileKeyboard>
     | ReturnType<typeof createRuneDetailKeyboard>
     | ReturnType<typeof createRuneKeyboard>
+    | ReturnType<typeof createSchoolMasteryKeyboard>
     | ReturnType<typeof createTutorialKeyboard>,
 ): SerializedKeyboard => JSON.parse(JSON.stringify(keyboard)) as SerializedKeyboard;
 
@@ -231,6 +233,7 @@ const collectPayloads = (
     | ReturnType<typeof createProfileKeyboard>
     | ReturnType<typeof createRuneDetailKeyboard>
     | ReturnType<typeof createRuneKeyboard>
+    | ReturnType<typeof createSchoolMasteryKeyboard>
     | ReturnType<typeof createTutorialKeyboard>,
 ): SerializedButtonPayload[] => {
   const serialized = serializeKeyboard(keyboard);
@@ -247,7 +250,8 @@ const collectLabels = (
     | ReturnType<typeof createMainMenuKeyboard>
     | ReturnType<typeof createPendingRewardKeyboard>
     | ReturnType<typeof createRuneDetailKeyboard>
-    | ReturnType<typeof createRuneKeyboard>,
+    | ReturnType<typeof createRuneKeyboard>
+    | ReturnType<typeof createSchoolMasteryKeyboard>,
 ): string[] => {
   const serialized = serializeKeyboard(keyboard);
 
@@ -523,6 +527,17 @@ describe('profile keyboard', () => {
 
     expect(labels).toContain('✨ След дня');
     expect(payloads).toContainEqual({ command: gameCommands.dailyTrace });
+  });
+
+  it('opens school mastery from the main navigation', () => {
+    const mainLabels = collectLabels(createMainMenuKeyboard(createPlayer()));
+    const mainPayloads = collectPayloads(createMainMenuKeyboard(createPlayer()));
+    const masteryPayloads = collectPayloads(createSchoolMasteryKeyboard(createPlayer()));
+
+    expect(mainLabels).toContain('📜 Мастерство');
+    expect(mainPayloads).toContainEqual({ command: gameCommands.mastery });
+    expect(masteryPayloads).toContainEqual({ command: gameCommands.backToMenu });
+    expect(masteryPayloads).toContainEqual({ command: gameCommands.profile });
   });
 
   it('names the rune action hub as the altar in the main menu', () => {

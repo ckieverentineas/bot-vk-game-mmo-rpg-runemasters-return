@@ -6,7 +6,7 @@ import type { PendingRewardView } from '../../modules/shared/application/ports/G
 import type { GameTelemetry } from '../../modules/shared/application/ports/GameTelemetry';
 import { AppError } from '../../shared/domain/AppError';
 import type { BattleView, PlayerState } from '../../shared/types/game';
-import { createBestiaryLocationCommand } from '../commands/catalog';
+import { createBestiaryLocationCommand, gameCommands } from '../commands/catalog';
 import { createRuneKeyboard } from '../keyboards';
 import { GameHandler } from './gameHandler';
 
@@ -593,6 +593,42 @@ describe('GameHandler smoke', () => {
     expect(services.getBestiary.executeLocation).toHaveBeenCalledWith(1001, 'initium');
     expect(message).toContain('Учебный огонёк');
     expect(message).toContain('Побед: 1');
+  });
+
+  it('показывает отдельный экран мастерства школы', async () => {
+    const services = createServices();
+    vi.mocked(services.getPlayerProfile.execute).mockResolvedValueOnce(createPlayer({
+      tutorialState: 'SKIPPED',
+      schoolMasteries: [{ schoolCode: 'ember', experience: 3, rank: 1 }],
+      runes: [{
+        id: 'rune-1',
+        runeCode: 'rune-1',
+        archetypeCode: 'ember',
+        passiveAbilityCodes: ['ember_heart'],
+        activeAbilityCodes: ['ember_pulse'],
+        name: 'Руна Пламени',
+        rarity: 'USUAL',
+        isEquipped: true,
+        equippedSlot: 0,
+        health: 1,
+        attack: 2,
+        defence: 0,
+        magicDefence: 0,
+        dexterity: 0,
+        intelligence: 0,
+        createdAt: '2026-04-12T00:00:00.000Z',
+      }],
+    }));
+    const handler = new GameHandler(services);
+    const ctx = createFakeContext({ command: gameCommands.mastery });
+
+    await handler.handle(ctx as never);
+
+    const message = getReplyCalls(ctx)[0]?.message ?? '';
+    expect(services.getPlayerProfile.execute).toHaveBeenCalledWith(1001);
+    expect(message).toContain('📜 Мастерство');
+    expect(message).toContain('Пламя · текущая');
+    expect(message).toContain('Разогрев дожима');
   });
 
   it('забирает награду квеста из inline-кнопки', async () => {

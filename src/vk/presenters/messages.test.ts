@@ -13,6 +13,7 @@ import {
   renderAltar,
   renderRuneDetailScreen,
   renderRuneScreen,
+  renderSchoolMastery,
   renderWelcome,
 } from './messages';
 import type { PendingRewardView } from '../../modules/shared/application/ports/GameRepository';
@@ -436,7 +437,7 @@ describe('messages school-first onboarding framing', () => {
     expect(message).toContain('🧭 Дальше: «⚔️ Цель печати».');
   });
 
-  it('shows school mastery progress in the main menu once a rune is equipped', () => {
+  it('keeps school mastery details out of the main menu once a rune is equipped', () => {
     const message = renderMainMenu(createPlayer({
       tutorialState: 'SKIPPED',
       locationLevel: 1,
@@ -450,7 +451,9 @@ describe('messages school-first onboarding framing', () => {
       }],
     }));
 
-    expect(message).toContain('Мастерство школы: Твердь · ранг 0 · 2/3');
+    expect(message).not.toContain('Мастерство школы:');
+    expect(message).not.toContain('Вехи мастерства:');
+    expect(message).toContain('🎯 След:');
   });
 
   it('shows action-based skills in the profile', () => {
@@ -476,19 +479,35 @@ describe('messages school-first onboarding framing', () => {
     expect(message).not.toContain('ранг 0 · 1/100');
   });
 
-  it('shows early school mastery milestones in the profile', () => {
+  it('keeps detailed school mastery milestones in the mastery screen', () => {
+    const player = createPlayer({
+      tutorialState: 'SKIPPED',
+      schoolMasteries: [{ schoolCode: 'ember', experience: 3, rank: 1 }],
+      runes: [createEquippedRune()],
+    });
+    const profile = renderProfile(player);
+    const mastery = renderSchoolMastery(player);
+
+    expect(profile).not.toContain('Вехи мастерства: Пламя');
+    expect(mastery).toContain('📜 Мастерство');
+    expect(mastery).toContain('🔥 Пламя · текущая · ранг 1 · 3 опыта');
+    expect(mastery).toContain('✓ 1/1 · Первый жар');
+    expect(mastery).toContain('✓ 3/3 · Разогрев дожима');
+    expect(mastery).toContain('→ 3/5 · Связка давления');
+    expect(mastery).toContain('· 3/7 · Печать давления');
+    expect(mastery).toContain('Твердь · закрыта');
+  });
+
+  it('keeps profile focused on the character sheet while mastery has its own screen', () => {
     const message = renderProfile(createPlayer({
       tutorialState: 'SKIPPED',
       schoolMasteries: [{ schoolCode: 'ember', experience: 3, rank: 1 }],
       runes: [createEquippedRune()],
     }));
 
-    expect(message).toContain('Вехи мастерства: Пламя');
-    expect(message).toContain('✓ 1/1 · Первый жар');
-    expect(message).toContain('✓ 3/3 · Разогрев дожима');
-    expect(message).toContain('→ 3/5 · Связка давления');
-    expect(message).toContain('· 3/7 · Печать давления');
-    expect(message).toContain('Следующая веха: Пламя уже держит темп');
+    expect(message).toContain('Путь школы: подробности в «📜 Мастерство».');
+    expect(message).not.toContain('✓ 1/1 · Первый жар');
+    expect(message).not.toContain('Следующая веха:');
   });
 
   it('keeps the profile explicit when action-based skills are still empty', () => {
@@ -605,17 +624,16 @@ describe('messages school-first onboarding framing', () => {
     expect(message).toContain('В фокусе: «Необычная руна Пламени».');
   });
 
-  it('shows the mastery milestone branch in the rune hub', () => {
+  it('keeps the mastery milestone branch out of the rune hub', () => {
     const message = renderRuneScreen(createPlayer({
       tutorialState: 'SKIPPED',
       schoolMasteries: [{ schoolCode: 'ember', experience: 0, rank: 0 }],
       runes: [createEquippedRune()],
     }));
 
-    expect(message).toContain('Вехи мастерства: Пламя');
-    expect(message).toContain('→ 0/1 · Первый жар');
-    expect(message).toContain('· 0/3 · Разогрев дожима');
-    expect(message).toContain('Следующая веха: Первая победа с руной Пламени');
+    expect(message).not.toContain('Вехи мастерства:');
+    expect(message).not.toContain('→ 0/1 · Первый жар');
+    expect(message).not.toContain('Следующая веха:');
   });
 
   it('keeps the first-sign follow-up under the normal explore CTA', () => {

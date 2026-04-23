@@ -26,6 +26,7 @@ const createMainMenuLayout = (player?: PlayerState): KeyboardLayout => {
     ],
     [
       { label: '📖 Бестиарий', command: gameCommands.bestiary, color: Keyboard.SECONDARY_COLOR },
+      { label: '📜 Мастерство', command: gameCommands.mastery, color: Keyboard.PRIMARY_COLOR },
     ],
     [
       {
@@ -56,8 +57,14 @@ const entryLayout: KeyboardLayout = [
 
 const createProfileLayout = (_player?: PlayerState): KeyboardLayout => [[
   { label: '◀ Меню', command: gameCommands.backToMenu, color: Keyboard.SECONDARY_COLOR },
+  { label: '📜 Мастерство', command: gameCommands.mastery, color: Keyboard.PRIMARY_COLOR },
 ], [
   { label: '🗑️ Удалить персонажа', command: gameCommands.deletePlayer, color: Keyboard.NEGATIVE_COLOR },
+]];
+
+const createSchoolMasteryLayout = (_player?: PlayerState): KeyboardLayout => [[
+  { label: '👤 Летопись', command: gameCommands.profile, color: Keyboard.PRIMARY_COLOR },
+  { label: '◀ Главное меню', command: gameCommands.backToMenu, color: Keyboard.SECONDARY_COLOR },
 ]];
 
 export const createMainMenuKeyboard = (player?: PlayerState): KeyboardBuilder => (
@@ -68,6 +75,10 @@ export const createEntryKeyboard = (): KeyboardBuilder => buildKeyboard(entryLay
 
 export const createProfileKeyboard = (player?: PlayerState): KeyboardBuilder => (
   buildKeyboard(createProfileLayout(player))
+);
+
+export const createSchoolMasteryKeyboard = (player?: PlayerState): KeyboardBuilder => (
+  buildKeyboard(createSchoolMasteryLayout(player))
 );
 
 export const createDeleteConfirmationKeyboard = (player: PlayerState): KeyboardBuilder => buildKeyboard([

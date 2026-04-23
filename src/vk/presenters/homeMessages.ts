@@ -16,7 +16,6 @@ import {
   renderStarterSchoolLine,
   withSentencePeriod,
 } from './message-formatting';
-import { renderSchoolMasteryLine } from './player-progress-formatting';
 
 const renderSchoolFirstLoopLine = (): string => (
   'Путь первого входа: базовая атака → первая боевая руна → школа рун → новый стиль боя.'
@@ -136,7 +135,6 @@ export const renderMainMenu = (player: PlayerState): string => {
     `🧩 Слоты рун: ${getUnlockedRuneSlotCount(player)} открыто`,
     renderPlayerVitalsLine(player),
     `🔮 Экипирована: ${formatRuneDisplayName(equippedRune)}`,
-    renderSchoolMasteryLine(player),
     ...(player.tutorialState === 'ACTIVE'
       ? ['🜂 Первый бой ведёт к первой руне, а первая руна открывает школу рун.']
       : []),

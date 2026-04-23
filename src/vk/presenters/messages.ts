@@ -22,6 +22,8 @@ export {
   renderProfile,
 } from './profileMessages';
 
+export { renderSchoolMastery } from './masteryMessages';
+
 export {
   renderAltar,
   renderRuneDetailScreen,

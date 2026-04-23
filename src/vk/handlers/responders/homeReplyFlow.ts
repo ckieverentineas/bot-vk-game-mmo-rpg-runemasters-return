@@ -6,6 +6,7 @@ import {
   createEntryKeyboard,
   createMainMenuKeyboard,
   createProfileKeyboard,
+  createSchoolMasteryKeyboard,
   createTutorialKeyboard,
 } from '../../keyboards';
 import {
@@ -14,6 +15,7 @@ import {
   renderMainMenu,
   renderProfile,
   renderReturnRecap,
+  renderSchoolMastery,
   renderWelcome,
 } from '../../presenters/messages';
 
@@ -38,6 +40,10 @@ export const replyWithMainMenu = async (ctx: Context, player: PlayerState): Prom
 
 export const replyWithProfile = async (ctx: Context, player: PlayerState): Promise<void> => {
   await ctx.reply(renderProfile(player), { keyboard: createProfileKeyboard(player) });
+};
+
+export const replyWithSchoolMastery = async (ctx: Context, player: PlayerState): Promise<void> => {
+  await ctx.reply(renderSchoolMastery(player), { keyboard: createSchoolMasteryKeyboard(player) });
 };
 
 export const replyWithInventory = async (ctx: Context, player: PlayerState): Promise<void> => {

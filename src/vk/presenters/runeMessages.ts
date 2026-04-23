@@ -35,7 +35,6 @@ import {
   renderStarterSchoolLine,
   withSentencePeriod,
 } from './message-formatting';
-import { renderSchoolMasteryMilestonesBlock } from './player-progress-formatting';
 
 const runeStatSummaryOrder: readonly (keyof StatBlock)[] = [
   'attack',
@@ -287,7 +286,6 @@ export const renderRuneScreen = (
   return [
     '🔮 Руны:',
     renderEquippedRuneCounter(player),
-    ...renderSchoolMasteryMilestonesBlock(player),
     ...renderAcquisitionSummary(acquisitionSummary),
     ...renderRuneHandoff(player),
     '',
@@ -311,7 +309,6 @@ const renderRuneFocusScreen = (
     '',
     `${focusLabel} ${selectedRuneNumber} из ${player.runes.length}`,
     renderEquippedRuneSlots(player),
-    ...renderSchoolMasteryMilestonesBlock(player),
     ...renderAcquisitionSummary(acquisitionSummary),
     ...renderRuneHandoff(player),
     '',

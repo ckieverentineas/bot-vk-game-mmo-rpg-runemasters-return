@@ -8,6 +8,7 @@ export const coreCommandRoutes = {
   [gameCommands.start]: (handler, ctx, vkId) => handler.startGame(ctx, vkId),
   [gameCommands.backToMenu]: (handler, ctx, vkId) => handler.showMainMenu(ctx, vkId),
   [gameCommands.profile]: (handler, ctx, vkId) => handler.showProfile(ctx, vkId),
+  [gameCommands.mastery]: (handler, ctx, vkId) => handler.showSchoolMastery(ctx, vkId),
   [gameCommands.deletePlayer]: (handler, ctx, vkId) => handler.confirmDeletePlayer(ctx, vkId),
   [gameCommands.confirmDeletePlayer]: (handler, ctx, vkId, context) => {
     const routeState = toRouteState(context);

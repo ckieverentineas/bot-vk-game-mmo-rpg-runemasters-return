@@ -3,6 +3,7 @@ export {
   createEntryKeyboard,
   createMainMenuKeyboard,
   createProfileKeyboard,
+  createSchoolMasteryKeyboard,
 } from './main';
 export {
   createBattleKeyboard,
