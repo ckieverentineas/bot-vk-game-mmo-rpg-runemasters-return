@@ -67,8 +67,15 @@ const markExploreLocationReplay = (result: ExploreLocationResult): ExploreLocati
   return { battle: result, replayed: true };
 };
 
-const lowerBiomeRoamingChancePercent = 12;
-const higherBiomeRoamingChancePercent = 3;
+const lowerBiomeRoamingChancePercent = 10;
+const higherBiomeRoamingChancePercent = 2;
+const higherBiomeRoamingMinLocationLevel = 10;
+
+const resolveHigherBiomeRoamingChancePercent = (locationLevel: number): number => (
+  locationLevel >= higherBiomeRoamingMinLocationLevel
+    ? higherBiomeRoamingChancePercent
+    : 0
+);
 
 const sortBiomesByLevel = (biomes: readonly BiomeView[]): BiomeView[] => (
   [...biomes].sort((left, right) => (
@@ -90,6 +97,7 @@ const listRoamingMobTemplates = (
 const buildRoamingTemplatePools = (
   worldCatalog: WorldCatalog,
   currentBiome: BiomeView,
+  locationLevel: number,
 ): readonly ExplorationRoamingTemplatePool[] => {
   const biomes = sortBiomesByLevel(worldCatalog.listBiomes());
   const currentIndex = biomes.findIndex((biome) => biome.code === currentBiome.code);
@@ -113,7 +121,7 @@ const buildRoamingTemplatePools = (
     {
       biome: higherBiome,
       templates: listRoamingMobTemplates(worldCatalog, higherBiome),
-      chancePercent: higherBiomeRoamingChancePercent,
+      chancePercent: resolveHigherBiomeRoamingChancePercent(locationLevel),
       direction: 'HIGHER_BIOME',
     },
   ].filter((pool): pool is ExplorationRoamingTemplatePool => (
@@ -222,7 +230,7 @@ export class ExploreLocation {
       templates: this.worldCatalog.listMobTemplatesForBiome(biome.code),
       roamingTemplatePools: currentPlayer.tutorialState === 'ACTIVE'
         ? []
-        : buildRoamingTemplatePools(this.worldCatalog, biome),
+        : buildRoamingTemplatePools(this.worldCatalog, biome, locationLevel),
       currentSchoolCode,
       locationLevel,
     }, this.random);

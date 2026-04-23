@@ -182,6 +182,34 @@ describe('pickEncounterTemplate', () => {
 
     expect(picked.code).toBe('omen-warden');
   });
+
+  it('does not pick a random elite before the early guardrail level even if the roll succeeds', () => {
+    const templates = [
+      createTemplate(),
+      createTemplate({ code: 'ash-seer', name: 'РџРµРїРµР»СЊРЅР°СЏ РІРµРґСѓРЅСЊСЏ', kind: 'mage', isElite: true }),
+    ];
+
+    const picked = pickEncounterTemplate(templates, 6, { schoolCode: null }, {
+      rollPercentage: () => true,
+      pickOne: (items) => items[0]!,
+    });
+
+    expect(picked.isElite).toBe(false);
+  });
+
+  it('does not pick a random boss below the boss guardrail level even if the roll succeeds', () => {
+    const templates = [
+      createTemplate(),
+      createTemplate({ code: 'ash-matron', name: 'РџРµРїРµР»СЊРЅР°СЏ РјР°С‚СЂРѕРЅР°', kind: 'mage', isElite: true, isBoss: true }),
+    ];
+
+    const picked = pickEncounterTemplate(templates, 12, { schoolCode: null }, {
+      rollPercentage: () => true,
+      pickOne: (items) => items[0]!,
+    });
+
+    expect(picked.isBoss).toBe(false);
+  });
 });
 
 describe('describeEncounter', () => {

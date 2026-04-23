@@ -2279,7 +2279,7 @@ describe('PrismaGameRepository release hardening', () => {
     }));
   });
 
-  it('persists post-battle vitals on player progress for the next encounter', async () => {
+  it('persists defeat recovery vitals on player progress for the next encounter', async () => {
     const { repository, tx } = createPrismaMock();
     const currentPlayer = createPlayerRecord();
     const battle = createBattleView({
@@ -2311,7 +2311,7 @@ describe('PrismaGameRepository release hardening', () => {
     expect(tx.playerProgress.update).toHaveBeenCalledWith(expect.objectContaining({
       data: expect.objectContaining({
         activeBattleId: null,
-        currentHealth: 1,
+        currentHealth: 3,
         currentMana: 2,
       }),
     }));

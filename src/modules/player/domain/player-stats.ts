@@ -1,5 +1,5 @@
 import { gameBalance } from '../../../config/game-balance';
-import type { InventoryView, PlayerState, RuneRarity, RuneView, ShardField, StatBlock } from '../../../shared/types/game';
+import type { BattleResult, InventoryView, PlayerState, RuneRarity, RuneView, ShardField, StatBlock } from '../../../shared/types/game';
 import { resolveUnlockedRuneSlotCountFromSchoolMasteries } from './school-mastery';
 
 export const DEFAULT_UNLOCKED_RUNE_SLOT_COUNT = 2;
@@ -162,10 +162,24 @@ export const derivePlayerVitals = (
 
 export const derivePostBattleVitals = (
   battlePlayer: Pick<PlayerVitalsView, 'maxHealth' | 'currentHealth' | 'maxMana' | 'currentMana'>,
-): Pick<PlayerState, 'currentHealth' | 'currentMana'> => ({
-  currentHealth: Math.max(1, normalizeCurrentVital(battlePlayer.currentHealth, 1, battlePlayer.maxHealth)),
-  currentMana: normalizeCurrentVital(battlePlayer.currentMana, 0, battlePlayer.maxMana),
-});
+  options: { readonly battleResult?: BattleResult | null } = {},
+): Pick<PlayerState, 'currentHealth' | 'currentMana'> => {
+  const currentHealth = Math.max(1, normalizeCurrentVital(battlePlayer.currentHealth, 1, battlePlayer.maxHealth));
+  const currentMana = normalizeCurrentVital(battlePlayer.currentMana, 0, battlePlayer.maxMana);
+
+  if (options.battleResult !== 'DEFEAT') {
+    return { currentHealth, currentMana };
+  }
+
+  const recovery = gameBalance.combat.defeatRecovery;
+  const healthFloor = Math.max(1, Math.ceil(battlePlayer.maxHealth * recovery.healthRatio));
+  const manaFloor = Math.ceil(battlePlayer.maxMana * recovery.manaRatio);
+
+  return {
+    currentHealth: Math.max(currentHealth, healthFloor),
+    currentMana: Math.max(currentMana, manaFloor),
+  };
+};
 
 const calculateCombatPower = (stats: StatBlock): number => (
   stats.health
@@ -175,6 +189,26 @@ const calculateCombatPower = (stats: StatBlock): number => (
   + stats.dexterity * 1.5
   + stats.intelligence * 0.5
 );
+
+const resolveVitalRatio = (current: number, max: number): number => (
+  max > 0 ? current / max : 1
+);
+
+const calculateAttritionDifficultyPenalty = (
+  player: Pick<PlayerState, 'currentHealth' | 'currentMana'>,
+  stats: StatBlock,
+): number => {
+  const vitals = derivePlayerVitals(player, stats);
+  const adaptiveDifficulty = gameBalance.world.adaptiveDifficulty;
+  const healthPenalty = resolveVitalRatio(vitals.currentHealth, vitals.maxHealth) <= adaptiveDifficulty.lowHealthRatio
+    ? adaptiveDifficulty.lowHealthPenalty
+    : 0;
+  const manaPenalty = resolveVitalRatio(vitals.currentMana, vitals.maxMana) <= adaptiveDifficulty.lowManaRatio
+    ? adaptiveDifficulty.lowManaPenalty
+    : 0;
+
+  return healthPenalty + manaPenalty;
+};
 
 export const isPlayerInTutorial = (player: Pick<PlayerState, 'locationLevel' | 'tutorialState'>): boolean => (
   player.tutorialState === 'ACTIVE'
@@ -189,7 +223,8 @@ export const resolveCurrentProgressionLocationLevel = (player: PlayerState): num
 
 export const resolveAdaptiveAdventureLocationLevel = (player: PlayerState): number => {
   const adaptiveDifficulty = gameBalance.world.adaptiveDifficulty;
-  const combatPower = calculateCombatPower(derivePlayerStats(player));
+  const stats = derivePlayerStats(player);
+  const combatPower = calculateCombatPower(stats);
   const combatPowerBonus = Math.max(
     0,
     Math.floor(combatPower / adaptiveDifficulty.combatPowerPerLevel) - adaptiveDifficulty.combatPowerFloorOffset,
@@ -202,9 +237,10 @@ export const resolveAdaptiveAdventureLocationLevel = (player: PlayerState): numb
     adaptiveDifficulty.maxDefeatStreakPenalty,
     player.defeatStreak * adaptiveDifficulty.defeatStreakPenalty,
   );
+  const attritionPenalty = calculateAttritionDifficultyPenalty(player, stats);
 
   return clamp(
-    player.level + combatPowerBonus + victoryBonus - defeatPenalty,
+    player.level + combatPowerBonus + victoryBonus - defeatPenalty - attritionPenalty,
     gameBalance.world.minAdventureLocationLevel,
     gameBalance.world.maxLocationLevel,
   );

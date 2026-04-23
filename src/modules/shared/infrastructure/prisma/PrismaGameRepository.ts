@@ -2155,7 +2155,7 @@ export class PrismaGameRepository implements GameRepository {
       let nextHighestLocationLevel = currentPlayer.highestLocationLevel;
       let nextTutorialState = currentPlayer.tutorialState;
       let nextUnlockedRuneSlotCount = getUnlockedRuneSlotCount(currentPlayer);
-      const nextVitals = derivePostBattleVitals(battle.player);
+      const nextVitals = derivePostBattleVitals(battle.player, { battleResult: battle.result });
       const inventoryDelta: InventoryDelta = {};
       const schoolMasteryReward = resolveBattleSchoolMasteryRewardGain(battle);
 

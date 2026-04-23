@@ -110,7 +110,11 @@ const pickRoamingPool = (
   pools: readonly ExplorationRoamingTemplatePool[],
   random: ExplorationOutcomeRandom,
 ): ExplorationRoamingTemplatePool | null => (
-  pools.find((pool) => pool.templates.length > 0 && random.rollPercentage(pool.chancePercent)) ?? null
+  pools.find((pool) => (
+    pool.chancePercent > 0
+    && pool.templates.length > 0
+    && random.rollPercentage(pool.chancePercent)
+  )) ?? null
 );
 
 const resolveBattleOutcome = (

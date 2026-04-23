@@ -22,6 +22,10 @@ export const gameBalance = Object.freeze({
       maxVictoryStreakBonus: 4,
       defeatStreakPenalty: 4,
       maxDefeatStreakPenalty: 16,
+      lowHealthRatio: 0.35,
+      lowHealthPenalty: 3,
+      lowManaRatio: 0.25,
+      lowManaPenalty: 1,
     },
   },
   progression: {
@@ -30,6 +34,10 @@ export const gameBalance = Object.freeze({
   combat: {
     spellManaCost: 3,
     battleLogLimit: 12,
+    defeatRecovery: {
+      healthRatio: 0.35,
+      manaRatio: 0.5,
+    },
   },
   starterInventory: {
     usualShards: env.game.startingUsualShards,

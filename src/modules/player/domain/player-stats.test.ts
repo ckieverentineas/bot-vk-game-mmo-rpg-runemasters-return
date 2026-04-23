@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { PlayerState } from '../../../shared/types/game';
 import {
+  derivePostBattleVitals,
   derivePlayerStats,
   findFirstEmptyRuneSlot,
   getEquippedRuneIdsBySlot,
@@ -138,6 +139,49 @@ describe('resolveAdaptiveAdventureLocationLevel', () => {
     });
 
     expect(resolveAdaptiveAdventureLocationLevel(attackPlayer)).toBeGreaterThan(resolveAdaptiveAdventureLocationLevel(magicPlayer));
+  });
+
+  it('lowers the next early threat when attrition leaves the player low on health and mana', () => {
+    const restedPlayer = createPlayerState({
+      level: 8,
+      victoryStreak: 4,
+      currentHealth: 8,
+      currentMana: 4,
+    });
+    const exhaustedPlayer = createPlayerState({
+      level: 8,
+      victoryStreak: 4,
+      currentHealth: 2,
+      currentMana: 1,
+    });
+
+    expect(resolveAdaptiveAdventureLocationLevel(exhaustedPlayer)).toBeLessThan(resolveAdaptiveAdventureLocationLevel(restedPlayer));
+  });
+});
+
+describe('derivePostBattleVitals', () => {
+  it('keeps victory attrition exact for the next battle', () => {
+    expect(derivePostBattleVitals({
+      maxHealth: 20,
+      currentHealth: 2,
+      maxMana: 10,
+      currentMana: 1,
+    }, { battleResult: 'VICTORY' })).toEqual({
+      currentHealth: 2,
+      currentMana: 1,
+    });
+  });
+
+  it('raises defeat recovery to a safe early floor', () => {
+    expect(derivePostBattleVitals({
+      maxHealth: 20,
+      currentHealth: 0,
+      maxMana: 10,
+      currentMana: 0,
+    }, { battleResult: 'DEFEAT' })).toEqual({
+      currentHealth: 7,
+      currentMana: 5,
+    });
   });
 });
 

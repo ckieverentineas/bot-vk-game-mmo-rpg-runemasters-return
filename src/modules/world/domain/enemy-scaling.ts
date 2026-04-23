@@ -35,6 +35,8 @@ const preferredSchoolBossCodes: Partial<Record<string, string>> = {
   echo: 'omen-warden',
 };
 
+const randomEliteMinLocationLevel = 8;
+
 const encounterHintByEnemyCode: Partial<Record<string, { schoolCode: string; genericHint: string; schoolHint: string }>> = {
   'ash-seer': {
     schoolCode: 'ember',
@@ -100,8 +102,8 @@ export const pickEncounterTemplate = (
   const bossChance = locationLevel >= 20
     ? Math.min(18, 4 + Math.floor(locationLevel / 20) * 2)
     : 0;
-  const eliteChance = locationLevel >= 5
-    ? Math.min(35, 12 + Math.floor(locationLevel / 15) * 3)
+  const eliteChance = locationLevel >= randomEliteMinLocationLevel
+    ? Math.min(28, 8 + Math.floor(locationLevel / 15) * 3)
     : 0;
   const preferredEliteCode = preferredSchool.schoolCode ? preferredSchoolEliteCodes[preferredSchool.schoolCode] ?? null : null;
   const preferredElite = preferredEliteCode
@@ -118,7 +120,7 @@ export const pickEncounterTemplate = (
     return preferredBoss;
   }
 
-  if (bosses.length > 0 && random.rollPercentage(bossChance)) {
+  if (bosses.length > 0 && bossChance > 0 && random.rollPercentage(bossChance)) {
     return random.pickOne(bosses);
   }
 
@@ -126,7 +128,7 @@ export const pickEncounterTemplate = (
     return preferredElite;
   }
 
-  if (elites.length > 0 && random.rollPercentage(eliteChance)) {
+  if (elites.length > 0 && eliteChance > 0 && random.rollPercentage(eliteChance)) {
     return random.pickOne(elites);
   }
 
