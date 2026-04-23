@@ -92,6 +92,11 @@ describe('bestiary', () => {
 
     expect(enemies.map(({ isDiscovered }) => isDiscovered)).toEqual([true, true, false]);
     expect(enemies.map(({ isDropRevealed }) => isDropRevealed)).toEqual([false, true, false]);
+    expect(enemies.map(({ tacticalProfile }) => tacticalProfile?.code ?? null)).toEqual([
+      'BASIC_PRESSURE',
+      'BASIC_PRESSURE',
+      null,
+    ]);
     expect(bestiary.locations[0]).toMatchObject({
       discoveredEnemyCount: 2,
       revealedDropCount: 1,

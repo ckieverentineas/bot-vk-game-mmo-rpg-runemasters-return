@@ -24,6 +24,11 @@ const createBestiary = (): BestiaryView => ({
         {
           isDiscovered: true,
           isDropRevealed: false,
+          tacticalProfile: {
+            code: 'HEAVY_STRIKE',
+            habitLine: 'на просадке готовит тяжёлый удар сильнее обычного',
+            answerLine: 'встречайте угрозу защитой; готовая руна тоже хорошо бьёт по раскрытому замыслу',
+          },
           template: {
             code: 'forest-wolf',
             biomeCode: 'dark-forest',
@@ -57,6 +62,11 @@ const createBestiary = (): BestiaryView => ({
         {
           isDiscovered: true,
           isDropRevealed: true,
+          tacticalProfile: {
+            code: 'GUARD_BREAK',
+            habitLine: 'на просадке готовит пробивающий удар и сбивает накопленную защиту',
+            answerLine: 'отвечайте атакой или готовой руной; чистую стойку оставьте на другой ход',
+          },
           template: {
             code: 'ash-seer',
             biomeCode: 'dark-forest',
@@ -90,6 +100,7 @@ const createBestiary = (): BestiaryView => ({
         {
           isDiscovered: false,
           isDropRevealed: false,
+          tacticalProfile: null,
           template: {
             code: 'secret-enemy',
             biomeCode: 'dark-forest',
@@ -133,8 +144,12 @@ describe('renderBestiary', () => {
     expect(message).toContain('📍 Тёмный лес · ур. 1-15');
     expect(message).toContain('Следы: 2/3 · добыча: 1/3');
     expect(message).toContain('Лесной волк · обычный · зверь');
+    expect(message).toContain('опасность: на просадке готовит тяжёлый удар сильнее обычного');
+    expect(message).toContain('ответ: встречайте угрозу защитой; готовая руна тоже хорошо бьёт по раскрытому замыслу');
     expect(message).toContain('добыча скрыта до первого разобранного трофея');
     expect(message).toContain('Пепельная ведунья · элита · заклинатель');
+    expect(message).toContain('опасность: на просадке готовит пробивающий удар и сбивает накопленную защиту');
+    expect(message).toContain('ответ: отвечайте атакой или готовой руной; чистую стойку оставьте на другой ход');
     expect(message).toContain('добыча: +2 травы · +1 эссенция · шанс руны: 28%');
     expect(message).toContain('3. ??? — след не встречен');
     expect(message).not.toContain('Секретный след');

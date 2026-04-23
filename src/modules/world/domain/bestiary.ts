@@ -1,3 +1,4 @@
+import { resolveEnemyTacticalProfile, type EnemyTacticalProfile } from '../../../shared/domain/enemy-tactical-profile';
 import type { BiomeView, MobTemplateView } from '../../../shared/types/game';
 
 export const bestiaryLocationPageSize = 5;
@@ -11,6 +12,7 @@ export interface BestiaryEnemyView {
   readonly template: MobTemplateView;
   readonly isDiscovered: boolean;
   readonly isDropRevealed: boolean;
+  readonly tacticalProfile: EnemyTacticalProfile | null;
 }
 
 export interface BestiaryLocationView {
@@ -70,6 +72,7 @@ export const buildBestiaryView = (
           template,
           isDiscovered,
           isDropRevealed: isDiscovered && rewardedEnemyCodes.has(template.code),
+          tacticalProfile: isDiscovered ? resolveEnemyTacticalProfile(template) : null,
         };
       });
 

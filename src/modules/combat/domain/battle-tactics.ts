@@ -3,21 +3,10 @@ import type {
   BattleEnemySnapshot,
   BattlePlayerSnapshot,
 } from '../../../shared/types/game';
-
-const heavyStrikeEnemyKinds = new Set<BattleEnemySnapshot['kind']>([
-  'wolf',
-  'boar',
-  'goblin',
-  'knight',
-  'dragon',
-  'demon',
-]);
-
-const guardBreakEnemyKinds = new Set<BattleEnemySnapshot['kind']>([
-  'slime',
-  'mage',
-  'lich',
-]);
+import {
+  enemySupportsGuardBreak,
+  enemySupportsHeavyStrike,
+} from '../../../shared/domain/enemy-tactical-profile';
 
 const intentPreparationHealthRatio = 0.75;
 const heavyStrikeDefendGuardBonus = 2;
@@ -48,19 +37,11 @@ const isEnemyInIntentWindow = (enemy: Pick<BattleEnemySnapshot, 'currentHealth' 
   && enemy.currentHealth <= Math.ceil(enemy.maxHealth * intentPreparationHealthRatio)
 );
 
-export const enemySupportsHeavyStrike = (enemy: Pick<BattleEnemySnapshot, 'kind' | 'isElite' | 'isBoss'>): boolean => (
-  enemy.isBoss || enemy.isElite || heavyStrikeEnemyKinds.has(enemy.kind)
-);
-
 export const shouldEnemyPrepareHeavyStrike = (enemy: BattleEnemySnapshot): boolean => (
   enemySupportsHeavyStrike(enemy)
   && !enemy.intent
   && !(enemy.hasUsedSignatureMove ?? false)
   && isEnemyInIntentWindow(enemy)
-);
-
-export const enemySupportsGuardBreak = (enemy: Pick<BattleEnemySnapshot, 'kind' | 'isElite' | 'isBoss'>): boolean => (
-  enemy.isBoss || guardBreakEnemyKinds.has(enemy.kind)
 );
 
 export const shouldEnemyPrepareGuardBreak = (enemy: BattleEnemySnapshot): boolean => (

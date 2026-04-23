@@ -71,6 +71,17 @@ const formatDropLine = (enemy: BestiaryEnemyView): string => {
   ].join(' · ');
 };
 
+const formatTacticalProfile = (enemy: BestiaryEnemyView): string => {
+  if (!enemy.tacticalProfile) {
+    return 'опасность: след ещё не изучен';
+  }
+
+  return [
+    `опасность: ${enemy.tacticalProfile.habitLine}`,
+    `ответ: ${enemy.tacticalProfile.answerLine}`,
+  ].join('\n   ');
+};
+
 const formatEnemyLine = (enemy: BestiaryEnemyView, index: number): string => {
   if (!enemy.isDiscovered) {
     return `${index + 1}. ??? — след не встречен`;
@@ -79,6 +90,7 @@ const formatEnemyLine = (enemy: BestiaryEnemyView, index: number): string => {
   return [
     `${index + 1}. ${enemy.template.name} · ${formatEnemyRole(enemy)} · ${formatEnemyKind(enemy.template.kind)}`,
     `   база: ${formatStats(enemy.template.baseStats)}`,
+    `   ${formatTacticalProfile(enemy)}`,
     `   ${formatDropLine(enemy)}`,
   ].join('\n');
 };
@@ -92,7 +104,7 @@ const formatLocation = (location: BestiaryLocationView): string => [
 export const renderBestiary = (bestiary: BestiaryView): string => [
   '📖 Бестиарий',
   '',
-  'След открывается после первой встречи. Добыча проявляется после первого разобранного трофея.',
+  'След и повадка открываются после первой встречи. Добыча проявляется после первого разобранного трофея.',
   '',
   ...bestiary.locations.map(formatLocation).flatMap((location, index) => (
     index === 0 ? [location] : ['', location]
