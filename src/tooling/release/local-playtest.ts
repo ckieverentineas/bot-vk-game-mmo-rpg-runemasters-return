@@ -19,7 +19,7 @@ import type { GameRandom } from '../../modules/shared/application/ports/GameRand
 import type { PendingRewardView } from '../../modules/shared/application/ports/GameRepository';
 import { derivePlayerStats, resolveAutoEquipRuneSlot, resolveMaxMana } from '../../modules/player/domain/player-stats';
 import type { BattleView, PlayerState, RuneRarity } from '../../shared/types/game';
-import { gameCommands, resolveTrophyActionCodeCommand } from '../../vk/commands/catalog';
+import { createBestiaryLocationCommand, gameCommands, resolveTrophyActionCodeCommand } from '../../vk/commands/catalog';
 import { GameHandler } from '../../vk/handlers/gameHandler';
 import {
   buildLocalPlaytestSummary,
@@ -566,9 +566,21 @@ const runBestiaryChecks = async (runtime: LocalPlaytestRuntime): Promise<void> =
   assertReplyIncludes(bestiaryReply, 'Bestiary', [
     '📖 Бестиарий',
     'Порог Инициации',
+    'Следы: 1/1',
+    'Первое открытие: +1 сияния',
+  ]);
+
+  const bestiaryLocationReply = await runCommand(
+    runtime,
+    'bestiary-initium',
+    createBestiaryLocationCommand('initium'),
+  );
+  assertReplyIncludes(bestiaryLocationReply, 'Bestiary location', [
+    '📖 Бестиарий / Порог Инициации',
     'Учебный огонёк',
+    'Побед: 1',
     'добыча: +1 эссенция',
-    '??? — след не встречен',
+    'награды убийств',
   ]);
 };
 
