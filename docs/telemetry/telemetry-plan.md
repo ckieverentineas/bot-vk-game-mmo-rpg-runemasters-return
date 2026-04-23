@@ -153,6 +153,7 @@ Healthy signal:
 - `hunt_school_elite`;
 - `equip_school_sign`;
 - `challenge_school_miniboss`;
+- `prove_school_seal`;
 - `reach_next_school_mastery`;
 - `fill_rune_slot`;
 - `push_higher_threat`;

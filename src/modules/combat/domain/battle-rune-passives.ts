@@ -17,6 +17,12 @@ const hasSchoolMastery = (battle: BattleView, schoolCode: string, rank = 1): boo
   ))
 );
 
+const hasSchoolSeal = (battle: BattleView, schoolCode: string): boolean => (
+  listBattleRuneLoadouts(battle.player).some(({ loadout }) => (
+    loadout.schoolCode === schoolCode && loadout.schoolProgressStage === 'SEAL'
+  ))
+);
+
 const hasActiveCooldownWindow = (battle: BattleView): boolean => (
   listBattleRuneLoadouts(battle.player).some(({ loadout }) => (
     (loadout.activeAbility?.currentCooldown ?? 0) > 0
@@ -35,6 +41,10 @@ export const resolveEmberAttackBonus = (battle: BattleView): number => (
 
 export const resolveEmberPressureIntentBonus = (battle: BattleView): number => (
   hasPassive(battle, 'ember_heart') && isGuardBreakIntent(battle) ? 1 : 0
+);
+
+export const resolveEmberSealPressureBonus = (battle: BattleView): number => (
+  hasSchoolSeal(battle, 'ember') ? 1 : 0
 );
 
 export const resolveEmberExecutionBonus = (battle: BattleView): number => (
@@ -63,6 +73,10 @@ export const resolveStoneHoldIntentGuardBonus = (battle: BattleView): number => 
   hasPassive(battle, 'stone_guard') && isHeavyStrikeIntent(battle) ? 1 : 0
 );
 
+export const resolveStoneSealGuardBonus = (battle: BattleView): number => (
+  hasSchoolSeal(battle, 'stone') ? 1 : 0
+);
+
 export const resolveStoneMasteryGuardGainBonus = (battle: BattleView): number => (
   hasSchoolMastery(battle, 'stone') ? 1 : 0
 );
@@ -83,6 +97,10 @@ export const resolveGaleTempoIntentGuardBonus = (battle: BattleView): number => 
   hasRevealedIntent(battle) ? 1 : 0
 );
 
+export const resolveGaleSealTempoGuardBonus = (battle: BattleView): number => (
+  hasSchoolSeal(battle, 'gale') ? 1 : 0
+);
+
 export const resolveEchoIntentAttackBonus = (battle: BattleView): number => {
   if (!hasPassive(battle, 'echo_mind') || !battle.enemy.intent) {
     return 0;
@@ -94,4 +112,8 @@ export const resolveEchoIntentAttackBonus = (battle: BattleView): number => {
 
 export const resolveEchoMasteryAttackBonus = (battle: BattleView): number => (
   hasSchoolMastery(battle, 'echo') && battle.enemy.intent ? 1 : 0
+);
+
+export const resolveEchoSealIntentBonus = (battle: BattleView): number => (
+  hasSchoolSeal(battle, 'echo') && battle.enemy.intent ? 1 : 0
 );

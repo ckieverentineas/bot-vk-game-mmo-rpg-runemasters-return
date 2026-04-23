@@ -3,6 +3,7 @@ import {
   findBestRuneOfSchoolAtLeastRarity,
   getSchoolNovicePathDefinition,
   getSchoolNovicePathDefinitionForEnemy,
+  hasEquippedRuneOfSchoolAtLeastRarity,
   hasRuneOfSchoolAtLeastRarity,
 } from '../../domain/school-novice-path';
 import { describeRuneContent } from '../../../runes/domain/rune-abilities';
@@ -22,6 +23,7 @@ export type NextGoalType =
   | 'hunt_school_elite'
   | 'equip_school_sign'
   | 'challenge_school_miniboss'
+  | 'prove_school_seal'
   | 'reach_next_school_mastery'
   | 'fill_rune_slot'
   | 'push_higher_threat'
@@ -67,6 +69,21 @@ const formatVictoryWord = (count: number): string => {
   }
 
   return 'побед';
+};
+
+const resolveSealGoalBenefitText = (schoolCode: string, nextUnlockDescription: string): string => {
+  switch (schoolCode) {
+    case 'ember':
+      return `Печать уже даёт +1 к давлению базовой атаки; следующий ранг закрепит это как путь давления. ${nextUnlockDescription}`;
+    case 'stone':
+      return `Печать уже даёт +1 guard к защитной стойке и «Каменному отпору»; следующий ранг закрепит это как путь опоры. ${nextUnlockDescription}`;
+    case 'gale':
+      return `Печать уже даёт +1 guard к «Шагу шквала»; следующий ранг закрепит это как путь темпа. ${nextUnlockDescription}`;
+    case 'echo':
+      return `Печать уже даёт +1 к точному ответу по раскрытому intent; следующий ранг закрепит это как путь чтения. ${nextUnlockDescription}`;
+    default:
+      return `Печать уже даёт малый боевой бонус школы; следующий ранг закрепит этот стиль. ${nextUnlockDescription}`;
+  }
 };
 
 const createGoalView = (
@@ -223,6 +240,30 @@ export const buildPlayerNextGoalView = (player: PlayerState): NextGoalView => {
   const masteryDefinition = getSchoolMasteryDefinition(mastery?.schoolCode ?? null);
   const nextThreshold = resolveNextSchoolMasteryThreshold(mastery?.rank ?? 0);
   const nextUnlock = masteryDefinition?.unlocks.find((entry) => entry.rank === (mastery?.rank ?? 0) + 1) ?? null;
+  const sealEquipped = !!(
+    novicePath
+    && schoolDefinition
+    && novicePath.minibossRewardRarity
+    && hasEquippedRuneOfSchoolAtLeastRarity(player, novicePath.schoolCode, novicePath.minibossRewardRarity)
+  );
+  if (sealEquipped && mastery && schoolDefinition && nextThreshold !== null && nextUnlock) {
+    const remainingVictories = Math.max(1, nextThreshold - mastery.experience);
+    return createGoalView(
+      'prove_school_seal',
+      'explore',
+      `проверьте печать школы ${schoolDefinition.nameGenitive} на цели печати: одержите ещё ${remainingVictories} ${formatVictoryWord(remainingVictories)}, чтобы открыть «${nextUnlock.title}»`,
+      {
+        primaryActionLabel: '⚔️ Цель печати',
+        schoolCode: mastery.schoolCode,
+        schoolName: equippedSchool?.name ?? schoolDefinition.name,
+        whyText: resolveSealGoalBenefitText(mastery.schoolCode, nextUnlock.description),
+        milestoneTitle: `Следующий ранг школы ${schoolDefinition.nameGenitive}`,
+        milestoneProgressText: `${mastery.experience}/${nextThreshold} до «${nextUnlock.title}»`,
+        milestoneBenefitText: nextUnlock.description,
+      },
+    );
+  }
+
   if (mastery && schoolDefinition && nextThreshold !== null && nextUnlock) {
     const remainingVictories = Math.max(1, nextThreshold - mastery.experience);
     return createGoalView(

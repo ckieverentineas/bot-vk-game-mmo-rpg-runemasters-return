@@ -50,6 +50,7 @@
 - Есть smoke/regression/concurrency tests и release tooling для content validation, локального first-session playtest, summary, evidence и preflight.
 - School novice trial evidence закрыт для четырёх школ: `release:school-evidence` показывает `Novice elite`, `UNUSUAL reward` и `RARE seal` по Пламени, Тверди, Бури и Прорицанию.
 - Post-payoff school loop получил полный ранний runtime slice: aligned `UNUSUAL` novice reward ведёт игрока в `🔮 Руны`, фокусирует новый школьный знак, экипировка знака переключает next-goal на school miniboss, победа над miniboss выдаёт targeted `RARE` печать, а pending trophy card не теряет `post_session_next_goal_shown`.
+- RARE seal теперь является началом новой ступени, а не финальной точкой дропа: после экипировки печати игрок видит `Цель печати`, получает малый school-specific seal-бонус и идёт к mastery rank 2.
 - Payload auto-equip школьного знака в свободный второй слот теперь даёт тот же compact payoff recap и telemetry/evidence `equip_school_sign`, что и явная замена в основном слоте.
 - `Книга путей` имеет local handler manual evidence и release-evidence funnel по open/claim/replay: `quest_book_opened`, `quest_reward_claimed` и `quest_reward_replayed` уже видны в `docs/testing/release-evidence-report.md`.
 

@@ -194,21 +194,21 @@ describe('next goal read-model', () => {
     expect(goal.milestoneProgressText).toBe('Тёмный лес · Слепой авгур');
   });
 
-  it('builds a school-specific mastery goal with progress and payoff', () => {
+  it('keeps the school miniboss ahead of generic mastery after the first sign', () => {
     const goal = buildPlayerNextGoalView(createPlayer({
       victories: 3,
       runes: [
         {
           ...createPlayer().runes[0]!,
-          name: 'Редкая руна Пламени',
-          rarity: 'RARE',
+          name: 'Необычная руна Пламени',
+          rarity: 'UNUSUAL',
         },
         {
           ...createPlayer().runes[0]!,
           id: 'rune-2',
           runeCode: 'rune-2',
-          name: 'Запасная редкая руна Пламени',
-          rarity: 'RARE',
+          name: 'Запасная необычная руна Пламени',
+          rarity: 'UNUSUAL',
           isEquipped: false,
           equippedSlot: null,
           createdAt: '2026-04-13T00:00:00.000Z',
@@ -216,10 +216,32 @@ describe('next goal read-model', () => {
       ],
     }));
 
-    expect(goal.goalType).toBe('reach_next_school_mastery');
-    expect(goal.objectiveText).toContain('одержите ещё 2 победы школой Пламени');
-    expect(goal.milestoneProgressText).toBe('1/3 до «Разогрев дожима»');
-    expect(goal.whyText).toContain('базовая атака ещё сильнее добивает');
+    expect(goal.goalType).toBe('challenge_school_miniboss');
+    expect(goal.objectiveText).toContain('разыщите Пепельную матрону');
+    expect(goal.milestoneProgressText).toBe('Тёмный лес · Пепельная матрона');
+  });
+
+  it('opens a seal target goal after the rare school seal is equipped', () => {
+    const goal = buildPlayerNextGoalView(createPlayer({
+      victories: 6,
+      schoolMasteries: [{ schoolCode: 'ember', experience: 4, rank: 1 }],
+      runes: [
+        {
+          ...createPlayer().runes[0]!,
+          name: 'Редкая руна Пламени',
+          rarity: 'RARE',
+          isEquipped: true,
+          equippedSlot: 0,
+        },
+      ],
+    }));
+
+    expect(goal.goalType).toBe('prove_school_seal');
+    expect(goal.primaryActionLabel).toBe('⚔️ Цель печати');
+    expect(goal.objectiveText).toContain('проверьте печать школы Пламени');
+    expect(goal.objectiveText).toContain('ещё 3 победы');
+    expect(goal.whyText).toContain('+1 к давлению базовой атаки');
+    expect(goal.milestoneProgressText).toBe('4/7 до «Печать давления»');
   });
 
   it('guides the player to equip the first school sign after novice completion if it is still in reserve', () => {
@@ -377,7 +399,7 @@ describe('next goal read-model', () => {
   it('asks the player to fill the baseline second rune slot', () => {
     const goal = buildPlayerNextGoalView(createPlayer({
       victories: 4,
-      schoolMasteries: [{ schoolCode: 'ember', experience: 3, rank: 1 }],
+      schoolMasteries: [{ schoolCode: 'ember', experience: 7, rank: 2 }],
       unlockedRuneSlotCount: 2,
       runes: [
         {
@@ -401,31 +423,22 @@ describe('next goal read-model', () => {
     expect(goal?.objectiveText).toContain('разыщите Пепельную ведунью');
   });
 
-  it('falls back to mastery guidance once the school already has an unusual rune', () => {
+  it('falls through to the seal target goal after a completed miniboss reward', () => {
     const goal = buildBattleResultNextGoalView(createBattle(), createPlayer({
-      victories: 3,
+      victories: 6,
+      schoolMasteries: [{ schoolCode: 'ember', experience: 4, rank: 1 }],
       runes: [
         {
           ...createPlayer().runes[0]!,
           name: 'Редкая руна Пламени',
           rarity: 'RARE',
         },
-        {
-          ...createPlayer().runes[0]!,
-          id: 'rune-2',
-          runeCode: 'rune-2',
-          name: 'Запасная редкая руна Пламени',
-          rarity: 'RARE',
-          isEquipped: false,
-          equippedSlot: null,
-          createdAt: '2026-04-13T00:00:00.000Z',
-        },
       ],
     }));
 
-    expect(goal?.goalType).toBe('reach_next_school_mastery');
-    expect(goal?.primaryActionLabel).toBe('⚔️ Исследовать');
-    expect(goal?.objectiveText).toContain('одержите ещё 2 победы школой Пламени');
+    expect(goal?.goalType).toBe('prove_school_seal');
+    expect(goal?.primaryActionLabel).toBe('⚔️ Цель печати');
+    expect(goal?.objectiveText).toContain('проверьте печать школы Пламени');
   });
 
   it('prioritizes equipping a dropped rune after victory', () => {

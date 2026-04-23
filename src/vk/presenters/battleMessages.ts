@@ -6,6 +6,7 @@ import {
   resolveStoneGuardGainBonus,
   resolveStoneHoldIntentGuardBonus,
   resolveStoneMasteryGuardGainBonus,
+  resolveStoneSealGuardBonus,
 } from '../../modules/combat/domain/battle-rune-passives';
 import { resolveDefendGuardGain, resolveIntentDefendGuardBonus } from '../../modules/combat/domain/battle-tactics';
 import type { AcquisitionSummaryView } from '../../modules/player/application/read-models/acquisition-summary';
@@ -142,6 +143,7 @@ const renderBattleActionState = (battle: BattleView): string => {
     resolveIntentDefendGuardBonus(battle.enemy.intent),
     resolveStoneGuardGainBonus(battle),
     resolveStoneHoldIntentGuardBonus(battle),
+    resolveStoneSealGuardBonus(battle),
     resolveStoneMasteryGuardGainBonus(battle),
   ].reduce((total, gain) => total + gain, 0);
   const actions = ['⚔️ Атака', `🛡️ Защита (+${defendGain} щит)`];

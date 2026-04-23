@@ -13,7 +13,7 @@ export interface SchoolMasteryDefinition {
   readonly unlocks: readonly SchoolMasteryUnlockDefinition[];
 }
 
-const maxSchoolMasteryRank = 1;
+const maxSchoolMasteryRank = 2;
 export const firstMasteryRuneSlotFloorRank = 1;
 export const firstMasteryRuneSlotFloorCount = 2;
 
@@ -27,6 +27,11 @@ const schoolMasteryDefinitions: readonly SchoolMasteryDefinition[] = [
         title: 'Разогрев дожима',
         description: 'После «Импульса углей» базовая атака ещё сильнее добивает врага ниже половины здоровья.',
       },
+      {
+        rank: 2,
+        title: 'Печать давления',
+        description: 'Редкая печать Пламени закрепляет давление: базовая атака получает малый бонус печати в каждом бою.',
+      },
     ],
   },
   {
@@ -37,6 +42,11 @@ const schoolMasteryDefinitions: readonly SchoolMasteryDefinition[] = [
         rank: 1,
         title: 'Ответ стойки',
         description: 'Если вы уже держите guard, «Каменный отпор» бьёт сильнее и крепче держит стойку.',
+      },
+      {
+        rank: 2,
+        title: 'Печать опоры',
+        description: 'Редкая печать Тверди закрепляет стойку: защита получает малый бонус печати к guard.',
       },
     ],
   },
@@ -49,6 +59,11 @@ const schoolMasteryDefinitions: readonly SchoolMasteryDefinition[] = [
         title: 'Шаг на темпе',
         description: 'Атака начинает готовить ответный темп и чуть лучше переживает следующий ход.',
       },
+      {
+        rank: 2,
+        title: 'Печать шквала',
+        description: 'Редкая печать Бури закрепляет темп: «Шаг шквала» лучше прикрывает следующий ответ.',
+      },
     ],
   },
   {
@@ -60,11 +75,16 @@ const schoolMasteryDefinitions: readonly SchoolMasteryDefinition[] = [
         title: 'Чтение угрозы',
         description: 'Открытое намерение врага становится ещё выгоднее для наказания базовой атакой.',
       },
+      {
+        rank: 2,
+        title: 'Печать предзнаменования',
+        description: 'Редкая печать Прорицания закрепляет чтение боя: раскрытый intent даёт малый бонус печати к точному ответу.',
+      },
     ],
   },
 ];
 
-const schoolMasteryThresholds = [0, 3] as const;
+const schoolMasteryThresholds = [0, 3, 7] as const;
 
 export const listSchoolMasteryDefinitions = (): readonly SchoolMasteryDefinition[] => schoolMasteryDefinitions;
 
@@ -73,11 +93,18 @@ export const getSchoolMasteryDefinition = (schoolCode: string | null | undefined
 );
 
 export const resolveSchoolMasteryRank = (experience: number): number => {
-  if (experience < schoolMasteryThresholds[1]) {
-    return 0;
+  let resolvedRank = 0;
+
+  for (let rank = 1; rank <= maxSchoolMasteryRank; rank += 1) {
+    const threshold = schoolMasteryThresholds[rank];
+    if (typeof threshold !== 'number' || experience < threshold) {
+      break;
+    }
+
+    resolvedRank = rank;
   }
 
-  return maxSchoolMasteryRank;
+  return resolvedRank;
 };
 
 export const resolveNextSchoolMasteryThreshold = (rank: number): number | null => {

@@ -227,6 +227,41 @@ describe('resolveExplorationOutcome', () => {
     expect(outcome.kind === 'battle' ? outcome.enemy.code : null).toBe('blue-slime');
   });
 
+  it('can prefer a seal target after the rare school seal is equipped', () => {
+    const player = createPlayer({
+      victories: 6,
+      locationLevel: 6,
+      schoolMasteries: [{ schoolCode: 'ember', experience: 4, rank: 1 }],
+      runes: [createEmberRune('RARE')],
+    });
+    const random = {
+      rollPercentage: vi.fn()
+        .mockReturnValueOnce(false)
+        .mockReturnValueOnce(true)
+        .mockReturnValue(false),
+      pickOne: vi.fn(<T>(items: readonly T[]) => items[0]!),
+    };
+
+    const outcome = resolveExplorationOutcome({
+      player,
+      biome: createBiome(),
+      templates: [
+        createMobTemplate(),
+        createMobTemplate({
+          code: 'ash-matron',
+          name: 'Пепельная матрона',
+          isElite: true,
+          isBoss: true,
+        }),
+      ],
+      locationLevel: 6,
+      currentSchoolCode: 'ember',
+    }, random);
+
+    expect(outcome.kind).toBe('battle');
+    expect(outcome.kind === 'battle' ? outcome.enemy.code : null).toBe('ash-matron');
+  });
+
   it('can pull an old-location mob into a higher-level route as a roaming encounter', () => {
     const random = {
       rollPercentage: vi.fn()

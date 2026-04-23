@@ -10,7 +10,7 @@ export const resolveSchoolContinuationLabel = (
   }
 
   const nextGoal = buildPlayerNextGoalView(player);
-  return nextGoal.goalType === 'challenge_school_miniboss'
+  return nextGoal.goalType === 'challenge_school_miniboss' || nextGoal.goalType === 'prove_school_seal'
     ? nextGoal.primaryActionLabel
     : fallbackLabel;
 };

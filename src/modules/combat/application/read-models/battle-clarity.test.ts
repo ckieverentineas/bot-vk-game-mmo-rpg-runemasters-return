@@ -167,6 +167,24 @@ describe('buildBattleClarityView', () => {
     expect(clarity.schoolHintLine).toContain('держать');
   });
 
+  it('builds a seal-specific hint once a rare school seal is equipped', () => {
+    const clarity = buildBattleClarityView(createBattle({
+      player: {
+        ...createBattle().player,
+        runeLoadout: {
+          ...createBattle().player.runeLoadout!,
+          runeName: 'Редкая руна Пламени',
+          runeRarity: 'RARE',
+          schoolProgressStage: 'SEAL',
+          schoolCode: 'ember',
+        },
+      },
+    }));
+
+    expect(clarity.schoolHintLine).toContain('Печать Пламени');
+    expect(clarity.schoolHintLine).toContain('давление печати');
+  });
+
   it('builds a gale-specific hint on ready gale step', () => {
     const clarity = buildBattleClarityView(createBattle({
       player: {

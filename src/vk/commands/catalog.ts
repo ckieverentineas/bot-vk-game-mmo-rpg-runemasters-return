@@ -187,6 +187,8 @@ export const commandAliases: Readonly<Record<string, GameCommand>> = {
   'враги': gameCommands.bestiary,
   'проверить школу': gameCommands.explore,
   'испытать знак': gameCommands.explore,
+  'цель печати': gameCommands.explore,
+  'испытать печать': gameCommands.explore,
   'бой': gameCommands.engageBattle,
   'начать бой': gameCommands.engageBattle,
   'сражаться': gameCommands.engageBattle,

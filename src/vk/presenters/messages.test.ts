@@ -412,9 +412,9 @@ describe('messages school-first onboarding framing', () => {
     expect(message).toContain('🧭 Возвращение');
     expect(message).toContain('Стиль: Школа Пламени · роль штурм.');
     expect(message).toContain('Статус школы: Вы уже пережили большой бой Пламени: школа доверила вам печать давления и дожима');
-    expect(message).toContain('🎯 След: одержите ещё 2 победы школой Пламени');
-    expect(message).toContain('🜂 Зачем идти: После «Импульса углей»');
-    expect(message).toContain('🧭 Дальше: «⚔️ Исследовать».');
+    expect(message).toContain('🎯 След: проверьте печать школы Пламени на цели печати');
+    expect(message).toContain('🜂 Зачем идти: Печать уже даёт +1 к давлению базовой атаки');
+    expect(message).toContain('🧭 Дальше: «⚔️ Цель печати».');
   });
 
   it('shows school mastery progress in the main menu once a rune is equipped', () => {
@@ -503,8 +503,8 @@ describe('messages school-first onboarding framing', () => {
       runes: [createEquippedRareRune(), createUnusualReserveRune()],
     }));
 
-    expect(message).toContain('🎯 След: одержите ещё 2 победы школой Пламени');
-    expect(message).toContain('👉 Дальше: «⚔️ Исследовать».');
+    expect(message).toContain('🎯 След: проверьте печать школы Пламени на цели печати');
+    expect(message).toContain('👉 Дальше: «⚔️ Цель печати».');
   });
 
   it('keeps defeat follow-up supportive and without pressure wording', () => {
@@ -540,8 +540,8 @@ describe('messages school-first onboarding framing', () => {
     }));
 
     expect(message).toContain('⭐ Печать Пламени: Вы уже пережили большой бой Пламени');
-    expect(message).toContain('🎯 След: одержите ещё 2 победы школой Пламени');
-    expect(message).toContain('👉 Сделать шаг: «⚔️ Исследовать».');
+    expect(message).toContain('🎯 След: проверьте печать школы Пламени на цели печати');
+    expect(message).toContain('👉 Сделать шаг: «⚔️ Цель печати».');
   });
 
   it('shows school sign equip guidance after recognition if the unusual rune is still not equipped', () => {

@@ -56,6 +56,14 @@ describe('school mastery', () => {
 
     expect(next.experience).toBe(3);
     expect(next.rank).toBe(1);
+    expect(resolveNextSchoolMasteryThreshold(next.rank)).toBe(7);
+  });
+
+  it('promotes mastery rank at the rare seal threshold', () => {
+    const next = applySchoolMasteryExperience(createSchoolMasteryView('ember', 6), 'ember', 1);
+
+    expect(next.experience).toBe(7);
+    expect(next.rank).toBe(2);
     expect(resolveNextSchoolMasteryThreshold(next.rank)).toBeNull();
   });
 

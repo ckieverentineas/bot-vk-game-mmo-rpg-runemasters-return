@@ -388,4 +388,28 @@ describe('acquisition summary read-model', () => {
     expect(summary?.changeLine).toContain('теперь в основе');
     expect(summary?.nextStepLine).toContain('добивайте');
   });
+
+  it('turns equipping the rare school seal into a next-tier payoff confirmation', () => {
+    const before = createPlayer({
+      victories: 5,
+      runes: [
+        createRune({ isEquipped: true, equippedSlot: 0, rarity: 'UNUSUAL', name: 'Первый знак Пламени' }),
+        createRune({ id: 'rune-3', runeCode: 'rune-3', rarity: 'RARE', name: 'Печать Пламени' }),
+      ],
+    });
+    const after = createPlayer({
+      victories: 5,
+      runes: [
+        createRune({ isEquipped: false, equippedSlot: null, rarity: 'UNUSUAL', name: 'Первый знак Пламени' }),
+        createRune({ id: 'rune-3', runeCode: 'rune-3', isEquipped: true, equippedSlot: 0, rarity: 'RARE', name: 'Печать Пламени' }),
+      ],
+    });
+
+    const summary = buildEquipAcquisitionSummary(before, after, 0, 'equip_school_sign');
+
+    expect(summary?.kind).toBe('school_seal_committed');
+    expect(summary?.title).toBe('Печать Пламени закреплена');
+    expect(summary?.changeLine).toContain('малый бонус давления');
+    expect(summary?.nextStepLine).toContain('Цель печати');
+  });
 });

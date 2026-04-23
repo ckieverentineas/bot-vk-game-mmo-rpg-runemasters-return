@@ -39,6 +39,12 @@ const hasReadyRuneActionCode = (battle: BattleView, code: string): boolean => (
   ))
 );
 
+const hasEquippedSchoolSeal = (battle: BattleView, schoolCode: string): boolean => (
+  listBattleRuneLoadouts(battle.player).some(({ loadout }) => (
+    loadout.schoolCode === schoolCode && loadout.schoolProgressStage === 'SEAL'
+  ))
+);
+
 const resolveChoiceLine = (battle: BattleView): string | null => {
   const readyRuneAction = hasReadyRuneAction(battle);
 
@@ -63,6 +69,12 @@ const resolveSchoolHint = (battle: BattleView): string | null => {
   switch (battle.player.runeLoadout?.schoolCode) {
     case 'ember': {
       const threshold = Math.ceil(battle.enemy.maxHealth / 2);
+      if (hasEquippedSchoolSeal(battle, 'ember')) {
+        return battle.enemy.currentHealth <= threshold
+          ? '🔥 Печать Пламени: цель уже просела — давление печати помогает дожать без лишнего ожидания.'
+          : '🔥 Печать Пламени: держите базовое давление; следующий горизонт — проверять печать на сильных целях.';
+      }
+
       if (battle.enemy.intent?.code === 'GUARD_BREAK') {
         return firstSchoolSignEquipped
           ? '🔥 Первый знак Пламени: guard-break — ваше окно давления; отвечайте атакой или «Импульсом углей», пока враг раскрыт.'
@@ -80,6 +92,14 @@ const resolveSchoolHint = (battle: BattleView): string | null => {
         : '🔥 Пламя: держите давление и ищите окно, где бой можно быстро переломить в дожим.';
     }
     case 'stone':
+      if (hasEquippedSchoolSeal(battle, 'stone') && battle.enemy.intent?.code === 'HEAVY_STRIKE') {
+        return '🪨 Печать Тверди: тяжёлый удар стал целью печати — держите стойку и превращайте угрозу в опору.';
+      }
+
+      if (hasEquippedSchoolSeal(battle, 'stone')) {
+        return '🪨 Печать Тверди: защита получает устойчивую опору; следующий горизонт — искать цели, которые проверяют выдержку.';
+      }
+
       if (firstSchoolSignEquipped && battle.enemy.intent?.code === 'HEAVY_STRIKE') {
         return '🪨 Первый знак Тверди: держите тяжёлый удар защитой или «Каменным отпором», а затем отвечайте сильнее обычного.';
       }
@@ -103,6 +123,10 @@ const resolveSchoolHint = (battle: BattleView): string | null => {
       return '🪨 Твердь: ценность школы в том, чтобы пережить опасный ход и ответить сильнее, чем обычная сборка.';
     case 'gale': {
       const activeAbility = battle.player.runeLoadout?.activeAbility;
+      if (hasEquippedSchoolSeal(battle, 'gale') && hasReadyRuneActionCode(battle, 'gale_step')) {
+        return '🌪️ Печать Бури: «Шаг шквала» теперь лучше удерживает темп; ищите цель, где рывок готовит следующий ответ.';
+      }
+
       if (battle.enemy.intent && hasReadyRuneActionCode(battle, 'gale_step')) {
         return firstSchoolSignEquipped
           ? '🌪️ Первый знак Бури: раскрытый замысел — окно темпа; «Шаг шквала» бьёт и лучше прикрывает следующий ответ.'
@@ -124,6 +148,12 @@ const resolveSchoolHint = (battle: BattleView): string | null => {
       return '🌪️ Буря: играйте от темпа — ваш ход должен не только бить, но и готовить следующий ответ.';
     }
     case 'echo':
+      if (hasEquippedSchoolSeal(battle, 'echo')) {
+        return battle.enemy.intent
+          ? `🧠 Печать Прорицания: «${battle.enemy.intent.title}» уже прочитан — печать усиливает точный ответ.`
+          : '🧠 Печать Прорицания: ищите цель с раскрытым intent — там печать даст следующий слой чтения боя.';
+      }
+
       if (firstSchoolSignEquipped) {
         return battle.enemy.intent
           ? `🧠 Первый знак Прорицания: «${battle.enemy.intent.title}» уже прочитан — отвечайте точно, не тратьте ход вслепую.`

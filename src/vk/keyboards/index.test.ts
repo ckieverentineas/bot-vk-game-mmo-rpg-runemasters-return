@@ -473,6 +473,26 @@ describe('profile keyboard', () => {
     expect(battleResultLabels).not.toContain('⚔️ Проверить школу');
   });
 
+  it('labels the explore CTA as a seal target after a rare school seal is equipped', () => {
+    const player = createPlayer({
+      victories: 6,
+      schoolMasteries: [{ schoolCode: 'ember', experience: 4, rank: 1 }],
+      runes: [
+        {
+          ...createPlayer().runes[0],
+          rarity: 'RARE',
+          name: 'Печать Пламени',
+          isEquipped: true,
+          equippedSlot: 0,
+        },
+      ],
+    });
+
+    const mainMenuLabels = collectLabels(createMainMenuKeyboard(player));
+
+    expect(mainMenuLabels).toContain('⚔️ Цель печати');
+  });
+
   it('keeps defeat battle-result CTA aligned with rune review instead of school-test retry', () => {
     const player = createPlayer({
       victories: 3,

@@ -9,6 +9,7 @@ interface EncounterRandomSource {
 interface PreferredSchoolEncounterOptions {
   readonly schoolCode: string | null;
   readonly preferMiniboss?: boolean;
+  readonly preferSealTarget?: boolean;
   readonly suppressChallengeEncounters?: boolean;
 }
 
@@ -117,9 +118,17 @@ export const pickEncounterTemplate = (
     : null;
   const preferredEliteChance = !challengeEncountersSuppressed && locationLevel >= 3 ? 50 : 0;
   const preferredBossChance = !challengeEncountersSuppressed && locationLevel >= 5 ? 45 : 0;
+  const sealTargetChance = !challengeEncountersSuppressed && locationLevel >= 5 ? 35 : 0;
 
   if (preferredSchool.preferMiniboss && preferredBoss && preferredBossChance > 0 && random.rollPercentage(preferredBossChance)) {
     return preferredBoss;
+  }
+
+  if (preferredSchool.preferSealTarget && sealTargetChance > 0 && random.rollPercentage(sealTargetChance)) {
+    const sealTargets = [...bosses, ...elites];
+    if (sealTargets.length > 0) {
+      return random.pickOne(sealTargets);
+    }
   }
 
   if (bosses.length > 0 && bossChance > 0 && random.rollPercentage(bossChance)) {

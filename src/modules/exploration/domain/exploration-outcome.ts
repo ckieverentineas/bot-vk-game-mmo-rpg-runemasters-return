@@ -11,6 +11,7 @@ import {
   hasEquippedRuneOfSchoolAtLeastRarity,
   hasRuneOfSchoolAtLeastRarity,
 } from '../../player/domain/school-novice-path';
+import { getPlayerSchoolMastery } from '../../player/domain/school-mastery';
 import { derivePlayerStats, getEquippedRune } from '../../player/domain/player-stats';
 import { getSchoolDefinitionForArchetype } from '../../runes/domain/rune-schools';
 import { buildEnemySnapshot, describeEncounter, pickEncounterTemplate, resolveInitialTurnOwner } from '../../world/domain/enemy-scaling';
@@ -79,6 +80,20 @@ const shouldPreferSchoolMiniboss = (
   );
 };
 
+const shouldPreferSchoolSealTarget = (
+  player: PlayerState,
+  currentSchoolCode: string | null,
+): boolean => {
+  const novicePath = getSchoolNovicePathDefinition(currentSchoolCode);
+  if (!novicePath?.minibossRewardRarity) {
+    return false;
+  }
+
+  const mastery = getPlayerSchoolMastery(player, novicePath.schoolCode);
+  return hasEquippedRuneOfSchoolAtLeastRarity(player, novicePath.schoolCode, novicePath.minibossRewardRarity)
+    && (mastery?.rank ?? 0) < 2;
+};
+
 const buildOpeningLog = (
   context: ResolveExplorationOutcomeContext & { readonly roamingOriginBiome?: BiomeView | null },
   enemy: BattleEnemySnapshot,
@@ -124,7 +139,9 @@ const resolveBattleOutcome = (
   const suppressChallengeEncounters = context.player.defeatStreak > 0;
   const preferMiniboss = shouldPreferSchoolMiniboss(context.player, context.currentSchoolCode)
     && !suppressChallengeEncounters;
-  const roamingPool = preferMiniboss
+  const preferSealTarget = shouldPreferSchoolSealTarget(context.player, context.currentSchoolCode)
+    && !suppressChallengeEncounters;
+  const roamingPool = preferMiniboss || preferSealTarget
     ? null
     : pickRoamingPool(context.roamingTemplatePools ?? [], random);
   const template = roamingPool
@@ -132,6 +149,7 @@ const resolveBattleOutcome = (
     : pickEncounterTemplate(context.templates, context.locationLevel, {
         schoolCode: context.currentSchoolCode,
         preferMiniboss,
+        preferSealTarget,
         suppressChallengeEncounters,
       }, random);
   const playerStats = derivePlayerStats(context.player);

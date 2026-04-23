@@ -269,6 +269,25 @@ describe('BattleEngine', () => {
     expect(resolved.log.some((entry) => entry.includes('Пламя давит пробивающий замах'))).toBe(true);
   });
 
+  it('печать пламени добавляет заметное давление базовой атаке', () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0.5);
+    const battle = createBattle({
+      player: {
+        ...createBattle().player,
+        runeLoadout: {
+          ...createBattle().player.runeLoadout!,
+          schoolCode: 'ember',
+          schoolProgressStage: 'SEAL',
+        },
+      },
+    });
+
+    const resolved = BattleEngine.attack(battle);
+
+    expect(resolved.enemy.currentHealth).toBe(2);
+    expect(resolved.log.some((entry) => entry.includes('Печать Пламени'))).toBe(true);
+  });
+
   it('мастерство пламени усиливает добивающую атаку по просевшему врагу', () => {
     const battle = createBattle({
       player: {
@@ -447,6 +466,28 @@ describe('BattleEngine', () => {
 
     expect(resolved.player.guardPoints).toBe(7);
     expect(resolved.log.some((entry) => entry.includes('Твердь держит раскрытую угрозу'))).toBe(true);
+  });
+
+  it('печать тверди усиливает защитную стойку и показывает payoff', () => {
+    const battle = createBattle({
+      player: {
+        ...createBattle().player,
+        runeLoadout: {
+          ...createBattle().player.runeLoadout!,
+          archetypeCode: 'stone',
+          archetypeName: 'Страж',
+          schoolCode: 'stone',
+          schoolProgressStage: 'SEAL',
+          passiveAbilityCodes: ['stone_guard'],
+          activeAbility: null,
+        },
+      },
+    });
+
+    const resolved = BattleEngine.defend(battle);
+
+    expect(resolved.player.guardPoints).toBe(5);
+    expect(resolved.log.some((entry) => entry.includes('Печать Тверди'))).toBe(true);
   });
 
   it('вторая руна тверди даёт полный guard-бонус', () => {
@@ -642,6 +683,35 @@ describe('BattleEngine', () => {
     expect(resolved.log.some((entry) => entry.includes('Буря забирает темп'))).toBe(true);
   });
 
+  it('печать бури усиливает шаг шквала даже без раскрытого намерения', () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0.5);
+    const battle = createBattle({
+      player: {
+        ...createBattle().player,
+        runeLoadout: {
+          ...createBattle().player.runeLoadout!,
+          archetypeCode: 'gale',
+          archetypeName: 'Налётчик',
+          schoolCode: 'gale',
+          schoolProgressStage: 'SEAL',
+          passiveAbilityCodes: [],
+          activeAbility: {
+            code: 'gale_step',
+            name: 'Шаг шквала',
+            manaCost: 2,
+            cooldownTurns: 2,
+            currentCooldown: 0,
+          },
+        },
+      },
+    });
+
+    const resolved = BattleEngine.useRuneSkill(battle);
+
+    expect(resolved.player.guardPoints).toBe(4);
+    expect(resolved.log.some((entry) => entry.includes('Печать Бури'))).toBe(true);
+  });
+
   it('мастерство прорицания усиливает атаку по раскрытому намерению', () => {
     vi.spyOn(Math, 'random').mockReturnValue(0.5);
     const battle = createBattle({
@@ -702,6 +772,38 @@ describe('BattleEngine', () => {
     const resolved = BattleEngine.attack(battle);
 
     expect(resolved.log.some((entry) => entry.includes('читает «Пробивающий удар»'))).toBe(true);
+  });
+
+  it('печать прорицания добавляет payoff к точному ответу по intent', () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0.5);
+    const battle = createBattle({
+      player: {
+        ...createBattle().player,
+        runeLoadout: {
+          ...createBattle().player.runeLoadout!,
+          archetypeCode: 'echo',
+          archetypeName: 'Провидец',
+          schoolCode: 'echo',
+          schoolProgressStage: 'SEAL',
+          passiveAbilityCodes: ['echo_mind'],
+          activeAbility: null,
+        },
+      },
+      enemy: {
+        ...createBattle().enemy,
+        intent: {
+          code: 'HEAVY_STRIKE',
+          title: 'Тяжёлый удар',
+          description: 'Следующая атака врага будет сильнее обычной.',
+          bonusAttack: 3,
+        },
+      },
+    });
+
+    const resolved = BattleEngine.attack(battle);
+
+    expect(resolved.enemy.currentHealth).toBe(2);
+    expect(resolved.log.some((entry) => entry.includes('Печать Прорицания'))).toBe(true);
   });
 
   it('телеграфирует тяжёлый удар у подходящего врага вместо обычной атаки', () => {

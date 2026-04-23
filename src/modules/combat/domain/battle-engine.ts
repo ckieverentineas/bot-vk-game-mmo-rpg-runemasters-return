@@ -28,15 +28,19 @@ import {
 import {
   resolveEchoMasteryAttackBonus,
   resolveEchoIntentAttackBonus,
+  resolveEchoSealIntentBonus,
   resolveEmberAttackBonus,
   resolveEmberComboBonus,
   resolveEmberExecutionBonus,
   resolveEmberPressureIntentBonus,
+  resolveEmberSealPressureBonus,
   resolveGaleMasteryAttackGuardGain,
+  resolveGaleSealTempoGuardBonus,
   resolveGaleTempoIntentGuardBonus,
   resolveStoneGuardCapBonus,
   resolveStoneGuardGainBonus,
   resolveStoneHoldIntentGuardBonus,
+  resolveStoneSealGuardBonus,
   resolveStoneSynergyDamageBonus,
   resolveStoneSynergyGuardBonus,
   resolveStoneMasteryGuardGainBonus,
@@ -52,6 +56,7 @@ interface DefendOutcome {
   readonly guardCap: number;
   readonly intentGuardBonus: number;
   readonly stoneHoldIntentGuardBonus: number;
+  readonly stoneSealGuardBonus: number;
   readonly stoneMasteryGuardGainBonus: number;
 }
 
@@ -59,10 +64,12 @@ interface BasicAttackOutcome {
   readonly totalDamage: number;
   readonly emberBonus: number;
   readonly emberPressureIntentBonus: number;
+  readonly emberSealPressureBonus: number;
   readonly emberExecutionBonus: number;
   readonly emberComboBonus: number;
   readonly echoBonus: number;
   readonly echoMasteryBonus: number;
+  readonly echoSealBonus: number;
   readonly galeGuardGain: number;
   readonly revealedIntentTitle: string | null;
 }
@@ -222,6 +229,7 @@ const finishEnemyPreparation = (battle: BattleView): BattleView => {
 const resolveDefendOutcome = (battle: BattleView): DefendOutcome => {
   const stoneMasteryGuardGainBonus = resolveStoneMasteryGuardGainBonus(battle);
   const stoneHoldIntentGuardBonus = resolveStoneHoldIntentGuardBonus(battle);
+  const stoneSealGuardBonus = resolveStoneSealGuardBonus(battle);
   const intentGuardBonus = resolveIntentDefendGuardBonus(battle.enemy.intent);
 
   return {
@@ -230,6 +238,7 @@ const resolveDefendOutcome = (battle: BattleView): DefendOutcome => {
       intentGuardBonus,
       resolveStoneGuardGainBonus(battle),
       stoneHoldIntentGuardBonus,
+      stoneSealGuardBonus,
       stoneMasteryGuardGainBonus,
     ]),
     guardCap: resolveGuardCapWithBonuses(battle, [
@@ -237,6 +246,7 @@ const resolveDefendOutcome = (battle: BattleView): DefendOutcome => {
     ]),
     intentGuardBonus,
     stoneHoldIntentGuardBonus,
+    stoneSealGuardBonus,
     stoneMasteryGuardGainBonus,
   };
 };
@@ -245,10 +255,12 @@ const resolveBasicAttackOutcome = (battle: BattleView): BasicAttackOutcome => {
   const baseDamage = calculatePhysicalDamage(battle.player.attack, battle.enemy.defence);
   const emberBonus = resolveEmberAttackBonus(battle);
   const emberPressureIntentBonus = resolveEmberPressureIntentBonus(battle);
+  const emberSealPressureBonus = resolveEmberSealPressureBonus(battle);
   const emberExecutionBonus = resolveEmberExecutionBonus(battle);
   const emberComboBonus = resolveEmberComboBonus(battle);
   const echoBonus = resolveEchoIntentAttackBonus(battle);
   const echoMasteryBonus = resolveEchoMasteryAttackBonus(battle);
+  const echoSealBonus = resolveEchoSealIntentBonus(battle);
   const galeGuardGain = resolveGaleMasteryAttackGuardGain(battle);
 
   return {
@@ -256,17 +268,21 @@ const resolveBasicAttackOutcome = (battle: BattleView): BasicAttackOutcome => {
       baseDamage,
       emberBonus,
       emberPressureIntentBonus,
+      emberSealPressureBonus,
       emberExecutionBonus,
       emberComboBonus,
       echoBonus,
       echoMasteryBonus,
+      echoSealBonus,
     ]),
     emberBonus,
     emberPressureIntentBonus,
+    emberSealPressureBonus,
     emberExecutionBonus,
     emberComboBonus,
     echoBonus,
     echoMasteryBonus,
+    echoSealBonus,
     galeGuardGain,
     revealedIntentTitle: battle.enemy.intent?.title ?? null,
   };
@@ -313,6 +329,7 @@ export class BattleEngine {
       `🛡️ Вы занимаете защитную стойку и готовите защиту на ${outcome.guardGain} урона.`,
       ...messageWhen(outcome.intentGuardBonus > 0, '🛡️ Раскрытый тяжёлый удар даёт время встать плотнее обычного.'),
       ...messageWhen(outcome.stoneHoldIntentGuardBonus > 0, '🪨 Твердь держит раскрытую угрозу: стойка становится ещё крепче.'),
+      ...messageWhen(outcome.stoneSealGuardBonus > 0, '🪨 Печать Тверди добавляет опору к защитной стойке.'),
       ...messageWhen(outcome.stoneMasteryGuardGainBonus > 0, '🪨 Мастерство Тверди усиливает защитную стойку.'),
     );
     nextBattle.turnOwner = 'ENEMY';
@@ -406,6 +423,7 @@ export class BattleEngine {
       `⚔️ Вы наносите ${outcome.totalDamage} урона врагу ${nextBattle.enemy.name}.`,
       ...messageWhen(outcome.emberBonus > 0, `🔥 Школа Пламени усиливает атаку ещё на ${outcome.emberBonus}.`),
       ...messageWhen(outcome.emberPressureIntentBonus > 0, '🔥 Пламя давит пробивающий замах до того, как враг успевает сломать стойку.'),
+      ...messageWhen(outcome.emberSealPressureBonus > 0, '🔥 Печать Пламени держит давление даже без нового разгона.'),
       ...messageWhen(outcome.emberExecutionBonus > 0, `🔥 Мастерство Пламени помогает дожать врага ещё на ${outcome.emberExecutionBonus}.`),
       ...messageWhen(outcome.emberComboBonus > 0, '🔥 Разогрев Пламени превращает откат рунной техники в окно для ещё более сильного добивания.'),
       ...messageWhen(
@@ -413,6 +431,7 @@ export class BattleEngine {
         `🧠 Школа Прорицания читает «${outcome.revealedIntentTitle ?? 'замысел'}» и добавляет ${outcome.echoBonus} магического урона.`,
       ),
       ...messageWhen(outcome.echoMasteryBonus > 0, `🧠 Мастерство Прорицания добавляет ещё ${outcome.echoMasteryBonus} урона по раскрытой угрозе.`),
+      ...messageWhen(outcome.echoSealBonus > 0, '🧠 Печать Прорицания закрепляет чтение боя и усиливает точный ответ.'),
       ...messageWhen(outcome.galeGuardGain > 0, `🌪️ Мастерство Бури готовит защиту ещё на ${outcome.galeGuardGain} урона.`),
     );
 
@@ -493,6 +512,7 @@ export class BattleEngine {
   private static performStoneBastion(nextBattle: BattleView, activeAbility: BattleRuneActionSnapshot): BattleView {
     const synergyDamageBonus = resolveStoneSynergyDamageBonus(nextBattle);
     const synergyGuardBonus = resolveStoneSynergyGuardBonus(nextBattle);
+    const sealGuardBonus = resolveStoneSealGuardBonus(nextBattle);
     const intentDamageBonus = resolveRuneIntentDamageBonus(nextBattle.enemy.intent);
     const damage = calculatePhysicalDamage(
       Math.max(1, Math.floor(nextBattle.player.attack * 0.6) + Math.floor(nextBattle.player.defence / 2)),
@@ -505,6 +525,7 @@ export class BattleEngine {
       1,
       intentBonus,
       synergyGuardBonus,
+      sealGuardBonus,
     ]);
     const guardCap = resolveGuardCapWithBonuses(nextBattle, [
       resolveStoneGuardCapBonus(nextBattle),
@@ -520,6 +541,7 @@ export class BattleEngine {
       ...(intentBonus > 0 ? ['🪨 Школа Тверди укрепляется ещё сильнее против заранее раскрытой угрозы.'] : []),
       ...messageWhen(intentDamageBonus > 0, '🔮 Руна бьёт точнее по раскрытому замыслу врага.'),
       ...(synergyDamageBonus > 0 ? ['🪨 Ответ стойки превращает накопленную защиту в более жёсткий контрудар.'] : []),
+      ...messageWhen(sealGuardBonus > 0, '🪨 Печать Тверди добавляет отпору устойчивую опору.'),
       `💙 Мана: ${nextBattle.player.currentMana}/${nextBattle.player.maxMana}.`,
     );
 
@@ -531,7 +553,8 @@ export class BattleEngine {
     const intentDamageBonus = resolveRuneIntentDamageBonus(nextBattle.enemy.intent);
     const damage = calculatePhysicalDamage(strikePower, nextBattle.enemy.defence) + intentDamageBonus;
     const tempoGuardBonus = resolveGaleTempoIntentGuardBonus(nextBattle);
-    const guardGain = resolveGaleGuardGain(nextBattle.player) + tempoGuardBonus;
+    const sealTempoGuardBonus = resolveGaleSealTempoGuardBonus(nextBattle);
+    const guardGain = resolveGaleGuardGain(nextBattle.player) + tempoGuardBonus + sealTempoGuardBonus;
     const guardCap = resolveGuardCap(nextBattle.player);
 
     applyDamageToEnemy(nextBattle, damage);
@@ -543,6 +566,7 @@ export class BattleEngine {
       `🌀 ${activeAbility.name} наносит ${damage} урона и готовит защиту на ${guardGain} урона.`,
       ...messageWhen(intentDamageBonus > 0, '🔮 Руна бьёт точнее по раскрытому замыслу врага.'),
       ...messageWhen(tempoGuardBonus > 0, '🌪️ Буря забирает темп по раскрытому замыслу: следующий ответ прикрыт лучше.'),
+      ...messageWhen(sealTempoGuardBonus > 0, '🌪️ Печать Бури удерживает темп после рывка.'),
       `💙 Мана: ${nextBattle.player.currentMana}/${nextBattle.player.maxMana}.`,
     );
 

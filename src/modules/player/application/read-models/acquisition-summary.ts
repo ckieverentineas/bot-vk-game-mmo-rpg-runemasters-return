@@ -6,7 +6,15 @@ import { getEquippedRune, getUnlockedRuneSlotCount } from '../../domain/player-s
 import { getSchoolNovicePathDefinition, getSchoolNovicePathDefinitionForEnemy, hasRuneOfSchoolAtLeastRarity } from '../../domain/school-novice-path';
 import { getSchoolMasteryDefinition } from '../../domain/school-mastery';
 
-export type AcquisitionSummaryKind = 'new_rune' | 'new_rarity' | 'mastery_unlock' | 'slot_unlock' | 'school_trial_completed' | 'school_miniboss_completed' | 'school_style_committed';
+export type AcquisitionSummaryKind =
+  | 'new_rune'
+  | 'new_rarity'
+  | 'mastery_unlock'
+  | 'slot_unlock'
+  | 'school_trial_completed'
+  | 'school_miniboss_completed'
+  | 'school_style_committed'
+  | 'school_seal_committed';
 
 export interface AcquisitionSummaryView {
   readonly kind: AcquisitionSummaryKind;
@@ -297,6 +305,50 @@ const buildSchoolStyleCommittedSummary = (
   }
 };
 
+const buildSchoolSealCommittedSummary = (
+  schoolCode: string,
+  schoolName: string,
+  schoolNameGenitive: string,
+): AcquisitionSummaryView => {
+  switch (schoolCode) {
+    case 'ember':
+      return createSummary(
+        'school_seal_committed',
+        'Печать Пламени закреплена',
+        'Редкая печать теперь в сборке: Пламя получает малый бонус давления к базовой атаке и открывает цель печати.',
+        'Следующий шаг: ищите «Цель печати» и доведите школу до нового ранга.',
+      );
+    case 'stone':
+      return createSummary(
+        'school_seal_committed',
+        'Печать Тверди закреплена',
+        'Редкая печать теперь в сборке: Твердь получает малый guard-бонус к защитной стойке и «Каменному отпору».',
+        'Следующий шаг: ищите «Цель печати» и проверяйте стойку на сильной угрозе.',
+      );
+    case 'gale':
+      return createSummary(
+        'school_seal_committed',
+        'Печать Бури закреплена',
+        'Редкая печать теперь в сборке: Буря получает малый guard-бонус к «Шагу шквала» и открывает цель печати.',
+        'Следующий шаг: ищите «Цель печати» и удерживайте темп на сильной цели.',
+      );
+    case 'echo':
+      return createSummary(
+        'school_seal_committed',
+        'Печать Прорицания закреплена',
+        'Редкая печать теперь в сборке: Прорицание получает малый бонус к точному ответу по раскрытому intent.',
+        'Следующий шаг: ищите «Цель печати» и отвечайте на раскрытые угрозы.',
+      );
+    default:
+      return createSummary(
+        'school_seal_committed',
+        `Печать школы ${schoolName} закреплена`,
+        `Редкая печать школы ${schoolNameGenitive} теперь в сборке и даёт малый боевой эффект этой школы.`,
+        'Следующий шаг: ищите «Цель печати» и доведите школу до нового ранга.',
+      );
+  }
+};
+
 export const buildBattleAcquisitionSummary = (
   before: PlayerState,
   after: PlayerState,
@@ -393,6 +445,14 @@ export const buildEquipAcquisitionSummary = (
 
   const school = getSchoolDefinitionForArchetype(afterEquippedRune.archetypeCode);
   const novicePath = getSchoolNovicePathDefinition(school?.code);
+  if (
+    school
+    && novicePath?.minibossRewardRarity
+    && afterEquippedRune.rarity === novicePath.minibossRewardRarity
+  ) {
+    return buildSchoolSealCommittedSummary(novicePath.schoolCode, school.name, school.nameGenitive);
+  }
+
   if (
     !school
     || !novicePath
