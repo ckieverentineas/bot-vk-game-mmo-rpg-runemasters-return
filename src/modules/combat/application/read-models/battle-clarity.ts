@@ -1,5 +1,6 @@
 import type { BattleView } from '../../../../shared/types/game';
 import { listBattleRuneLoadouts } from '../../domain/battle-rune-loadouts';
+import { buildBattleRuneActionReadinessView } from './battle-rune-action-readiness';
 
 export interface BattleClarityView {
   readonly stateLine: string;
@@ -27,8 +28,7 @@ const hasReadyRuneAction = (battle: BattleView): boolean => (
   listBattleRuneLoadouts(battle.player).some(({ loadout }) => {
     const activeAbility = loadout.activeAbility;
     return !!activeAbility
-      && activeAbility.currentCooldown <= 0
-      && battle.player.currentMana >= activeAbility.manaCost;
+      && buildBattleRuneActionReadinessView(battle, activeAbility).isReady;
   })
 );
 

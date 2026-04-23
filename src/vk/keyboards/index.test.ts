@@ -640,7 +640,7 @@ describe('profile keyboard', () => {
 
     expect(labels).toContain('⚔️ Атака');
     expect(labels).toContain('🛡️ Защита (+2 щит)');
-    expect(labels).toContain('🌀 1 Пульс Пламени');
+    expect(labels).toContain('🌀 1 Пульс Пламени · 3 маны');
   });
 
   it('shows the larger defend payoff when heavy strike is revealed', () => {
@@ -679,8 +679,16 @@ describe('profile keyboard', () => {
       },
     })));
 
-    expect(cooldownLabels).toContain('🌀 1 Пульс Пламени · КД 2');
-    expect(lowManaLabels).toContain('🌀 1 Пульс Пламени · нужно 3 маны');
+    expect(cooldownLabels).toContain('🌀 1 Пульс Пламени · КД 2 · 3 маны');
+    expect(lowManaLabels).toContain('🌀 1 Пульс Пламени · мана 1/3');
+  });
+
+  it('shows that a rune action is not available on the enemy turn', () => {
+    const labels = collectLabels(createBattleKeyboard(createBattle({
+      turnOwner: 'ENEMY',
+    })));
+
+    expect(labels).toContain('🌀 1 Пульс Пламени · ход врага · 3 маны');
   });
 
   it('does not show a dead rune action button without an active rune skill', () => {

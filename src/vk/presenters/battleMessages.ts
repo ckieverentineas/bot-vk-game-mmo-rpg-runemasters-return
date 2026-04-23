@@ -1,4 +1,5 @@
 import { buildBattleClarityView } from '../../modules/combat/application/read-models/battle-clarity';
+import { buildBattleRuneActionReadinessView } from '../../modules/combat/application/read-models/battle-rune-action-readiness';
 import { isBattleEncounterOffered } from '../../modules/combat/domain/battle-encounter';
 import { listBattleRuneLoadouts } from '../../modules/combat/domain/battle-rune-loadouts';
 import { resolveDefendGuardGain, resolveIntentDefendGuardBonus } from '../../modules/combat/domain/battle-tactics';
@@ -6,7 +7,7 @@ import type { AcquisitionSummaryView } from '../../modules/player/application/re
 import { buildDefeatFlowView } from '../../modules/player/application/read-models/defeat-flow';
 import { buildBattleResultNextGoalView } from '../../modules/player/application/read-models/next-goal';
 import { getRuneSchoolPresentation } from '../../modules/runes/domain/rune-schools';
-import type { BattleView, PlayerState, StatBlock } from '../../shared/types/game';
+import type { BattleRuneActionSnapshot, BattleView, PlayerState, StatBlock } from '../../shared/types/game';
 import {
   formatRuneDisplayName,
   renderAcquisitionSummary,
@@ -103,16 +104,12 @@ const renderBattleRuneState = (battle: BattleView): string => {
   return runeLoadouts.map(({ slot, loadout }) => {
     const activeAbility = loadout.activeAbility;
     if (!activeAbility) {
-      return `🔮 Слот ${slot + 1}: ${loadout.runeName} · тихий знак держит силу.`;
+      return `🔮 Слот ${slot + 1}: ${loadout.runeName} · активного действия нет, знак держит пассивную силу.`;
     }
 
-    const state = activeAbility.currentCooldown > 0
-      ? `откат ${activeAbility.currentCooldown} хода`
-      : battle.player.currentMana < activeAbility.manaCost
-        ? `нужно ${activeAbility.manaCost} маны`
-        : 'готово';
+    const readiness = buildBattleRuneActionReadinessView(battle, activeAbility);
 
-    return `🌀 Слот ${slot + 1}: ${activeAbility.name} — ${state}`;
+    return `🌀 Слот ${slot + 1}: ${activeAbility.name} — ${readiness.screenState}`;
   }).join('\n');
 };
 
@@ -125,6 +122,15 @@ const renderBattleEnemyIntent = (battle: BattleView): string | null => {
   return `⚠️ Враг выдаёт замысел: ${intent.title}. ${intent.description}`;
 };
 
+const renderBattleRuneActionLabel = (
+  battle: BattleView,
+  slot: number,
+  activeAbility: BattleRuneActionSnapshot,
+): string => {
+  const readiness = buildBattleRuneActionReadinessView(battle, activeAbility);
+  return `🌀 ${slot + 1}: ${activeAbility.name}${readiness.buttonSuffix}`;
+};
+
 const renderBattleActionState = (battle: BattleView): string => {
   const defendGain = resolveDefendGuardGain(battle.player) + resolveIntentDefendGuardBonus(battle.enemy.intent);
   const actions = ['⚔️ Атака', `🛡️ Защита (+${defendGain} щит)`];
@@ -132,7 +138,9 @@ const renderBattleActionState = (battle: BattleView): string => {
   actions.push(
     ...listBattleRuneLoadouts(battle.player)
       .flatMap(({ slot, loadout }) => (
-        loadout.activeAbility ? [`🌀 ${slot + 1}: ${loadout.activeAbility.name}`] : []
+        loadout.activeAbility
+          ? [renderBattleRuneActionLabel(battle, slot, loadout.activeAbility)]
+          : []
       )),
   );
 

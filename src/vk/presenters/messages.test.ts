@@ -751,9 +751,9 @@ describe('messages school-first onboarding framing', () => {
       },
     }));
 
-    expect(message).toContain('🌀 Слот 1: Импульс углей — готово');
-    expect(message).toContain('🌀 Слот 2: Шаг шквала — готово');
-    expect(message).toContain('⚔️ Ответ мастера: ⚔️ Атака · 🛡️ Защита (+2 щит) · 🌀 1: Импульс углей · 🌀 2: Шаг шквала');
+    expect(message).toContain('🌀 Слот 1: Импульс углей — готово: стоит 3 маны; мана 4/4');
+    expect(message).toContain('🌀 Слот 2: Шаг шквала — готово: стоит 2 маны; мана 4/4');
+    expect(message).toContain('⚔️ Ответ мастера: ⚔️ Атака · 🛡️ Защита (+2 щит) · 🌀 1: Импульс углей · 3 маны · 🌀 2: Шаг шквала · 2 маны');
   });
 
   it('shows a compact combat clarity state line during the active player turn', () => {
@@ -803,8 +803,67 @@ describe('messages school-first onboarding framing', () => {
     expect(message).toContain('📊 Черты: ⚔️ 2 · 🛡️ 0 · 🔮 0 · 💨 2 · 🧠 1');
     expect(message).toContain('Чтение боя');
     expect(message).toContain('🎲 Выбор: тяжёлый удар лучше встретить защитой');
+    expect(message).toContain('🌀 Слот 1: Импульс углей — недоступно: откат 1 ход; мана 4/4, стоимость 3');
     expect(message).toContain('🛡️ Защита (+4 щит)');
+    expect(message).toContain('🌀 1: Импульс углей · КД 1 · 3 маны');
     expect(message).toContain('🔥 Пламя: враг уже просел');
+  });
+
+  it('explains missing mana and wrong timing for active runes on the battle screen', () => {
+    const lowManaMessage = renderBattle(createBattle({
+      status: 'ACTIVE',
+      result: null,
+      rewards: null,
+      player: {
+        ...createBattle().player,
+        maxMana: 4,
+        currentMana: 1,
+        runeLoadout: {
+          runeId: 'rune-1',
+          runeName: 'Руна Пламени',
+          archetypeCode: 'ember',
+          archetypeName: 'Штурм',
+          schoolCode: 'ember',
+          passiveAbilityCodes: ['ember_heart'],
+          activeAbility: {
+            code: 'ember_pulse',
+            name: 'Импульс углей',
+            manaCost: 3,
+            cooldownTurns: 2,
+            currentCooldown: 0,
+          },
+        },
+      },
+    }));
+    const enemyTurnMessage = renderBattle(createBattle({
+      status: 'ACTIVE',
+      result: null,
+      rewards: null,
+      turnOwner: 'ENEMY',
+      player: {
+        ...createBattle().player,
+        runeLoadout: {
+          runeId: 'rune-1',
+          runeName: 'Руна Пламени',
+          archetypeCode: 'ember',
+          archetypeName: 'Штурм',
+          schoolCode: 'ember',
+          passiveAbilityCodes: ['ember_heart'],
+          activeAbility: {
+            code: 'ember_pulse',
+            name: 'Импульс углей',
+            manaCost: 3,
+            cooldownTurns: 2,
+            currentCooldown: 0,
+          },
+        },
+      },
+    }));
+
+    expect(lowManaMessage).toContain('🌀 Слот 1: Импульс углей — недоступно: не хватает маны 1/3; откат готов');
+    expect(lowManaMessage).toContain('🌀 1: Импульс углей · мана 1/3');
+    expect(enemyTurnMessage).toContain('🌀 Слот 1: Импульс углей — не тот момент: сейчас ход врага; мана 4/4, стоимость 3; откат готов');
+    expect(enemyTurnMessage).not.toContain('⚔️ Ответ мастера:');
   });
 
   it('shows an encounter decision before normal battle tactics', () => {

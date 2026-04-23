@@ -1,6 +1,7 @@
 import { Keyboard } from 'vk-io';
 
 import { buildBattleActionIntentStateKey } from '../../modules/combat/application/command-intent-state';
+import { buildBattleRuneActionReadinessView } from '../../modules/combat/application/read-models/battle-rune-action-readiness';
 import { isBattleEncounterOffered } from '../../modules/combat/domain/battle-encounter';
 import {
   getBattleRuneLoadout,
@@ -27,20 +28,15 @@ const createBattleSkillButton = (
 
   const action = resolveBattleRuneSkillAction(slot);
   const stateKey = buildBattleActionIntentStateKey(battle, action);
-  const isReady = activeAbility.currentCooldown <= 0 && battle.player.currentMana >= activeAbility.manaCost;
-  const isRuneAnswerHighlighted = isReady && battle.enemy.intent !== null && battle.enemy.intent !== undefined;
-  const labelSuffix = activeAbility.currentCooldown > 0
-    ? ` · КД ${activeAbility.currentCooldown}`
-    : battle.player.currentMana < activeAbility.manaCost
-      ? ` · нужно ${activeAbility.manaCost} маны`
-      : '';
+  const readiness = buildBattleRuneActionReadinessView(battle, activeAbility);
+  const isRuneAnswerHighlighted = readiness.isReady && battle.enemy.intent !== null && battle.enemy.intent !== undefined;
 
   return {
-    label: `🌀 ${slot + 1} ${activeAbility.name}${labelSuffix}`,
+    label: `🌀 ${slot + 1} ${activeAbility.name}${readiness.buttonSuffix}`,
     command: slot === 0 ? gameCommands.skillSlot1 : gameCommands.skillSlot2,
     color: isRuneAnswerHighlighted
       ? Keyboard.POSITIVE_COLOR
-      : isReady
+      : readiness.isReady
         ? Keyboard.PRIMARY_COLOR
         : Keyboard.SECONDARY_COLOR,
     intentScoped: true,
