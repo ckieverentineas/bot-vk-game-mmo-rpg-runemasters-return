@@ -18,6 +18,41 @@ export type WorkshopItemCode =
 
 export type WorkshopBlueprintCost = Partial<Record<MaterialField, number>>;
 
+export const workshopBlueprintCodes = [
+  'hunter_cleaver',
+  'tracker_jacket',
+  'skinning_kit',
+  'resonance_tool',
+] as const satisfies readonly WorkshopBlueprintCode[];
+
+export const workshopItemCodes = [
+  'hunter_cleaver',
+  'tracker_jacket',
+  'skinning_kit',
+] as const satisfies readonly WorkshopItemCode[];
+
+export const workshopItemClasses = [
+  'COMMON',
+  'UNCOMMON',
+  'RARE',
+  'EPIC',
+  'L',
+  'UL',
+] as const satisfies readonly WorkshopItemClass[];
+
+export const workshopItemSlots = [
+  'weapon',
+  'armor',
+  'trinket',
+  'tool',
+] as const satisfies readonly WorkshopItemSlot[];
+
+export const workshopItemStatuses = [
+  'ACTIVE',
+  'BROKEN',
+  'DESTROYED',
+] as const satisfies readonly WorkshopItemStatus[];
+
 interface BaseWorkshopBlueprintDefinition {
   readonly code: WorkshopBlueprintCode;
   readonly itemClass: WorkshopItemClass;
@@ -114,6 +149,31 @@ const getCostAmount = (
   cost: WorkshopBlueprintCost,
   field: MaterialField,
 ): number => cost[field] ?? 0;
+
+const includesWorkshopValue = <T extends string>(
+  values: readonly T[],
+  value: string,
+): value is T => values.includes(value as T);
+
+export const isWorkshopBlueprintCode = (value: string): value is WorkshopBlueprintCode => (
+  includesWorkshopValue(workshopBlueprintCodes, value)
+);
+
+export const isWorkshopItemCode = (value: string): value is WorkshopItemCode => (
+  includesWorkshopValue(workshopItemCodes, value)
+);
+
+export const isWorkshopItemClass = (value: string): value is WorkshopItemClass => (
+  includesWorkshopValue(workshopItemClasses, value)
+);
+
+export const isWorkshopItemSlot = (value: string): value is WorkshopItemSlot => (
+  includesWorkshopValue(workshopItemSlots, value)
+);
+
+export const isWorkshopItemStatus = (value: string): value is WorkshopItemStatus => (
+  includesWorkshopValue(workshopItemStatuses, value)
+);
 
 export const listWorkshopBlueprints = (): readonly WorkshopBlueprintDefinition[] => workshopBlueprints;
 

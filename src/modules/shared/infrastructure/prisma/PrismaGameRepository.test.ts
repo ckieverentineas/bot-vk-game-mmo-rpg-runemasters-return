@@ -6,6 +6,10 @@ import { describe, expect, it, vi } from 'vitest';
 import type { BattleView, PlayerState, RuneDraft, StatBlock } from '../../../../shared/types/game';
 import { createPendingRewardSnapshot, type PendingRewardAppliedResultSnapshot } from '../../../rewards/domain/pending-reward-snapshot';
 import type { TrophyActionDefinition } from '../../../rewards/domain/trophy-actions';
+import type {
+  PlayerBlueprintView,
+  PlayerCraftedItemView,
+} from '../../../workshop/application/workshop-persistence';
 import { BESTIARY_ENEMY_KILL_MILESTONE_SOURCE_TYPE } from '../../domain/contracts/bestiary-enemy-kill-milestone-ledger';
 import { BESTIARY_LOCATION_DISCOVERY_SOURCE_TYPE } from '../../domain/contracts/bestiary-location-discovery-ledger';
 import { createAppliedPendingRewardLedgerEntry, createPendingRewardLedgerEntry } from '../../domain/contracts/reward-ledger';
@@ -299,6 +303,84 @@ const createStats = (): StatBlock => ({
   intelligence: 0,
 });
 
+interface PlayerBlueprintRecordFixture {
+  readonly playerId: number;
+  readonly blueprintCode: string;
+  readonly quantity: number;
+  readonly createdAt: Date;
+  readonly updatedAt: Date;
+}
+
+interface PlayerCraftedItemRecordFixture {
+  readonly id: string;
+  readonly playerId: number;
+  readonly itemCode: string;
+  readonly itemClass: string;
+  readonly slot: string;
+  readonly status: string;
+  readonly equipped: boolean;
+  readonly durability: number;
+  readonly maxDurability: number;
+  readonly createdAt: Date;
+  readonly updatedAt: Date;
+}
+
+const createPlayerBlueprintRecord = (
+  overrides: Partial<PlayerBlueprintRecordFixture> = {},
+): PlayerBlueprintRecordFixture => ({
+  playerId: 1,
+  blueprintCode: 'skinning_kit',
+  quantity: 2,
+  createdAt: new Date('2026-04-22T10:00:00.000Z'),
+  updatedAt: new Date('2026-04-22T10:30:00.000Z'),
+  ...overrides,
+});
+
+const createPlayerBlueprintViewSnapshot = (
+  overrides: Partial<PlayerBlueprintView> = {},
+): PlayerBlueprintView => ({
+  playerId: 1,
+  blueprintCode: 'skinning_kit',
+  quantity: 2,
+  createdAt: '2026-04-22T10:00:00.000Z',
+  updatedAt: '2026-04-22T10:30:00.000Z',
+  ...overrides,
+});
+
+const createCraftedItemRecord = (
+  overrides: Partial<PlayerCraftedItemRecordFixture> = {},
+): PlayerCraftedItemRecordFixture => ({
+  id: 'crafted-1',
+  playerId: 1,
+  itemCode: 'skinning_kit',
+  itemClass: 'COMMON',
+  slot: 'tool',
+  status: 'ACTIVE',
+  equipped: false,
+  durability: 12,
+  maxDurability: 12,
+  createdAt: new Date('2026-04-22T11:00:00.000Z'),
+  updatedAt: new Date('2026-04-22T11:30:00.000Z'),
+  ...overrides,
+});
+
+const createCraftedItemViewSnapshot = (
+  overrides: Partial<PlayerCraftedItemView> = {},
+): PlayerCraftedItemView => ({
+  id: 'crafted-1',
+  playerId: 1,
+  itemCode: 'skinning_kit',
+  itemClass: 'COMMON',
+  slot: 'tool',
+  status: 'ACTIVE',
+  equipped: false,
+  durability: 12,
+  maxDurability: 12,
+  createdAt: '2026-04-22T11:00:00.000Z',
+  updatedAt: '2026-04-22T11:30:00.000Z',
+  ...overrides,
+});
+
 const createRewardIntent = (): RewardIntent => ({
   schemaVersion: 1,
   intentId: 'battle-victory:battle-1',
@@ -465,6 +547,17 @@ const createPrismaMock = () => {
       update: vi.fn(),
       updateMany: vi.fn(),
     },
+    playerBlueprint: {
+      findMany: vi.fn(),
+      upsert: vi.fn(),
+      updateMany: vi.fn(),
+    },
+    playerCraftedItem: {
+      findMany: vi.fn(),
+      findFirst: vi.fn(),
+      create: vi.fn(),
+      updateMany: vi.fn(),
+    },
     rune: {
       create: vi.fn(),
       updateMany: vi.fn(),
@@ -524,6 +617,449 @@ const createPrismaMock = () => {
 };
 
 describe('PrismaGameRepository release hardening', () => {
+  it('lists player workshop blueprints as a focused read model', async () => {
+    const { repository, tx } = createPrismaMock();
+
+    tx.playerBlueprint.findMany.mockResolvedValue([
+      createPlayerBlueprintRecord({
+        blueprintCode: 'hunter_cleaver',
+        quantity: 3,
+      }),
+    ]);
+
+    await expect(repository.listPlayerBlueprints(1)).resolves.toEqual([
+      createPlayerBlueprintViewSnapshot({
+        blueprintCode: 'hunter_cleaver',
+        quantity: 3,
+      }),
+    ]);
+
+    expect(tx.playerBlueprint.findMany).toHaveBeenCalledWith({
+      where: { playerId: 1 },
+      orderBy: { blueprintCode: 'asc' },
+    });
+    expect(tx.player.findUnique).not.toHaveBeenCalled();
+  });
+
+  it('lists player crafted workshop items as a focused read model', async () => {
+    const { repository, tx } = createPrismaMock();
+
+    tx.playerCraftedItem.findMany.mockResolvedValue([
+      createCraftedItemRecord({
+        id: 'crafted-weapon-1',
+        itemCode: 'hunter_cleaver',
+        itemClass: 'RARE',
+        slot: 'weapon',
+        durability: 14,
+        maxDurability: 14,
+      }),
+    ]);
+
+    await expect(repository.listPlayerCraftedItems(1)).resolves.toEqual([
+      createCraftedItemViewSnapshot({
+        id: 'crafted-weapon-1',
+        itemCode: 'hunter_cleaver',
+        itemClass: 'RARE',
+        slot: 'weapon',
+        durability: 14,
+        maxDurability: 14,
+      }),
+    ]);
+
+    expect(tx.playerCraftedItem.findMany).toHaveBeenCalledWith({
+      where: { playerId: 1 },
+      orderBy: [
+        { createdAt: 'asc' },
+        { id: 'asc' },
+      ],
+    });
+    expect(tx.player.findUnique).not.toHaveBeenCalled();
+  });
+
+  it('rejects corrupted workshop item records at the persistence boundary', async () => {
+    const { repository, tx } = createPrismaMock();
+
+    tx.playerCraftedItem.findMany.mockResolvedValue([
+      createCraftedItemRecord({
+        status: 'LEGACY_STATUS',
+      }),
+    ]);
+
+    await expect(repository.listPlayerCraftedItems(1)).rejects.toMatchObject({
+      code: 'workshop_persistence_invalid',
+    });
+  });
+
+  it('grants workshop blueprints by incrementing quantity under a command intent', async () => {
+    const { repository, tx } = createPrismaMock();
+
+    tx.commandIntentRecord.findUnique.mockResolvedValue(null);
+    tx.commandIntentRecord.create.mockResolvedValue({});
+    tx.commandIntentRecord.update.mockResolvedValue({});
+    tx.playerBlueprint.upsert.mockResolvedValue(createPlayerBlueprintRecord({
+      quantity: 4,
+    }));
+    tx.player.update.mockResolvedValue({});
+
+    const result = await repository.grantPlayerBlueprint(1, 'skinning_kit', 2, {
+      intentId: 'intent-blueprint-1',
+      intentStateKey: 'state-blueprint-1',
+      currentStateKey: 'state-blueprint-1',
+    });
+
+    expect(result.quantity).toBe(4);
+    expect(tx.commandIntentRecord.create).toHaveBeenCalledWith({
+      data: {
+        playerId: 1,
+        intentId: 'intent-blueprint-1',
+        commandKey: 'GRANT_WORKSHOP_BLUEPRINT',
+        stateKey: 'state-blueprint-1',
+      },
+    });
+    expect(tx.playerBlueprint.upsert).toHaveBeenCalledWith({
+      where: {
+        playerId_blueprintCode: {
+          playerId: 1,
+          blueprintCode: 'skinning_kit',
+        },
+      },
+      update: {
+        quantity: { increment: 2 },
+      },
+      create: {
+        playerId: 1,
+        blueprintCode: 'skinning_kit',
+        quantity: 2,
+      },
+    });
+    expect(tx.commandIntentRecord.update).toHaveBeenCalledWith({
+      where: {
+        playerId_intentId: {
+          playerId: 1,
+          intentId: 'intent-blueprint-1',
+        },
+      },
+      data: {
+        status: 'APPLIED',
+        resultSnapshot: expect.any(String),
+      },
+    });
+  });
+
+  it('returns applied blueprint grant intent before validating the new request body', async () => {
+    const { repository, tx } = createPrismaMock();
+
+    tx.commandIntentRecord.findUnique.mockResolvedValue({
+      commandKey: 'GRANT_WORKSHOP_BLUEPRINT',
+      stateKey: 'state-blueprint-1',
+      status: 'APPLIED',
+      resultSnapshot: JSON.stringify(createPlayerBlueprintViewSnapshot({
+        quantity: 2,
+      })),
+    });
+
+    await expect(repository.grantPlayerBlueprint(1, 'skinning_kit', 0, {
+      intentId: 'intent-blueprint-1',
+      intentStateKey: 'state-blueprint-1',
+      currentStateKey: 'state-blueprint-1',
+    })).resolves.toMatchObject({
+      quantity: 2,
+    });
+    expect(tx.playerBlueprint.upsert).not.toHaveBeenCalled();
+  });
+
+  it('crafts a workshop item by consuming one craft blueprint and catalog material cost', async () => {
+    const { repository, tx } = createPrismaMock();
+
+    tx.commandIntentRecord.findUnique.mockResolvedValue(null);
+    tx.commandIntentRecord.create.mockResolvedValue({});
+    tx.commandIntentRecord.update.mockResolvedValue({});
+    tx.playerBlueprint.updateMany.mockResolvedValue({ count: 1 });
+    tx.playerInventory.updateMany.mockResolvedValue({ count: 1 });
+    tx.playerCraftedItem.create.mockResolvedValue(createCraftedItemRecord({
+      id: 'crafted-cleaver-1',
+      itemCode: 'hunter_cleaver',
+      itemClass: 'RARE',
+      slot: 'weapon',
+      durability: 14,
+      maxDurability: 14,
+    }));
+    tx.player.update.mockResolvedValue({});
+
+    const item = await repository.craftWorkshopItem(1, 'hunter_cleaver', {
+      intentId: 'intent-workshop-craft-1',
+      intentStateKey: 'state-workshop-craft-1',
+      currentStateKey: 'state-workshop-craft-1',
+    });
+
+    expect(item).toMatchObject({
+      id: 'crafted-cleaver-1',
+      itemCode: 'hunter_cleaver',
+      itemClass: 'RARE',
+      slot: 'weapon',
+      status: 'ACTIVE',
+      equipped: false,
+      durability: 14,
+      maxDurability: 14,
+    });
+    expect(tx.playerBlueprint.updateMany).toHaveBeenCalledWith({
+      where: {
+        playerId: 1,
+        blueprintCode: 'hunter_cleaver',
+        quantity: { gte: 1 },
+      },
+      data: {
+        quantity: { decrement: 1 },
+      },
+    });
+    expect(tx.playerInventory.updateMany).toHaveBeenCalledWith({
+      where: {
+        playerId: 1,
+        leather: { gte: 4 },
+        bone: { gte: 2 },
+        metal: { gte: 1 },
+      },
+      data: {
+        leather: { increment: -4 },
+        bone: { increment: -2 },
+        metal: { increment: -1 },
+      },
+    });
+    expect(tx.playerCraftedItem.create).toHaveBeenCalledWith({
+      data: {
+        playerId: 1,
+        itemCode: 'hunter_cleaver',
+        itemClass: 'RARE',
+        slot: 'weapon',
+        status: 'ACTIVE',
+        equipped: false,
+        durability: 14,
+        maxDurability: 14,
+      },
+    });
+  });
+
+  it('rejects repair blueprints when crafting workshop items', async () => {
+    const { repository, tx } = createPrismaMock();
+
+    await expect(repository.craftWorkshopItem(1, 'resonance_tool')).rejects.toMatchObject({
+      code: 'workshop_blueprint_not_craftable',
+    });
+
+    expect(tx.playerBlueprint.updateMany).not.toHaveBeenCalled();
+    expect(tx.playerInventory.updateMany).not.toHaveBeenCalled();
+    expect(tx.playerCraftedItem.create).not.toHaveBeenCalled();
+  });
+
+  it('returns canonical crafted workshop item for duplicate command intent without spending again', async () => {
+    const { repository, tx } = createPrismaMock();
+
+    tx.commandIntentRecord.findUnique.mockResolvedValue({
+      commandKey: 'CRAFT_WORKSHOP_ITEM',
+      stateKey: 'state-workshop-craft-1',
+      status: 'APPLIED',
+      resultSnapshot: JSON.stringify(createCraftedItemViewSnapshot({
+        id: 'crafted-cleaver-1',
+        itemCode: 'hunter_cleaver',
+        itemClass: 'RARE',
+        slot: 'weapon',
+        durability: 14,
+        maxDurability: 14,
+      })),
+    });
+
+    const item = await repository.craftWorkshopItem(1, 'hunter_cleaver', {
+      intentId: 'intent-workshop-craft-1',
+      intentStateKey: 'state-workshop-craft-1',
+      currentStateKey: 'state-workshop-craft-1',
+    });
+
+    expect(item.id).toBe('crafted-cleaver-1');
+    expect(tx.playerBlueprint.updateMany).not.toHaveBeenCalled();
+    expect(tx.playerInventory.updateMany).not.toHaveBeenCalled();
+    expect(tx.playerCraftedItem.create).not.toHaveBeenCalled();
+  });
+
+  it('returns applied workshop craft intent before validating current blueprint kind', async () => {
+    const { repository, tx } = createPrismaMock();
+
+    tx.commandIntentRecord.findUnique.mockResolvedValue({
+      commandKey: 'CRAFT_WORKSHOP_ITEM',
+      stateKey: 'state-workshop-craft-1',
+      status: 'APPLIED',
+      resultSnapshot: JSON.stringify(createCraftedItemViewSnapshot({
+        id: 'crafted-cleaver-1',
+        itemCode: 'hunter_cleaver',
+        itemClass: 'RARE',
+        slot: 'weapon',
+        durability: 14,
+        maxDurability: 14,
+      })),
+    });
+
+    await expect(repository.craftWorkshopItem(1, 'resonance_tool', {
+      intentId: 'intent-workshop-craft-1',
+      intentStateKey: 'state-workshop-craft-1',
+      currentStateKey: 'state-workshop-craft-1',
+    })).resolves.toMatchObject({
+      id: 'crafted-cleaver-1',
+    });
+    expect(tx.playerBlueprint.updateMany).not.toHaveBeenCalled();
+    expect(tx.playerCraftedItem.create).not.toHaveBeenCalled();
+  });
+
+  it('repairs a damaged active UL workshop item with a repair blueprint', async () => {
+    const { repository, tx } = createPrismaMock();
+    const damagedItem = createCraftedItemRecord({
+      id: 'crafted-ul-1',
+      itemClass: 'UL',
+      durability: 5,
+      maxDurability: 12,
+    });
+    const repairedItem = {
+      ...damagedItem,
+      durability: 12,
+      updatedAt: new Date('2026-04-22T12:00:00.000Z'),
+    };
+
+    tx.commandIntentRecord.findUnique.mockResolvedValue(null);
+    tx.commandIntentRecord.create.mockResolvedValue({});
+    tx.commandIntentRecord.update.mockResolvedValue({});
+    tx.playerCraftedItem.findFirst
+      .mockResolvedValueOnce(damagedItem)
+      .mockResolvedValueOnce(repairedItem);
+    tx.playerBlueprint.updateMany.mockResolvedValue({ count: 1 });
+    tx.playerInventory.updateMany.mockResolvedValue({ count: 1 });
+    tx.playerCraftedItem.updateMany.mockResolvedValue({ count: 1 });
+    tx.player.update.mockResolvedValue({});
+
+    const item = await repository.repairWorkshopItem(1, 'crafted-ul-1', 'resonance_tool', {
+      intentId: 'intent-workshop-repair-1',
+      intentStateKey: 'state-workshop-repair-1',
+      currentStateKey: 'state-workshop-repair-1',
+    });
+
+    expect(item.durability).toBe(12);
+    expect(tx.playerBlueprint.updateMany).toHaveBeenCalledWith({
+      where: {
+        playerId: 1,
+        blueprintCode: 'resonance_tool',
+        quantity: { gte: 1 },
+      },
+      data: {
+        quantity: { decrement: 1 },
+      },
+    });
+    expect(tx.playerInventory.updateMany).toHaveBeenCalledWith({
+      where: {
+        playerId: 1,
+        essence: { gte: 2 },
+        crystal: { gte: 2 },
+      },
+      data: {
+        essence: { increment: -2 },
+        crystal: { increment: -2 },
+      },
+    });
+    expect(tx.playerCraftedItem.updateMany).toHaveBeenCalledWith({
+      where: {
+        id: 'crafted-ul-1',
+        playerId: 1,
+        itemClass: 'UL',
+        status: 'ACTIVE',
+        durability: {
+          gt: 0,
+          lt: 12,
+        },
+      },
+      data: {
+        durability: 12,
+      },
+    });
+  });
+
+  it('returns applied workshop repair intent before validating current repair blueprint kind', async () => {
+    const { repository, tx } = createPrismaMock();
+
+    tx.commandIntentRecord.findUnique.mockResolvedValue({
+      commandKey: 'REPAIR_WORKSHOP_ITEM',
+      stateKey: 'state-workshop-repair-1',
+      status: 'APPLIED',
+      resultSnapshot: JSON.stringify(createCraftedItemViewSnapshot({
+        id: 'crafted-ul-1',
+        itemClass: 'UL',
+        durability: 12,
+        maxDurability: 12,
+      })),
+    });
+
+    await expect(repository.repairWorkshopItem(1, 'crafted-ul-1', 'hunter_cleaver', {
+      intentId: 'intent-workshop-repair-1',
+      intentStateKey: 'state-workshop-repair-1',
+      currentStateKey: 'state-workshop-repair-1',
+    })).resolves.toMatchObject({
+      id: 'crafted-ul-1',
+      durability: 12,
+    });
+    expect(tx.playerCraftedItem.findFirst).not.toHaveBeenCalled();
+    expect(tx.playerBlueprint.updateMany).not.toHaveBeenCalled();
+  });
+
+  it('does not repair L workshop items', async () => {
+    const { repository, tx } = createPrismaMock();
+
+    tx.playerCraftedItem.findFirst.mockResolvedValue(createCraftedItemRecord({
+      itemClass: 'L',
+      durability: 5,
+      maxDurability: 12,
+    }));
+
+    await expect(repository.repairWorkshopItem(1, 'crafted-1', 'resonance_tool')).rejects.toMatchObject({
+      code: 'workshop_item_not_repairable',
+    });
+
+    expect(tx.playerBlueprint.updateMany).not.toHaveBeenCalled();
+    expect(tx.playerInventory.updateMany).not.toHaveBeenCalled();
+    expect(tx.playerCraftedItem.updateMany).not.toHaveBeenCalled();
+  });
+
+  it('does not repair depleted workshop items', async () => {
+    const { repository, tx } = createPrismaMock();
+
+    tx.playerCraftedItem.findFirst.mockResolvedValue(createCraftedItemRecord({
+      itemClass: 'UL',
+      durability: 0,
+      maxDurability: 12,
+    }));
+
+    await expect(repository.repairWorkshopItem(1, 'crafted-1', 'resonance_tool')).rejects.toMatchObject({
+      code: 'workshop_item_not_repairable',
+    });
+
+    expect(tx.playerBlueprint.updateMany).not.toHaveBeenCalled();
+    expect(tx.playerInventory.updateMany).not.toHaveBeenCalled();
+    expect(tx.playerCraftedItem.updateMany).not.toHaveBeenCalled();
+  });
+
+  it('does not repair destroyed workshop items', async () => {
+    const { repository, tx } = createPrismaMock();
+
+    tx.playerCraftedItem.findFirst.mockResolvedValue(createCraftedItemRecord({
+      itemClass: 'UL',
+      status: 'DESTROYED',
+      durability: 5,
+      maxDurability: 12,
+    }));
+
+    await expect(repository.repairWorkshopItem(1, 'crafted-1', 'resonance_tool')).rejects.toMatchObject({
+      code: 'workshop_item_not_repairable',
+    });
+
+    expect(tx.playerBlueprint.updateMany).not.toHaveBeenCalled();
+    expect(tx.playerInventory.updateMany).not.toHaveBeenCalled();
+    expect(tx.playerCraftedItem.updateMany).not.toHaveBeenCalled();
+  });
+
   it('does not craft a rune when shards were already spent', async () => {
     const { repository, tx } = createPrismaMock();
 

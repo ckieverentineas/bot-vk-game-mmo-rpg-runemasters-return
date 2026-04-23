@@ -1,4 +1,4 @@
-import { Prisma, PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient, type PlayerBlueprint, type PlayerCraftedItem } from '@prisma/client';
 
 import { env } from '../../../../config/env';
 import { gameBalance } from '../../../../config/game-balance';
@@ -8,6 +8,7 @@ import type {
   BattleView,
   CreateBattleInput,
   InventoryDelta,
+  MaterialField,
   PlayerSkillCode,
   PlayerSkillPointGain,
   PlayerSkillView,
@@ -56,6 +57,24 @@ import {
   resolveRuneCraftSpend,
   resolveRuneRerollSpend,
 } from '../../../runes/domain/rune-economy';
+import {
+  getWorkshopBlueprint,
+  isWorkshopBlueprintCode,
+  isWorkshopItemClass,
+  isWorkshopItemCode,
+  isWorkshopItemSlot,
+  isWorkshopItemStatus,
+  type WorkshopBlueprintCode,
+  type WorkshopBlueprintCost,
+  type WorkshopBlueprintDefinition,
+  type WorkshopCraftItemBlueprintDefinition,
+  type WorkshopRepairToolBlueprintDefinition,
+} from '../../../workshop/domain/workshop-catalog';
+import type {
+  PlayerBlueprintView,
+  PlayerCraftedItemView,
+  WorkshopMutationOptions,
+} from '../../../workshop/application/workshop-persistence';
 import { buildLoadoutSnapshotFromBattle } from '../../domain/contracts/loadout-snapshot';
 import {
   createAppliedPendingRewardLedgerEntry,
@@ -142,6 +161,160 @@ const buildInventoryAvailabilityWhere = (playerId: number, delta: InventoryDelta
 
   return where;
 };
+
+const workshopMaterialFields: readonly MaterialField[] = [
+  'leather',
+  'bone',
+  'herb',
+  'essence',
+  'metal',
+  'crystal',
+];
+
+const buildWorkshopCostInventoryDelta = (cost: WorkshopBlueprintCost): InventoryDelta => (
+  workshopMaterialFields.reduce<InventoryDelta>((delta, field) => {
+    const amount = cost[field] ?? 0;
+
+    if (amount <= 0) {
+      return delta;
+    }
+
+    return {
+      ...delta,
+      [field]: -amount,
+    };
+  }, {})
+);
+
+const requireWorkshopBlueprintDefinition = (
+  blueprintCode: WorkshopBlueprintCode,
+): WorkshopBlueprintDefinition => {
+  try {
+    return getWorkshopBlueprint(blueprintCode);
+  } catch {
+    throw new AppError('workshop_blueprint_not_found', 'Этот чертеж уже не найден в мастерской.');
+  }
+};
+
+const requireWorkshopCraftBlueprint = (
+  blueprintCode: WorkshopBlueprintCode,
+): WorkshopCraftItemBlueprintDefinition => {
+  const blueprint = requireWorkshopBlueprintDefinition(blueprintCode);
+
+  if (blueprint.kind !== 'craft_item') {
+    throw new AppError('workshop_blueprint_not_craftable', 'Этот чертеж не создает предмет мастерской.');
+  }
+
+  return blueprint;
+};
+
+const requireWorkshopRepairBlueprint = (
+  blueprintCode: WorkshopBlueprintCode,
+): WorkshopRepairToolBlueprintDefinition => {
+  const blueprint = requireWorkshopBlueprintDefinition(blueprintCode);
+
+  if (blueprint.kind !== 'repair_tool') {
+    throw new AppError('workshop_blueprint_not_repair_tool', 'Этот чертеж не подходит для ремонта.');
+  }
+
+  return blueprint;
+};
+
+const assertPositiveBlueprintQuantity = (quantity: number): void => {
+  if (!Number.isInteger(quantity) || quantity <= 0) {
+    throw new AppError('invalid_blueprint_quantity', 'Количество чертежей должно быть положительным целым числом.');
+  }
+};
+
+const requireKnownWorkshopValue = <TValue extends string>(
+  value: string,
+  isKnown: (candidate: string) => candidate is TValue,
+  fieldName: string,
+): TValue => {
+  if (!isKnown(value)) {
+    throw new AppError(
+      'workshop_persistence_invalid',
+      `Р—Р°РїРёСЃСЊ РјР°СЃС‚РµСЂСЃРєРѕР№ С…СЂР°РЅРёС‚ РЅРµРёР·РІРµСЃС‚РЅРѕРµ РїРѕР»Рµ ${fieldName}.`,
+    );
+  }
+
+  return value;
+};
+
+const mapPlayerBlueprintRecord = (record: PlayerBlueprint): PlayerBlueprintView => ({
+  playerId: record.playerId,
+  blueprintCode: requireKnownWorkshopValue(record.blueprintCode, isWorkshopBlueprintCode, 'blueprintCode'),
+  quantity: record.quantity,
+  createdAt: record.createdAt.toISOString(),
+  updatedAt: record.updatedAt.toISOString(),
+});
+
+const mapPlayerCraftedItemRecord = (record: PlayerCraftedItem): PlayerCraftedItemView => ({
+  id: record.id,
+  playerId: record.playerId,
+  itemCode: requireKnownWorkshopValue(record.itemCode, isWorkshopItemCode, 'itemCode'),
+  itemClass: requireKnownWorkshopValue(record.itemClass, isWorkshopItemClass, 'itemClass'),
+  slot: requireKnownWorkshopValue(record.slot, isWorkshopItemSlot, 'slot'),
+  status: requireKnownWorkshopValue(record.status, isWorkshopItemStatus, 'status'),
+  equipped: record.equipped,
+  durability: record.durability,
+  maxDurability: record.maxDurability,
+  createdAt: record.createdAt.toISOString(),
+  updatedAt: record.updatedAt.toISOString(),
+});
+
+const spendWorkshopBlueprint = async (
+  client: TransactionClient,
+  playerId: number,
+  blueprintCode: WorkshopBlueprintCode,
+  message: string,
+): Promise<void> => {
+  const spent = await client.playerBlueprint.updateMany({
+    where: {
+      playerId,
+      blueprintCode,
+      quantity: { gte: 1 },
+    },
+    data: {
+      quantity: { decrement: 1 },
+    },
+  });
+
+  if (spent.count === 0) {
+    throw new AppError('workshop_blueprint_unavailable', message);
+  }
+};
+
+const spendWorkshopInventoryCost = async (
+  client: TransactionClient,
+  playerId: number,
+  cost: WorkshopBlueprintCost,
+  errorCode: string,
+  message: string,
+): Promise<void> => {
+  const inventoryDelta = buildWorkshopCostInventoryDelta(cost);
+  const inventorySpend = buildInventoryDeltaInput(inventoryDelta);
+
+  if (Object.keys(inventorySpend).length === 0) {
+    return;
+  }
+
+  const spent = await client.playerInventory.updateMany({
+    where: buildInventoryAvailabilityWhere(playerId, inventoryDelta),
+    data: inventorySpend as Prisma.PlayerInventoryUpdateManyMutationInput,
+  });
+
+  if (spent.count === 0) {
+    throw new AppError(errorCode, message);
+  }
+};
+
+const canRepairCraftedItemRecord = (item: Pick<PlayerCraftedItem, 'itemClass' | 'status' | 'durability' | 'maxDurability'>): boolean => (
+  item.itemClass === 'UL'
+  && item.status === 'ACTIVE'
+  && item.durability > 0
+  && item.durability < item.maxDurability
+);
 
 const buildPlayerStatDeltaInput = (delta: StatBlock): Prisma.PlayerUpdateInput => {
   const data: Prisma.PlayerUpdateInput = {};
@@ -2230,6 +2403,209 @@ export class PrismaGameRepository implements GameRepository {
         });
 
         return mapPlayerRecord(await this.requirePlayerRecord(tx, playerId));
+      },
+    ));
+  }
+
+  public async listPlayerBlueprints(playerId: number): Promise<readonly PlayerBlueprintView[]> {
+    const blueprints = await this.prisma.playerBlueprint.findMany({
+      where: { playerId },
+      orderBy: { blueprintCode: 'asc' },
+    });
+
+    return blueprints.map(mapPlayerBlueprintRecord);
+  }
+
+  public async listPlayerCraftedItems(playerId: number): Promise<readonly PlayerCraftedItemView[]> {
+    const items = await this.prisma.playerCraftedItem.findMany({
+      where: { playerId },
+      orderBy: [
+        { createdAt: 'asc' },
+        { id: 'asc' },
+      ],
+    });
+
+    return items.map(mapPlayerCraftedItemRecord);
+  }
+
+  public async grantPlayerBlueprint(
+    playerId: number,
+    blueprintCode: WorkshopBlueprintCode,
+    quantity: number,
+    options?: WorkshopMutationOptions,
+  ): Promise<PlayerBlueprintView> {
+    return this.prisma.$transaction((tx) => this.runWithCommandIntent(
+      tx,
+      playerId,
+      'GRANT_WORKSHOP_BLUEPRINT',
+      options?.intentId,
+      options?.intentStateKey,
+      options?.currentStateKey,
+      async () => {
+        requireWorkshopBlueprintDefinition(blueprintCode);
+        assertPositiveBlueprintQuantity(quantity);
+
+        const blueprint = await tx.playerBlueprint.upsert({
+          where: {
+            playerId_blueprintCode: {
+              playerId,
+              blueprintCode,
+            },
+          },
+          update: {
+            quantity: { increment: quantity },
+          },
+          create: {
+            playerId,
+            blueprintCode,
+            quantity,
+          },
+        });
+
+        await tx.player.update({
+          where: { id: playerId },
+          data: { updatedAt: new Date() },
+        });
+
+        return mapPlayerBlueprintRecord(blueprint);
+      },
+    ));
+  }
+
+  public async craftWorkshopItem(
+    playerId: number,
+    blueprintCode: WorkshopBlueprintCode,
+    options?: WorkshopMutationOptions,
+  ): Promise<PlayerCraftedItemView> {
+    return this.prisma.$transaction((tx) => this.runWithCommandIntent(
+      tx,
+      playerId,
+      'CRAFT_WORKSHOP_ITEM',
+      options?.intentId,
+      options?.intentStateKey,
+      options?.currentStateKey,
+      async () => {
+        const blueprint = requireWorkshopCraftBlueprint(blueprintCode);
+
+        await spendWorkshopBlueprint(
+          tx,
+          playerId,
+          blueprint.code,
+          'Чертеж для этого предмета уже потрачен.',
+        );
+        await spendWorkshopInventoryCost(
+          tx,
+          playerId,
+          blueprint.cost,
+          'not_enough_workshop_resources',
+          'Материалов для предмета уже не хватает.',
+        );
+
+        const item = await tx.playerCraftedItem.create({
+          data: {
+            playerId,
+            itemCode: blueprint.resultItemCode,
+            itemClass: blueprint.itemClass,
+            slot: blueprint.slot,
+            status: 'ACTIVE',
+            equipped: false,
+            durability: blueprint.maxDurability,
+            maxDurability: blueprint.maxDurability,
+          },
+        });
+
+        await tx.player.update({
+          where: { id: playerId },
+          data: { updatedAt: new Date() },
+        });
+
+        return mapPlayerCraftedItemRecord(item);
+      },
+    ));
+  }
+
+  public async repairWorkshopItem(
+    playerId: number,
+    itemId: string,
+    repairBlueprintCode: WorkshopBlueprintCode,
+    options?: WorkshopMutationOptions,
+  ): Promise<PlayerCraftedItemView> {
+    return this.prisma.$transaction((tx) => this.runWithCommandIntent(
+      tx,
+      playerId,
+      'REPAIR_WORKSHOP_ITEM',
+      options?.intentId,
+      options?.intentStateKey,
+      options?.currentStateKey,
+      async () => {
+        const repairBlueprint = requireWorkshopRepairBlueprint(repairBlueprintCode);
+
+        const item = await tx.playerCraftedItem.findFirst({
+          where: {
+            id: itemId,
+            playerId,
+          },
+        });
+
+        if (!item) {
+          throw new AppError('workshop_item_not_found', 'Предмет мастерской уже не найден.');
+        }
+
+        if (!canRepairCraftedItemRecord(item)) {
+          throw new AppError('workshop_item_not_repairable', 'Этот предмет нельзя отремонтировать.');
+        }
+
+        await spendWorkshopBlueprint(
+          tx,
+          playerId,
+          repairBlueprint.code,
+          'Ремонтный чертеж уже потрачен.',
+        );
+        await spendWorkshopInventoryCost(
+          tx,
+          playerId,
+          repairBlueprint.cost,
+          'not_enough_workshop_repair_resources',
+          'Материалов для ремонта уже не хватает.',
+        );
+
+        const repaired = await tx.playerCraftedItem.updateMany({
+          where: {
+            id: itemId,
+            playerId,
+            itemClass: 'UL',
+            status: 'ACTIVE',
+            durability: {
+              gt: 0,
+              lt: item.maxDurability,
+            },
+          },
+          data: {
+            durability: item.maxDurability,
+          },
+        });
+
+        if (repaired.count === 0) {
+          throw new AppError('workshop_item_not_repairable', 'Этот предмет уже нельзя отремонтировать.');
+        }
+
+        const repairedItem = await tx.playerCraftedItem.findFirst({
+          where: {
+            id: itemId,
+            playerId,
+          },
+        });
+
+        if (!repairedItem) {
+          throw new AppError('workshop_item_not_found', 'Предмет мастерской уже не найден.');
+        }
+
+        await tx.player.update({
+          where: { id: playerId },
+          data: { updatedAt: new Date() },
+        });
+
+        return mapPlayerCraftedItemRecord(repairedItem);
       },
     ));
   }

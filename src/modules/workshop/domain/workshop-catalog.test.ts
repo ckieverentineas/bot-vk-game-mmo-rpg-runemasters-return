@@ -6,6 +6,11 @@ import {
   canCraftWorkshopBlueprint,
   canRepairWorkshopItem,
   getWorkshopBlueprint,
+  isWorkshopBlueprintCode,
+  isWorkshopItemClass,
+  isWorkshopItemCode,
+  isWorkshopItemSlot,
+  isWorkshopItemStatus,
   listWorkshopBlueprints,
   resolveWorkshopCraftInventoryDelta,
   resolveWorkshopMissingCost,
@@ -66,6 +71,16 @@ describe('workshop catalog', () => {
     expect(() => getWorkshopBlueprint('unknown_blueprint')).toThrow(
       'Unknown workshop blueprint: unknown_blueprint',
     );
+  });
+
+  it('narrows persisted workshop string values at the domain boundary', () => {
+    expect(isWorkshopBlueprintCode('resonance_tool')).toBe(true);
+    expect(isWorkshopBlueprintCode('lost_scroll')).toBe(false);
+    expect(isWorkshopItemCode('skinning_kit')).toBe(true);
+    expect(isWorkshopItemCode('resonance_tool')).toBe(false);
+    expect(isWorkshopItemClass('UL')).toBe(true);
+    expect(isWorkshopItemSlot('trinket')).toBe(true);
+    expect(isWorkshopItemStatus('DESTROYED')).toBe(true);
   });
 
   it('checks whether the inventory can cover a blueprint cost and reports the shortage', () => {

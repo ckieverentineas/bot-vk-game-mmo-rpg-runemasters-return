@@ -14,6 +14,13 @@ import type {
   PendingRewardOpenSnapshotV1,
 } from '../../../rewards/domain/pending-reward-snapshot';
 import type { TrophyActionCode } from '../../../rewards/domain/trophy-actions';
+import type {
+  PlayerBlueprintView,
+  PlayerCraftedItemView,
+  WorkshopCommandIntentKey,
+  WorkshopMutationOptions,
+} from '../../../workshop/application/workshop-persistence';
+import type { WorkshopBlueprintCode } from '../../../workshop/domain/workshop-catalog';
 
 export type RuneLoadoutCommandIntentKey = 'EQUIP_RUNE' | 'UNEQUIP_RUNE';
 export type RuneNavigationCommandIntentKey = 'MOVE_RUNE_CURSOR' | 'SELECT_RUNE_PAGE_SLOT';
@@ -35,6 +42,7 @@ export type GameCommandIntentKey =
   | ExplorationCommandIntentKey
   | QuestRewardCommandIntentKey
   | DailyActivityCommandIntentKey
+  | WorkshopCommandIntentKey
   | BattleActionCommandIntentKey;
 
 export interface SaveRuneLoadoutOptions {
@@ -280,6 +288,25 @@ export interface GameRepository {
   deleteRune(playerId: number, runeId: string): Promise<PlayerState>;
   destroyRune(playerId: number, runeId: string, refund: InventoryDelta, intentId?: string, intentStateKey?: string, currentStateKey?: string): Promise<PlayerState>;
   craftPlayerItem(playerId: number, cost: InventoryDelta, statDelta: StatBlock, intentId?: string, intentStateKey?: string, currentStateKey?: string): Promise<PlayerState>;
+  listPlayerBlueprints(playerId: number): Promise<readonly PlayerBlueprintView[]>;
+  listPlayerCraftedItems(playerId: number): Promise<readonly PlayerCraftedItemView[]>;
+  grantPlayerBlueprint(
+    playerId: number,
+    blueprintCode: WorkshopBlueprintCode,
+    quantity: number,
+    options?: WorkshopMutationOptions,
+  ): Promise<PlayerBlueprintView>;
+  craftWorkshopItem(
+    playerId: number,
+    blueprintCode: WorkshopBlueprintCode,
+    options?: WorkshopMutationOptions,
+  ): Promise<PlayerCraftedItemView>;
+  repairWorkshopItem(
+    playerId: number,
+    itemId: string,
+    repairBlueprintCode: WorkshopBlueprintCode,
+    options?: WorkshopMutationOptions,
+  ): Promise<PlayerCraftedItemView>;
   adjustInventory(playerId: number, delta: InventoryDelta): Promise<PlayerState>;
   createBattle(playerId: number, battle: CreateBattleInput, options?: CreateBattleOptions): Promise<BattleView>;
   getActiveBattle(playerId: number): Promise<BattleView | null>;

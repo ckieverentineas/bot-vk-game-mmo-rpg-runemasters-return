@@ -40,6 +40,8 @@ model Player {
   commandIntents   CommandIntentRecord[]
   schoolMasteries  PlayerSchoolMastery[]
   skills           PlayerSkill[]
+  blueprints       PlayerBlueprint[]
+  craftedItems     PlayerCraftedItem[]
 }
 
 model PlayerSchoolMastery {
@@ -101,6 +103,37 @@ model PlayerInventory {
   crystal          Int      @default(0)
   updatedAt        DateTime @updatedAt
   player           Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
+}
+
+model PlayerBlueprint {
+  playerId      Int
+  blueprintCode String
+  quantity      Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  player        Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@id([playerId, blueprintCode])
+  @@index([blueprintCode])
+}
+
+model PlayerCraftedItem {
+  id            String   @id @default(cuid())
+  playerId      Int
+  itemCode      String
+  itemClass     String
+  slot          String
+  status        String   @default("ACTIVE")
+  equipped      Boolean  @default(false)
+  durability    Int
+  maxDurability Int
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  player        Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@index([playerId, status])
+  @@index([playerId, itemCode])
+  @@index([playerId, slot, equipped])
 }
 
 model Rune {
