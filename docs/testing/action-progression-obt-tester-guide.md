@@ -3,7 +3,7 @@
 - Date: `2026-04-23`
 - Source: `docs/product/action-based-progression-and-trophy-loot.md`
 - Scope: tester-facing guide for post-battle action progression, reward collection and replay safety.
-- Runtime changes in this commit: expanded reagent, essence and enemy-kind trophy action progression.
+- Runtime changes in this commit: expanded reagent, essence and enemy-kind trophy action progression; combat skill growth now comes from battle action facts.
 
 ## Purpose
 
@@ -12,6 +12,18 @@ This guide gives an OBT tester a clear path for checking that trophy actions fee
 1. choosing a trophy action changes the reward and the related skill;
 2. the same pending reward can be collected only once;
 3. replaying an old button returns the canonical result or a safe already-collected response without adding another reward.
+
+## Combat Skill Smoke
+
+These checks are small because combat skill growth is intentionally internal/profile-visible in this slice, not a new battle-result copy block.
+
+| Battle action | Fact required | Expected skill behavior |
+| --- | --- | --- |
+| `ATTACK` | Enemy health decreased after the player action. | Grows `combat.striking`. |
+| `DEFEND` | Guard points increased after the player action. | Grows `combat.guard`. |
+| Rune skill | The selected active rune action spent mana or started cooldown. | Grows `rune.active_use`. |
+
+Replay the same battle payload after each checked action. The persisted battle result may replay, but the skill experience must not increase a second time.
 
 ## Current Playable Paths
 

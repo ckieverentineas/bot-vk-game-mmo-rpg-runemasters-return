@@ -13,6 +13,7 @@
   - `status = ACTIVE`
   - `actionRevision = expectedRevision`
 - успешная mutation увеличивает `actionRevision` на `1`;
+- если battle action несёт `playerSkillGains`, они применяются только внутри успешной `saveBattle()` / `finalizeBattle()` mutation; stale branch и replay не начисляют второй рост навыка;
 - stale branch не перезаписывает новый state и получает canonical latest battle из persistence.
 - keyboard battle buttons (`в бой`, `отступить`, `атака`, `защита`, `рунное действие`) теперь дополнительно идут через scoped `intentId` + battle `stateKey`;
 - plain text `в бой`, `отступить`, `бой`, `начать бой`, `сражаться`, `бежать`, `атака`, `защита`, `навыки` и `спелл` получают server-owned message intent id и используют тот же canonical replay receipt;

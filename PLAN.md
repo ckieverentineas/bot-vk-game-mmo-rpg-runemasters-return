@@ -33,6 +33,7 @@
 - Player-facing support-slot модель вырезана.
 - Рост персонажа смещён к школам, mastery, рунам и будущей ветке мастера, а не к старой раздаче stat points за уровни.
 - Action-based trophy rewards имеют расширенный playable vertical slice: победа создаёт `PENDING` reward ledger, доступные trophy actions фиксируются в snapshot, игрок видит post-battle trophy card с inline-кнопками, `начать` / `исследовать` возвращают к несобранной добыче, выбранное действие собирается exact-once, `claim_all` даёт быстрый безопасный сбор, bootstrap восстанавливает потерянные pending-записи после рестарта, а первые threshold-срезы для `skinning`, `reagent_gathering` и `essence_extraction` дополняются enemy-kind действиями без новых таблиц.
+- Combat skill growth теперь идёт от battle action facts, а не от парсинга журнала: успешная `ATTACK` даёт `combat.striking`, поднятая `DEFEND`-защита даёт `combat.guard`, активная руна с расходом маны или откатом даёт `rune.active_use`; начисление живёт в той же `saveBattle()` / `finalizeBattle()` транзакции, что и revision-guard боя.
 - Есть защита от повторных наград, отрицательных остатков инвентаря, stale battle overwrite и повторного применения command intent.
 - Есть smoke/regression/concurrency tests и release tooling для content validation, локального first-session playtest, summary, evidence и preflight.
 - School novice trial evidence закрыт для четырёх школ: `release:school-evidence` показывает `Novice elite`, `UNUSUAL reward` и `RARE seal` по Пламени, Тверди, Бури и Прорицанию.

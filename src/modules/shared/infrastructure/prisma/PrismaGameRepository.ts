@@ -724,6 +724,65 @@ export class PrismaGameRepository implements GameRepository {
     }
   }
 
+  private async persistPlayerSkillGains(
+    tx: TransactionClient,
+    playerId: number,
+    gains: readonly PlayerSkillPointGain[] | undefined,
+  ): Promise<void> {
+    const aggregatedGains = aggregatePlayerSkillPointGains(gains ?? []);
+
+    if (aggregatedGains.size === 0) {
+      return;
+    }
+
+    const skillCodes = [...aggregatedGains.keys()];
+    const persistedSkills = await tx.playerSkill.findMany({
+      where: {
+        playerId,
+        skillCode: {
+          in: skillCodes,
+        },
+      },
+    });
+    const persistedSkillsByCode = new Map<PlayerSkillCode, (typeof persistedSkills)[number]>(
+      persistedSkills.map((skill) => [skill.skillCode as PlayerSkillCode, skill]),
+    );
+
+    for (const [skillCode, points] of aggregatedGains) {
+      const currentSkill = persistedSkillsByCode.get(skillCode);
+      const nextSkill = applyPlayerSkillExperienceDomain(
+        currentSkill
+          ? {
+              skillCode,
+              experience: currentSkill.experience,
+              rank: currentSkill.rank,
+            }
+          : null,
+        skillCode,
+        points,
+      );
+
+      await tx.playerSkill.upsert({
+        where: {
+          playerId_skillCode: {
+            playerId,
+            skillCode,
+          },
+        },
+        update: {
+          experience: nextSkill.experience,
+          rank: nextSkill.rank,
+        },
+        create: {
+          playerId,
+          skillCode,
+          experience: nextSkill.experience,
+          rank: nextSkill.rank,
+        },
+      });
+    }
+  }
+
   public async findPlayerByVkId(vkId: number): Promise<PlayerState | null> {
     const player = await this.prisma.player.findFirst({
       where: {
@@ -805,57 +864,7 @@ export class PrismaGameRepository implements GameRepository {
     gains: readonly PlayerSkillPointGain[],
   ): Promise<PlayerState> {
     return this.prisma.$transaction(async (tx) => {
-      const aggregatedGains = aggregatePlayerSkillPointGains(gains);
-
-      if (aggregatedGains.size === 0) {
-        return mapPlayerRecord(await this.requirePlayerRecord(tx, playerId));
-      }
-
-      const skillCodes = [...aggregatedGains.keys()];
-      const persistedSkills = await tx.playerSkill.findMany({
-        where: {
-          playerId,
-          skillCode: {
-            in: skillCodes,
-          },
-        },
-      });
-      const persistedSkillsByCode = new Map(persistedSkills.map((skill) => [skill.skillCode, skill]));
-
-      for (const [skillCode, points] of aggregatedGains) {
-        const currentSkill = persistedSkillsByCode.get(skillCode);
-        const nextSkill = applyPlayerSkillExperienceDomain(
-          currentSkill
-            ? {
-                skillCode,
-                experience: currentSkill.experience,
-                rank: currentSkill.rank,
-              }
-            : null,
-          skillCode,
-          points,
-        );
-
-        await tx.playerSkill.upsert({
-          where: {
-            playerId_skillCode: {
-              playerId,
-              skillCode,
-            },
-          },
-          update: {
-            experience: nextSkill.experience,
-            rank: nextSkill.rank,
-          },
-          create: {
-            playerId,
-            skillCode,
-            experience: nextSkill.experience,
-            rank: nextSkill.rank,
-          },
-        });
-      }
-
+      await this.persistPlayerSkillGains(tx, playerId, gains);
       return mapPlayerRecord(await this.requirePlayerRecord(tx, playerId));
     });
   }
@@ -1980,6 +1989,8 @@ export class PrismaGameRepository implements GameRepository {
           throw new AppError('battle_not_found', 'Текущая схватка уже рассеялась. Ищите новую встречу.');
         }
 
+        await this.persistPlayerSkillGains(tx, battle.playerId, options?.playerSkillGains);
+
         return mapBattleRecord(currentBattle);
       };
 
@@ -2282,6 +2293,8 @@ export class PrismaGameRepository implements GameRepository {
           },
         });
       }
+
+      await this.persistPlayerSkillGains(tx, playerId, options?.playerSkillGains);
 
       const updatedPlayer = await this.requirePlayerRecord(tx, playerId);
       const finalizedBattle = await tx.battleSession.findFirst({

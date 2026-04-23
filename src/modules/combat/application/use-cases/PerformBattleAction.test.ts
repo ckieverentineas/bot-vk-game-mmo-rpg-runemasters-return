@@ -227,6 +227,12 @@ describe('PerformBattleAction', () => {
         intentId: 'intent-battle-2',
         intentStateKey: stateKey,
         currentStateKey: stateKey,
+        playerSkillGains: [
+          {
+            skillCode: 'combat.striking',
+            points: 1,
+          },
+        ],
       }),
     );
     expect(repository.storeCommandIntentResult).toHaveBeenCalledWith(
@@ -238,6 +244,139 @@ describe('PerformBattleAction', () => {
       }),
     );
     expect(repository.finalizeBattle).not.toHaveBeenCalled();
+  });
+
+  it('passes guard skill growth to saveBattle from the defend action facts', async () => {
+    const player = createPlayer();
+    const activeBattle = createBattle({
+      enemy: {
+        ...createBattle().enemy,
+        maxHealth: 20,
+        currentHealth: 20,
+      },
+    });
+    const repository = {
+      findPlayerByVkId: vi.fn().mockResolvedValue(player),
+      getCommandIntentResult: vi.fn().mockResolvedValue(null),
+      storeCommandIntentResult: vi.fn().mockResolvedValue(undefined),
+      getActiveBattle: vi.fn().mockResolvedValue(activeBattle),
+      finalizeBattle: vi.fn(),
+      saveBattle: vi.fn(async (battle: BattleView) => battle),
+    } as unknown as GameRepository;
+    const useCase = new PerformBattleAction(repository, createRandom());
+    const stateKey = buildBattleActionIntentStateKey(activeBattle, 'DEFEND');
+
+    await useCase.execute(player.vkId, 'DEFEND', 'intent-defend-growth', stateKey, 'payload');
+
+    expect(repository.saveBattle).toHaveBeenCalledWith(
+      expect.objectContaining({ id: activeBattle.id }),
+      expect.objectContaining({
+        commandKey: 'BATTLE_DEFEND',
+        playerSkillGains: [
+          {
+            skillCode: 'combat.guard',
+            points: 1,
+          },
+        ],
+      }),
+    );
+  });
+
+  it('passes active rune skill growth to saveBattle from rune resource facts', async () => {
+    const player = createPlayer();
+    const activeBattle = createBattle({
+      player: {
+        ...createBattle().player,
+        currentMana: 6,
+        maxMana: 6,
+        runeLoadout: {
+          runeId: 'rune-1',
+          runeName: 'Р СѓРЅР° РџР»Р°РјРµРЅРё',
+          runeRarity: 'USUAL',
+          archetypeCode: 'ember',
+          archetypeName: 'РџР»Р°РјРµРЅСЊ',
+          passiveAbilityCodes: [],
+          activeAbility: {
+            code: 'ember_pulse',
+            name: 'РРјРїСѓР»СЊСЃ РџР»Р°РјРµРЅРё',
+            manaCost: 2,
+            cooldownTurns: 2,
+            currentCooldown: 0,
+          },
+        },
+      },
+      enemy: {
+        ...createBattle().enemy,
+        maxHealth: 20,
+        currentHealth: 20,
+      },
+    });
+    const repository = {
+      findPlayerByVkId: vi.fn().mockResolvedValue(player),
+      getCommandIntentResult: vi.fn().mockResolvedValue(null),
+      storeCommandIntentResult: vi.fn().mockResolvedValue(undefined),
+      getActiveBattle: vi.fn().mockResolvedValue(activeBattle),
+      finalizeBattle: vi.fn(),
+      saveBattle: vi.fn(async (battle: BattleView) => battle),
+    } as unknown as GameRepository;
+    const useCase = new PerformBattleAction(repository, createRandom());
+    const stateKey = buildBattleActionIntentStateKey(activeBattle, 'RUNE_SKILL_SLOT_1');
+
+    await useCase.execute(player.vkId, 'RUNE_SKILL_SLOT_1', 'intent-rune-growth', stateKey, 'payload');
+
+    expect(repository.saveBattle).toHaveBeenCalledWith(
+      expect.objectContaining({ id: activeBattle.id }),
+      expect.objectContaining({
+        commandKey: 'BATTLE_RUNE_SKILL',
+        playerSkillGains: [
+          {
+            skillCode: 'rune.active_use',
+            points: 1,
+          },
+        ],
+      }),
+    );
+  });
+
+  it('passes combat skill growth to finalizeBattle when the action ends the battle', async () => {
+    const player = createPlayer();
+    const activeBattle = createBattle({
+      enemy: {
+        ...createBattle().enemy,
+        maxHealth: 1,
+        currentHealth: 1,
+      },
+    });
+    const repository = {
+      findPlayerByVkId: vi.fn().mockResolvedValue(player),
+      getCommandIntentResult: vi.fn().mockResolvedValue(null),
+      storeCommandIntentResult: vi.fn().mockResolvedValue(undefined),
+      getActiveBattle: vi.fn().mockResolvedValue(activeBattle),
+      finalizeBattle: vi.fn(async (_playerId: number, battle: BattleView) => ({
+        player,
+        battle,
+      })),
+      saveBattle: vi.fn(),
+    } as unknown as GameRepository;
+    const useCase = new PerformBattleAction(repository, createRandom());
+    const stateKey = buildBattleActionIntentStateKey(activeBattle, 'ATTACK');
+
+    await useCase.execute(player.vkId, 'ATTACK', 'intent-final-strike-growth', stateKey, 'payload');
+
+    expect(repository.finalizeBattle).toHaveBeenCalledWith(
+      player.playerId,
+      expect.objectContaining({ status: 'COMPLETED', result: 'VICTORY' }),
+      expect.objectContaining({
+        commandKey: 'BATTLE_ATTACK',
+        playerSkillGains: [
+          {
+            skillCode: 'combat.striking',
+            points: 1,
+          },
+        ],
+      }),
+    );
+    expect(repository.saveBattle).not.toHaveBeenCalled();
   });
 
   it('finalizes a successful flee as a neutral completed encounter', async () => {

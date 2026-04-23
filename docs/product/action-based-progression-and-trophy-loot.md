@@ -486,6 +486,7 @@ Player-facing decision:
 
 - trophy action rewards моделируются отдельно от базовой победной награды;
 - `PlayerSkill` и skill types существуют в persistence и домене;
+- боевые навыки получили первый честный runtime-срез поверх battle action facts: `ATTACK` растит `combat.striking`, `DEFEND` растит `combat.guard`, активное рунное действие растит `rune.active_use`, а combat log остаётся только player-facing журналом;
 - pending reward snapshot хранит доступные trophy actions и action-specific reward preview;
 - победа создаёт `PENDING` reward ledger в базе;
 - после победы игрок видит отдельную trophy card с доступными действиями;
@@ -534,8 +535,9 @@ Player-facing decision:
 22. Done: `feat: unlock trophy action by skill threshold`
 23. Done: `feat: expand trophy action skill thresholds`
 24. Later: `feat: connect rune school behavior to school growth`
-25. Later: `feat: connect combat behavior to stat growth`
-26. Done: `docs: update OBT tester guide for action progression`
+25. Done: `feat: connect combat action facts to skill growth`
+26. Later: `feat: connect combat behavior to stat growth`
+27. Done: `docs: update OBT tester guide for action progression`
 
 ---
 

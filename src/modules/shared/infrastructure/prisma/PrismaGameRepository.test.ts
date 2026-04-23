@@ -649,6 +649,130 @@ describe('PrismaGameRepository release hardening', () => {
     ]);
   });
 
+  it('persists battle skill gains when an active battle save wins the revision guard', async () => {
+    const { repository, tx } = createPrismaMock();
+    const persistedBattle = createBattleRow({
+      actionRevision: 1,
+      battleSnapshot: JSON.stringify(readFixture('battle-snapshot-v1.json')),
+    });
+
+    tx.battleSession.updateMany.mockResolvedValue({ count: 1 });
+    tx.battleSession.findFirst.mockResolvedValue(persistedBattle);
+    tx.playerSkill.findMany.mockResolvedValue([]);
+    tx.playerSkill.upsert.mockResolvedValue({});
+
+    await repository.saveBattle(createBattleView({
+      status: 'ACTIVE',
+      result: null,
+      rewards: null,
+      enemy: {
+        ...createBattleView().enemy,
+        currentHealth: 4,
+      },
+      actionRevision: 0,
+    }), {
+      playerSkillGains: [
+        {
+          skillCode: 'combat.striking',
+          points: 1,
+        },
+      ],
+    });
+
+    expect(tx.playerSkill.upsert).toHaveBeenCalledWith({
+      where: {
+        playerId_skillCode: {
+          playerId: 1,
+          skillCode: 'combat.striking',
+        },
+      },
+      update: {
+        experience: 1,
+        rank: 0,
+      },
+      create: {
+        playerId: 1,
+        skillCode: 'combat.striking',
+        experience: 1,
+        rank: 0,
+      },
+    });
+  });
+
+  it('persists battle skill gains when battle finalization wins the revision guard', async () => {
+    const { repository, tx } = createPrismaMock();
+    const completedBattle = createBattleView({
+      result: 'DEFEAT',
+      rewards: {
+        experience: 0,
+        gold: 0,
+        shards: {},
+        droppedRune: null,
+      },
+    });
+    const updatedPlayer = {
+      ...createPlayerRecord(),
+      skills: [
+        {
+          playerId: 1,
+          skillCode: 'combat.guard',
+          experience: 1,
+          rank: 0,
+          updatedAt: new Date('2026-04-12T00:00:00.000Z'),
+        },
+      ],
+    };
+
+    tx.battleSession.updateMany.mockResolvedValue({ count: 1 });
+    tx.battleSession.findFirst.mockResolvedValue(createBattleRow({
+      status: 'COMPLETED',
+      result: 'DEFEAT',
+      rewardsSnapshot: JSON.stringify(completedBattle.rewards),
+    }));
+    tx.player.findUnique
+      .mockResolvedValueOnce(createPlayerRecord())
+      .mockResolvedValueOnce(updatedPlayer);
+    tx.player.update.mockResolvedValue({});
+    tx.playerProgress.update.mockResolvedValue({});
+    tx.playerSkill.findMany.mockResolvedValue([]);
+    tx.playerSkill.upsert.mockResolvedValue({});
+
+    const finalized = await repository.finalizeBattle(1, completedBattle, {
+      playerSkillGains: [
+        {
+          skillCode: 'combat.guard',
+          points: 1,
+        },
+      ],
+    });
+
+    expect(tx.playerSkill.upsert).toHaveBeenCalledWith({
+      where: {
+        playerId_skillCode: {
+          playerId: 1,
+          skillCode: 'combat.guard',
+        },
+      },
+      update: {
+        experience: 1,
+        rank: 0,
+      },
+      create: {
+        playerId: 1,
+        skillCode: 'combat.guard',
+        experience: 1,
+        rank: 0,
+      },
+    });
+    expect(finalized.player.skills).toEqual([
+      {
+        skillCode: 'combat.guard',
+        experience: 1,
+        rank: 0,
+      },
+    ]);
+  });
+
   it('claims a quest reward under a command intent receipt when options are provided', async () => {
     const { repository, tx } = createPrismaMock();
 
@@ -1472,11 +1596,18 @@ describe('PrismaGameRepository release hardening', () => {
       intentId: 'intent-battle-1',
       intentStateKey: 'state-battle-1',
       currentStateKey: 'state-battle-1',
+      playerSkillGains: [
+        {
+          skillCode: 'combat.striking',
+          points: 1,
+        },
+      ],
     });
 
     expect(battle.status).toBe('ACTIVE');
     expect(battle.turnOwner).toBe('ENEMY');
     expect(tx.battleSession.updateMany).not.toHaveBeenCalled();
+    expect(tx.playerSkill.upsert).not.toHaveBeenCalled();
   });
 
   it('returns canonical rune cursor result for a duplicate navigation intent', async () => {
@@ -1531,11 +1662,18 @@ describe('PrismaGameRepository release hardening', () => {
       intentId: 'intent-battle-final',
       intentStateKey: 'state-battle-final',
       currentStateKey: 'state-battle-final',
+      playerSkillGains: [
+        {
+          skillCode: 'combat.striking',
+          points: 1,
+        },
+      ],
     });
 
     expect(finalized.battle.status).toBe('COMPLETED');
     expect(finalized.player.playerId).toBe(1);
     expect(tx.battleSession.updateMany).not.toHaveBeenCalled();
+    expect(tx.playerSkill.upsert).not.toHaveBeenCalled();
   });
 
   it('rejects stale exploration writes when the expected tutorial state no longer matches', async () => {

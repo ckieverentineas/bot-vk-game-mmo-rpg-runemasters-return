@@ -73,6 +73,7 @@ export interface SaveBattleOptions {
   readonly intentId?: string;
   readonly intentStateKey?: string;
   readonly currentStateKey?: string;
+  readonly playerSkillGains?: readonly PlayerSkillPointGain[];
 }
 
 export interface RecordInventoryDeltaResultOptions {

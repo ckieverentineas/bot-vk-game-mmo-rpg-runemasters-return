@@ -168,7 +168,7 @@ Fields of interest:
 - same-intent unequip -> one canonical unequipped loadout only;
 - same-intent skip tutorial -> one canonical post-skip navigation state only;
 - same-intent return to adventure -> one canonical post-return navigation state only;
-- same-intent battle engage / flee / attack / defend / rune skill -> one canonical post-action battle result only;
+- same-intent battle engage / flee / attack / defend / rune skill -> one canonical post-action battle result only, with battle skill growth applied at most once;
 - same-intent rune page / slot navigation -> one canonical post-navigation rune hub state only;
 - same-intent legacy text rune navigation -> one canonical post-navigation rune hub state only;
 - same-intent delete confirmation -> one canonical delete success only;

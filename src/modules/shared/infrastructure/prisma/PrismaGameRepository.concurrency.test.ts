@@ -308,13 +308,35 @@ describe.sequential('PrismaGameRepository concurrency rails', () => {
     };
 
     const [first, second] = await Promise.all([
-      repository.saveBattle(attackBranch),
-      repository.saveBattle(defendBranch),
+      repository.saveBattle(attackBranch, {
+        playerSkillGains: [
+          {
+            skillCode: 'combat.striking',
+            points: 1,
+          },
+        ],
+      }),
+      repository.saveBattle(defendBranch, {
+        playerSkillGains: [
+          {
+            skillCode: 'combat.guard',
+            points: 1,
+          },
+        ],
+      }),
     ]);
 
     expect(first.actionRevision).toBe(1);
     expect(second.actionRevision).toBe(1);
     expect(first.log).toEqual(second.log);
+
+    const persistedSkills = await prisma.playerSkill.findMany({
+      where: {
+        playerId: player.playerId,
+      },
+    });
+    expect(persistedSkills).toHaveLength(1);
+    expect(persistedSkills[0]?.experience).toBe(1);
 
     const staleLogs = await prisma.gameLog.count({
       where: {
@@ -374,8 +396,22 @@ describe.sequential('PrismaGameRepository concurrency rails', () => {
     const completedBattle = toCompletedVictoryBattle(activeBattle, droppedRune);
 
     const [first, second] = await Promise.all([
-      repository.finalizeBattle(player.playerId, completedBattle),
-      repository.finalizeBattle(player.playerId, completedBattle),
+      repository.finalizeBattle(player.playerId, completedBattle, {
+        playerSkillGains: [
+          {
+            skillCode: 'combat.striking',
+            points: 1,
+          },
+        ],
+      }),
+      repository.finalizeBattle(player.playerId, completedBattle, {
+        playerSkillGains: [
+          {
+            skillCode: 'combat.striking',
+            points: 1,
+          },
+        ],
+      }),
     ]);
 
     expect(first.battle.status).toBe('COMPLETED');
@@ -412,6 +448,14 @@ describe.sequential('PrismaGameRepository concurrency rails', () => {
         playerId: player.playerId,
       },
     });
+    const skill = await prisma.playerSkill.findUnique({
+      where: {
+        playerId_skillCode: {
+          playerId: player.playerId,
+          skillCode: 'combat.striking',
+        },
+      },
+    });
 
     expect(rewardLedgerCount).toBe(1);
     expect(rewardLedger?.status).toBe('PENDING');
@@ -423,6 +467,7 @@ describe.sequential('PrismaGameRepository concurrency rails', () => {
       'claim_all',
     ]);
     expect(runeCount).toBe(1);
+    expect(skill?.experience).toBe(1);
   });
 
   it('collects a pending victory reward once with the selected trophy action', async () => {

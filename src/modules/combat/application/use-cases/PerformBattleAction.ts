@@ -6,6 +6,7 @@ import { requirePlayerByVkId } from '../../../shared/application/require-player'
 import type { GameRandom } from '../../../shared/application/ports/GameRandom';
 import type { GameRepository } from '../../../shared/application/ports/GameRepository';
 import { BattleEngine } from '../../domain/battle-engine';
+import { resolveBattleActionSkillGains } from '../../domain/battle-action-skill-growth';
 import { isRuneSkillAction } from '../../domain/battle-rune-loadouts';
 import { buildBattleActionIntentStateKey } from '../command-intent-state';
 
@@ -123,7 +124,17 @@ export class PerformBattleAction {
     const fleeSucceeded = action === 'FLEE'
       && recoveredBattle.battle.encounter?.canFlee === true
       && this.random.rollPercentage(recoveredBattle.battle.encounter.fleeChancePercent);
-    let battle = BattleEngine.performPlayerAction(recoveredBattle.battle, action, { fleeSucceeded });
+    const battleAfterPlayerAction = BattleEngine.performPlayerAction(recoveredBattle.battle, action, { fleeSucceeded });
+    const playerSkillGains = resolveBattleActionSkillGains({
+      action,
+      before: recoveredBattle.battle,
+      afterPlayerAction: battleAfterPlayerAction,
+    });
+    const battlePersistenceOptions = {
+      ...commandOptions,
+      playerSkillGains,
+    } as const;
+    let battle = battleAfterPlayerAction;
 
     if (battle.status === 'ACTIVE') {
       battle = BattleEngine.resolveEnemyTurn(battle);
@@ -134,7 +145,7 @@ export class PerformBattleAction {
         ? RewardEngine.applyVictoryRewards(battle, resolveVictoryRewardOptions(player, battle, this.random), this.random)
         : { battle, droppedRune: null };
 
-      const finalized = await this.repository.finalizeBattle(player.playerId, rewarded.battle, commandOptions);
+      const finalized = await this.repository.finalizeBattle(player.playerId, rewarded.battle, battlePersistenceOptions);
       const result = {
         battle: finalized.battle,
         player: finalized.player,
@@ -144,7 +155,7 @@ export class PerformBattleAction {
       return result;
     }
 
-    const result = this.wrapBattleResult(await this.repository.saveBattle(battle, commandOptions));
+    const result = this.wrapBattleResult(await this.repository.saveBattle(battle, battlePersistenceOptions));
     await this.persistReplayResult(player.playerId, intent?.intentId, result);
     return result;
   }
