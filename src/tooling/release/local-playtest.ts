@@ -7,12 +7,18 @@ import { prisma } from '../../database/client';
 import { buildBattleActionIntentStateKey } from '../../modules/combat/application/command-intent-state';
 import { buildEnterTutorialModeIntentStateKey, buildExploreLocationIntentStateKey } from '../../modules/exploration/application/command-intent-state';
 import { ExploreLocation } from '../../modules/exploration/application/use-cases/ExploreLocation';
+import {
+  findBestRuneOfSchoolAtLeastRarity,
+  getSchoolNovicePathDefinition,
+} from '../../modules/player/domain/school-novice-path';
 import type { QuestCode } from '../../modules/quests/domain/quest-definitions';
 import { buildEquipIntentStateKey, buildSelectRunePageSlotIntentStateKey } from '../../modules/runes/application/command-intent-state';
+import type { RunePageSlot } from '../../modules/runes/domain/rune-collection';
 import { PrismaGameRepository } from '../../modules/shared/infrastructure/prisma/PrismaGameRepository';
 import type { GameRandom } from '../../modules/shared/application/ports/GameRandom';
 import type { PendingRewardView } from '../../modules/shared/application/ports/GameRepository';
-import type { BattleView, PlayerState } from '../../shared/types/game';
+import { resolveAutoEquipRuneSlot } from '../../modules/player/domain/player-stats';
+import type { BattleView, PlayerState, RuneRarity } from '../../shared/types/game';
 import { gameCommands, resolveTrophyActionCodeCommand } from '../../vk/commands/catalog';
 import { GameHandler } from '../../vk/handlers/gameHandler';
 import {
@@ -38,9 +44,16 @@ interface LocalPlaytestRuntime {
   questRewardReplaySafe: boolean | null;
 }
 
-const maxBattleTurns = 20;
+const maxBattleTurns = 30;
 const awakeningQuestCode = 'awakening_empty_master' satisfies QuestCode;
 const schoolNoviceEvidenceIntentIdPrefix = 'local-playtest:school-novice-evidence';
+const runePageSlotCommands = [
+  gameCommands.selectRuneSlot1,
+  gameCommands.selectRuneSlot2,
+  gameCommands.selectRuneSlot3,
+  gameCommands.selectRuneSlot4,
+  gameCommands.selectRuneSlot5,
+] as const;
 
 const schoolNoviceEvidencePaths = [
   {
@@ -57,7 +70,6 @@ const schoolNoviceEvidencePaths = [
       dexterity: 0,
       intelligence: 0,
     },
-    openRuneHubAfterReward: false,
   },
   {
     schoolCode: 'stone',
@@ -73,7 +85,6 @@ const schoolNoviceEvidencePaths = [
       dexterity: 0,
       intelligence: 0,
     },
-    openRuneHubAfterReward: true,
   },
   {
     schoolCode: 'gale',
@@ -89,7 +100,6 @@ const schoolNoviceEvidencePaths = [
       dexterity: 3,
       intelligence: 0,
     },
-    openRuneHubAfterReward: false,
   },
   {
     schoolCode: 'echo',
@@ -105,7 +115,6 @@ const schoolNoviceEvidencePaths = [
       dexterity: 0,
       intelligence: 3,
     },
-    openRuneHubAfterReward: false,
   },
 ] as const satisfies readonly LocalPlaytestNoviceEvidencePath[];
 
@@ -145,7 +154,6 @@ interface LocalPlaytestNoviceEvidencePath {
   readonly passiveAbilityCodes: readonly string[];
   readonly activeAbilityCodes: readonly string[];
   readonly usualRuneStats: LocalPlaytestRuneStats;
-  readonly openRuneHubAfterReward: boolean;
 }
 
 const createSyntheticVkId = (): number => (
@@ -170,7 +178,7 @@ const createRuntime = (scenarioName: ScenarioName): LocalPlaytestRuntime => {
 
 const createSchoolNoviceEvidenceRandom = (): GameRandom => ({
   nextInt: (_min: number, max: number): number => max,
-  rollPercentage: (chancePercent: number): boolean => chancePercent === 50,
+  rollPercentage: (chancePercent: number): boolean => chancePercent === 50 || chancePercent === 45,
   pickOne: <T>(items: readonly T[]): T => items[0] as T,
 });
 
@@ -265,6 +273,54 @@ const assertReplyIncludes = (
   throw new Error(`${label} reply is missing expected fragments: ${missingFragments.join(', ')}`);
 };
 
+const resolveLocalRunePageSlot = (
+  player: PlayerState,
+  path: LocalPlaytestNoviceEvidencePath,
+  minimumRarity: RuneRarity,
+): RunePageSlot => {
+  const rune = findBestRuneOfSchoolAtLeastRarity(player, path.schoolCode, minimumRarity);
+  if (!rune) {
+    throw new Error(`${path.schoolCode} evidence path expected a ${minimumRarity} school rune.`);
+  }
+
+  const runeIndex = player.runes.findIndex((candidate) => candidate.id === rune.id);
+  if (runeIndex < 0 || runeIndex >= runePageSlotCommands.length) {
+    throw new Error(`${path.schoolCode} evidence path cannot select rune index ${runeIndex} in the local page.`);
+  }
+
+  return runeIndex as RunePageSlot;
+};
+
+const selectAndEquipSchoolRune = async (
+  runtime: LocalPlaytestRuntime,
+  path: LocalPlaytestNoviceEvidencePath,
+  minimumRarity: RuneRarity,
+  label: string,
+): Promise<void> => {
+  const runeListPlayer = await getPlayer(runtime);
+  const pageSlot = resolveLocalRunePageSlot(runeListPlayer, path, minimumRarity);
+  await runCommand(
+    runtime,
+    `${path.schoolCode}-${label}-select`,
+    runePageSlotCommands[pageSlot],
+    buildSelectRunePageSlotIntentStateKey(runeListPlayer, pageSlot),
+  );
+
+  const selectedRunePlayer = await getPlayer(runtime);
+  const targetSlot = runtime.scenarioName === 'payload'
+    ? resolveAutoEquipRuneSlot(selectedRunePlayer)
+    : 0;
+  const equipCommand = runtime.scenarioName === 'payload'
+    ? gameCommands.equipRune
+    : gameCommands.equipRuneSlot1;
+  await runCommand(
+    runtime,
+    `${path.schoolCode}-${label}-equip`,
+    equipCommand,
+    buildEquipIntentStateKey(selectedRunePlayer, targetSlot),
+  );
+};
+
 const fightUntilFinished = async (runtime: LocalPlaytestRuntime): Promise<void> => {
   for (let turn = 1; turn <= maxBattleTurns; turn += 1) {
     const battle = await getActiveBattle(runtime);
@@ -322,19 +378,19 @@ const prepareSchoolNoviceEvidenceState = async (
       data: {
         level: 3,
         experience: 0,
-        baseHealth: 60,
-        baseAttack: 18,
-        baseDefence: 10,
-        baseMagicDefence: 6,
-        baseDexterity: 8,
-        baseIntelligence: 6,
+        baseHealth: 120,
+        baseAttack: 36,
+        baseDefence: 18,
+        baseMagicDefence: 18,
+        baseDexterity: 20,
+        baseIntelligence: 16,
       },
     }),
     prisma.playerProgress.update({
       where: { playerId: player.playerId },
       data: {
-        locationLevel: 3,
-        highestLocationLevel: 3,
+        locationLevel: 5,
+        highestLocationLevel: 5,
         currentRuneIndex: 0,
         activeBattleId: null,
         tutorialState: 'COMPLETED',
@@ -387,11 +443,13 @@ const prepareSchoolNoviceEvidenceState = async (
   return getPlayer(runtime);
 };
 
-const runSchoolNoviceEvidencePath = async (
+const startSchoolEvidenceBattle = async (
   runtime: LocalPlaytestRuntime,
   path: LocalPlaytestNoviceEvidencePath,
+  battleKind: 'novice' | 'miniboss',
+  expectedEnemyCode: string,
 ): Promise<void> => {
-  const player = await prepareSchoolNoviceEvidenceState(runtime, path);
+  const player = await getPlayer(runtime);
   const repository = new PrismaGameRepository(prisma);
   const exploreLocation = new ExploreLocation(
     repository,
@@ -399,17 +457,17 @@ const runSchoolNoviceEvidencePath = async (
     createSchoolNoviceEvidenceRandom(),
     runtime.services.telemetry,
   );
-  const intentId = `${schoolNoviceEvidenceIntentIdPrefix}:${path.schoolCode}:${runtime.scenarioName}:${runtime.vkId}`;
+  const intentId = `${schoolNoviceEvidenceIntentIdPrefix}:${battleKind}:${path.schoolCode}:${runtime.scenarioName}:${runtime.vkId}`;
   const stateKey = buildExploreLocationIntentStateKey(player);
   const battle = await exploreLocation.execute(runtime.vkId, intentId, stateKey, 'payload');
 
   if ('event' in battle) {
-    throw new Error(`${path.schoolCode} novice evidence path resolved an exploration event instead of a battle.`);
+    throw new Error(`${path.schoolCode} ${battleKind} evidence path resolved an exploration event instead of a battle.`);
   }
 
   const startedBattle = 'battle' in battle ? battle.battle : battle;
   runtime.transcript.push({
-    label: `${path.schoolCode}-novice-evidence`,
+    label: `${path.schoolCode}-${battleKind}-evidence`,
     command: gameCommands.explore,
     payload: {
       command: gameCommands.explore,
@@ -419,16 +477,32 @@ const runSchoolNoviceEvidencePath = async (
     reply: startedBattle.log.join('\n'),
   });
 
-  if (startedBattle.enemy.code !== path.enemyCode) {
-    throw new Error(`${path.schoolCode} novice evidence path expected ${path.enemyCode}, got ${startedBattle.enemy.code}.`);
+  if (startedBattle.enemy.code !== expectedEnemyCode) {
+    throw new Error(`${path.schoolCode} ${battleKind} evidence path expected ${expectedEnemyCode}, got ${startedBattle.enemy.code}.`);
   }
+};
+
+const runSchoolNoviceEvidencePath = async (
+  runtime: LocalPlaytestRuntime,
+  path: LocalPlaytestNoviceEvidencePath,
+): Promise<void> => {
+  await prepareSchoolNoviceEvidenceState(runtime, path);
+  const novicePath = getSchoolNovicePathDefinition(path.schoolCode);
+  const minibossEnemyCode = novicePath?.minibossEnemyCode;
+  if (!novicePath || !minibossEnemyCode || !novicePath.minibossRewardRarity) {
+    throw new Error(`${path.schoolCode} evidence path is missing miniboss continuation metadata.`);
+  }
+
+  await startSchoolEvidenceBattle(runtime, path, 'novice', path.enemyCode);
 
   await fightUntilFinished(runtime);
   await collectPendingRewardIfAny(runtime);
+  await runCommand(runtime, `${path.schoolCode}-novice-rune-hub`, gameCommands.runeCollection);
+  await selectAndEquipSchoolRune(runtime, path, novicePath.rewardRarity, 'sign');
+  await startSchoolEvidenceBattle(runtime, path, 'miniboss', minibossEnemyCode);
 
-  if (path.openRuneHubAfterReward) {
-    await runCommand(runtime, `${path.schoolCode}-novice-rune-hub`, gameCommands.runeCollection);
-  }
+  await fightUntilFinished(runtime);
+  await collectPendingRewardIfAny(runtime);
 };
 
 const runQuestBookChecks = async (runtime: LocalPlaytestRuntime): Promise<void> => {

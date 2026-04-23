@@ -284,17 +284,41 @@ describe('local playtest harness', () => {
           novicePathSchoolCode: 'ember',
           noviceTargetRewardRarity: 'UNUSUAL',
         }),
+        createLog('school_novice_follow_up_action_taken', {
+          schoolCode: 'ember',
+          actionType: 'open_runes',
+        }),
+        createLog('reward_claim_applied', {
+          battleSchoolCode: 'ember',
+          rewardRuneRarity: 'RARE',
+        }),
         createLog('school_novice_elite_encounter_started', { schoolCode: 'stone' }),
         createLog('reward_claim_applied', {
           isSchoolNoviceAligned: true,
           novicePathSchoolCode: 'stone',
           noviceTargetRewardRarity: 'UNUSUAL',
         }),
+        createLog('school_novice_follow_up_action_taken', {
+          schoolCode: 'stone',
+          actionType: 'open_runes',
+        }),
+        createLog('reward_claim_applied', {
+          battleSchoolCode: 'stone',
+          rewardRuneRarity: 'RARE',
+        }),
         createLog('school_novice_elite_encounter_started', { schoolCode: 'gale' }),
         createLog('reward_claim_applied', {
           isSchoolNoviceAligned: true,
           novicePathSchoolCode: 'gale',
           noviceTargetRewardRarity: 'UNUSUAL',
+        }),
+        createLog('school_novice_follow_up_action_taken', {
+          schoolCode: 'gale',
+          actionType: 'open_runes',
+        }),
+        createLog('reward_claim_applied', {
+          battleSchoolCode: 'gale',
+          rewardRuneRarity: 'RARE',
         }),
         createLog('school_novice_elite_encounter_started', { schoolCode: 'echo' }),
         createLog('reward_claim_applied', {
@@ -303,8 +327,12 @@ describe('local playtest harness', () => {
           noviceTargetRewardRarity: 'UNUSUAL',
         }),
         createLog('school_novice_follow_up_action_taken', {
-          schoolCode: 'stone',
+          schoolCode: 'echo',
           actionType: 'open_runes',
+        }),
+        createLog('reward_claim_applied', {
+          battleSchoolCode: 'echo',
+          rewardRuneRarity: 'RARE',
         }),
         createLog('return_recap_shown', { nextStepType: 'equip_school_sign' }),
       ],
@@ -340,7 +368,14 @@ describe('local playtest harness', () => {
       'payload: expected gale school novice aligned reward evidence',
       'payload: expected echo school novice elite evidence',
       'payload: expected echo school novice aligned reward evidence',
+      'payload: expected ember school novice rune hub follow-up',
       'payload: expected stone school novice rune hub follow-up',
+      'payload: expected gale school novice rune hub follow-up',
+      'payload: expected echo school novice rune hub follow-up',
+      'payload: expected ember school rare seal evidence',
+      'payload: expected stone school rare seal evidence',
+      'payload: expected gale school rare seal evidence',
+      'payload: expected echo school rare seal evidence',
     ]);
   });
 
@@ -372,7 +407,14 @@ describe('local playtest harness', () => {
       'payload: expected gale school novice aligned reward evidence',
       'payload: expected echo school novice elite evidence',
       'payload: expected echo school novice aligned reward evidence',
+      'payload: expected ember school novice rune hub follow-up',
       'payload: expected stone school novice rune hub follow-up',
+      'payload: expected gale school novice rune hub follow-up',
+      'payload: expected echo school novice rune hub follow-up',
+      'payload: expected ember school rare seal evidence',
+      'payload: expected stone school rare seal evidence',
+      'payload: expected gale school rare seal evidence',
+      'payload: expected echo school rare seal evidence',
     ]);
   });
 
@@ -411,7 +453,14 @@ describe('local playtest harness', () => {
       'payload: expected gale school novice aligned reward evidence',
       'payload: expected echo school novice elite evidence',
       'payload: expected echo school novice aligned reward evidence',
+      'payload: expected ember school novice rune hub follow-up',
       'payload: expected stone school novice rune hub follow-up',
+      'payload: expected gale school novice rune hub follow-up',
+      'payload: expected echo school novice rune hub follow-up',
+      'payload: expected ember school rare seal evidence',
+      'payload: expected stone school rare seal evidence',
+      'payload: expected gale school rare seal evidence',
+      'payload: expected echo school rare seal evidence',
     ]);
   });
 
@@ -436,17 +485,41 @@ describe('local playtest harness', () => {
           novicePathSchoolCode: 'ember',
           noviceTargetRewardRarity: 'UNUSUAL',
         }),
+        createLog('school_novice_follow_up_action_taken', {
+          schoolCode: 'ember',
+          actionType: 'open_runes',
+        }),
+        createLog('reward_claim_applied', {
+          battleSchoolCode: 'ember',
+          rewardRuneRarity: 'RARE',
+        }),
         createLog('school_novice_elite_encounter_started', { schoolCode: 'gale' }),
         createLog('reward_claim_applied', {
           isSchoolNoviceAligned: true,
           novicePathSchoolCode: 'gale',
           noviceTargetRewardRarity: 'UNUSUAL',
         }),
+        createLog('school_novice_follow_up_action_taken', {
+          schoolCode: 'gale',
+          actionType: 'open_runes',
+        }),
+        createLog('reward_claim_applied', {
+          battleSchoolCode: 'gale',
+          rewardRuneRarity: 'RARE',
+        }),
         createLog('school_novice_elite_encounter_started', { schoolCode: 'echo' }),
         createLog('reward_claim_applied', {
           isSchoolNoviceAligned: true,
           novicePathSchoolCode: 'echo',
           noviceTargetRewardRarity: 'UNUSUAL',
+        }),
+        createLog('school_novice_follow_up_action_taken', {
+          schoolCode: 'echo',
+          actionType: 'open_runes',
+        }),
+        createLog('reward_claim_applied', {
+          battleSchoolCode: 'echo',
+          rewardRuneRarity: 'RARE',
         }),
       ],
       questRewardReplaySafe: true,
@@ -464,6 +537,7 @@ describe('local playtest harness', () => {
       'payload: expected stone school novice elite evidence',
       'payload: expected stone school novice aligned reward evidence',
       'payload: expected stone school novice rune hub follow-up',
+      'payload: expected stone school rare seal evidence',
     ]);
   });
 
@@ -482,11 +556,27 @@ describe('local playtest harness', () => {
           novicePathSchoolCode: 'ember',
           noviceTargetRewardRarity: 'UNUSUAL',
         }),
+        createLog('school_novice_follow_up_action_taken', {
+          schoolCode: 'ember',
+          actionType: 'open_runes',
+        }),
+        createLog('reward_claim_applied', {
+          battleSchoolCode: 'ember',
+          rewardRuneRarity: 'RARE',
+        }),
         createLog('school_novice_elite_encounter_started', { schoolCode: 'stone' }),
         createLog('reward_claim_applied', {
           isSchoolNoviceAligned: true,
           novicePathSchoolCode: 'stone',
           noviceTargetRewardRarity: 'UNUSUAL',
+        }),
+        createLog('school_novice_follow_up_action_taken', {
+          schoolCode: 'stone',
+          actionType: 'open_runes',
+        }),
+        createLog('reward_claim_applied', {
+          battleSchoolCode: 'stone',
+          rewardRuneRarity: 'RARE',
         }),
         createLog('school_novice_elite_encounter_started', { schoolCode: 'echo' }),
         createLog('reward_claim_applied', {
@@ -495,8 +585,12 @@ describe('local playtest harness', () => {
           noviceTargetRewardRarity: 'UNUSUAL',
         }),
         createLog('school_novice_follow_up_action_taken', {
-          schoolCode: 'stone',
+          schoolCode: 'echo',
           actionType: 'open_runes',
+        }),
+        createLog('reward_claim_applied', {
+          battleSchoolCode: 'echo',
+          rewardRuneRarity: 'RARE',
         }),
       ],
       questRewardReplaySafe: true,
@@ -513,6 +607,8 @@ describe('local playtest harness', () => {
       'payload: expected return recap evidence',
       'payload: expected gale school novice elite evidence',
       'payload: expected gale school novice aligned reward evidence',
+      'payload: expected gale school novice rune hub follow-up',
+      'payload: expected gale school rare seal evidence',
     ]);
   });
 
@@ -531,11 +627,27 @@ describe('local playtest harness', () => {
           novicePathSchoolCode: 'ember',
           noviceTargetRewardRarity: 'UNUSUAL',
         }),
+        createLog('school_novice_follow_up_action_taken', {
+          schoolCode: 'ember',
+          actionType: 'open_runes',
+        }),
+        createLog('reward_claim_applied', {
+          battleSchoolCode: 'ember',
+          rewardRuneRarity: 'RARE',
+        }),
         createLog('school_novice_elite_encounter_started', { schoolCode: 'stone' }),
         createLog('reward_claim_applied', {
           isSchoolNoviceAligned: true,
           novicePathSchoolCode: 'stone',
           noviceTargetRewardRarity: 'UNUSUAL',
+        }),
+        createLog('school_novice_follow_up_action_taken', {
+          schoolCode: 'stone',
+          actionType: 'open_runes',
+        }),
+        createLog('reward_claim_applied', {
+          battleSchoolCode: 'stone',
+          rewardRuneRarity: 'RARE',
         }),
         createLog('school_novice_elite_encounter_started', { schoolCode: 'gale' }),
         createLog('reward_claim_applied', {
@@ -544,8 +656,12 @@ describe('local playtest harness', () => {
           noviceTargetRewardRarity: 'UNUSUAL',
         }),
         createLog('school_novice_follow_up_action_taken', {
-          schoolCode: 'stone',
+          schoolCode: 'gale',
           actionType: 'open_runes',
+        }),
+        createLog('reward_claim_applied', {
+          battleSchoolCode: 'gale',
+          rewardRuneRarity: 'RARE',
         }),
       ],
       questRewardReplaySafe: true,
@@ -562,6 +678,8 @@ describe('local playtest harness', () => {
       'payload: expected return recap evidence',
       'payload: expected echo school novice elite evidence',
       'payload: expected echo school novice aligned reward evidence',
+      'payload: expected echo school novice rune hub follow-up',
+      'payload: expected echo school rare seal evidence',
     ]);
   });
 
@@ -597,7 +715,14 @@ describe('local playtest harness', () => {
       'payload: expected gale school novice aligned reward evidence',
       'payload: expected echo school novice elite evidence',
       'payload: expected echo school novice aligned reward evidence',
+      'payload: expected ember school novice rune hub follow-up',
       'payload: expected stone school novice rune hub follow-up',
+      'payload: expected gale school novice rune hub follow-up',
+      'payload: expected echo school novice rune hub follow-up',
+      'payload: expected ember school rare seal evidence',
+      'payload: expected stone school rare seal evidence',
+      'payload: expected gale school rare seal evidence',
+      'payload: expected echo school rare seal evidence',
     ]);
   });
 });

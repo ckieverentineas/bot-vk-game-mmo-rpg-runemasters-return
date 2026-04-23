@@ -127,8 +127,7 @@ export class EquipCurrentRune {
       }
 
       if (
-        resolvedTargetSlot === 0
-        && recognitionBefore?.signEquipped !== true
+        recognitionBefore?.signEquipped !== true
         && recognitionAfter?.signEquipped
         && ['equip_first_rune', 'equip_school_sign'].includes(nextGoalBefore.goalType)
       ) {

@@ -381,12 +381,12 @@ export const buildEquipAcquisitionSummary = (
   targetSlot: number,
   goalTypeBefore: NextGoalType,
 ): AcquisitionSummaryView | null => {
-  if (targetSlot !== 0 || !['equip_first_rune', 'equip_school_sign'].includes(goalTypeBefore)) {
+  if (!['equip_first_rune', 'equip_school_sign'].includes(goalTypeBefore)) {
     return null;
   }
 
-  const beforeEquippedRune = getEquippedRune(before, 0);
-  const afterEquippedRune = getEquippedRune(after, 0);
+  const beforeEquippedRune = getEquippedRune(before, targetSlot);
+  const afterEquippedRune = getEquippedRune(after, targetSlot);
   if (!afterEquippedRune || beforeEquippedRune?.id === afterEquippedRune.id) {
     return null;
   }

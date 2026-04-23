@@ -634,6 +634,18 @@ npm run release:preflight
 - Verification: docs-only preset.
 - Commit: `Mark superseded review notes`
 
+### Q-047. Close rare seal runtime evidence loop
+
+- Status: `done`
+- Source: `PLAN.md`, `docs/testing/school-path-playtest-v1.md`, `docs/testing/release-evidence-report.md`
+- Goal: довести school-first runtime evidence до `RARE seal`, а не останавливаться на novice payoff.
+- Scope:
+  - расширить `release:local-playtest` до `novice elite -> UNUSUAL sign -> equip sign -> school miniboss -> RARE seal`;
+  - убедиться, что payload auto-equip школьного знака во второй слот не теряет copy и `equip_school_sign` telemetry;
+  - обновить release evidence checks без новых школ и таблиц.
+- Verification: release evidence preset plus `npm run release:local-playtest`.
+- Commit: `Prove rare school seal loop`
+
 ---
 
 ## 5. Deferred review capsules

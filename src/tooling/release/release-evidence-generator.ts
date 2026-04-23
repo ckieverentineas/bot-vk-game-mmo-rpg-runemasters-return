@@ -383,6 +383,14 @@ const resolveEvidenceVerdict = (
     reasons.push(`После novice payoff игроки не доводят знак до сборки: ${missingEquipFollowUpSchools.map((row) => row.schoolName).join(', ')}.`);
   }
 
+  const missingRareSealSchools = schoolPathRows.filter((row) => (
+    row.followUpBattleUsers > 0
+    && row.rareSealUsers === 0
+  ));
+  if (missingRareSealSchools.length > 0) {
+    reasons.push(`После перехода к school miniboss evidence ещё не видит rare seal payoff: ${missingRareSealSchools.map((row) => row.schoolName).join(', ')}.`);
+  }
+
   const totalPostSessionShownCount = nextGoalRows.reduce((sum, row) => sum + row.shownCount, 0);
   const novicePostSessionShownCount = nextGoalRows.reduce((sum, row) => sum + row.noviceEliteShownCount, 0);
   const postSessionFollowUpUsers = nextGoalRows.reduce((sum, row) => sum + row.followUpUsers, 0);

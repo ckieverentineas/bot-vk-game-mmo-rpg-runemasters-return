@@ -656,6 +656,74 @@ describe('summarizeReleaseEvidence', () => {
     ]);
   });
 
+  it('warns when a school miniboss follow-up has no rare seal payoff yet', () => {
+    const report = summarizeReleaseEvidence([
+      {
+        userId: 19,
+        action: 'school_novice_elite_encounter_started',
+        details: JSON.stringify({ schoolCode: 'ember' }),
+        createdAt: '2026-04-20T01:00:00.000Z',
+      },
+      {
+        userId: 19,
+        action: 'reward_claim_applied',
+        details: JSON.stringify({
+          ledgerKey: 'ledger-1',
+          battleId: 'battle-1',
+          isSchoolNoviceAligned: true,
+          novicePathSchoolCode: 'ember',
+          noviceTargetRewardRarity: 'UNUSUAL',
+          rewardRuneRarity: 'UNUSUAL',
+        }),
+        createdAt: '2026-04-20T01:01:00.000Z',
+      },
+      {
+        userId: 19,
+        action: 'first_school_presented',
+        details: JSON.stringify({ schoolCode: 'ember' }),
+        createdAt: '2026-04-20T01:02:00.000Z',
+      },
+      {
+        userId: 19,
+        action: 'first_school_committed',
+        details: JSON.stringify({ schoolCode: 'ember' }),
+        createdAt: '2026-04-20T01:03:00.000Z',
+      },
+      {
+        userId: 19,
+        action: 'post_session_next_goal_shown',
+        details: JSON.stringify({
+          suggestedGoalType: 'challenge_school_miniboss',
+          isSchoolNoviceElite: false,
+        }),
+        createdAt: '2026-04-20T01:04:00.000Z',
+      },
+      {
+        userId: 19,
+        action: 'return_recap_shown',
+        details: JSON.stringify({
+          nextStepType: 'challenge_school_miniboss',
+          hasEquippedRune: true,
+        }),
+        createdAt: '2026-04-20T01:05:00.000Z',
+      },
+      {
+        userId: 19,
+        action: 'school_novice_follow_up_action_taken',
+        details: JSON.stringify({
+          schoolCode: 'ember',
+          currentGoalType: 'challenge_school_miniboss',
+          actionType: 'start_next_battle',
+          signEquipped: true,
+        }),
+        createdAt: '2026-04-20T01:06:00.000Z',
+      },
+    ], '2026-04-20T03:00:00.000Z');
+
+    expect(report.verdict).toBe('warn');
+    expect(report.verdictReasons.join(' ')).toContain('rare seal payoff');
+  });
+
   it('counts the earliest tutorial path choice per user in the onboarding split', () => {
     const report = summarizeReleaseEvidence([
       {

@@ -414,6 +414,86 @@ describe('EquipCurrentRune', () => {
     expect(buildPlayerNextGoalView(resultPlayer).goalType).toBe('challenge_school_miniboss');
   });
 
+  it('logs and summarizes the first school sign when auto-equipped into support slot', async () => {
+    const player = createPlayer({
+      victories: 3,
+      currentRuneIndex: 1,
+      schoolMasteries: [{ schoolCode: 'ember', experience: 1, rank: 0 }],
+      runes: [
+        {
+          ...createPlayer().runes[0],
+          name: 'Обычная руна Пламени',
+          rarity: 'USUAL',
+          isEquipped: true,
+          equippedSlot: 0,
+        },
+        {
+          ...createPlayer().runes[0],
+          id: 'rune-2',
+          runeCode: 'rune-2',
+          name: 'Необычная руна Пламени',
+          rarity: 'UNUSUAL',
+          isEquipped: false,
+          equippedSlot: null,
+        },
+      ],
+    });
+    const updatedPlayer = {
+      ...player,
+      runes: [
+        player.runes[0],
+        {
+          ...player.runes[1],
+          isEquipped: true,
+          equippedSlot: 1,
+        },
+      ],
+    };
+    const telemetry = {
+      loadoutChanged: vi.fn().mockResolvedValue(undefined),
+      firstSchoolCommitted: vi.fn().mockResolvedValue(undefined),
+      schoolNoviceFollowUpActionTaken: vi.fn().mockResolvedValue(undefined),
+    } as unknown as GameTelemetry;
+    const repository = {
+      findPlayerByVkId: vi.fn().mockResolvedValue(player),
+      getCommandIntentResult: vi.fn(),
+      equipRune: vi.fn().mockResolvedValue(updatedPlayer),
+      storeCommandIntentResult: vi.fn().mockResolvedValue(undefined),
+    } as unknown as GameRepository;
+    const useCase = new EquipCurrentRune(repository, telemetry);
+    const stateKey = buildEquipIntentStateKey(player, 1);
+
+    const result = await useCase.execute(player.vkId, null, 'intent-auto-equip-sign-1', stateKey);
+    const resultPlayer = 'player' in result ? result.player : result;
+
+    expect(repository.equipRune).toHaveBeenCalledWith(
+      player.playerId,
+      'rune-2',
+      expect.objectContaining({
+        targetSlot: 1,
+        intentId: 'intent-auto-equip-sign-1',
+        intentStateKey: stateKey,
+      }),
+    );
+    expect(telemetry.firstSchoolCommitted).toHaveBeenCalledWith(updatedPlayer.userId, {
+      schoolCode: 'ember',
+      runeId: 'rune-2',
+      runeRarity: 'UNUSUAL',
+      commitSource: 'equip_current_rune',
+    });
+    expect(telemetry.schoolNoviceFollowUpActionTaken).toHaveBeenCalledWith(updatedPlayer.userId, {
+      schoolCode: 'ember',
+      currentGoalType: 'equip_school_sign',
+      actionType: 'equip_school_sign',
+      signEquipped: true,
+      usedSchoolSign: true,
+      battleId: null,
+      enemyCode: null,
+    });
+    expect('acquisitionSummary' in result ? result.acquisitionSummary?.kind : null).toBe('school_style_committed');
+    expect(buildPlayerNextGoalView(resultPlayer).goalType).toBe('challenge_school_miniboss');
+  });
+
   it('logs first school commit even when the sign is equipped from an empty primary slot', async () => {
     const player = createPlayer({
       victories: 3,

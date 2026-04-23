@@ -2,7 +2,8 @@ import type { BattleActionType, BattleRuneActionSnapshot, BattleView, PlayerStat
 import { type GameCommand, gameCommands } from '../../vk/commands/catalog';
 
 const requiredSchoolNoviceEvidenceCodes = ['ember', 'stone', 'gale', 'echo'] as const;
-const requiredSchoolRuneHubFollowUpCodes = ['stone'] as const;
+const requiredSchoolRuneHubFollowUpCodes = requiredSchoolNoviceEvidenceCodes;
+const requiredSchoolRareSealEvidenceCodes = requiredSchoolNoviceEvidenceCodes;
 const requiredReturnRecapNextStepType = 'equip_school_sign';
 
 type RequiredSchoolNoviceEvidenceCode = typeof requiredSchoolNoviceEvidenceCodes[number];
@@ -12,6 +13,7 @@ interface LocalPlaytestSchoolEvidenceSummary {
   readonly noviceEliteCounts: SchoolEvidenceCounts;
   readonly alignedRewardCounts: SchoolEvidenceCounts;
   readonly runeHubFollowUpCounts: SchoolEvidenceCounts;
+  readonly rareSealCounts: SchoolEvidenceCounts;
 }
 
 interface LocalPlaytestReturnRecapSummary {
@@ -99,6 +101,7 @@ export interface LocalPlaytestSummary {
   readonly schoolNoviceEliteEvidenceCounts: SchoolEvidenceCounts;
   readonly schoolNoviceAlignedRewardCounts: SchoolEvidenceCounts;
   readonly schoolNoviceRuneHubFollowUpCounts: SchoolEvidenceCounts;
+  readonly schoolRareSealEvidenceCounts: SchoolEvidenceCounts;
   readonly suspiciousReplyCount: number;
   readonly trophyCollectionReplyCount: number;
   readonly questBookReplyCount: number;
@@ -260,6 +263,7 @@ const summarizeSchoolEvidence = (
   const noviceEliteCounts = createSchoolEvidenceCounts();
   const alignedRewardCounts = createSchoolEvidenceCounts();
   const runeHubFollowUpCounts = createSchoolEvidenceCounts();
+  const rareSealCounts = createSchoolEvidenceCounts();
 
   for (const log of logs) {
     const details = parseLogDetails(log.details);
@@ -279,6 +283,14 @@ const summarizeSchoolEvidence = (
     }
 
     if (
+      log.action === 'reward_claim_applied'
+      && details.rewardRuneRarity === 'RARE'
+    ) {
+      incrementSchoolEvidenceCount(rareSealCounts, details.battleSchoolCode);
+      continue;
+    }
+
+    if (
       log.action === 'school_novice_follow_up_action_taken'
       && details.actionType === 'open_runes'
     ) {
@@ -290,6 +302,7 @@ const summarizeSchoolEvidence = (
     noviceEliteCounts,
     alignedRewardCounts,
     runeHubFollowUpCounts,
+    rareSealCounts,
   };
 };
 
@@ -352,6 +365,7 @@ export const buildLocalPlaytestSummary = (input: LocalPlaytestSummaryInput): Loc
     schoolNoviceEliteEvidenceCounts: schoolEvidence.noviceEliteCounts,
     schoolNoviceAlignedRewardCounts: schoolEvidence.alignedRewardCounts,
     schoolNoviceRuneHubFollowUpCounts: schoolEvidence.runeHubFollowUpCounts,
+    schoolRareSealEvidenceCounts: schoolEvidence.rareSealCounts,
     suspiciousReplyCount: input.transcript.filter((entry) => isSuspiciousReply(entry.reply)).length,
     trophyCollectionReplyCount: input.transcript.filter((entry) => isTrophyCollectionReply(entry.reply)).length,
     questBookReplyCount: input.transcript.filter((entry) => isQuestBookReply(entry.reply)).length,
@@ -428,6 +442,12 @@ export const listLocalPlaytestFailures = (summary: LocalPlaytestSummary): readon
   for (const schoolCode of requiredSchoolRuneHubFollowUpCodes) {
     if (summary.schoolNoviceRuneHubFollowUpCounts[schoolCode] < 1) {
       failures.push(`${summary.scenarioName}: expected ${schoolCode} school novice rune hub follow-up`);
+    }
+  }
+
+  for (const schoolCode of requiredSchoolRareSealEvidenceCodes) {
+    if (summary.schoolRareSealEvidenceCounts[schoolCode] < 1) {
+      failures.push(`${summary.scenarioName}: expected ${schoolCode} school rare seal evidence`);
     }
   }
 
