@@ -13,7 +13,15 @@ export type TrophyActionCode =
   | 'gather_slime'
   | 'extract_essence'
   | 'draw_ember_sign'
-  | 'careful_skinning';
+  | 'careful_skinning'
+  | 'refine_slime_core'
+  | 'stabilize_essence'
+  | 'salvage_armor'
+  | 'strip_goblin_gear'
+  | 'crack_troll_growths'
+  | 'unmake_phylactery'
+  | 'bind_abyss_ichor'
+  | 'harvest_dragon_scale';
 
 export type TrophyActionSkillExperienceMap = Readonly<Partial<Record<PlayerSkillCode, number>>>;
 
@@ -68,6 +76,20 @@ const carefulSkinningAction: TrophyActionDefinition = {
   visibleRewardFields: ['leather', 'bone'],
 };
 
+const refinedSlimeCoreAction: TrophyActionDefinition = {
+  code: 'refine_slime_core',
+  label: '🧪 Отделить чистый реагент',
+  skillCodes: ['gathering.reagent_gathering'],
+  visibleRewardFields: ['herb', 'essence'],
+};
+
+const stabilizedEssenceAction: TrophyActionDefinition = {
+  code: 'stabilize_essence',
+  label: '✨ Стабилизировать эссенцию',
+  skillCodes: ['gathering.essence_extraction'],
+  visibleRewardFields: ['essence', 'crystal'],
+};
+
 const trophyActionsByEnemyKind: Readonly<Record<string, readonly TrophyActionDefinition[]>> = {
   wolf: [
     {
@@ -109,6 +131,54 @@ const trophyActionsByEnemyKind: Readonly<Record<string, readonly TrophyActionDef
       visibleRewardFields: ['essence'],
     },
   ],
+  knight: [
+    {
+      code: 'salvage_armor',
+      label: '⚒️ Разобрать доспех',
+      skillCodes: ['gathering.reagent_gathering'],
+      visibleRewardFields: ['metal', 'crystal', 'leather'],
+    },
+  ],
+  goblin: [
+    {
+      code: 'strip_goblin_gear',
+      label: '🧰 Разобрать трофейное снаряжение',
+      skillCodes: ['gathering.reagent_gathering'],
+      visibleRewardFields: ['bone', 'metal', 'crystal'],
+    },
+  ],
+  troll: [
+    {
+      code: 'crack_troll_growths',
+      label: '⛏️ Сколоть пещерные наросты',
+      skillCodes: ['gathering.reagent_gathering'],
+      visibleRewardFields: ['bone', 'metal', 'crystal'],
+    },
+  ],
+  lich: [
+    {
+      code: 'unmake_phylactery',
+      label: '☠️ Рассеять филактерию',
+      skillCodes: ['gathering.essence_extraction'],
+      visibleRewardFields: ['essence', 'crystal'],
+    },
+  ],
+  demon: [
+    {
+      code: 'bind_abyss_ichor',
+      label: '🜏 Сковать бездновую искру',
+      skillCodes: ['gathering.essence_extraction'],
+      visibleRewardFields: ['essence', 'crystal'],
+    },
+  ],
+  dragon: [
+    {
+      code: 'harvest_dragon_scale',
+      label: '🐉 Снять драконью чешую',
+      skillCodes: ['gathering.skinning'],
+      visibleRewardFields: ['crystal', 'metal'],
+    },
+  ],
 };
 
 const hasSkillExperience = (
@@ -119,11 +189,26 @@ const hasSkillExperience = (
   (enemy.skillExperiences?.[skillCode] ?? 0) >= minimumExperience
 );
 
+const isEssenceThresholdEnemy = (enemy: TrophyActionEnemyContext): boolean => (
+  enemy.kind === 'spirit' || enemy.kind === 'mage'
+);
+
 const resolveSkillThresholdTrophyActions = (
   enemy: TrophyActionEnemyContext,
 ): readonly TrophyActionDefinition[] => {
   if (enemy.kind === 'wolf' && hasSkillExperience(enemy, 'gathering.skinning', 10)) {
     return [carefulSkinningAction];
+  }
+
+  if (enemy.kind === 'slime' && hasSkillExperience(enemy, 'gathering.reagent_gathering', 10)) {
+    return [refinedSlimeCoreAction];
+  }
+
+  if (
+    isEssenceThresholdEnemy(enemy)
+    && hasSkillExperience(enemy, 'gathering.essence_extraction', 10)
+  ) {
+    return [stabilizedEssenceAction];
   }
 
   return [];
@@ -222,6 +307,57 @@ const applyCarefulSkinningRewardVariation = (
   };
 };
 
+const applyRefinedSlimeCoreRewardVariation = (
+  enemy: TrophyActionRewardEnemyContext,
+  action: TrophyActionDefinition,
+  inventoryDelta: InventoryDelta,
+): InventoryDelta => {
+  if (action.code !== 'refine_slime_core' || enemy.kind !== 'slime') {
+    return inventoryDelta;
+  }
+
+  const essence = inventoryDelta.essence ?? 0;
+  if (essence > 0) {
+    return {
+      ...inventoryDelta,
+      essence: essence + 1,
+    };
+  }
+
+  const herb = inventoryDelta.herb ?? 0;
+  if (herb <= 0) {
+    return inventoryDelta;
+  }
+
+  return {
+    ...inventoryDelta,
+    herb: herb + 1,
+  };
+};
+
+const applyStabilizedEssenceRewardVariation = (
+  enemy: TrophyActionRewardEnemyContext,
+  action: TrophyActionDefinition,
+  inventoryDelta: InventoryDelta,
+): InventoryDelta => {
+  if (
+    action.code !== 'stabilize_essence'
+    || !isEssenceThresholdEnemy(enemy)
+  ) {
+    return inventoryDelta;
+  }
+
+  const essence = inventoryDelta.essence ?? 0;
+  if (essence <= 0) {
+    return inventoryDelta;
+  }
+
+  return {
+    ...inventoryDelta,
+    essence: essence + 1,
+  };
+};
+
 const applyReagentGatheringRewardVariation = (
   enemy: TrophyActionRewardEnemyContext,
   action: TrophyActionDefinition,
@@ -300,10 +436,18 @@ const applyTrophyRewardVariations = (
       applyReagentGatheringRewardVariation(
         enemy,
         action,
-        applyCarefulSkinningRewardVariation(
+        applyStabilizedEssenceRewardVariation(
           enemy,
           action,
-          applySkinningRewardVariation(enemy, action, inventoryDelta),
+          applyRefinedSlimeCoreRewardVariation(
+            enemy,
+            action,
+            applyCarefulSkinningRewardVariation(
+              enemy,
+              action,
+              applySkinningRewardVariation(enemy, action, inventoryDelta),
+            ),
+          ),
         ),
       ),
     ),

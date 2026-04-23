@@ -316,6 +316,48 @@ describe('profile keyboard', () => {
       .toBe('battle-victory:battle-1');
   });
 
+  it('turns expanded trophy progression actions into ledger-scoped buttons', () => {
+    const pendingReward = createPendingReward();
+    const keyboard = createPendingRewardKeyboard({
+      ...pendingReward,
+      snapshot: {
+        ...pendingReward.snapshot,
+        trophyActions: [
+          {
+            code: 'refine_slime_core',
+            label: '🧪 Отделить чистый реагент',
+            skillCodes: ['gathering.reagent_gathering'],
+            visibleRewardFields: ['herb', 'essence'],
+          },
+          {
+            code: 'salvage_armor',
+            label: '⚒️ Разобрать доспех',
+            skillCodes: ['gathering.reagent_gathering'],
+            visibleRewardFields: ['metal', 'crystal', 'leather'],
+          },
+          {
+            code: 'unmake_phylactery',
+            label: '☠️ Рассеять филактерию',
+            skillCodes: ['gathering.essence_extraction'],
+            visibleRewardFields: ['essence', 'crystal'],
+          },
+        ],
+      },
+    });
+    const labels = collectLabels(keyboard);
+    const payloads = collectPayloads(keyboard);
+
+    expect(labels).toContain('🧪 Отделить чистый реагент');
+    expect(labels).toContain('⚒️ Разобрать доспех');
+    expect(labels).toContain('☠️ Рассеять филактерию');
+    expect(payloads.find((payload) => payload.command === gameCommands.refineSlimeCoreReward)?.stateKey)
+      .toBe('battle-victory:battle-1');
+    expect(payloads.find((payload) => payload.command === gameCommands.salvageArmorReward)?.stateKey)
+      .toBe('battle-victory:battle-1');
+    expect(payloads.find((payload) => payload.command === gameCommands.unmakePhylacteryReward)?.stateKey)
+      .toBe('battle-victory:battle-1');
+  });
+
   it('keeps profile keyboard focused on navigation and delete confirmation', () => {
     const payloads = collectPayloads(createProfileKeyboard(createPlayer()));
 

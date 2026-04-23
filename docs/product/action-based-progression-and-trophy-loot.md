@@ -145,18 +145,20 @@ APPLIED -> APPLIED replay
 | `slime` | `🧪 Собрать слизь` | `gathering.reagent_gathering` | `herb`, `essence` | слизевое ядро, мутный кристалл |
 | `spirit` | `✨ Извлечь эссенцию` | `gathering.essence_extraction` | `essence` | духовный след, школьный знак |
 | `mage` | `🔮 Разобрать фокус` | `gathering.essence_extraction` | `essence`, `crystal` | фокус, пепельный знак, знак предзнамений |
-| `knight` | `⚙️ Разобрать доспехи` | `gathering.salvage` | `metal`, `essence` | печать брони, осколок клинка |
-| `goblin` | `🎒 Обыскать трофеи` | `gathering.scavenging` | `metal`, `gold`, `bone` | карта тайника, ворованный осколок |
-| `troll` | `🦴 Добыть кость` | `gathering.butchering` | `bone`, `metal` | тяжёлая кость, рудный обломок |
-| `lich` | `💀 Разрушить филактерию` | `gathering.occult_lore` | `essence`, `crystal` | мёртвая печать, фрагмент проклятия |
-| `demon` | `🔥 Извлечь жар бездны` | `gathering.abyss_extraction` | `essence`, `crystal` | бездновый жар, тёмный металл |
-| `dragon` | `🐉 Снять чешую` | `gathering.dragoncraft` | `crystal`, `metal`, `essence` | чешуя дракона, сердце пламени |
+| `knight` | `⚒️ Разобрать доспех` | `gathering.reagent_gathering` | `metal`, `crystal`, `leather` | печать брони, осколок клинка |
+| `goblin` | `🧰 Разобрать трофейное снаряжение` | `gathering.reagent_gathering` | `bone`, `metal`, `crystal` | карта тайника, ворованный осколок |
+| `troll` | `⛏️ Сколоть пещерные наросты` | `gathering.reagent_gathering` | `bone`, `metal`, `crystal` | тяжёлая кость, рудный обломок |
+| `lich` | `☠️ Рассеять филактерию` | `gathering.essence_extraction` | `essence`, `crystal` | мёртвая печать, фрагмент проклятия |
+| `demon` | `🜏 Сковать бездновую искру` | `gathering.essence_extraction` | `essence`, `crystal` | бездновый жар, тёмный металл |
+| `dragon` | `🐉 Снять драконью чешую` | `gathering.skinning` | `crystal`, `metal` | чешуя дракона, сердце пламени |
 
 Для раннего vertical slice достаточно:
 
 - `wolf` / `boar` -> `Свежевать`;
 - `slime` -> `Собрать слизь`;
-- `spirit` / `mage` -> `Извлечь эссенцию`.
+- `spirit` / `mage` -> `Извлечь эссенцию`;
+- `knight`, `goblin`, `troll`, `lich`, `demon`, `dragon` -> по одному action-specific trophy действию на уже существующих enemy kind;
+- первые threshold-срезы для `gathering.skinning`, `gathering.reagent_gathering` и `gathering.essence_extraction`.
 
 ---
 
@@ -492,12 +494,15 @@ Player-facing decision:
 - `claim_all` даёт быстрый безопасный сбор без skill progress;
 - первый hidden school pool добавляет `🔥 Вытянуть знак Пламени` для `ash-seer`, если экипирована школа Пламени; reward preview фиксируется в pending snapshot как +2 essence и рост `gathering.essence_extraction`;
 - первый skill-threshold unlock добавляет `🔪 Аккуратно снять шкуру` для `wolf`, если `gathering.skinning >= 10`; reward preview фиксируется в pending snapshot как +3 leather, +1 bone и рост `gathering.skinning`;
+- reagent threshold добавляет `🧪 Отделить чистый реагент` для `slime`, если `gathering.reagent_gathering >= 10`; reward preview усиливает `essence` или `herb` и остаётся в том же pending snapshot;
+- essence threshold добавляет `✨ Стабилизировать эссенцию` для `spirit` / `mage`, если `gathering.essence_extraction >= 10`; reward preview усиливает `essence`;
+- action-specific enemy kind срезы уже покрывают `knight`, `goblin`, `troll`, `lich`, `demon` и `dragon` без новых таблиц и школ;
 - bootstrap восстанавливает отсутствующие pending reward ledger-записи для уже завершённых победных боёв.
 
 Что всё ещё не входит:
 
 - hidden school pools за пределами первого Ember / ash-seer среза;
-- unlock действий по skill thresholds за пределами первого `gathering.skinning >= 10` среза;
+- глубокие многоступенчатые threshold-лестницы за пределами первых срезов по `skinning`, `reagent_gathering` и `essence_extraction`;
 - action-based stat growth;
 - глубокая роль навыков в профиле, сборке и будущих unlock'ах.
 
@@ -527,7 +532,7 @@ Player-facing decision:
 20. Done: `feat: add ember hidden trophy pool`
 21. Later: `feat: expand hidden drop pools by school`
 22. Done: `feat: unlock trophy action by skill threshold`
-23. Later: `feat: expand trophy action skill thresholds`
+23. Done: `feat: expand trophy action skill thresholds`
 24. Later: `feat: connect rune school behavior to school growth`
 25. Later: `feat: connect combat behavior to stat growth`
 26. Done: `docs: update OBT tester guide for action progression`

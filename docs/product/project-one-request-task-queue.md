@@ -255,7 +255,7 @@ npm run release:preflight
 
 ### Q-015. Add skinning skill growth depth
 
-- Status: `ready`
+- Status: `done`
 - Source: `docs/product/action-based-progression-and-trophy-loot.md`
 - Goal: сделать `gathering.skinning` глубже, чем один базовый action.
 - Scope:
@@ -267,7 +267,7 @@ npm run release:preflight
 
 ### Q-016. Add reagent gathering skill growth depth
 
-- Status: `ready-after-q015`
+- Status: `done`
 - Source: `docs/product/action-based-progression-and-trophy-loot.md`
 - Goal: расширить `gathering.reagent_gathering` для slime/reagent loop.
 - Scope:
@@ -279,7 +279,7 @@ npm run release:preflight
 
 ### Q-017. Add essence extraction skill growth depth
 
-- Status: `ready-after-q016`
+- Status: `done`
 - Source: `docs/product/action-based-progression-and-trophy-loot.md`
 - Goal: расширить `gathering.essence_extraction` для spirit/mage loop.
 - Scope:
@@ -291,7 +291,7 @@ npm run release:preflight
 
 ### Q-018. Decide skill display style
 
-- Status: `ready`
+- Status: `done`
 - Source: `docs/product/action-based-progression-and-trophy-loot.md`
 - Goal: выбрать, показывать ли навыки числом (`3.42`) или рангом (`Новичок свежевания`).
 - Scope:
@@ -303,7 +303,7 @@ npm run release:preflight
 
 ### Q-019. Add Ember hidden trophy pool
 
-- Status: `later-after-q017`
+- Status: `done`
 - Source: `docs/product/action-based-progression-and-trophy-loot.md`
 - Goal: добавить первый hidden drop pool по школе Пламени.
 - Scope:
@@ -316,7 +316,7 @@ npm run release:preflight
 
 ### Q-020. Add one skill-threshold trophy action
 
-- Status: `later-after-q015`
+- Status: `done`
 - Source: `docs/product/action-based-progression-and-trophy-loot.md`
 - Goal: открыть новую trophy action через skill threshold.
 - Scope:
@@ -329,7 +329,7 @@ npm run release:preflight
 
 ### Q-021. Update OBT tester guide for action progression
 
-- Status: `ready-after-q015-q017`
+- Status: `done`
 - Source: `docs/product/action-based-progression-and-trophy-loot.md`
 - Goal: дать тестеру понятный сценарий проверки action progression.
 - Scope:
@@ -341,7 +341,7 @@ npm run release:preflight
 
 ### Q-022. Record pending trophy manual evidence
 
-- Status: `ready`
+- Status: `done`
 - Source: `PLAN.md`, `RELEASE_CHECKLIST.md`
 - Goal: закрыть manual evidence gap по pending trophy collect/replay.
 - Scope:

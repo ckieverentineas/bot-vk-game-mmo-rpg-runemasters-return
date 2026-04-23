@@ -65,6 +65,57 @@ const thresholdTrophyActions: readonly TrophyActionDefinition[] = [
   },
 ];
 
+const expandedTrophyActions: readonly TrophyActionDefinition[] = [
+  {
+    code: 'refine_slime_core',
+    label: '🧪 Отделить чистый реагент',
+    skillCodes: ['gathering.reagent_gathering'],
+    visibleRewardFields: ['herb', 'essence'],
+  },
+  {
+    code: 'stabilize_essence',
+    label: '✨ Стабилизировать эссенцию',
+    skillCodes: ['gathering.essence_extraction'],
+    visibleRewardFields: ['essence', 'crystal'],
+  },
+  {
+    code: 'salvage_armor',
+    label: '⚒️ Разобрать доспех',
+    skillCodes: ['gathering.reagent_gathering'],
+    visibleRewardFields: ['metal', 'crystal', 'leather'],
+  },
+  {
+    code: 'strip_goblin_gear',
+    label: '🧰 Разобрать трофейное снаряжение',
+    skillCodes: ['gathering.reagent_gathering'],
+    visibleRewardFields: ['bone', 'metal', 'crystal'],
+  },
+  {
+    code: 'crack_troll_growths',
+    label: '⛏️ Сколоть пещерные наросты',
+    skillCodes: ['gathering.reagent_gathering'],
+    visibleRewardFields: ['bone', 'metal', 'crystal'],
+  },
+  {
+    code: 'unmake_phylactery',
+    label: '☠️ Рассеять филактерию',
+    skillCodes: ['gathering.essence_extraction'],
+    visibleRewardFields: ['essence', 'crystal'],
+  },
+  {
+    code: 'bind_abyss_ichor',
+    label: '🜏 Сковать бездновую искру',
+    skillCodes: ['gathering.essence_extraction'],
+    visibleRewardFields: ['essence', 'crystal'],
+  },
+  {
+    code: 'harvest_dragon_scale',
+    label: '🐉 Снять драконью чешую',
+    skillCodes: ['gathering.skinning'],
+    visibleRewardFields: ['crystal', 'metal'],
+  },
+];
+
 describe('pending reward snapshots', () => {
   it('creates a versioned pending snapshot from a reward intent and trophy actions', () => {
     const snapshot = createPendingRewardSnapshot(
@@ -246,6 +297,26 @@ describe('pending reward snapshots', () => {
         skillCodes: [],
         visibleRewardFields: [],
       },
+    ]);
+    expect(isPendingRewardSnapshot(snapshot)).toBe(true);
+  });
+
+  it('accepts expanded action progression codes as canonical snapshot data', () => {
+    const snapshot = createPendingRewardSnapshot(
+      createRewardIntent(),
+      expandedTrophyActions,
+      '2026-04-22T00:00:00.000Z',
+    );
+
+    expect(snapshot.trophyActions.map((action) => action.code)).toEqual([
+      'refine_slime_core',
+      'stabilize_essence',
+      'salvage_armor',
+      'strip_goblin_gear',
+      'crack_troll_growths',
+      'unmake_phylactery',
+      'bind_abyss_ichor',
+      'harvest_dragon_scale',
     ]);
     expect(isPendingRewardSnapshot(snapshot)).toBe(true);
   });

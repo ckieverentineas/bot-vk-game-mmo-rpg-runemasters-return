@@ -30,7 +30,7 @@
 - VK-клавиатуры разнесены по сценариям (`main`, `battle`, `runes`, `rewards`, `quests`, `tutorial`) с общим builder'ом и совместимым public barrel `src/vk/keyboards/index.ts`.
 - Player-facing support-slot модель вырезана.
 - Рост персонажа смещён к школам, mastery, рунам и будущей ветке мастера, а не к старой раздаче stat points за уровни.
-- Action-based trophy rewards имеют первый playable vertical slice: победа создаёт `PENDING` reward ledger, доступные trophy actions фиксируются в snapshot, игрок видит post-battle trophy card с inline-кнопками, `начать` / `исследовать` возвращают к несобранной добыче, выбранное действие собирается exact-once, `claim_all` даёт быстрый безопасный сбор, а bootstrap восстанавливает потерянные pending-записи после рестарта.
+- Action-based trophy rewards имеют расширенный playable vertical slice: победа создаёт `PENDING` reward ledger, доступные trophy actions фиксируются в snapshot, игрок видит post-battle trophy card с inline-кнопками, `начать` / `исследовать` возвращают к несобранной добыче, выбранное действие собирается exact-once, `claim_all` даёт быстрый безопасный сбор, bootstrap восстанавливает потерянные pending-записи после рестарта, а первые threshold-срезы для `skinning`, `reagent_gathering` и `essence_extraction` дополняются enemy-kind действиями без новых таблиц.
 - Есть защита от повторных наград, отрицательных остатков инвентаря, stale battle overwrite и повторного применения command intent.
 - Есть smoke/regression/concurrency tests и release tooling для content validation, локального first-session playtest, summary, evidence и preflight.
 - School novice trial evidence закрыт для четырёх школ: `release:school-evidence` показывает `Novice elite` и `UNUSUAL reward` по Пламени, Тверди, Бури и Прорицанию.
@@ -42,7 +42,7 @@
 - School novice trial/payoff по четырём школам уже подтверждён автоматическим runtime evidence, а post-payoff `UNUSUAL знак -> экипировка -> school miniboss goal` закрыт тестами. Весь school-first path всё ещё не считается release-green до свежего `release:evidence`: нужно подтвердить реальные follow-up события equip sign/loadout engagement по школам и `return_recap_shown` в актуальном окне.
 - Игровая версия считается только по commit-based правилу из `release:status`; `package.json` остаётся технической npm-метаинформацией и не является player-facing версией игры.
 - Production database rollout не считается оформленным, пока нет явной процедуры backup + migration/deploy для SQLite.
-- Action-based trophy rewards имеют local handler manual evidence для pending trophy collect/replay в `docs/testing/pending-trophy-manual-playtest-q022.md`, но ещё не считаются полностью release-proven без release evidence или release-owner решения. Hidden drop pools и skill-threshold unlocks за пределами первых узких срезов, а также stat growth остаются будущими работами.
+- Action-based trophy rewards имеют local handler manual evidence для pending trophy collect/replay в `docs/testing/pending-trophy-manual-playtest-q022.md`, но ещё не считаются полностью release-proven без release evidence или release-owner решения. Hidden drop pools за пределами первого Ember-среза, глубокие многоступенчатые threshold-лестницы и stat growth остаются будущими работами.
 
 ## Архитектурная гигиена
 

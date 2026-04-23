@@ -1,9 +1,9 @@
 # Action Progression OBT Tester Guide
 
-- Date: `2026-04-22`
+- Date: `2026-04-23`
 - Source: `docs/product/action-based-progression-and-trophy-loot.md`
 - Scope: tester-facing guide for post-battle action progression, reward collection and replay safety.
-- Runtime changes in this commit: none.
+- Runtime changes in this commit: expanded reagent, essence and enemy-kind trophy action progression.
 
 ## Purpose
 
@@ -23,8 +23,13 @@ This guide gives an OBT tester a clear path for checking that trophy actions fee
 | Essence extraction | `enemy.kind = spirit` or `mage` | `✨ Извлечь эссенцию` / essence variant | Adds essence-focused materials from the enemy loot table. | Grows `gathering.essence_extraction`. |
 | Ember hidden trophy | Ember school equipped and `enemy.code = ash-seer` | `🔥 Вытянуть знак Пламени` | Shows a fixed pending preview with `+2 essence` before collection. | Grows `gathering.essence_extraction`. |
 | Skinning threshold | `enemy.kind = wolf` and `gathering.skinning >= 10` | `🔪 Аккуратно снять шкуру` | Shows a fixed pending preview with `+3 leather`, `+1 bone`. | Grows `gathering.skinning`. |
+| Reagent threshold | `enemy.kind = slime` and `gathering.reagent_gathering >= 10` | `🧪 Отделить чистый реагент` | Improves the reagent preview with extra `essence` or `herb`. | Grows `gathering.reagent_gathering`. |
+| Essence threshold | `enemy.kind = spirit` or `mage`, and `gathering.essence_extraction >= 10` | `✨ Стабилизировать эссенцию` | Improves the essence preview with extra `essence`. | Grows `gathering.essence_extraction`. |
+| Armored and scavenged trophies | `enemy.kind = knight`, `goblin` or `troll` | `⚒️ Разобрать доспех`, `🧰 Разобрать трофейное снаряжение`, `⛏️ Сколоть пещерные наросты` | Adds relevant material subsets from the existing loot table. | Grows `gathering.reagent_gathering`. |
+| Occult trophies | `enemy.kind = lich` or `demon` | `☠️ Рассеять филактерию`, `🜏 Сковать бездновую искру` | Adds essence/crystal materials from the existing loot table. | Grows `gathering.essence_extraction`. |
+| Dragon scale | `enemy.kind = dragon` | `🐉 Снять драконью чешую` | Adds scale-like material subsets from the existing loot table. | Grows `gathering.skinning`. |
 
-The threshold action must be absent for the same enemy when `gathering.skinning < 10`. It should appear alongside the normal skinning action only after the threshold is reached.
+Each threshold action must be absent for the same enemy below its threshold. It should appear alongside the normal action only after the relevant skill reaches `10`.
 
 ## Recommended Test Pass
 
@@ -46,7 +51,12 @@ Use one tester account per pass and record the build commit, date, channel (`loc
 | 12 | With `gathering.skinning < 10`, win against a wolf. | `🔪 Аккуратно снять шкуру` is not visible. |
 | 13 | With `gathering.skinning >= 10`, win against a wolf. | `🔪 Аккуратно снять шкуру` is visible and its pending reward preview shows `+3 leather`, `+1 bone`. |
 | 14 | Collect `🔪 Аккуратно снять шкуру`, then replay the same button. | First collect applies the threshold action once; replay returns canonical or already-collected behavior without a second grant. |
-| 15 | Leave a pending trophy card, then use `начать`, `исследовать` or `добыча` before collecting. | The player returns to the same unresolved pending reward instead of silently losing it or creating a new collectible reward. |
+| 15 | With `gathering.reagent_gathering < 10`, win against a slime. | `🧪 Отделить чистый реагент` is not visible. |
+| 16 | With `gathering.reagent_gathering >= 10`, win against a slime and collect `🧪 Отделить чистый реагент`. | The threshold action is visible, applies once and improves the reagent/essence preview without duplicate replay rewards. |
+| 17 | With `gathering.essence_extraction < 10`, win against a spirit or mage. | `✨ Стабилизировать эссенцию` is not visible. |
+| 18 | With `gathering.essence_extraction >= 10`, win against a spirit or mage and collect `✨ Стабилизировать эссенцию`. | The threshold action is visible, applies once and improves the essence preview without duplicate replay rewards. |
+| 19 | Win against one existing `knight`, `goblin`, `troll`, `lich`, `demon` or `dragon` enemy kind and choose its specific trophy action. | The action appears on the trophy card, grants only materials from the existing loot table subset and shows the related skill progress. |
+| 20 | Leave a pending trophy card, then use `начать`, `исследовать` or `добыча` before collecting. | The player returns to the same unresolved pending reward instead of silently losing it or creating a new collectible reward. |
 
 ## What To Record
 
@@ -74,12 +84,14 @@ Fail the slice if any of these happen:
 - replaying an old reward button grants any extra inventory, currency, rune shard or skill progress;
 - a pending reward disappears before collection during normal navigation;
 - `🔪 Аккуратно снять шкуру` appears below `gathering.skinning >= 10` or stays hidden at/above the threshold;
+- `🧪 Отделить чистый реагент` appears below `gathering.reagent_gathering >= 10` or stays hidden at/above the threshold;
+- `✨ Стабилизировать эссенцию` appears below `gathering.essence_extraction >= 10` or stays hidden at/above the threshold;
 - the Ember hidden action appears without the Ember/`ash-seer` condition.
 
 ## Out Of Scope For This Pass
 
 - action-based stat growth;
 - hidden school pools beyond the first Ember / `ash-seer` slice;
-- skill-threshold actions beyond `gathering.skinning >= 10` for wolf;
+- deeper multi-rank threshold ladders beyond the first skinning/reagent/essence slices;
 - broad balance tuning or drop-rate review;
 - profile copy rewrites beyond confirming that skill progress is readable.

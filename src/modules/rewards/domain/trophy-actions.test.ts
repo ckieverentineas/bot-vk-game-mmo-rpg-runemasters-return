@@ -71,6 +71,47 @@ describe('resolveTrophyActions', () => {
     ]);
   });
 
+  it('unlocks refined slime gathering at the reagent threshold', () => {
+    expect(resolveTrophyActions({
+      kind: 'slime',
+      skillExperiences: {
+        'gathering.reagent_gathering': 10,
+      },
+    })).toEqual([
+      {
+        code: 'gather_slime',
+        label: '🧪 Собрать слизь',
+        skillCodes: ['gathering.reagent_gathering'],
+        visibleRewardFields: ['herb', 'essence'],
+      },
+      {
+        code: 'refine_slime_core',
+        label: '🧪 Отделить чистый реагент',
+        skillCodes: ['gathering.reagent_gathering'],
+        visibleRewardFields: ['herb', 'essence'],
+      },
+      {
+        code: 'claim_all',
+        label: '🎒 Забрать добычу',
+        skillCodes: [],
+        visibleRewardFields: [],
+      },
+    ]);
+  });
+
+  it.each(['spirit', 'mage'])('unlocks stabilized essence for %s enemies at the essence threshold', (kind) => {
+    expect(resolveTrophyActions({
+      kind,
+      skillExperiences: {
+        'gathering.essence_extraction': 10,
+      },
+    }).map((action) => action.code)).toEqual([
+      'extract_essence',
+      'stabilize_essence',
+      'claim_all',
+    ]);
+  });
+
   it('offers reagent gathering for slime enemies', () => {
     expect(resolveTrophyActions({ kind: 'slime' })).toEqual([
       {
@@ -96,6 +137,73 @@ describe('resolveTrophyActions', () => {
         skillCodes: ['gathering.essence_extraction'],
         visibleRewardFields: ['essence'],
       },
+      {
+        code: 'claim_all',
+        label: '🎒 Забрать добычу',
+        skillCodes: [],
+        visibleRewardFields: [],
+      },
+    ]);
+  });
+
+  it.each([
+    [
+      'knight',
+      {
+        code: 'salvage_armor',
+        label: '⚒️ Разобрать доспех',
+        skillCodes: ['gathering.reagent_gathering'],
+        visibleRewardFields: ['metal', 'crystal', 'leather'],
+      },
+    ],
+    [
+      'goblin',
+      {
+        code: 'strip_goblin_gear',
+        label: '🧰 Разобрать трофейное снаряжение',
+        skillCodes: ['gathering.reagent_gathering'],
+        visibleRewardFields: ['bone', 'metal', 'crystal'],
+      },
+    ],
+    [
+      'troll',
+      {
+        code: 'crack_troll_growths',
+        label: '⛏️ Сколоть пещерные наросты',
+        skillCodes: ['gathering.reagent_gathering'],
+        visibleRewardFields: ['bone', 'metal', 'crystal'],
+      },
+    ],
+    [
+      'lich',
+      {
+        code: 'unmake_phylactery',
+        label: '☠️ Рассеять филактерию',
+        skillCodes: ['gathering.essence_extraction'],
+        visibleRewardFields: ['essence', 'crystal'],
+      },
+    ],
+    [
+      'demon',
+      {
+        code: 'bind_abyss_ichor',
+        label: '🜏 Сковать бездновую искру',
+        skillCodes: ['gathering.essence_extraction'],
+        visibleRewardFields: ['essence', 'crystal'],
+      },
+    ],
+    [
+      'dragon',
+      {
+        code: 'harvest_dragon_scale',
+        label: '🐉 Снять драконью чешую',
+        skillCodes: ['gathering.skinning'],
+        visibleRewardFields: ['crystal', 'metal'],
+      },
+    ],
+  ] as const)('offers a trophy action for %s enemies', (kind, action) => {
+    expect(resolveTrophyActions({ kind })).toEqual([
+      action,
       {
         code: 'claim_all',
         label: '🎒 Забрать добычу',
@@ -301,6 +409,38 @@ describe('resolveTrophyActions', () => {
     });
   });
 
+  it('adds a refined slime reward variation after the reagent threshold', () => {
+    const refinedSlimeCore = resolveTrophyActions({
+      kind: 'slime',
+      skillExperiences: {
+        'gathering.reagent_gathering': 10,
+      },
+    }).find((action) => action.code === 'refine_slime_core');
+
+    expect(resolveTrophyActionReward({
+      kind: 'slime',
+      isElite: false,
+      isBoss: false,
+      lootTable: {
+        herb: 1,
+        essence: 1,
+        leather: 1,
+      },
+    }, refinedSlimeCore!)).toEqual({
+      actionCode: 'refine_slime_core',
+      inventoryDelta: {
+        herb: 1,
+        essence: 2,
+      },
+      skillPoints: [
+        {
+          skillCode: 'gathering.reagent_gathering',
+          points: 1,
+        },
+      ],
+    });
+  });
+
   it('adds a mage focus reward variation for stable crystal traces', () => {
     const [extractEssence] = resolveTrophyActions({ kind: 'mage' });
 
@@ -323,6 +463,128 @@ describe('resolveTrophyActions', () => {
         {
           skillCode: 'gathering.essence_extraction',
           points: 1,
+        },
+      ],
+    });
+  });
+
+  it('adds a stabilized essence reward variation after the essence threshold', () => {
+    const stabilizedEssence = resolveTrophyActions({
+      kind: 'spirit',
+      skillExperiences: {
+        'gathering.essence_extraction': 10,
+      },
+    }).find((action) => action.code === 'stabilize_essence');
+
+    expect(resolveTrophyActionReward({
+      kind: 'spirit',
+      isElite: false,
+      isBoss: false,
+      lootTable: {
+        essence: 2,
+        crystal: 1,
+        metal: 2,
+      },
+    }, stabilizedEssence!)).toEqual({
+      actionCode: 'stabilize_essence',
+      inventoryDelta: {
+        essence: 3,
+        crystal: 1,
+      },
+      skillPoints: [
+        {
+          skillCode: 'gathering.essence_extraction',
+          points: 1,
+        },
+      ],
+    });
+  });
+
+  it.each([
+    [
+      'knight',
+      'salvage_armor',
+      {
+        metal: 2,
+        crystal: 2,
+        leather: 1,
+      },
+      'gathering.reagent_gathering',
+    ],
+    [
+      'goblin',
+      'strip_goblin_gear',
+      {
+        bone: 2,
+        metal: 2,
+        crystal: 2,
+      },
+      'gathering.reagent_gathering',
+    ],
+    [
+      'troll',
+      'crack_troll_growths',
+      {
+        bone: 2,
+        metal: 2,
+        crystal: 2,
+      },
+      'gathering.reagent_gathering',
+    ],
+    [
+      'lich',
+      'unmake_phylactery',
+      {
+        essence: 3,
+        crystal: 2,
+      },
+      'gathering.essence_extraction',
+    ],
+    [
+      'demon',
+      'bind_abyss_ichor',
+      {
+        essence: 3,
+        crystal: 2,
+      },
+      'gathering.essence_extraction',
+    ],
+    [
+      'dragon',
+      'harvest_dragon_scale',
+      {
+        crystal: 2,
+        metal: 2,
+      },
+      'gathering.skinning',
+    ],
+  ] as const)('models the %s trophy action as skill-bearing loot', (
+    kind,
+    actionCode,
+    expectedInventoryDelta,
+    skillCode,
+  ) => {
+    const action = resolveTrophyActions({ kind }).find((candidate) => candidate.code === actionCode);
+
+    expect(resolveTrophyActionReward({
+      kind,
+      isElite: true,
+      isBoss: false,
+      lootTable: {
+        leather: 1,
+        bone: 2,
+        herb: 1,
+        essence: 3,
+        metal: 2,
+        crystal: 2,
+      },
+    }, action!)).toEqual({
+      actionCode,
+      inventoryDelta: expectedInventoryDelta,
+      skillPoints: [
+        {
+          skillCode,
+          points: 2,
         },
       ],
     });

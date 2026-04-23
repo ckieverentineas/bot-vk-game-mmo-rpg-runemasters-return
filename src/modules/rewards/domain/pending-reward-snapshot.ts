@@ -101,6 +101,14 @@ const trophyActionCodes: readonly TrophyActionCode[] = [
   'extract_essence',
   'draw_ember_sign',
   'careful_skinning',
+  'refine_slime_core',
+  'stabilize_essence',
+  'salvage_armor',
+  'strip_goblin_gear',
+  'crack_troll_growths',
+  'unmake_phylactery',
+  'bind_abyss_ichor',
+  'harvest_dragon_scale',
 ];
 
 const pendingRewardStatuses: readonly PendingRewardSnapshotStatus[] = ['PENDING', 'APPLIED', 'EXPIRED'];

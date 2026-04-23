@@ -22,6 +22,14 @@ export const gameCommands = {
   gatherSlimeReward: 'собрать слизь',
   extractEssenceReward: 'извлечь эссенцию',
   drawEmberSignReward: 'вытянуть знак',
+  refineSlimeCoreReward: 'отделить реагент',
+  stabilizeEssenceReward: 'стабилизировать эссенцию',
+  salvageArmorReward: 'разобрать доспех',
+  stripGoblinGearReward: 'разобрать снаряжение',
+  crackTrollGrowthsReward: 'сколоть наросты',
+  unmakePhylacteryReward: 'рассеять филактерию',
+  bindAbyssIchorReward: 'сковать искру',
+  harvestDragonScaleReward: 'снять чешую',
   engageBattle: 'в бой',
   fleeBattle: 'отступить',
   attack: 'атака',
@@ -84,7 +92,15 @@ type TrophyActionCommand =
   | typeof gameCommands.carefulSkinningReward
   | typeof gameCommands.gatherSlimeReward
   | typeof gameCommands.extractEssenceReward
-  | typeof gameCommands.drawEmberSignReward;
+  | typeof gameCommands.drawEmberSignReward
+  | typeof gameCommands.refineSlimeCoreReward
+  | typeof gameCommands.stabilizeEssenceReward
+  | typeof gameCommands.salvageArmorReward
+  | typeof gameCommands.stripGoblinGearReward
+  | typeof gameCommands.crackTrollGrowthsReward
+  | typeof gameCommands.unmakePhylacteryReward
+  | typeof gameCommands.bindAbyssIchorReward
+  | typeof gameCommands.harvestDragonScaleReward;
 
 type RuneCursorDelta = number;
 
@@ -121,6 +137,14 @@ const trophyActionCommandMap = {
   [gameCommands.gatherSlimeReward]: 'gather_slime',
   [gameCommands.extractEssenceReward]: 'extract_essence',
   [gameCommands.drawEmberSignReward]: 'draw_ember_sign',
+  [gameCommands.refineSlimeCoreReward]: 'refine_slime_core',
+  [gameCommands.stabilizeEssenceReward]: 'stabilize_essence',
+  [gameCommands.salvageArmorReward]: 'salvage_armor',
+  [gameCommands.stripGoblinGearReward]: 'strip_goblin_gear',
+  [gameCommands.crackTrollGrowthsReward]: 'crack_troll_growths',
+  [gameCommands.unmakePhylacteryReward]: 'unmake_phylactery',
+  [gameCommands.bindAbyssIchorReward]: 'bind_abyss_ichor',
+  [gameCommands.harvestDragonScaleReward]: 'harvest_dragon_scale',
 } satisfies Readonly<Record<TrophyActionCommand, TrophyActionCode>>;
 
 const trophyActionCodeCommandMap = {
@@ -130,6 +154,14 @@ const trophyActionCodeCommandMap = {
   gather_slime: gameCommands.gatherSlimeReward,
   extract_essence: gameCommands.extractEssenceReward,
   draw_ember_sign: gameCommands.drawEmberSignReward,
+  refine_slime_core: gameCommands.refineSlimeCoreReward,
+  stabilize_essence: gameCommands.stabilizeEssenceReward,
+  salvage_armor: gameCommands.salvageArmorReward,
+  strip_goblin_gear: gameCommands.stripGoblinGearReward,
+  crack_troll_growths: gameCommands.crackTrollGrowthsReward,
+  unmake_phylactery: gameCommands.unmakePhylacteryReward,
+  bind_abyss_ichor: gameCommands.bindAbyssIchorReward,
+  harvest_dragon_scale: gameCommands.harvestDragonScaleReward,
 } satisfies Readonly<Record<TrophyActionCode, TrophyActionCommand>>;
 
 export const commandAliases: Readonly<Record<string, GameCommand>> = {
