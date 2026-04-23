@@ -2,7 +2,10 @@ import { describe, expect, it } from 'vitest';
 
 import type { PlayerState } from '../../shared/types/game';
 import type { QuestBookView, QuestView } from '../../modules/quests/application/read-models/quest-book';
-import { gameCommands } from '../commands/catalog';
+import {
+  createQuestBookPageCommand,
+  gameCommands,
+} from '../commands/catalog';
 import { createQuestBookKeyboard } from './quests';
 
 const questCodes: readonly QuestView['code'][] = [
@@ -48,8 +51,8 @@ const createQuestBook = (readyQuestCount: number): QuestBookView => ({
   quests: Array.from({ length: readyQuestCount }, (_, index) => createReadyQuest(index)),
 });
 
-const serializeForVk = (book: QuestBookView): SerializedVkKeyboard => (
-  JSON.parse(createQuestBookKeyboard(book).toString()) as SerializedVkKeyboard
+const serializeForVk = (book: QuestBookView, pageNumber = 1): SerializedVkKeyboard => (
+  JSON.parse(createQuestBookKeyboard(book, pageNumber).toString()) as SerializedVkKeyboard
 );
 
 const collectCommands = (keyboard: SerializedVkKeyboard): string[] => (
@@ -66,6 +69,16 @@ describe('createQuestBookKeyboard', () => {
 
     expect(keyboard.buttons).toHaveLength(6);
     expect(commands.filter((command) => command === gameCommands.claimQuestReward)).toHaveLength(5);
-    expect(commands.at(-1)).toBe(gameCommands.backToMenu);
+    expect(commands).toContain(gameCommands.backToMenu);
+    expect(commands).toContain(createQuestBookPageCommand(2));
+  });
+
+  it('only shows reward buttons for the current quest page', () => {
+    const keyboard = serializeForVk(createQuestBook(7), 2);
+    const commands = collectCommands(keyboard);
+
+    expect(keyboard.buttons).toHaveLength(3);
+    expect(commands.filter((command) => command === gameCommands.claimQuestReward)).toHaveLength(2);
+    expect(commands).toContain(createQuestBookPageCommand(1));
   });
 });

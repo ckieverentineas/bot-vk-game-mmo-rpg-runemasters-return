@@ -211,9 +211,9 @@ export class GameHandler {
     await sendInventory(ctx, player);
   }
 
-  public async openQuestBook(ctx: Context, vkId: number): Promise<void> {
+  public async openQuestBook(ctx: Context, vkId: number, pageNumber = 1): Promise<void> {
     const book = await this.services.getQuestBook.execute(vkId);
-    await sendQuestBook(ctx, book);
+    await sendQuestBook(ctx, book, pageNumber);
   }
 
   public async openBestiary(ctx: Context, vkId: number, pageNumber = 1): Promise<void> {

@@ -25,13 +25,22 @@ interface QuestChapterGroup {
   readonly quests: readonly QuestView[];
 }
 
+export interface QuestBookPageView {
+  readonly pageNumber: number;
+  readonly totalPages: number;
+  readonly totalQuests: number;
+  readonly startIndex: number;
+  readonly endIndex: number;
+  readonly quests: readonly QuestView[];
+}
+
 const questStatusLabels: Readonly<Record<QuestView['status'], string>> = {
-  READY_TO_CLAIM: '🎁 Награда ждёт',
+  READY_TO_CLAIM: '🎁 Награда не собрана',
   IN_PROGRESS: '🌒 В пути',
   CLAIMED: '✅ Закрыто',
 };
 
-const claimedPreviewLimitPerChapter = 3;
+export const questBookPageSize = 5;
 
 const questChapters: Readonly<Record<QuestChapterCode, QuestChapterCopy>> = {
   first_circle: { title: 'Первый круг', order: 0 },
@@ -115,22 +124,6 @@ const renderQuestBookSummary = (book: QuestBookView): string => [
   ]),
 ].join(' · ');
 
-const renderQuestProgress = (quest: QuestView): string => {
-  if (quest.status === 'CLAIMED') {
-    return 'Запись закрыта.';
-  }
-
-  if (quest.status === 'READY_TO_CLAIM') {
-    return 'Шаг завершён. Награда ждёт в книге.';
-  }
-
-  return `Отметка пути: ${quest.progress.current}/${quest.progress.required}.`;
-};
-
-const getQuestChapter = (quest: QuestView): QuestChapterCopy => (
-  questChapters[questChapterByCode[quest.code]]
-);
-
 const createQuestOrderLookup = (quests: readonly QuestView[]): ReadonlyMap<QuestView['code'], number> => (
   new Map(quests.map((quest, index) => [quest.code, index]))
 );
@@ -163,122 +156,82 @@ const groupQuestsByChapter = (
     .sort((left, right) => left.chapter.order - right.chapter.order);
 };
 
-const renderReadyQuest = (quest: QuestView): string => (
-  `• ${quest.icon} ${quest.title} · ${questStatusLabels.READY_TO_CLAIM} · ${formatResourceReward(quest.reward)}`
+export const getQuestBookTotalPages = (book: QuestBookView): number => (
+  Math.max(1, Math.ceil(book.quests.length / questBookPageSize))
 );
 
-const renderReadyGroup = (group: QuestChapterGroup): string => [
-  `Глава: ${group.chapter.title}`,
-  ...group.quests.map(renderReadyQuest),
-].join('\n');
-
-const getQuestProgressRatio = (quest: QuestView): number => {
-  if (quest.progress.required <= 0) {
+export const normalizeQuestBookPageNumber = (
+  book: QuestBookView,
+  pageNumber: number,
+): number => {
+  const totalPages = getQuestBookTotalPages(book);
+  if (!Number.isFinite(pageNumber)) {
     return 1;
   }
 
-  return quest.progress.current / quest.progress.required;
+  return Math.min(totalPages, Math.max(1, Math.floor(pageNumber)));
 };
 
-const findNearestInProgressQuest = (
-  quests: readonly QuestView[],
-  orderLookup: ReadonlyMap<QuestView['code'], number>,
-): QuestView | null => {
-  const inProgressQuests = quests.filter((quest) => quest.status === 'IN_PROGRESS');
-  if (inProgressQuests.length === 0) {
-    return null;
+export const getQuestBookPageView = (
+  book: QuestBookView,
+  pageNumber = 1,
+): QuestBookPageView => {
+  const normalizedPageNumber = normalizeQuestBookPageNumber(book, pageNumber);
+  const startIndex = (normalizedPageNumber - 1) * questBookPageSize;
+  const quests = book.quests.slice(startIndex, startIndex + questBookPageSize);
+
+  return {
+    pageNumber: normalizedPageNumber,
+    totalPages: getQuestBookTotalPages(book),
+    totalQuests: book.quests.length,
+    startIndex,
+    endIndex: startIndex + quests.length,
+    quests,
+  };
+};
+
+const renderQuestStatusLine = (quest: QuestView): string => {
+  if (quest.status === 'READY_TO_CLAIM') {
+    return `${questStatusLabels.READY_TO_CLAIM} · ${formatResourceReward(quest.reward)}`;
   }
 
-  return [...inProgressQuests].sort((left, right) => {
-    const progressDifference = getQuestProgressRatio(right) - getQuestProgressRatio(left);
-    if (Math.abs(progressDifference) > Number.EPSILON) {
-      return progressDifference;
-    }
+  if (quest.status === 'CLAIMED') {
+    return questStatusLabels.CLAIMED;
+  }
 
-    return compareQuestsByBookOrder(orderLookup, left, right);
-  })[0] ?? null;
+  return `${questStatusLabels.IN_PROGRESS} · ${quest.progress.current}/${quest.progress.required} · ${quest.objective}`;
 };
 
-const renderNearestQuest = (quest: QuestView): string => [
-  `Глава: ${getQuestChapter(quest).title}`,
-  `${quest.icon} ${quest.title} · ${questStatusLabels.IN_PROGRESS}`,
-  `След: ${quest.objective}`,
-  renderQuestProgress(quest),
-  `Награда: ${formatResourceReward(quest.reward)}.`,
+const renderQuestLine = (quest: QuestView, absoluteIndex: number): string => (
+  `${absoluteIndex + 1}. ${quest.icon} ${quest.title}\n   ${renderQuestStatusLine(quest)}`
+);
+
+const renderQuestPageGroup = (group: QuestChapterGroup, page: QuestBookPageView): string => [
+  `Глава: ${group.chapter.title}`,
+  ...group.quests.map((quest) => renderQuestLine(quest, page.startIndex + page.quests.indexOf(quest))),
 ].join('\n');
 
-const renderClaimedGroup = (group: QuestChapterGroup): string => {
-  const visibleQuests = group.quests.slice(0, claimedPreviewLimitPerChapter);
-  const hiddenCount = group.quests.length - visibleQuests.length;
-  const visibleTitles = visibleQuests.map((quest) => `${quest.icon} ${quest.title}`).join(', ');
-  const hiddenLine = hiddenCount > 0
-    ? `, ещё ${formatCountPhrase(hiddenCount, ['запись', 'записи', 'записей'])}`
-    : '';
-
-  return `${group.chapter.title}: ${visibleTitles}${hiddenLine}.`;
-};
-
-const renderReadySection = (
-  book: QuestBookView,
-  orderLookup: ReadonlyMap<QuestView['code'], number>,
-): readonly string[] => {
-  const readyQuests = book.quests.filter((quest) => quest.status === 'READY_TO_CLAIM');
-  if (readyQuests.length === 0) {
-    return [];
-  }
-
-  return [
-    '🎁 Готово',
-    ...groupQuestsByChapter(readyQuests, orderLookup).map(renderReadyGroup),
-  ];
-};
-
-const renderNearestSection = (
-  book: QuestBookView,
-  orderLookup: ReadonlyMap<QuestView['code'], number>,
-): readonly string[] => {
-  const nearestQuest = findNearestInProgressQuest(book.quests, orderLookup);
-  if (!nearestQuest) {
-    return [];
-  }
-
-  return [
-    '🌒 Ближайший след',
-    renderNearestQuest(nearestQuest),
-  ];
-};
-
-const renderClaimedSection = (
-  book: QuestBookView,
-  orderLookup: ReadonlyMap<QuestView['code'], number>,
-): readonly string[] => {
-  const claimedQuests = book.quests.filter((quest) => quest.status === 'CLAIMED');
-  if (claimedQuests.length === 0) {
-    return [];
-  }
-
-  return [
-    '✅ Закрыто',
-    ...groupQuestsByChapter(claimedQuests, orderLookup).map(renderClaimedGroup),
-  ];
-};
-
-const renderQuestBookSections = (book: QuestBookView): readonly string[] => {
+const renderQuestBookPageSections = (book: QuestBookView, page: QuestBookPageView): readonly string[] => {
   const orderLookup = createQuestOrderLookup(book.quests);
 
-  return [
-    ...renderReadySection(book, orderLookup),
-    ...renderNearestSection(book, orderLookup),
-    ...renderClaimedSection(book, orderLookup),
-  ];
+  return groupQuestsByChapter(page.quests, orderLookup).map((group) => renderQuestPageGroup(group, page));
 };
 
-export const renderQuestBook = (book: QuestBookView): string => [
-  '📜 Книга путей',
-  'Руны помнят не обещания, а завершённые шаги.',
-  `В книге: ${renderQuestBookSummary(book)}.`,
-  ...renderQuestBookSections(book),
-].join('\n\n');
+export const renderQuestBook = (book: QuestBookView, pageNumber = 1): string => {
+  const page = getQuestBookPageView(book, pageNumber);
+  const pageRange = page.totalQuests > 0
+    ? `записи ${page.startIndex + 1}-${page.endIndex} из ${page.totalQuests}`
+    : 'записей пока нет';
+
+  return [
+    '📜 Книга путей',
+    'Руны помнят не обещания, а завершённые шаги.',
+    `В книге: ${renderQuestBookSummary(book)}.`,
+    `Страница ${page.pageNumber} из ${page.totalPages} · ${pageRange}.`,
+    '🎁 — награда не собрана.',
+    ...renderQuestBookPageSections(book, page),
+  ].join('\n\n');
+};
 
 export const renderQuestClaimResult = (result: ClaimQuestRewardView): string => {
   const header = result.claimedNow ? '📜 Запись закрыта' : '📜 Запись уже закрыта';

@@ -526,7 +526,7 @@ const runQuestBookChecks = async (runtime: LocalPlaytestRuntime): Promise<void> 
   assertReplyIncludes(questBookReply, 'Quest book', [
     '📜 Книга путей',
     'Пробуждение Пустого мастера',
-    'Награда ждёт',
+    'Награда не собрана',
   ]);
 
   const questClaimReply = await runCommand(

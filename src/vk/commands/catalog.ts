@@ -66,10 +66,12 @@ export const gameCommands = {
 } as const;
 
 export const bestiaryPageCommandPrefix = 'бестиарий страница ';
+export const questBookPageCommandPrefix = 'книга путей страница ';
 
 export type StaticGameCommand = (typeof gameCommands)[keyof typeof gameCommands];
 export type BestiaryPageCommand = `${typeof bestiaryPageCommandPrefix}${number}`;
-export type GameCommand = StaticGameCommand | BestiaryPageCommand;
+export type QuestBookPageCommand = `${typeof questBookPageCommandPrefix}${number}`;
+export type GameCommand = StaticGameCommand | BestiaryPageCommand | QuestBookPageCommand;
 
 type RuneStatRerollCommand =
   | typeof gameCommands.rerollAttack
@@ -239,6 +241,24 @@ export const createBestiaryPageCommand = (pageNumber: number): BestiaryPageComma
 
 export const resolveBestiaryPageCommand = (command: string): number | null => {
   const match = /^бестиарий(?: страница)? ([1-9]\d*)$/.exec(command);
+
+  if (!match) {
+    return null;
+  }
+
+  return Number(match[1]);
+};
+
+export const createQuestBookPageCommand = (pageNumber: number): QuestBookPageCommand => {
+  const safePageNumber = Number.isFinite(pageNumber)
+    ? Math.max(1, Math.floor(pageNumber))
+    : 1;
+
+  return `${questBookPageCommandPrefix}${safePageNumber}` as QuestBookPageCommand;
+};
+
+export const resolveQuestBookPageCommand = (command: string): number | null => {
+  const match = /^книга путей(?: страница)? ([1-9]\d*)$/.exec(command);
 
   if (!match) {
     return null;

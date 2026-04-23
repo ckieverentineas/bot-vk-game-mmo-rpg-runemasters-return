@@ -12,7 +12,10 @@ import {
   rewardCommandRoutes,
   rewardDynamicCommandRoutes,
 } from './routes/rewardCommandRoutes';
-import { questCommandRoutes } from './routes/questCommandRoutes';
+import {
+  questCommandRoutes,
+  questDynamicCommandRoutes,
+} from './routes/questCommandRoutes';
 import {
   runeCommandRoutes,
   runeDynamicCommandRoutes,
@@ -59,5 +62,6 @@ export const config: StaticCommandRouteConfig = {
 export const dynamicCommandConfig = [
   ...runeDynamicCommandRoutes,
   ...rewardDynamicCommandRoutes,
+  ...questDynamicCommandRoutes,
   ...bestiaryDynamicCommandRoutes,
 ] satisfies readonly DynamicCommandRoute[];

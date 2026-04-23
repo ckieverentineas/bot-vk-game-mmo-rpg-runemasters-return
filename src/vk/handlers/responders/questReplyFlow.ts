@@ -8,8 +8,12 @@ import {
   renderQuestClaimResult,
 } from '../../presenters/messages';
 
-export const replyWithQuestBook = async (ctx: Context, book: QuestBookView): Promise<void> => {
-  await ctx.reply(renderQuestBook(book), { keyboard: createQuestBookKeyboard(book) });
+export const replyWithQuestBook = async (
+  ctx: Context,
+  book: QuestBookView,
+  pageNumber = 1,
+): Promise<void> => {
+  await ctx.reply(renderQuestBook(book, pageNumber), { keyboard: createQuestBookKeyboard(book, pageNumber) });
 };
 
 export const replyWithQuestClaimResult = async (
