@@ -2,7 +2,6 @@ import type { RunePageSlot } from '../../../modules/runes/domain/rune-collection
 import type { StatKey } from '../../../shared/types/game';
 import {
   gameCommands,
-  resolveCraftingRecipeCommand,
   resolveRuneCursorDeltaCommand,
   resolveRunePageSlotCommand,
   resolveRuneStatRerollCommand,
@@ -73,19 +72,6 @@ export const runeDynamicCommandRoutes = [
         context.intentSource,
       );
       await handler.replyWithRuneRerollMenu(ctx, player);
-    },
-  ),
-  createDynamicCommandRoute(
-    resolveCraftingRecipeCommand,
-    async (handler, ctx, vkId, recipeCode, context) => {
-      const result = await handler.services.craftItem.execute(
-        vkId,
-        recipeCode,
-        context.intentId ?? undefined,
-        context.stateKey ?? undefined,
-        context.intentSource,
-      );
-      await handler.replyWithAltar(ctx, result);
     },
   ),
 ] satisfies readonly DynamicCommandRoute[];

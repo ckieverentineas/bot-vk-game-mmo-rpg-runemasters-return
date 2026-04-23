@@ -23,3 +23,4 @@ export {
   createRuneRerollKeyboard,
 } from './runes';
 export { createTutorialKeyboard } from './tutorial';
+export { createWorkshopKeyboard } from './workshop';

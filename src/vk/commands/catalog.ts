@@ -2,6 +2,10 @@ import type { StatKey } from '../../shared/types/game';
 import type { CraftingRecipeCode } from '../../modules/crafting/domain/crafting-recipes';
 import type { TrophyActionCode } from '../../modules/rewards/domain/trophy-actions';
 import { runeCollectionPageSize } from '../../modules/runes/domain/rune-collection';
+import {
+  isWorkshopBlueprintCode,
+  type WorkshopBlueprintCode,
+} from '../../modules/workshop/domain/workshop-catalog';
 
 export const gameCommands = {
   start: 'начать',
@@ -48,6 +52,7 @@ export const gameCommands = {
   equipRuneSlot2: 'надеть слот 2',
   unequipRune: 'снять',
   altar: 'алтарь',
+  workshop: 'мастерская',
   craftRune: 'создать',
   craftVitalCharm: 'пилюля живучести',
   craftKeenEdge: 'пилюля удара',
@@ -75,12 +80,27 @@ export const gameCommands = {
 export const bestiaryPageCommandPrefix = 'бестиарий страница ';
 export const bestiaryLocationCommandPrefix = 'бестиарий локация ';
 export const questBookPageCommandPrefix = 'книга путей страница ';
+export const workshopCraftCommandPrefix = 'мастерская чертеж ';
+export const workshopRepairCommandPrefix = 'мастерская ремонт ';
 
 export type StaticGameCommand = (typeof gameCommands)[keyof typeof gameCommands];
 export type BestiaryPageCommand = `${typeof bestiaryPageCommandPrefix}${number}`;
 export type BestiaryLocationCommand = `${typeof bestiaryLocationCommandPrefix}${string}`;
 export type QuestBookPageCommand = `${typeof questBookPageCommandPrefix}${number}`;
-export type GameCommand = StaticGameCommand | BestiaryPageCommand | BestiaryLocationCommand | QuestBookPageCommand;
+export type WorkshopCraftCommand = `${typeof workshopCraftCommandPrefix}${WorkshopBlueprintCode}`;
+export type WorkshopRepairCommand = `${typeof workshopRepairCommandPrefix}${string} ${WorkshopBlueprintCode}`;
+export type GameCommand =
+  | StaticGameCommand
+  | BestiaryPageCommand
+  | BestiaryLocationCommand
+  | QuestBookPageCommand
+  | WorkshopCraftCommand
+  | WorkshopRepairCommand;
+
+export interface WorkshopRepairCommandPayload {
+  readonly itemId: string;
+  readonly repairBlueprintCode: WorkshopBlueprintCode;
+}
 
 type RuneStatRerollCommand =
   | typeof gameCommands.rerollAttack
@@ -238,6 +258,11 @@ export const commandAliases: Readonly<Record<string, GameCommand>> = {
   'заточка': gameCommands.craftKeenEdge,
   'пластина': gameCommands.craftGuardPlate,
   'фокус': gameCommands.craftRuneFocus,
+  'крафт': gameCommands.workshop,
+  'кузница': gameCommands.workshop,
+  'ремонт': gameCommands.workshop,
+  'чертежи': gameCommands.workshop,
+  'мастерская': gameCommands.workshop,
   'живучесть': gameCommands.craftVitalCharm,
   'удар': gameCommands.craftKeenEdge,
   'стойкость': gameCommands.craftGuardPlate,
@@ -338,6 +363,45 @@ export const resolveQuestBookPageCommand = (command: string): number | null => {
   }
 
   return Number(match[1]);
+};
+
+export const createWorkshopCraftCommand = (blueprintCode: WorkshopBlueprintCode): WorkshopCraftCommand => (
+  `${workshopCraftCommandPrefix}${blueprintCode}` as WorkshopCraftCommand
+);
+
+export const resolveWorkshopCraftCommand = (command: string): WorkshopBlueprintCode | null => {
+  const trimmedCommand = command.trim();
+
+  if (!trimmedCommand.startsWith(workshopCraftCommandPrefix)) {
+    return null;
+  }
+
+  const blueprintCode = trimmedCommand.slice(workshopCraftCommandPrefix.length).trim();
+  return isWorkshopBlueprintCode(blueprintCode) ? blueprintCode : null;
+};
+
+export const createWorkshopRepairCommand = (
+  itemId: string,
+  repairBlueprintCode: WorkshopBlueprintCode,
+): WorkshopRepairCommand => (
+  `${workshopRepairCommandPrefix}${itemId} ${repairBlueprintCode}` as WorkshopRepairCommand
+);
+
+export const resolveWorkshopRepairCommand = (command: string): WorkshopRepairCommandPayload | null => {
+  const trimmedCommand = command.trim();
+
+  if (!trimmedCommand.startsWith(workshopRepairCommandPrefix)) {
+    return null;
+  }
+
+  const suffix = trimmedCommand.slice(workshopRepairCommandPrefix.length).trim();
+  const [itemId, repairBlueprintCode, ...extraParts] = suffix.split(/\s+/);
+
+  if (!itemId || !repairBlueprintCode || extraParts.length > 0 || !isWorkshopBlueprintCode(repairBlueprintCode)) {
+    return null;
+  }
+
+  return { itemId, repairBlueprintCode };
 };
 
 export const resolveTrophyActionCommand = (command: string): TrophyActionCode | null => {

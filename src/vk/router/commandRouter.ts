@@ -7,6 +7,8 @@ import {
   resolveRuneCursorDeltaCommand,
   resolveRunePageSlotCommand,
   resolveRuneStatRerollCommand,
+  resolveWorkshopCraftCommand,
+  resolveWorkshopRepairCommand,
 } from '../commands/catalog';
 
 export interface ResolvedCommandEnvelope {
@@ -32,6 +34,7 @@ const legacyTextIntentCommands = new Set<string>([
   gameCommands.craftKeenEdge,
   gameCommands.craftGuardPlate,
   gameCommands.craftRuneFocus,
+  gameCommands.workshop,
   gameCommands.claimQuestReward,
   gameCommands.dailyTrace,
   gameCommands.location,
@@ -56,6 +59,8 @@ const legacyTextIntentMatchers: readonly LegacyTextIntentMatcher[] = [
   (command) => resolveRunePageSlotCommand(command) !== null,
   (command) => resolveRuneStatRerollCommand(command) !== null,
   (command) => resolveCraftingRecipeCommand(command) !== null,
+  (command) => resolveWorkshopCraftCommand(command) !== null,
+  (command) => resolveWorkshopRepairCommand(command) !== null,
 ];
 
 const supportsLegacyTextIntent = (command: string): boolean => (

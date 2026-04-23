@@ -6,7 +6,12 @@ import type { PendingRewardView } from '../../modules/shared/application/ports/G
 import type { GameTelemetry } from '../../modules/shared/application/ports/GameTelemetry';
 import { AppError } from '../../shared/domain/AppError';
 import type { BattleView, PlayerState } from '../../shared/types/game';
-import { createBestiaryLocationCommand, gameCommands } from '../commands/catalog';
+import {
+  createBestiaryLocationCommand,
+  createWorkshopCraftCommand,
+  createWorkshopRepairCommand,
+  gameCommands,
+} from '../commands/catalog';
 import { createRuneKeyboard } from '../keyboards';
 import { GameHandler } from './gameHandler';
 
@@ -365,6 +370,12 @@ const createServices = (): AppServices => {
       },
     ],
   };
+  const workshopView = {
+    player: basePlayer,
+    blueprints: [],
+    repairTools: [],
+    craftedItems: [],
+  };
 
   return {
     telemetry: {
@@ -493,6 +504,61 @@ const createServices = (): AppServices => {
     destroyCurrentRune: {
       execute: vi.fn().mockResolvedValue(runePlayer),
     } as unknown as AppServices['destroyCurrentRune'],
+    getWorkshop: {
+      execute: vi.fn().mockResolvedValue(workshopView),
+    } as unknown as AppServices['getWorkshop'],
+    craftWorkshopItem: {
+      execute: vi.fn().mockResolvedValue({
+        view: workshopView,
+        craftedItem: {
+          id: 'crafted-test-1',
+          playerId: basePlayer.playerId,
+          itemCode: 'skinning_kit',
+          itemClass: 'COMMON',
+          slot: 'tool',
+          status: 'ACTIVE',
+          equipped: false,
+          durability: 12,
+          maxDurability: 12,
+          createdAt: '2026-04-12T00:00:00.000Z',
+          updatedAt: '2026-04-12T00:00:00.000Z',
+        },
+        acquisitionSummary: {
+          kind: 'crafted_workshop_item',
+          blueprintCode: 'skinning_kit',
+          itemId: 'crafted-test-1',
+          title: 'Предмет создан',
+          changeLine: 'Создан предмет мастерской.',
+        },
+        message: 'Создан предмет мастерской.',
+      }),
+    } as unknown as AppServices['craftWorkshopItem'],
+    repairWorkshopItem: {
+      execute: vi.fn().mockResolvedValue({
+        view: workshopView,
+        repairedItem: {
+          id: 'crafted-test-1',
+          playerId: basePlayer.playerId,
+          itemCode: 'skinning_kit',
+          itemClass: 'UL',
+          slot: 'tool',
+          status: 'ACTIVE',
+          equipped: false,
+          durability: 12,
+          maxDurability: 12,
+          createdAt: '2026-04-12T00:00:00.000Z',
+          updatedAt: '2026-04-12T00:00:00.000Z',
+        },
+        acquisitionSummary: {
+          kind: 'repaired_workshop_item',
+          repairBlueprintCode: 'resonance_tool',
+          itemId: 'crafted-test-1',
+          title: 'Предмет отремонтирован',
+          changeLine: 'Предмет восстановлен.',
+        },
+        message: 'Предмет восстановлен.',
+      }),
+    } as unknown as AppServices['repairWorkshopItem'],
   };
 };
 
@@ -644,6 +710,17 @@ describe('GameHandler smoke', () => {
     expect(message).toContain('📜 Мастерство');
     expect(message).toContain('Пламя · текущая');
     expect(message).toContain('Разогрев дожима');
+  });
+
+  it('открывает мастерскую отдельной кнопкой', async () => {
+    const services = createServices();
+    const handler = new GameHandler(services);
+    const ctx = createFakeContext({ command: 'мастерская' });
+
+    await handler.handle(ctx as never);
+
+    expect(services.getWorkshop.execute).toHaveBeenCalledWith(1001);
+    expect(getReplyCalls(ctx)[0]?.message).toContain('Мастерская');
   });
 
   it('забирает награду квеста из inline-кнопки', async () => {
@@ -1658,6 +1735,47 @@ describe('GameHandler smoke', () => {
       'vital_charm',
       'intent-pill-1',
       'state-pill-1',
+      'payload',
+    );
+  });
+
+  it('пробрасывает intentId для создания предмета мастерской через transport payload', async () => {
+    const services = createServices();
+    const handler = new GameHandler(services);
+    const ctx = createFakeContext({
+      command: createWorkshopCraftCommand('skinning_kit'),
+      intentId: 'intent-workshop-craft-1',
+      stateKey: 'state-workshop-craft-1',
+    });
+
+    await handler.handle(ctx as never);
+
+    expect(services.craftWorkshopItem.execute).toHaveBeenCalledWith(
+      1001,
+      'skinning_kit',
+      'intent-workshop-craft-1',
+      'state-workshop-craft-1',
+      'payload',
+    );
+  });
+
+  it('пробрасывает intentId для ремонта предмета мастерской через transport payload', async () => {
+    const services = createServices();
+    const handler = new GameHandler(services);
+    const ctx = createFakeContext({
+      command: createWorkshopRepairCommand('crafted-test-1', 'resonance_tool'),
+      intentId: 'intent-workshop-repair-1',
+      stateKey: 'state-workshop-repair-1',
+    });
+
+    await handler.handle(ctx as never);
+
+    expect(services.repairWorkshopItem.execute).toHaveBeenCalledWith(
+      1001,
+      'crafted-test-1',
+      'resonance_tool',
+      'intent-workshop-repair-1',
+      'state-workshop-repair-1',
       'payload',
     );
   });

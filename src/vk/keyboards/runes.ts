@@ -1,11 +1,6 @@
 import { Keyboard } from 'vk-io';
 
 import { gameBalance } from '../../config/game-balance';
-import { buildCraftingIntentStateKey } from '../../modules/crafting/application/command-intent-state';
-import {
-  canPayCraftingRecipe,
-  listCraftingRecipes,
-} from '../../modules/crafting/domain/crafting-recipes';
 import {
   getEquippedRune,
   getRuneEquippedSlot,
@@ -29,7 +24,7 @@ import {
 } from '../../modules/runes/domain/rune-collection';
 import type { PlayerState } from '../../shared/types/game';
 import type { GameCommand } from '../commands/catalog';
-import { gameCommands, resolveCraftingRecipeCodeCommand } from '../commands/catalog';
+import { gameCommands } from '../commands/catalog';
 import { buildKeyboard } from './builder';
 import type { KeyboardBuilder, KeyboardLayout } from './types';
 
@@ -70,21 +65,6 @@ const resolveRunePageSlot = (slot: number): RunePageSlot => {
 };
 
 const resolveRuneSelectionCommand = (slot: RunePageSlot): GameCommand => runePageSlotCommands[slot];
-
-const createCraftingRecipeRows = (player?: PlayerState): KeyboardLayout => {
-  const buttons = listCraftingRecipes().map((recipe) => ({
-    label: recipe.buttonLabel,
-    command: resolveCraftingRecipeCodeCommand(recipe.code),
-    color: player && canPayCraftingRecipe(player, recipe) ? Keyboard.POSITIVE_COLOR : Keyboard.SECONDARY_COLOR,
-    intentScoped: Boolean(player),
-    stateKey: player ? buildCraftingIntentStateKey(player, recipe.code) : undefined,
-  }));
-
-  return [
-    buttons.slice(0, 2),
-    buttons.slice(2, 4),
-  ].filter((row) => row.length > 0);
-};
 
 const createRuneListLayout = (player?: PlayerState): KeyboardLayout => {
   const craftStateKey = player ? buildCraftIntentStateKey(player) : undefined;
@@ -277,18 +257,9 @@ export const createRuneDetailKeyboard = (player?: PlayerState): KeyboardBuilder 
   buildKeyboard(createRuneDetailLayout(player))
 );
 
-export const createAltarKeyboard = (player?: PlayerState): KeyboardBuilder => {
-  const selectedRuneLayout = createRuneDetailLayout(player);
-  const craftingRows = createCraftingRecipeRows(player);
-  const menuRow = selectedRuneLayout.at(-1);
-  const bodyRows = menuRow ? selectedRuneLayout.slice(0, -1) : selectedRuneLayout;
-
-  return buildKeyboard([
-    ...bodyRows,
-    ...craftingRows,
-    ...(menuRow ? [menuRow] : []),
-  ]);
-};
+export const createAltarKeyboard = (player?: PlayerState): KeyboardBuilder => (
+  buildKeyboard(createRuneDetailLayout(player))
+);
 
 export const createRuneRerollKeyboard = (player?: PlayerState): KeyboardBuilder => (
   buildKeyboard(createRuneRerollLayout(player))

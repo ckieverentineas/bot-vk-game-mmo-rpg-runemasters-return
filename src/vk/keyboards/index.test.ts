@@ -13,6 +13,7 @@ import {
   createRuneKeyboard,
   createSchoolMasteryKeyboard,
   createTutorialKeyboard,
+  createWorkshopKeyboard,
 } from './index';
 import { gameCommands } from '../commands/catalog';
 import type { PendingRewardView } from '../../modules/shared/application/ports/GameRepository';
@@ -561,11 +562,12 @@ describe('profile keyboard', () => {
     const payloads = collectPayloads(createMainMenuKeyboard(createPlayer()));
 
     expect(labels).toContain('🕯 Алтарь');
-    expect(labels).not.toContain('🛠 Мастерская');
+    expect(labels).toContain('🛠 Мастерская');
     expect(payloads).toContainEqual({ command: gameCommands.altar });
+    expect(payloads).toContainEqual({ command: gameCommands.workshop });
   });
 
-  it('adds pill alchemy actions to the altar without exceeding the VK row limit', () => {
+  it('adds pill alchemy actions to the workshop without exceeding the VK row limit', () => {
     const player = createPlayer({
       inventory: {
         ...createPlayer().inventory,
@@ -575,7 +577,12 @@ describe('profile keyboard', () => {
         essence: 1,
       },
     });
-    const keyboard = createAltarKeyboard(player);
+    const keyboard = createWorkshopKeyboard({
+      player,
+      blueprints: [],
+      repairTools: [],
+      craftedItems: [],
+    });
     const rows = serializeKeyboard(keyboard).rows;
     const payloads = collectPayloads(keyboard);
     const labels = collectLabels(keyboard);

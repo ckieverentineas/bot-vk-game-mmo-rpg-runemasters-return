@@ -28,6 +28,9 @@ import { UnequipCurrentRune } from '../modules/runes/application/use-cases/Unequ
 import { PrismaGameRepository } from '../modules/shared/infrastructure/prisma/PrismaGameRepository';
 import { SystemGameRandom } from '../modules/shared/infrastructure/random/SystemGameRandom';
 import { RepositoryGameTelemetry } from '../modules/shared/infrastructure/telemetry/RepositoryGameTelemetry';
+import { CraftWorkshopItem } from '../modules/workshop/application/use-cases/CraftWorkshopItem';
+import { GetWorkshop } from '../modules/workshop/application/use-cases/GetWorkshop';
+import { RepairWorkshopItem } from '../modules/workshop/application/use-cases/RepairWorkshopItem';
 import { GetBestiary } from '../modules/world/application/use-cases/GetBestiary';
 import { prisma } from '../database/client';
 import type { GameTelemetry } from '../modules/shared/application/ports/GameTelemetry';
@@ -59,6 +62,9 @@ export interface AppServices {
   craftRune: CraftRune;
   rerollCurrentRuneStat: RerollCurrentRuneStat;
   destroyCurrentRune: DestroyCurrentRune;
+  getWorkshop: GetWorkshop;
+  craftWorkshopItem: CraftWorkshopItem;
+  repairWorkshopItem: RepairWorkshopItem;
 }
 
 export const createAppServices = (): AppServices => {
@@ -96,5 +102,8 @@ export const createAppServices = (): AppServices => {
     craftRune: new CraftRune(repository, random),
     rerollCurrentRuneStat: new RerollCurrentRuneStat(repository, random),
     destroyCurrentRune: new DestroyCurrentRune(repository),
+    getWorkshop: new GetWorkshop(repository),
+    craftWorkshopItem: new CraftWorkshopItem(repository),
+    repairWorkshopItem: new RepairWorkshopItem(repository),
   };
 };

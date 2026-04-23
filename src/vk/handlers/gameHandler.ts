@@ -63,6 +63,10 @@ import {
   replyWithRuneRerollMenu as sendRuneRerollMenu,
   type RuneHubReplyState,
 } from './responders/runeReplyFlow';
+import {
+  replyWithWorkshop as sendWorkshop,
+  type WorkshopReplyState,
+} from './responders/workshopReplyFlow';
 
 type ReplyKeyboard = ReturnType<typeof createMainMenuKeyboard>;
 type TutorialRouteReplyState = PlayerState | SkipTutorialReplayResult | ReturnToAdventureReplayResult;
@@ -374,6 +378,11 @@ export class GameHandler {
     await this.replyWithRuneRerollMenu(ctx, player);
   }
 
+  public async openWorkshop(ctx: Context, vkId: number): Promise<void> {
+    const view = await this.services.getWorkshop.execute(vkId);
+    await this.replyWithWorkshop(ctx, view);
+  }
+
   public async equipCurrentRuneSlot(
     ctx: Context,
     vkId: number,
@@ -438,6 +447,10 @@ export class GameHandler {
 
   public async replyWithRuneRerollMenu(ctx: Context, player: PlayerState): Promise<void> {
     await sendRuneRerollMenu(ctx, player);
+  }
+
+  public async replyWithWorkshop(ctx: Context, state: WorkshopReplyState): Promise<void> {
+    await sendWorkshop(ctx, state);
   }
 
   private async replyWithExplorationResult(ctx: Context, state: ExplorationReplyState, vkId?: number): Promise<void> {

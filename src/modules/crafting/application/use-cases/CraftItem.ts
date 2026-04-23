@@ -105,7 +105,7 @@ export class CraftItem {
     }
 
     if (intentSource !== 'legacy_text' && intent && intent.intentStateKey !== currentStateKey) {
-      throw new AppError('stale_command_intent', 'Эта пилюля уже выцвела. Вернитесь к свежему Алтарю.');
+      throw new AppError('stale_command_intent', 'Эта пилюля уже выцвела. Вернитесь к свежей Мастерской.');
     }
 
     const cost = resolveCraftingRecipeCost(player, recipe);

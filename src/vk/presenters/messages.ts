@@ -30,6 +30,8 @@ export {
   renderRuneScreen,
 } from './runeMessages';
 
+export { renderWorkshop } from './workshopMessages';
+
 export {
   renderCollectedPendingReward,
   renderPendingReward,

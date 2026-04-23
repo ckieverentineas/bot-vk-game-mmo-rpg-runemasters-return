@@ -21,6 +21,10 @@ import {
   runeDynamicCommandRoutes,
 } from './routes/runeCommandRoutes';
 import { tutorialCommandRoutes } from './routes/tutorialCommandRoutes';
+import {
+  workshopCommandRoutes,
+  workshopDynamicCommandRoutes,
+} from './routes/workshopCommandRoutes';
 import type {
   DynamicCommandRoute,
   StaticCommandRouteConfig,
@@ -57,10 +61,12 @@ export const config: StaticCommandRouteConfig = {
   ...rewardCommandRoutes,
   ...battleCommandRoutes,
   ...runeCommandRoutes,
+  ...workshopCommandRoutes,
 };
 
 export const dynamicCommandConfig = [
   ...runeDynamicCommandRoutes,
+  ...workshopDynamicCommandRoutes,
   ...rewardDynamicCommandRoutes,
   ...questDynamicCommandRoutes,
   ...bestiaryDynamicCommandRoutes,

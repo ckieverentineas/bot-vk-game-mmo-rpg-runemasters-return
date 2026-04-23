@@ -7,6 +7,8 @@ import {
   resolveRuneCursorDeltaCommand,
   resolveRunePageSlotCommand,
   resolveRuneStatRerollCommand,
+  resolveWorkshopCraftCommand,
+  resolveWorkshopRepairCommand,
 } from '../commands/catalog';
 import {
   createEntryKeyboard,
@@ -15,6 +17,7 @@ import {
   createRuneKeyboard,
   createRuneRerollKeyboard,
   createTutorialKeyboard,
+  createWorkshopKeyboard,
 } from '../keyboards';
 import {
   renderAltar,
@@ -22,6 +25,7 @@ import {
   renderLocation,
   renderProfile,
   renderRuneScreen,
+  renderWorkshop,
 } from '../presenters/messages';
 import type { GameHandler } from './gameHandler';
 import type { GameCommandType } from './gameCommandRouteKit';
@@ -43,6 +47,9 @@ export const recoverableCommandErrorCodes = new Set([
   'rune_slot_not_found',
   'not_enough_rune_resources',
   'not_enough_crafting_resources',
+  'not_enough_workshop_resources',
+  'workshop_blueprint_unavailable',
+  'workshop_item_not_repairable',
   'not_enough_shards',
   'battle_in_progress',
 ]);
@@ -64,6 +71,13 @@ const runeManageCommandSet = new Set<GameCommandType>([
 
 const withErrorHeader = (error: AppError, body: string): string => (
   [error.message, '', body].join('\n')
+);
+
+const isWorkshopCommand = (command: string): boolean => (
+  command === gameCommands.workshop
+  || resolveCraftingRecipeCommand(command) !== null
+  || resolveWorkshopCraftCommand(command) !== null
+  || resolveWorkshopRepairCommand(command) !== null
 );
 
 export const recoveryRules: readonly RecoveryRule[] = [
@@ -191,13 +205,13 @@ export const recoveryRules: readonly RecoveryRule[] = [
     },
   },
   {
-    matches: (command) => resolveCraftingRecipeCommand(command) !== null,
+    matches: isWorkshopCommand,
     handle: async (handler, ctx, vkId, _command, error) => {
-      const player = await handler.services.getRuneCollection.execute(vkId);
+      const view = await handler.services.getWorkshop.execute(vkId);
       await handler.reply(
         ctx,
-        withErrorHeader(error, renderAltar(player)),
-        createAltarKeyboard(player),
+        withErrorHeader(error, renderWorkshop(view)),
+        createWorkshopKeyboard(view),
       );
       return true;
     },
