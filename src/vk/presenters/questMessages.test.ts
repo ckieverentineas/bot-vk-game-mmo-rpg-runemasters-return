@@ -119,14 +119,18 @@ describe('renderQuestBook', () => {
     const message = renderQuestBook(createBook());
 
     expect(message).toContain('Страница 1 из 1 · записи 1-3 из 3.');
-    expect(message).toContain('Глава: Первый круг');
-    expect(message).toContain('1. 🌑 Пробуждение Пустого мастера');
-    expect(message).toContain('🎁 Награда не собрана');
+    expect(message).toContain('Ближайший след: 🚪 Имя на границе — 0/1 · Выйти из Учебного круга на первую дорогу.');
+    expect(message).toContain('Готовые награды: 1 запись ждёт.');
+    expect(message).toContain('🎁 Готовые награды · 1');
+    expect(message).toContain('1. 🌑 Пробуждение Пустого мастера · Первый круг');
+    expect(message).toContain('🎁 Награда не собрана: +5 пыли · +1 обычный осколок');
     expect(message).toContain('+5 пыли · +1 обычный осколок');
-    expect(message).toContain('2. 🚪 Имя на границе');
-    expect(message).toContain('🌒 В пути · 0/1 · Выйти из Учебного круга на первую дорогу.');
+    expect(message).toContain('🧭 Ближайший след');
+    expect(message).toContain('2. 🚪 Имя на границе · Первое имя');
+    expect(message).toContain('🌒 В пути: 0/1 · Выйти из Учебного круга на первую дорогу.');
+    expect(message).toContain('✅ Архив · 1');
     expect(message).toContain('3. 🔮 Первый знак');
-    expect(message).toContain('✅ Закрыто');
+    expect(message).not.toContain('✅ Закрыто');
     expect(message).not.toContain('Первые руны услышали зов.');
     expect(message).not.toContain('Школа оставила ответ в рунах.');
     expect(message).not.toContain('Цель:');
@@ -146,12 +150,14 @@ describe('renderQuestBook', () => {
 
     expect(page.quests).toHaveLength(5);
     expect(message).toContain('Страница 3 из');
-    expect(message).toContain('Глава: Тёмный лес');
-    expect(message).toContain('Вторая тень леса');
+    expect(message).toContain('🌒 Следы дальше · 5');
     expect(message).toContain('Пять отметин дороги');
     expect(message).toContain('2/5');
-    expect(message).not.toContain('Пробуждение Пустого мастера');
-    expect(message).not.toContain('Первый знак');
+    expect(message).toContain('Костёр среди чащи');
+    expect(message).toContain('Устье забытых пещер');
+    expect(message).not.toContain('Вторая тень леса');
+    expect(message).not.toContain('1. 🌑 Пробуждение Пустого мастера');
+    expect(message).not.toContain('2. 🔮 Первый знак');
     expect(message).not.toContain('locationLevel');
     expect(message).not.toContain('mobsKilled');
   });
@@ -205,7 +211,10 @@ describe('renderQuestBook', () => {
     const message = renderQuestBook(book);
 
     expect(message).toContain('Страница 1 из 1 · записи 1-4 из 4.');
-    expect(message.match(/✅ Закрыто/g)).toHaveLength(4);
+    expect(message).toContain('Ближайший след: все открытые следы закрыты.');
+    expect(message).toContain('Готовых наград сейчас нет.');
+    expect(message).toContain('✅ Архив · 4');
+    expect(message).not.toContain('✅ Закрыто');
     expect(message).toContain('1. 🌑 Пробуждение Пустого мастера');
     expect(message).toContain('4. 🧩 Два гнезда');
     expect(message).not.toContain('Два знака спорят в сборке.');

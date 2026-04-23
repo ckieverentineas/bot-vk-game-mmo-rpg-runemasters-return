@@ -20,9 +20,14 @@ interface QuestChapterCopy {
   readonly order: number;
 }
 
-interface QuestChapterGroup {
+export type QuestBookPageSection = 'READY_REWARD' | 'NEAREST_GOAL' | 'IN_PROGRESS' | 'ARCHIVE';
+
+export interface QuestBookPageQuestEntry {
+  readonly quest: QuestView;
+  readonly bookIndex: number;
+  readonly displayIndex: number;
   readonly chapter: QuestChapterCopy;
-  readonly quests: readonly QuestView[];
+  readonly section: QuestBookPageSection;
 }
 
 export interface QuestBookPageView {
@@ -32,6 +37,7 @@ export interface QuestBookPageView {
   readonly startIndex: number;
   readonly endIndex: number;
   readonly quests: readonly QuestView[];
+  readonly entries: readonly QuestBookPageQuestEntry[];
 }
 
 const questStatusLabels: Readonly<Record<QuestView['status'], string>> = {
@@ -124,36 +130,59 @@ const renderQuestBookSummary = (book: QuestBookView): string => [
   ]),
 ].join(' · ');
 
-const createQuestOrderLookup = (quests: readonly QuestView[]): ReadonlyMap<QuestView['code'], number> => (
-  new Map(quests.map((quest, index) => [quest.code, index]))
+const resolveQuestChapter = (quest: QuestView): QuestChapterCopy => (
+  questChapters[questChapterByCode[quest.code]]
 );
 
-const compareQuestsByBookOrder = (
-  orderLookup: ReadonlyMap<QuestView['code'], number>,
-  left: QuestView,
-  right: QuestView,
-): number => (
-  (orderLookup.get(left.code) ?? 0) - (orderLookup.get(right.code) ?? 0)
+const findNearestQuestGoal = (quests: readonly QuestView[]): QuestView | null => (
+  quests.find((quest) => quest.status === 'IN_PROGRESS') ?? null
 );
 
-const groupQuestsByChapter = (
-  quests: readonly QuestView[],
-  orderLookup: ReadonlyMap<QuestView['code'], number>,
-): readonly QuestChapterGroup[] => {
-  const questsByChapter = quests.reduce<Map<QuestChapterCode, QuestView[]>>((groups, quest) => {
-    const chapterCode = questChapterByCode[quest.code];
-    const group = groups.get(chapterCode) ?? [];
-    group.push(quest);
-    groups.set(chapterCode, group);
-    return groups;
-  }, new Map());
+const resolveQuestBookPageSection = (
+  quest: QuestView,
+  nearestGoal: QuestView | null,
+): QuestBookPageSection => {
+  if (quest.status === 'READY_TO_CLAIM') {
+    return 'READY_REWARD';
+  }
 
-  return [...questsByChapter.entries()]
-    .map(([chapterCode, chapterQuests]) => ({
-      chapter: questChapters[chapterCode],
-      quests: [...chapterQuests].sort((left, right) => compareQuestsByBookOrder(orderLookup, left, right)),
+  if (nearestGoal?.code === quest.code) {
+    return 'NEAREST_GOAL';
+  }
+
+  if (quest.status === 'CLAIMED') {
+    return 'ARCHIVE';
+  }
+
+  return 'IN_PROGRESS';
+};
+
+const questBookPageSectionPriority: Readonly<Record<QuestBookPageSection, number>> = {
+  READY_REWARD: 0,
+  NEAREST_GOAL: 1,
+  IN_PROGRESS: 2,
+  ARCHIVE: 3,
+};
+
+const createQuestBookNavigationEntries = (quests: readonly QuestView[]): readonly QuestBookPageQuestEntry[] => {
+  const nearestGoal = findNearestQuestGoal(quests);
+
+  return quests
+    .map((quest, bookIndex) => ({
+      quest,
+      bookIndex,
+      chapter: resolveQuestChapter(quest),
+      section: resolveQuestBookPageSection(quest, nearestGoal),
     }))
-    .sort((left, right) => left.chapter.order - right.chapter.order);
+    .sort((left, right) => (
+      questBookPageSectionPriority[left.section] - questBookPageSectionPriority[right.section]
+      || left.chapter.order - right.chapter.order
+      || left.bookIndex - right.bookIndex
+    ))
+    .map((entry, displayIndex): QuestBookPageQuestEntry => ({
+      ...entry,
+      displayIndex,
+    }));
 };
 
 export const getQuestBookTotalPages = (book: QuestBookView): number => (
@@ -178,44 +207,115 @@ export const getQuestBookPageView = (
 ): QuestBookPageView => {
   const normalizedPageNumber = normalizeQuestBookPageNumber(book, pageNumber);
   const startIndex = (normalizedPageNumber - 1) * questBookPageSize;
-  const quests = book.quests.slice(startIndex, startIndex + questBookPageSize);
+  const entries = createQuestBookNavigationEntries(book.quests).slice(startIndex, startIndex + questBookPageSize);
 
   return {
     pageNumber: normalizedPageNumber,
     totalPages: getQuestBookTotalPages(book),
     totalQuests: book.quests.length,
     startIndex,
-    endIndex: startIndex + quests.length,
-    quests,
+    endIndex: startIndex + entries.length,
+    quests: entries.map((entry) => entry.quest),
+    entries,
   };
 };
 
-const renderQuestStatusLine = (quest: QuestView): string => {
-  if (quest.status === 'READY_TO_CLAIM') {
-    return `${questStatusLabels.READY_TO_CLAIM} · ${formatResourceReward(quest.reward)}`;
-  }
-
-  if (quest.status === 'CLAIMED') {
-    return questStatusLabels.CLAIMED;
-  }
-
-  return `${questStatusLabels.IN_PROGRESS} · ${quest.progress.current}/${quest.progress.required} · ${quest.objective}`;
-};
-
-const renderQuestLine = (quest: QuestView, absoluteIndex: number): string => (
-  `${absoluteIndex + 1}. ${quest.icon} ${quest.title}\n   ${renderQuestStatusLine(quest)}`
+const renderProgressLine = (quest: QuestView): string => (
+  `${quest.progress.current}/${quest.progress.required} · ${quest.objective}`
 );
 
-const renderQuestPageGroup = (group: QuestChapterGroup, page: QuestBookPageView): string => [
-  `Глава: ${group.chapter.title}`,
-  ...group.quests.map((quest) => renderQuestLine(quest, page.startIndex + page.quests.indexOf(quest))),
+const trimTrailingSentencePunctuation = (value: string): string => value.replace(/[.!?]+$/u, '');
+
+const renderReadyQuestLine = (entry: QuestBookPageQuestEntry): string => (
+  `${entry.displayIndex + 1}. ${entry.quest.icon} ${entry.quest.title} · ${entry.chapter.title}\n`
+  + `   ${questStatusLabels.READY_TO_CLAIM}: ${formatResourceReward(entry.quest.reward)}`
+);
+
+const renderProgressQuestLine = (entry: QuestBookPageQuestEntry): string => (
+  `${entry.displayIndex + 1}. ${entry.quest.icon} ${entry.quest.title} · ${entry.chapter.title}\n`
+  + `   ${questStatusLabels.IN_PROGRESS}: ${renderProgressLine(entry.quest)}`
+);
+
+const renderArchiveQuestLine = (entry: QuestBookPageQuestEntry): string => (
+  `${entry.displayIndex + 1}. ${entry.quest.icon} ${entry.quest.title}`
+);
+
+const renderSectionTitle = (
+  section: QuestBookPageSection,
+  entryCount: number,
+): string => {
+  switch (section) {
+    case 'READY_REWARD':
+      return `🎁 Готовые награды · ${entryCount}`;
+    case 'NEAREST_GOAL':
+      return '🧭 Ближайший след';
+    case 'IN_PROGRESS':
+      return `🌒 Следы дальше · ${entryCount}`;
+    case 'ARCHIVE':
+      return `✅ Архив · ${entryCount}`;
+  }
+};
+
+const renderQuestPageSectionLine = (
+  section: QuestBookPageSection,
+  entry: QuestBookPageQuestEntry,
+): string => {
+  switch (section) {
+    case 'READY_REWARD':
+      return renderReadyQuestLine(entry);
+    case 'NEAREST_GOAL':
+    case 'IN_PROGRESS':
+      return renderProgressQuestLine(entry);
+    case 'ARCHIVE':
+      return renderArchiveQuestLine(entry);
+  }
+};
+
+const renderQuestPageSection = (
+  section: QuestBookPageSection,
+  entries: readonly QuestBookPageQuestEntry[],
+): string => [
+  renderSectionTitle(section, entries.length),
+  ...entries.map((entry) => renderQuestPageSectionLine(section, entry)),
 ].join('\n');
 
-const renderQuestBookPageSections = (book: QuestBookView, page: QuestBookPageView): readonly string[] => {
-  const orderLookup = createQuestOrderLookup(book.quests);
+const groupQuestPageEntriesBySection = (
+  entries: readonly QuestBookPageQuestEntry[],
+): readonly [QuestBookPageSection, readonly QuestBookPageQuestEntry[]][] => {
+  const groups = entries.reduce<Map<QuestBookPageSection, QuestBookPageQuestEntry[]>>((sections, entry) => {
+    const group = sections.get(entry.section) ?? [];
+    group.push(entry);
+    sections.set(entry.section, group);
+    return sections;
+  }, new Map());
 
-  return groupQuestsByChapter(page.quests, orderLookup).map((group) => renderQuestPageGroup(group, page));
+  return [...groups.entries()].sort(([left], [right]) => (
+    questBookPageSectionPriority[left] - questBookPageSectionPriority[right]
+  ));
 };
+
+const renderQuestBookPageSections = (page: QuestBookPageView): readonly string[] => (
+  groupQuestPageEntriesBySection(page.entries).map(([section, entries]) => renderQuestPageSection(section, entries))
+);
+
+const renderNearestGoalSummary = (book: QuestBookView): string => {
+  const nearestGoal = findNearestQuestGoal(book.quests);
+  if (!nearestGoal) {
+    return 'Ближайший след: все открытые следы закрыты.';
+  }
+
+  return `Ближайший след: ${nearestGoal.icon} ${nearestGoal.title} — ${trimTrailingSentencePunctuation(renderProgressLine(nearestGoal))}.`;
+};
+
+const renderReadyRewardSummary = (book: QuestBookView): string => (
+  book.readyToClaimCount > 0
+    ? `Готовые награды: ${formatCountPhrase(book.readyToClaimCount, [
+      'запись ждёт',
+      'записи ждут',
+      'записей ждут',
+    ])}.`
+    : 'Готовых наград сейчас нет.'
+);
 
 export const renderQuestBook = (book: QuestBookView, pageNumber = 1): string => {
   const page = getQuestBookPageView(book, pageNumber);
@@ -225,11 +325,12 @@ export const renderQuestBook = (book: QuestBookView, pageNumber = 1): string => 
 
   return [
     '📜 Книга путей',
-    'Руны помнят не обещания, а завершённые шаги.',
+    'Руны помнят путь: ближайший след держит направление, готовые награды ждут отдельно, старое уходит в архив.',
     `В книге: ${renderQuestBookSummary(book)}.`,
+    renderNearestGoalSummary(book),
+    renderReadyRewardSummary(book),
     `Страница ${page.pageNumber} из ${page.totalPages} · ${pageRange}.`,
-    '🎁 — награда не собрана.',
-    ...renderQuestBookPageSections(book, page),
+    ...renderQuestBookPageSections(page),
   ].join('\n\n');
 };
 
