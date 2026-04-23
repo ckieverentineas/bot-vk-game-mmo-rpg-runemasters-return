@@ -12,6 +12,7 @@ import type { BattleView, PlayerState } from '../../../shared/types/game';
 import {
   createBattleKeyboard,
   createBattleResultKeyboard,
+  createKeyboardClear,
   createMainMenuKeyboard,
 } from '../../keyboards';
 import {
@@ -33,6 +34,14 @@ export type BattleReplyTelemetry = {
   readonly trackPostSessionNextGoalShown: (player: PlayerState, battle: BattleView) => Promise<void>;
 };
 
+const resolveViewerPlayerId = (battle: BattleView, vkId?: number): number | undefined => {
+  if (vkId === undefined || !battle.party) {
+    return undefined;
+  }
+
+  return battle.party.members.find((member) => member.vkId === vkId)?.playerId;
+};
+
 const normalizeBattleReplyState = (state: BattleReplyState): BattleActionResultView => (
   'battle' in state
     ? {
@@ -48,9 +57,20 @@ const normalizeBattleReplyState = (state: BattleReplyState): BattleActionResultV
       }
 );
 
-export const resolveBattleReplyKeyboard = (battle: BattleView): ReturnType<typeof createBattleKeyboard> => (
-  battle.status === 'ACTIVE' ? createBattleKeyboard(battle) : createBattleResultKeyboard(battle)
-);
+export const resolveBattleReplyKeyboard = (
+  battle: BattleView,
+  viewerPlayerId?: number,
+): ReturnType<typeof createBattleKeyboard> => {
+  if (battle.status !== 'ACTIVE') {
+    return createBattleResultKeyboard(battle);
+  }
+
+  if (battle.party && viewerPlayerId !== undefined && battle.party.currentTurnPlayerId !== viewerPlayerId) {
+    return createKeyboardClear();
+  }
+
+  return createBattleKeyboard(battle);
+};
 
 export const replyWithExplorationResult = async (
   ctx: Context,
@@ -79,9 +99,13 @@ export const replyWithBattle = async (
 ): Promise<void> => {
   const result = normalizeBattleReplyState(state);
   const battle = result.battle;
+  const viewerPlayerId = resolveViewerPlayerId(battle, vkId);
 
   if (battle.status === 'ACTIVE') {
-    await ctx.reply(renderBattle(battle), { keyboard: resolveBattleReplyKeyboard(battle) });
+    await ctx.reply(
+      renderBattle(battle, undefined, undefined, viewerPlayerId),
+      { keyboard: resolveBattleReplyKeyboard(battle, viewerPlayerId) },
+    );
     return;
   }
 
@@ -100,7 +124,7 @@ export const replyWithBattle = async (
   }
 
   await ctx.reply(
-    renderBattle(battle, player ?? undefined, result.acquisitionSummary),
+    renderBattle(battle, player ?? undefined, result.acquisitionSummary, viewerPlayerId),
     { keyboard: createBattleResultKeyboard(battle, player ?? undefined) },
   );
 

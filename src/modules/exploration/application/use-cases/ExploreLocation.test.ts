@@ -159,6 +159,33 @@ const createBattle = (overrides: Partial<BattleView> = {}): BattleView => ({
   ...overrides,
 });
 
+const createPartyView = () => ({
+  id: 'party-1',
+  inviteCode: 'ABC123',
+  leaderPlayerId: 1,
+  status: 'OPEN' as const,
+  activeBattleId: null,
+  maxMembers: 2,
+  members: [
+    {
+      playerId: 1,
+      vkId: 1001,
+      name: 'Рунный мастер #1001',
+      role: 'LEADER' as const,
+      joinedAt: '2026-04-12T00:00:00.000Z',
+    },
+    {
+      playerId: 2,
+      vkId: 1002,
+      name: 'Рунный мастер #1002',
+      role: 'MEMBER' as const,
+      joinedAt: '2026-04-12T00:01:00.000Z',
+    },
+  ],
+  createdAt: '2026-04-12T00:00:00.000Z',
+  updatedAt: '2026-04-12T00:01:00.000Z',
+});
+
 const createCraftedItem = (
   overrides: Partial<PlayerCraftedItemView> = {},
 ): PlayerCraftedItemView => ({
@@ -295,6 +322,25 @@ describe('ExploreLocation', () => {
       }),
       expect.anything(),
     );
+  });
+
+  it('blocks solo exploration while the player remains in an active party', async () => {
+    const player = createPlayer();
+    const repository = {
+      findPlayerByVkId: vi.fn().mockResolvedValue(player),
+      getCommandIntentResult: vi.fn().mockResolvedValue(null),
+      getActiveBattle: vi.fn().mockResolvedValue(null),
+      getActiveParty: vi.fn().mockResolvedValue(createPartyView()),
+      createBattle: vi.fn(),
+    } as unknown as GameRepository;
+    const useCase = new ExploreLocation(repository, createWorldCatalog(), createRandom());
+    const stateKey = buildExploreLocationIntentStateKey(player);
+
+    await expect(useCase.execute(player.vkId, 'intent-explore-party-1', stateKey, 'payload')).rejects.toMatchObject({
+      code: 'party_explore_required',
+    });
+
+    expect(repository.createBattle).not.toHaveBeenCalled();
   });
 
   it('offers an encounter decision before an adventure battle starts', async () => {
@@ -1391,7 +1437,7 @@ describe('ExploreLocation', () => {
     const activeBattle = createBattle({ turnOwner: 'ENEMY' });
     const recoveredBattle = createBattle({
       turnOwner: 'PLAYER',
-      log: [...activeBattle.log, '👾 Учебный огонёк касается искрой и наносит 1 урона.'],
+      log: [...activeBattle.log, '👾 [Учебный огонёк] касается искрой [Рунный мастер #1001] и наносит 1 урона.'],
       player: {
         ...activeBattle.player,
         currentHealth: 7,
@@ -1420,7 +1466,7 @@ describe('ExploreLocation', () => {
         ...activeBattle.player,
         currentHealth: 7,
       },
-      log: [...activeBattle.log, '👾 Учебный огонёк касается искрой и наносит 1 урона.'],
+      log: [...activeBattle.log, '👾 [Учебный огонёк] касается искрой [Рунный мастер #1001] и наносит 1 урона.'],
     });
     const repository = {
       findPlayerByVkId: vi.fn().mockResolvedValue(createPlayer({ activeBattleId: activeBattle.id })),

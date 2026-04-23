@@ -232,6 +232,16 @@ export class ExploreLocation {
       return recoveredBattle.recovered ? recoveredBattle.battle : activeBattle;
     }
 
+    const activeParty = typeof this.repository.getActiveParty === 'function'
+      ? await this.repository.getActiveParty(player.playerId)
+      : null;
+    if (activeParty) {
+      throw new AppError(
+        'party_explore_required',
+        'У вас активен отряд. Исследуйте вместе или откройте «🤝 Отряд»: лидер может распустить отряд, участник — выйти.',
+      );
+    }
+
     const currentStateKey = buildExploreLocationIntentStateKey(player);
     const scopedCreateIntent = intentSource === 'legacy_text'
       ? { intentId: resolveCommandIntent(intentId, undefined, intentSource, false)?.intentId as string, intentStateKey: currentStateKey }

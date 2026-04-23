@@ -13,9 +13,11 @@ import { DeletePlayer } from '../modules/player/application/use-cases/DeletePlay
 import { GetPlayerProfile } from '../modules/player/application/use-cases/GetPlayerProfile';
 import { RegisterPlayer } from '../modules/player/application/use-cases/RegisterPlayer';
 import { CreateParty } from '../modules/party/application/use-cases/CreateParty';
+import { DisbandParty } from '../modules/party/application/use-cases/DisbandParty';
 import { ExploreParty } from '../modules/party/application/use-cases/ExploreParty';
 import { GetParty } from '../modules/party/application/use-cases/GetParty';
 import { JoinParty } from '../modules/party/application/use-cases/JoinParty';
+import { LeaveParty } from '../modules/party/application/use-cases/LeaveParty';
 import { ClaimQuestReward } from '../modules/quests/application/use-cases/ClaimQuestReward';
 import { GetQuestBook } from '../modules/quests/application/use-cases/GetQuestBook';
 import { CollectPendingReward } from '../modules/rewards/application/use-cases/CollectPendingReward';
@@ -52,6 +54,8 @@ export interface AppServices {
   getParty: GetParty;
   createParty: CreateParty;
   joinParty: JoinParty;
+  leaveParty: LeaveParty;
+  disbandParty: DisbandParty;
   exploreParty: ExploreParty;
   getQuestBook: GetQuestBook;
   getBestiary: GetBestiary;
@@ -98,6 +102,8 @@ export const createAppServices = (): AppServices => {
     getParty: new GetParty(repository),
     createParty: new CreateParty(repository),
     joinParty: new JoinParty(repository),
+    leaveParty: new LeaveParty(repository),
+    disbandParty: new DisbandParty(repository),
     exploreParty: new ExploreParty(repository, worldCatalog, random),
     getQuestBook: new GetQuestBook(repository, telemetry),
     getBestiary: new GetBestiary(repository, worldCatalog),

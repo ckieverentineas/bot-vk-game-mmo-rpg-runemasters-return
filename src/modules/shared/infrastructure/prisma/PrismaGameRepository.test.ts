@@ -278,6 +278,64 @@ const createBattleView = (overrides: Partial<BattleView> = {}): BattleView => ({
   ...overrides,
 });
 
+const createPlayerRecordFor = (
+  playerId: number,
+  vkId: number,
+  overrides: Partial<ReturnType<typeof createPlayerRecord>> = {},
+) => ({
+  ...createPlayerRecord(),
+  id: playerId,
+  userId: 9 + playerId,
+  user: {
+    vkId,
+  },
+  progress: {
+    ...createPlayerRecord().progress,
+    playerId,
+  },
+  inventory: {
+    ...createPlayerRecord().inventory,
+    playerId,
+  },
+  ...overrides,
+});
+
+const createPartyRecord = (overrides: Partial<Record<string, unknown>> = {}) => ({
+  id: 'party-1',
+  inviteCode: 'ABC123',
+  leaderPlayerId: 1,
+  status: 'OPEN',
+  activeBattleId: null,
+  maxMembers: 2,
+  createdAt: new Date('2026-04-12T00:00:00.000Z'),
+  updatedAt: new Date('2026-04-12T00:01:00.000Z'),
+  members: [
+    {
+      partyId: 'party-1',
+      playerId: 1,
+      role: 'LEADER',
+      joinedAt: new Date('2026-04-12T00:00:00.000Z'),
+      player: {
+        user: {
+          vkId: 1001,
+        },
+      },
+    },
+    {
+      partyId: 'party-1',
+      playerId: 2,
+      role: 'MEMBER',
+      joinedAt: new Date('2026-04-12T00:01:00.000Z'),
+      player: {
+        user: {
+          vkId: 1002,
+        },
+      },
+    },
+  ],
+  ...overrides,
+});
+
 const createRuneDraft = (): RuneDraft => ({
   runeCode: 'rune-1',
   archetypeCode: 'ember',
@@ -596,6 +654,17 @@ const createPrismaMock = () => {
       create: vi.fn(),
       updateMany: vi.fn(),
       delete: vi.fn(),
+    },
+    playerParty: {
+      findFirst: vi.fn(),
+      findUnique: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+      updateMany: vi.fn(),
+    },
+    playerPartyMember: {
+      create: vi.fn(),
+      deleteMany: vi.fn(),
     },
     gameLog: {
       create: vi.fn(),
@@ -2755,6 +2824,104 @@ describe('PrismaGameRepository release hardening', () => {
     expect(tx.playerInventory.update).not.toHaveBeenCalled();
     expect(tx.rune.create).not.toHaveBeenCalled();
     expect(tx.rewardLedgerRecord.create).not.toHaveBeenCalled();
+  });
+
+  it('returns the party to open state after a shared battle ends', async () => {
+    const { repository, tx } = createPrismaMock();
+    const leaderRecord = createPlayerRecordFor(1, 1001);
+    const allyRecord = createPlayerRecordFor(2, 1002);
+    const leaderSnapshot = {
+      ...createBattleView().player,
+      playerId: 1,
+      name: 'Рунный мастер #1001',
+    };
+    const allySnapshot = {
+      ...createBattleView().player,
+      playerId: 2,
+      name: 'Рунный мастер #1002',
+    };
+    const battleView = createBattleView({
+      battleType: 'PARTY_PVE',
+      result: 'DEFEAT',
+      rewards: null,
+      player: leaderSnapshot,
+      party: {
+        id: 'party-1',
+        inviteCode: 'ABC123',
+        leaderPlayerId: 1,
+        currentTurnPlayerId: null,
+        enemyTargetPlayerId: null,
+        actedPlayerIds: [1, 2],
+        members: [
+          { playerId: 1, vkId: 1001, name: leaderSnapshot.name, snapshot: leaderSnapshot },
+          { playerId: 2, vkId: 1002, name: allySnapshot.name, snapshot: allySnapshot },
+        ],
+      },
+    });
+    const persistedBattle = createBattleRow({
+      battleType: 'PARTY_PVE',
+      status: 'COMPLETED',
+      result: 'DEFEAT',
+      rewardsSnapshot: null,
+    });
+
+    tx.battleSession.updateMany.mockResolvedValue({ count: 1 });
+    tx.player.findUnique.mockImplementation(async ({ where }: { where: { id: number } }) => (
+      where.id === allyRecord.id ? allyRecord : leaderRecord
+    ));
+    tx.player.update.mockResolvedValue({});
+    tx.playerProgress.update.mockResolvedValue({});
+    tx.playerParty.updateMany.mockResolvedValue({ count: 1 });
+    tx.battleSession.findFirst.mockResolvedValue(persistedBattle);
+
+    await repository.finalizeBattle(1, battleView);
+
+    expect(tx.playerParty.updateMany).toHaveBeenCalledWith({
+      where: {
+        id: 'party-1',
+        activeBattleId: 'battle-1',
+      },
+      data: {
+        status: 'OPEN',
+        activeBattleId: null,
+      },
+    });
+  });
+
+  it('lets a member leave an active party outside battle', async () => {
+    const { repository, tx } = createPrismaMock();
+
+    tx.playerParty.findFirst.mockResolvedValue(createPartyRecord());
+    tx.playerPartyMember.deleteMany.mockResolvedValue({ count: 1 });
+
+    await expect(repository.leaveParty(2)).resolves.toBeUndefined();
+
+    expect(tx.playerPartyMember.deleteMany).toHaveBeenCalledWith({
+      where: {
+        partyId: 'party-1',
+        playerId: 2,
+      },
+    });
+  });
+
+  it('lets the leader disband an active party outside battle', async () => {
+    const { repository, tx } = createPrismaMock();
+
+    tx.playerParty.findFirst.mockResolvedValue(createPartyRecord());
+    tx.playerParty.updateMany.mockResolvedValue({ count: 1 });
+
+    await expect(repository.disbandParty(1)).resolves.toBeUndefined();
+
+    expect(tx.playerParty.updateMany).toHaveBeenCalledWith({
+      where: {
+        id: 'party-1',
+        leaderPlayerId: 1,
+      },
+      data: {
+        status: 'COMPLETED',
+        activeBattleId: null,
+      },
+    });
   });
 
   it('decays workshop loadout durability once when finalizing battle', async () => {

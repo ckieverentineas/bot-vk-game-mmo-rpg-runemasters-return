@@ -20,6 +20,12 @@ interface ReplyCall {
   readonly keyboard: unknown;
 }
 
+interface DirectMessageCall {
+  readonly userId: number | null;
+  readonly message: string;
+  readonly keyboard: unknown;
+}
+
 interface SerializedKeyboard {
   readonly isInline: boolean;
   readonly rows: unknown[];
@@ -38,6 +44,7 @@ interface FakeContextInput {
 }
 
 type ReplyMock = ReturnType<typeof vi.fn>;
+type SendMessageMock = ReturnType<typeof vi.fn>;
 
 interface FakeContext {
   readonly senderId: number;
@@ -47,26 +54,37 @@ interface FakeContext {
   readonly text: string;
   readonly messagePayload: { command?: string; intentId?: string; stateKey?: string } | null;
   readonly reply: ReplyMock;
+  readonly api: {
+    readonly messages: {
+      readonly send: SendMessageMock;
+    };
+  };
 }
 
 const createFakeContext = (input: FakeContextInput): FakeContext => {
   const reply = vi.fn().mockResolvedValue(undefined);
+  const send = vi.fn().mockResolvedValue(1);
 
-    return {
-      senderId: input.senderId ?? 1001,
-      peerId: input.peerId ?? 2000000001,
-      id: input.id ?? 501,
-      conversationMessageId: input.conversationMessageId ?? 77,
-      text: input.text ?? '',
-      messagePayload: input.command
-        ? {
-            command: input.command,
-            ...(input.intentId ? { intentId: input.intentId } : {}),
-            ...(input.stateKey ? { stateKey: input.stateKey } : {}),
-          }
-        : null,
-      reply,
-    };
+  return {
+    senderId: input.senderId ?? 1001,
+    peerId: input.peerId ?? 2000000001,
+    id: input.id ?? 501,
+    conversationMessageId: input.conversationMessageId ?? 77,
+    text: input.text ?? '',
+    messagePayload: input.command
+      ? {
+          command: input.command,
+          ...(input.intentId ? { intentId: input.intentId } : {}),
+          ...(input.stateKey ? { stateKey: input.stateKey } : {}),
+        }
+      : null,
+    reply,
+    api: {
+      messages: {
+        send,
+      },
+    },
+  };
 };
 
 const getReplyCalls = (ctx: FakeContext): ReplyCall[] => (
@@ -76,9 +94,23 @@ const getReplyCalls = (ctx: FakeContext): ReplyCall[] => (
   }))
 );
 
+const getDirectMessageCalls = (ctx: FakeContext): DirectMessageCall[] => (
+  ctx.api.messages.send.mock.calls.map(([options]) => ({
+    userId: typeof options?.user_id === 'number' ? options.user_id : null,
+    message: typeof options?.message === 'string' ? options.message : '',
+    keyboard: options?.keyboard ?? null,
+  }))
+);
+
 const serializeKeyboard = (keyboard: unknown): SerializedKeyboard => (
   JSON.parse(JSON.stringify(keyboard)) as SerializedKeyboard
 );
+
+const countKeyboardButtons = (keyboard: unknown): number => {
+  const serialized = serializeKeyboard(keyboard);
+  const rowButtonCount = serialized.rows.reduce((total, row) => total + row.length, 0);
+  return rowButtonCount + (serialized.currentRow?.length ?? 0);
+};
 
 const createPlayer = (overrides: Partial<PlayerState> = {}): PlayerState => ({
   userId: 1,
@@ -180,6 +212,37 @@ const createBattle = (overrides: Partial<BattleView> = {}): BattleView => ({
   ...overrides,
 });
 
+const createPartyBattle = (overrides: Partial<BattleView> = {}): BattleView => {
+  const leader = createBattle().player;
+  const ally = {
+    ...createBattle().player,
+    playerId: 2,
+    name: 'Рунный мастер #1002',
+  };
+
+  return createBattle({
+    battleType: 'PARTY_PVE',
+    status: 'ACTIVE',
+    result: null,
+    rewards: null,
+    turnOwner: 'PLAYER',
+    player: leader,
+    party: {
+      id: 'party-1',
+      inviteCode: 'ABC123',
+      leaderPlayerId: 1,
+      currentTurnPlayerId: 1,
+      enemyTargetPlayerId: null,
+      actedPlayerIds: [],
+      members: [
+        { playerId: 1, vkId: 1001, name: leader.name, snapshot: leader },
+        { playerId: 2, vkId: 1002, name: ally.name, snapshot: ally },
+      ],
+    },
+    ...overrides,
+  });
+};
+
 const createPendingReward = (): PendingRewardView => ({
   ledgerKey: 'battle-victory:battle-1',
   source: {
@@ -275,7 +338,7 @@ const createServices = (): AppServices => {
     },
     log: [
       '🏆 Победа! Награда: 6 опыта, 2 пыли, обычных осколков: 2.',
-      '⚔️ Вы наносите 6 урона врагу Учебный огонёк.',
+      '⚔️ [Рунный мастер #1001] наносит 6 урона [Учебный огонёк].',
     ],
   });
   const readyQuest = {
@@ -376,6 +439,32 @@ const createServices = (): AppServices => {
     repairTools: [],
     craftedItems: [],
   };
+  const partyView = {
+    id: 'party-1',
+    inviteCode: 'ABC123',
+    leaderPlayerId: 1,
+    status: 'OPEN' as const,
+    activeBattleId: null,
+    maxMembers: 2,
+    members: [
+      {
+        playerId: 1,
+        vkId: 1001,
+        name: 'Рунный мастер #1001',
+        role: 'LEADER' as const,
+        joinedAt: '2026-04-12T00:00:00.000Z',
+      },
+      {
+        playerId: 2,
+        vkId: 1002,
+        name: 'Рунный мастер #1002',
+        role: 'MEMBER' as const,
+        joinedAt: '2026-04-12T00:01:00.000Z',
+      },
+    ],
+    createdAt: '2026-04-12T00:00:00.000Z',
+    updatedAt: '2026-04-12T00:01:00.000Z',
+  };
 
   return {
     telemetry: {
@@ -417,6 +506,39 @@ const createServices = (): AppServices => {
     getPlayerProfile: {
       execute: vi.fn().mockResolvedValue(basePlayer),
     } as unknown as AppServices['getPlayerProfile'],
+    getParty: {
+      execute: vi.fn().mockResolvedValue({
+        player: basePlayer,
+        party: partyView,
+      }),
+    } as unknown as AppServices['getParty'],
+    createParty: {
+      execute: vi.fn().mockResolvedValue({
+        player: basePlayer,
+        party: partyView,
+      }),
+    } as unknown as AppServices['createParty'],
+    joinParty: {
+      execute: vi.fn().mockResolvedValue({
+        player: createPlayer({ vkId: 1002, playerId: 2 }),
+        party: partyView,
+      }),
+    } as unknown as AppServices['joinParty'],
+    leaveParty: {
+      execute: vi.fn().mockResolvedValue({
+        player: createPlayer({ vkId: 1002, playerId: 2 }),
+        party: null,
+      }),
+    } as unknown as AppServices['leaveParty'],
+    disbandParty: {
+      execute: vi.fn().mockResolvedValue({
+        player: basePlayer,
+        party: null,
+      }),
+    } as unknown as AppServices['disbandParty'],
+    exploreParty: {
+      execute: vi.fn().mockResolvedValue(createPartyBattle()),
+    } as unknown as AppServices['exploreParty'],
     getQuestBook: {
       execute: vi.fn().mockResolvedValue(questBook),
     } as unknown as AppServices['getQuestBook'],
@@ -2096,7 +2218,7 @@ describe('GameHandler smoke', () => {
           },
         },
       },
-      log: ['🌀 Импульс углей прожигает Учебный огонёк на 5 урона.'],
+      log: ['🌀 [Рунный мастер #1001] применяет «Импульс углей» против [Учебный огонёк]: 5 урона.'],
     });
     vi.mocked(services.performBattleAction.execute).mockResolvedValueOnce({
       battle: runeSkillBattle,
@@ -2120,7 +2242,7 @@ describe('GameHandler smoke', () => {
         ...createBattle().player,
         guardPoints: 2,
       },
-      log: ['🛡️ Вы занимаете защитную стойку и готовите защиту на 2 урона.'],
+      log: ['🛡️ [Рунный мастер #1001] готовит защиту на 2 урона.'],
       turnOwner: 'ENEMY',
     });
     vi.mocked(services.performBattleAction.execute).mockResolvedValueOnce({
@@ -2134,7 +2256,7 @@ describe('GameHandler smoke', () => {
     await handler.handle(ctx as never);
 
     expect(services.performBattleAction.execute).toHaveBeenCalledWith(1001, 'DEFEND', 'intent-battle-defend-1', 'state-battle-defend-1', 'payload');
-    expect(getReplyCalls(ctx)[0]?.message).toContain('защитную стойку');
+    expect(getReplyCalls(ctx)[0]?.message).toContain('готовит защиту');
   });
 
   it('показывает телеграф тяжёлого удара врага', async () => {
@@ -2510,5 +2632,131 @@ describe('GameHandler smoke', () => {
     expect(replies[0]?.message).toContain('Сначала завершите текущий бой');
     expect(replies[0]?.message).toContain('⚔️ Бой');
     expect(JSON.stringify(replies[0]?.keyboard)).toContain('атака');
+  });
+
+  it('досылает союзнику состояние отрядного боя при старте выхода', async () => {
+    const services = createServices();
+    vi.mocked(services.getPlayerProfile.execute).mockResolvedValueOnce(createPlayer({
+      tutorialState: 'SKIPPED',
+      locationLevel: 1,
+      activeBattleId: null,
+    }));
+    vi.mocked(services.exploreParty.execute).mockResolvedValueOnce(createPartyBattle());
+    const handler = new GameHandler(services);
+    const ctx = createFakeContext({ command: gameCommands.exploreParty });
+
+    await handler.handle(ctx as never);
+
+    const directMessages = getDirectMessageCalls(ctx);
+    expect(directMessages).toHaveLength(1);
+    expect(directMessages[0]?.userId).toBe(1002);
+    expect(directMessages[0]?.message).toContain('👤 Вы: Рунный мастер #1002');
+    expect(directMessages[0]?.message).toContain('👤 Товарищ: Рунный мастер #1001');
+  });
+
+  it('передает ход союзнику отдельным сообщением и убирает боевые кнопки у уже сходившего игрока', async () => {
+    const services = createServices();
+    const allySnapshot = {
+      ...createBattle().player,
+      playerId: 2,
+      name: 'Рунный мастер #1002',
+    };
+    const handedOffBattle = createPartyBattle({
+      player: allySnapshot,
+      party: {
+        ...createPartyBattle().party!,
+        currentTurnPlayerId: 2,
+        members: [
+          createPartyBattle().party!.members[0],
+          { playerId: 2, vkId: 1002, name: allySnapshot.name, snapshot: allySnapshot },
+        ],
+      },
+    });
+    vi.mocked(services.performBattleAction.execute).mockResolvedValueOnce({
+      battle: handedOffBattle,
+      player: null,
+      acquisitionSummary: null,
+    });
+    const handler = new GameHandler(services);
+    const ctx = createFakeContext({
+      command: gameCommands.attack,
+      intentId: 'intent-party-battle-1',
+      stateKey: 'state-party-battle-1',
+    });
+
+    await handler.handle(ctx as never);
+
+    const replies = getReplyCalls(ctx);
+    const directMessages = getDirectMessageCalls(ctx);
+    expect(serializeKeyboard(replies[0]?.keyboard).rows).toEqual([]);
+    expect(directMessages).toHaveLength(1);
+    expect(directMessages[0]?.userId).toBe(1002);
+    expect(countKeyboardButtons(directMessages[0]?.keyboard)).toBeGreaterThan(0);
+  });
+
+  it('возвращает ход капитану отдельным сообщением после действия союзника', async () => {
+    const services = createServices();
+    const leaderSnapshot = createBattle().player;
+    const allySnapshot = {
+      ...createBattle().player,
+      playerId: 2,
+      name: 'Рунный мастер #1002',
+    };
+    const handedBackBattle = createPartyBattle({
+      playerId: 1,
+      player: leaderSnapshot,
+      party: {
+        ...createPartyBattle().party!,
+        currentTurnPlayerId: 1,
+        members: [
+          { playerId: 1, vkId: 1001, name: leaderSnapshot.name, snapshot: leaderSnapshot },
+          { playerId: 2, vkId: 1002, name: allySnapshot.name, snapshot: allySnapshot },
+        ],
+      },
+    });
+    vi.mocked(services.performBattleAction.execute).mockResolvedValueOnce({
+      battle: handedBackBattle,
+      player: null,
+      acquisitionSummary: null,
+    });
+    const handler = new GameHandler(services);
+    const ctx = createFakeContext({
+      senderId: 1002,
+      command: gameCommands.attack,
+      intentId: 'intent-party-battle-2',
+      stateKey: 'state-party-battle-2',
+    });
+
+    await handler.handle(ctx as never);
+
+    const directMessages = getDirectMessageCalls(ctx);
+    expect(directMessages).toHaveLength(1);
+    expect(directMessages[0]?.userId).toBe(1001);
+    expect(countKeyboardButtons(directMessages[0]?.keyboard)).toBeGreaterThan(0);
+  });
+
+  it('распускает отряд по команде лидера и возвращает экран без активного отряда', async () => {
+    const services = createServices();
+    const handler = new GameHandler(services);
+    const ctx = createFakeContext({ command: gameCommands.disbandParty });
+
+    await handler.handle(ctx as never);
+
+    expect(services.disbandParty.execute).toHaveBeenCalledWith(1001);
+    expect(getReplyCalls(ctx)[0]?.message).toContain('Сейчас вы идёте один.');
+  });
+
+  it('позволяет участнику выйти из отряда без расформирования лидера', async () => {
+    const services = createServices();
+    const handler = new GameHandler(services);
+    const ctx = createFakeContext({
+      senderId: 1002,
+      command: gameCommands.leaveParty,
+    });
+
+    await handler.handle(ctx as never);
+
+    expect(services.leaveParty.execute).toHaveBeenCalledWith(1002);
+    expect(getReplyCalls(ctx)[0]?.message).toContain('Сейчас вы идёте один.');
   });
 });

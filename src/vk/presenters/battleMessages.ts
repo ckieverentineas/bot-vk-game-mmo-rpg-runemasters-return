@@ -1,3 +1,4 @@
+import { gameContent } from '../../content/game-content';
 import { buildBattleClarityView } from '../../modules/combat/application/read-models/battle-clarity';
 import { buildBattleRuneActionReadinessView } from '../../modules/combat/application/read-models/battle-rune-action-readiness';
 import { isBattleEncounterOffered } from '../../modules/combat/domain/battle-encounter';
@@ -21,6 +22,7 @@ import {
 } from './message-formatting';
 
 const meterEmptySegment = '⬛';
+const partyBattleSize = 2;
 
 const renderMeter = (current: number, max: number, width: number, filledSegment: string): string => {
   if (max <= 0) {
@@ -101,7 +103,26 @@ const renderBattleActorBlock = (
   ].join('\n');
 };
 
-const renderBattlePartyLines = (battle: BattleView): string[] => {
+const resolveBattlePartyPerspective = (viewerPlayerId: number | undefined, memberPlayerId: number): string | null => {
+  if (viewerPlayerId === undefined) {
+    return null;
+  }
+
+  return memberPlayerId === viewerPlayerId ? 'вы' : 'союзник';
+};
+
+const resolveBattleLocationName = (biomeCode: string): string => (
+  gameContent.world.biomes.find((biome) => biome.code === biomeCode)?.name ?? biomeCode
+);
+
+const findPartyBattleViewerMember = (
+  battle: BattleView,
+  viewerPlayerId: number,
+): NonNullable<BattleView['party']>['members'][number] | null => (
+  battle.party?.members.find((member) => member.playerId === viewerPlayerId) ?? null
+);
+
+const renderBattlePartyLines = (battle: BattleView, viewerPlayerId?: number): string[] => {
   if (!battle.party) {
     return [];
   }
@@ -111,10 +132,69 @@ const renderBattlePartyLines = (battle: BattleView): string[] => {
     ...battle.party.members.map((member) => {
       const marker = member.playerId === battle.party?.currentTurnPlayerId ? '▶' : '•';
       const health = `${member.snapshot.currentHealth}/${member.snapshot.maxHealth} HP`;
-      return `${marker} ${member.name} · ${health}`;
+      const perspective = resolveBattlePartyPerspective(viewerPlayerId, member.playerId);
+      return perspective
+        ? `${marker} ${member.name} · ${perspective} · ${health}`
+        : `${marker} ${member.name} · ${health}`;
     }),
     '',
   ];
+};
+
+const renderPartyBattleOverview = (battle: BattleView, viewerPlayerId?: number): string[] => {
+  if (!battle.party || viewerPlayerId === undefined) {
+    return [];
+  }
+
+  const viewerMember = findPartyBattleViewerMember(battle, viewerPlayerId);
+  if (!viewerMember) {
+    return [];
+  }
+
+  const allyBlocks = battle.party.members
+    .filter((member) => member.playerId !== viewerPlayerId)
+    .flatMap((member, index) => ([
+      renderBattleActorBlock(
+        index === 0 ? '👤 Товарищ' : `👤 Союзник ${index + 1}`,
+        member.snapshot,
+        { guardPoints: member.snapshot.guardPoints },
+      ),
+      '',
+    ]));
+
+  return [
+    `🌐 Локация: ${resolveBattleLocationName(battle.biomeCode)} [Отряд ${battle.party.members.length}/${partyBattleSize}]`,
+    '',
+    renderBattleActorBlock('👤 Вы', viewerMember.snapshot, { guardPoints: viewerMember.snapshot.guardPoints }),
+    '',
+    ...allyBlocks,
+    renderBattleActorBlock('Враг', battle.enemy),
+    '',
+  ];
+};
+
+const isPartyBattleViewerTurn = (battle: BattleView, viewerPlayerId?: number): boolean => (
+  battle.party === undefined
+  || battle.party === null
+  || viewerPlayerId === undefined
+  || battle.party.currentTurnPlayerId === viewerPlayerId
+);
+
+const renderPartyBattleWaitLine = (battle: BattleView, viewerPlayerId?: number): string | null => {
+  if (!battle.party || viewerPlayerId === undefined) {
+    return null;
+  }
+
+  if (battle.turnOwner === 'ENEMY') {
+    return '🕒 Ход врага. Дождитесь развязки.';
+  }
+
+  if (battle.party.currentTurnPlayerId === null || battle.party.currentTurnPlayerId === viewerPlayerId) {
+    return null;
+  }
+
+  const actingMember = battle.party.members.find((member) => member.playerId === battle.party?.currentTurnPlayerId);
+  return `🕒 Ход товарища: ${actingMember?.name ?? 'союзник'}. После его действия бот пришлет обновление.`;
 };
 
 const renderBattleRuneState = (battle: BattleView): string => {
@@ -335,12 +415,16 @@ export const renderBattle = (
   battle: BattleView,
   player?: PlayerState,
   acquisitionSummary?: AcquisitionSummaryView | null,
+  viewerPlayerId?: number,
 ): string => {
   const battleLogLines = selectBattleLogLines(battle.log);
   const clarity = buildBattleClarityView(battle);
   const enemyIntentLine = renderBattleEnemyIntent(battle);
   const isEncounterOffered = battle.status === 'ACTIVE' && isBattleEncounterOffered(battle);
   const battleStateLine = resolveBattleStateLine(battle, isEncounterOffered);
+  const partyOverviewLines = renderPartyBattleOverview(battle, viewerPlayerId);
+  const isViewerTurn = isPartyBattleViewerTurn(battle, viewerPlayerId);
+  const partyWaitLine = renderPartyBattleWaitLine(battle, viewerPlayerId);
   const rewardLines = renderBattleRewardLines(battle);
   const defeatFlowLines = renderBattleDefeatFlowLines(battle, player);
   const postSessionLines = battle.status === 'COMPLETED'
@@ -348,13 +432,20 @@ export const renderBattle = (
     : [];
 
   return [
-    battleStateLine,
-    '',
-    'Поле боя',
-    ...renderBattlePartyLines(battle),
-    renderBattleActorBlock(battle.party ? 'Сейчас действует' : 'Вы', battle.player, { guardPoints: battle.player.guardPoints }),
-    renderBattleActorBlock('Враг', battle.enemy),
-    '',
+    ...(partyOverviewLines.length > 0
+      ? [
+          ...(battle.status === 'COMPLETED' ? [battleStateLine, ''] : []),
+          ...partyOverviewLines,
+        ]
+      : [
+          battleStateLine,
+          '',
+          'Поле боя',
+          ...renderBattlePartyLines(battle, viewerPlayerId),
+          renderBattleActorBlock(battle.party ? 'Сейчас действует' : 'Вы', battle.player, { guardPoints: battle.player.guardPoints }),
+          renderBattleActorBlock('Враг', battle.enemy),
+          '',
+        ]),
     ...(isEncounterOffered
       ? [
           'Развилка',
@@ -365,10 +456,11 @@ export const renderBattle = (
       ? [
           'Чтение боя',
           ...(enemyIntentLine ? [enemyIntentLine] : []),
-          ...(clarity.choiceLine ? [clarity.choiceLine] : []),
-          ...(clarity.schoolHintLine ? [clarity.schoolHintLine] : []),
-          renderBattleRuneState(battle),
-          ...(battle.turnOwner === 'PLAYER' ? [renderBattleActionState(battle)] : []),
+          ...(partyWaitLine ? [partyWaitLine] : []),
+          ...(isViewerTurn && clarity.choiceLine ? [clarity.choiceLine] : []),
+          ...(isViewerTurn && clarity.schoolHintLine ? [clarity.schoolHintLine] : []),
+          ...(isViewerTurn ? [renderBattleRuneState(battle)] : []),
+          ...(isViewerTurn && battle.turnOwner === 'PLAYER' ? [renderBattleActionState(battle)] : []),
           '',
         ]
       : []),

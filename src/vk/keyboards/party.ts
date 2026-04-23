@@ -6,15 +6,34 @@ import { buildKeyboard } from './builder';
 import type { KeyboardBuilder, KeyboardLayout } from './types';
 
 export const createPartyKeyboard = (party: PartyView | null, viewerPlayerId: number): KeyboardBuilder => {
+  const partyBattleActive = party !== null && party.activeBattleId !== null;
+  const isLeader = party?.leaderPlayerId === viewerPlayerId;
+  const isReady = party !== null && party.members.length >= party.maxMembers;
+
   const layout: KeyboardLayout = party
     ? [
-        ...(party.leaderPlayerId === viewerPlayerId && party.members.length >= party.maxMembers
+        ...(!partyBattleActive && isLeader && isReady
           ? [[
               {
                 label: '⚔️ Исследовать отрядом',
                 command: gameCommands.exploreParty,
                 color: Keyboard.POSITIVE_COLOR,
               },
+            ]]
+          : []),
+        ...(!partyBattleActive
+          ? [[
+              isLeader
+                ? {
+                    label: '🗑️ Расформировать отряд',
+                    command: gameCommands.disbandParty,
+                    color: Keyboard.NEGATIVE_COLOR,
+                  }
+                : {
+                    label: '🚪 Выйти из отряда',
+                    command: gameCommands.leaveParty,
+                    color: Keyboard.NEGATIVE_COLOR,
+                  },
             ]]
           : []),
         [

@@ -238,6 +238,16 @@ export class GameHandler {
     await this.reply(ctx, renderParty(result.player, result.party), createPartyKeyboard(result.party, result.player.playerId));
   }
 
+  public async leaveParty(ctx: Context, vkId: number): Promise<void> {
+    const result = await this.services.leaveParty.execute(vkId);
+    await this.reply(ctx, renderParty(result.player, result.party), createPartyKeyboard(result.party, result.player.playerId));
+  }
+
+  public async disbandParty(ctx: Context, vkId: number): Promise<void> {
+    const result = await this.services.disbandParty.execute(vkId);
+    await this.reply(ctx, renderParty(result.player, result.party), createPartyKeyboard(result.party, result.player.playerId));
+  }
+
   public async claimDailyTrace(ctx: Context, vkId: number, context: CommandIntentContext): Promise<void> {
     const routeState = toRouteState(context);
     const result = await this.services.claimDailyTrace.execute(
@@ -334,6 +344,7 @@ export class GameHandler {
 
     const battle = await this.services.exploreParty.execute(vkId);
     await this.replyWithBattle(ctx, battle, vkId);
+    await this.notifyPartyBattlePeers(ctx, battle, vkId);
   }
 
   public async showPendingReward(ctx: Context, vkId: number): Promise<void> {
@@ -365,14 +376,22 @@ export class GameHandler {
         routeState.intentSource,
       );
       await this.replyWithBattle(ctx, result, vkId);
+      if (result.replayed !== true) {
+        await this.notifyPartyBattlePeers(ctx, result.battle, vkId);
+      }
     } catch (error) {
       if (isAppError(error)) {
         const activeBattle = await this.safeGetActiveBattle(vkId);
         if (activeBattle) {
           await this.reply(
             ctx,
-            [error.message, '', renderBattle(activeBattle)].join('\n'),
-            this.resolveBattleKeyboard(activeBattle),
+            [error.message, '', renderBattle(
+              activeBattle,
+              undefined,
+              undefined,
+              this.resolveBattleViewerPlayerId(activeBattle, vkId),
+            )].join('\n'),
+            this.resolveBattleKeyboard(activeBattle, vkId),
           );
           return;
         }
@@ -494,8 +513,8 @@ export class GameHandler {
     }
   }
 
-  public resolveBattleKeyboard(battle: BattleView): ReplyKeyboard {
-    return resolveBattleReplyKeyboard(battle);
+  public resolveBattleKeyboard(battle: BattleView, viewerVkId?: number): ReplyKeyboard {
+    return resolveBattleReplyKeyboard(battle, this.resolveBattleViewerPlayerId(battle, viewerVkId));
   }
 
   private resolveErrorKeyboard(errorCode: string): ReplyKeyboard {
@@ -506,5 +525,66 @@ export class GameHandler {
 
   public async reply(ctx: Context, message: string, keyboard: ReplyKeyboard): Promise<void> {
     await ctx.reply(message, { keyboard });
+  }
+
+  private async notifyPartyBattlePeers(ctx: Context, battle: BattleView, actorVkId: number): Promise<void> {
+    if (!battle.party) {
+      return;
+    }
+
+    for (const member of battle.party.members) {
+      if (member.vkId === actorVkId) {
+        continue;
+      }
+
+      const peerContext = this.createPeerReplyContext(ctx, member.vkId);
+      if (!peerContext) {
+        continue;
+      }
+
+      await this.replyWithBattle(peerContext, battle, member.vkId);
+    }
+  }
+
+  private createPeerReplyContext(ctx: Context, vkId: number): Context | null {
+    const send = (ctx as Context & {
+      readonly api?: {
+        readonly messages?: {
+          readonly send?: (options: {
+            readonly user_id: number;
+            readonly message: string;
+            readonly keyboard: ReplyKeyboard;
+            readonly random_id: number;
+          }) => Promise<unknown>;
+        };
+      };
+    }).api?.messages?.send;
+
+    if (typeof send !== 'function') {
+      return null;
+    }
+
+    let nextRandomId = Date.now() + vkId;
+
+    const peerContext = {
+      reply: async (message: string, options?: { keyboard?: ReplyKeyboard }) => {
+        await send({
+          user_id: vkId,
+          message,
+          keyboard: options?.keyboard ?? createMainMenuKeyboard(),
+          random_id: nextRandomId++,
+        });
+      },
+    } satisfies Pick<Context, 'reply'>;
+
+    return peerContext as unknown as Context;
+  }
+
+  private resolveBattleViewerPlayerId(battle: BattleView, viewerVkId?: number): number | undefined {
+    if (viewerVkId === undefined || !battle.party) {
+      return undefined;
+    }
+
+    return battle.party.members.find((member) => member.vkId === viewerVkId)?.playerId;
   }
 }

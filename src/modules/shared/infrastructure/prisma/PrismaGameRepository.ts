@@ -3068,6 +3068,58 @@ export class PrismaGameRepository implements GameRepository {
     });
   }
 
+  public async leaveParty(playerId: number): Promise<void> {
+    await this.prisma.$transaction(async (tx) => {
+      const party = await this.findActivePartyRecord(tx, playerId);
+      if (!party) {
+        throw new AppError('party_not_found', 'Сейчас вы не состоите в активном отряде.');
+      }
+
+      if (party.leaderPlayerId === playerId) {
+        throw new AppError('party_disband_required', 'Лидер может только распустить отряд целиком.');
+      }
+
+      if (party.activeBattleId !== null || party.status === 'IN_BATTLE') {
+        throw new AppError('party_battle_active', 'Нельзя выйти из отряда посреди общего боя.');
+      }
+
+      await tx.playerPartyMember.deleteMany({
+        where: {
+          partyId: party.id,
+          playerId,
+        },
+      });
+    });
+  }
+
+  public async disbandParty(playerId: number): Promise<void> {
+    await this.prisma.$transaction(async (tx) => {
+      const party = await this.findActivePartyRecord(tx, playerId);
+      if (!party) {
+        throw new AppError('party_not_found', 'Сейчас у вас нет активного отряда.');
+      }
+
+      if (party.leaderPlayerId !== playerId) {
+        throw new AppError('party_leader_required', 'Только лидер может распустить отряд.');
+      }
+
+      if (party.activeBattleId !== null || party.status === 'IN_BATTLE') {
+        throw new AppError('party_battle_active', 'Нельзя распустить отряд посреди общего боя.');
+      }
+
+      await tx.playerParty.updateMany({
+        where: {
+          id: party.id,
+          leaderPlayerId: playerId,
+        },
+        data: {
+          status: 'COMPLETED',
+          activeBattleId: null,
+        },
+      });
+    });
+  }
+
   public async startPartyBattle(
     leaderPlayerId: number,
     partyId: string,
@@ -3478,7 +3530,7 @@ export class PrismaGameRepository implements GameRepository {
             activeBattleId: battle.id,
           },
           data: {
-            status: 'COMPLETED',
+            status: 'OPEN',
             activeBattleId: null,
           },
         });

@@ -148,6 +148,16 @@ describe('BattleEngine', () => {
     expect(resolved.rewards?.experience).toBe(10);
   });
 
+  it('пишет в логах имена действующего и цели в квадратных скобках', () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0.5);
+
+    const playerAttackBattle = BattleEngine.attack(createBattle());
+    const enemyAttackBattle = BattleEngine.resolveEnemyTurn(createBattle({ turnOwner: 'ENEMY' }));
+
+    expect(playerAttackBattle.log).toContain('⚔️ [Рунный мастер #1001] наносит 5 урона [Синий слизень].');
+    expect(enemyAttackBattle.log).toContain('👾 [Синий слизень] бьёт [Рунный мастер #1001] и наносит 2 урона.');
+  });
+
   it('starts combat from an offered encounter and restores the original first turn', () => {
     const battle = createBattle({
       turnOwner: 'PLAYER',
@@ -429,7 +439,7 @@ describe('BattleEngine', () => {
 
     expect(resolved.turnOwner).toBe('ENEMY');
     expect(resolved.player.guardPoints).toBeGreaterThan(0);
-    expect(resolved.log.some((entry) => entry.includes('защитную стойку'))).toBe(true);
+    expect(resolved.log.some((entry) => entry.includes('готовит защиту'))).toBe(true);
   });
 
   it('усиливает защиту, если игрок читает тяжёлый удар и выбирает стойку', () => {
@@ -573,7 +583,7 @@ describe('BattleEngine', () => {
     const resolved = BattleEngine.defend(battle);
 
     expect(resolved.player.guardPoints).toBe(4);
-    expect(resolved.log.some((entry) => entry.includes('защитную стойку'))).toBe(true);
+    expect(resolved.log.some((entry) => entry.includes('готовит защиту'))).toBe(true);
   });
 
   it('школа тверди даёт активный отпор против опасного хода', () => {
@@ -1012,7 +1022,7 @@ describe('BattleEngine', () => {
     expect(resolved.enemy.intent).toBeNull();
     expect(resolved.player.guardPoints).toBe(0);
     expect(resolved.player.currentHealth).toBeLessThan(8);
-    expect(resolved.log.some((entry) => entry.includes('разбивает вашу защиту'))).toBe(true);
+    expect(resolved.log.some((entry) => entry.includes('[Синий слизень] разбивает защиту [Рунный мастер #1001]'))).toBe(true);
   });
 
   it('снижает откат после вражеского хода и расходует рунную защиту', () => {

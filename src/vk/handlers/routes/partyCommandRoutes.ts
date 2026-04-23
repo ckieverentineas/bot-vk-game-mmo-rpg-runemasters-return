@@ -10,6 +10,8 @@ import type {
 export const partyCommandRoutes = {
   [gameCommands.party]: (handler, ctx, vkId) => handler.showParty(ctx, vkId),
   [gameCommands.createParty]: (handler, ctx, vkId) => handler.createParty(ctx, vkId),
+  [gameCommands.leaveParty]: (handler, ctx, vkId) => handler.leaveParty(ctx, vkId),
+  [gameCommands.disbandParty]: (handler, ctx, vkId) => handler.disbandParty(ctx, vkId),
   [gameCommands.exploreParty]: (handler, ctx, vkId) => handler.exploreParty(ctx, vkId),
 } satisfies StaticCommandRouteConfig;
 

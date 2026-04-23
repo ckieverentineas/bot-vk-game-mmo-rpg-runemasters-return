@@ -874,6 +874,69 @@ describe('messages school-first onboarding framing', () => {
     expect(message).toContain('🔥 Пламя: враг уже просел');
   });
 
+  it('renders party battles as a compact squad overview', () => {
+    const allySnapshot = {
+      ...createBattle().player,
+      playerId: 2,
+      name: 'Рунный мастер #1002',
+    };
+    const message = renderBattle(createBattle({
+      status: 'ACTIVE',
+      result: null,
+      rewards: null,
+      battleType: 'PARTY_PVE',
+      party: {
+        id: 'party-1',
+        inviteCode: 'ABC123',
+        leaderPlayerId: 1,
+        currentTurnPlayerId: 1,
+        enemyTargetPlayerId: null,
+        actedPlayerIds: [],
+        members: [
+          { playerId: 1, vkId: 1001, name: createBattle().player.name, snapshot: createBattle().player },
+          { playerId: 2, vkId: 1002, name: allySnapshot.name, snapshot: allySnapshot },
+        ],
+      },
+    }), undefined, null, 1);
+
+    expect(message).toContain('🌐 Локация: Порог Инициации [Отряд 2/2]');
+    expect(message).toContain('👤 Вы: Рунный мастер #1001');
+    expect(message).toContain('👤 Товарищ: Рунный мастер #1002');
+    expect(message).toContain('Враг: Учебный огонёк');
+    expect(message).not.toContain('Сейчас действует:');
+  });
+
+  it('shows a wait line instead of ally actions when it is not the viewer turn in a party battle', () => {
+    const allySnapshot = {
+      ...createBattle().player,
+      playerId: 2,
+      name: 'Рунный мастер #1002',
+    };
+    const message = renderBattle(createBattle({
+      status: 'ACTIVE',
+      result: null,
+      rewards: null,
+      battleType: 'PARTY_PVE',
+      player: allySnapshot,
+      party: {
+        id: 'party-1',
+        inviteCode: 'ABC123',
+        leaderPlayerId: 1,
+        currentTurnPlayerId: 2,
+        enemyTargetPlayerId: null,
+        actedPlayerIds: [1],
+        members: [
+          { playerId: 1, vkId: 1001, name: createBattle().player.name, snapshot: createBattle().player },
+          { playerId: 2, vkId: 1002, name: allySnapshot.name, snapshot: allySnapshot },
+        ],
+      },
+    }), undefined, null, 1);
+
+    expect(message).toContain('🕒 Ход товарища: Рунный мастер #1002.');
+    expect(message).not.toContain('⚔️ Ответ мастера:');
+    expect(message).not.toContain('🔮 Руна молчит');
+  });
+
   it('explains missing mana and wrong timing for active runes on the battle screen', () => {
     const lowManaMessage = renderBattle(createBattle({
       status: 'ACTIVE',
@@ -982,7 +1045,7 @@ describe('messages school-first onboarding framing', () => {
       log: [
         '🗺️ Тёмный лес: на вас выходит обычный враг Синий слизень.',
         '🧭 Путевой эпизод: вы находите свежие следы.',
-        '🌀 Импульс углей прожигает Синий слизень на 8 урона.',
+        '🌀 [Рунный мастер #1001] применяет «Импульс углей» против [Синий слизень]: 8 урона.',
         '⚠️ Синий слизень готовит «Кислотный прорыв». Защита на следующий ход сработает хуже обычного.',
         '💙 Рунный фокус: +1 маны.',
       ],
@@ -991,7 +1054,7 @@ describe('messages school-first onboarding framing', () => {
     expect(message).toContain('Летопись схватки');
     expect(message).toContain('• 🗺️ Тёмный лес: на вас выходит обычный враг Синий слизень.');
     expect(message).toContain('• 🧭 Путевой эпизод: вы находите свежие следы.');
-    expect(message).toContain('• 🌀 Импульс углей прожигает Синий слизень на 8 урона.');
+    expect(message).toContain('• 🌀 [Рунный мастер #1001] применяет «Импульс углей» против [Синий слизень]: 8 урона.');
     expect(message).toContain('• ⚠️ Синий слизень готовит «Кислотный прорыв». Защита на следующий ход сработает хуже обычного.');
     expect(message).toContain('• 💙 Рунный фокус: +1 маны.');
     expect(message.indexOf('• 💙 Рунный фокус: +1 маны.')).toBeLessThan(
@@ -1007,13 +1070,13 @@ describe('messages school-first onboarding framing', () => {
       log: [
         '🗺️ Тёмный лес: на вас выходит обычный враг Синий слизень.',
         '🧭 Путевой эпизод: вы находите свежие следы.',
-        '⚔️ Вы наносите 4 урона врагу Синий слизень.',
+        '⚔️ [Рунный мастер #1001] наносит 4 урона [Синий слизень].',
         '⚠️ Синий слизень готовит «Кислотный прорыв».',
         '💙 Рунный фокус: +1 маны.',
-        '🌀 Импульс углей прожигает Синий слизень на 8 урона.',
-        '🛡️ Защита смягчает удар на 2 урона.',
-        '👾 Синий слизень бьёт и наносит 1 урона.',
-        '⚔️ Вы наносите 5 урона врагу Синий слизень.',
+        '🌀 [Рунный мастер #1001] применяет «Импульс углей» против [Синий слизень]: 8 урона.',
+        '🛡️ [Рунный мастер #1001] смягчает удар на 2 урона.',
+        '👾 [Синий слизень] бьёт [Рунный мастер #1001] и наносит 1 урона.',
+        '⚔️ [Рунный мастер #1001] наносит 5 урона [Синий слизень].',
         '🏆 Победа!',
       ],
     }));
@@ -1021,7 +1084,7 @@ describe('messages school-first onboarding framing', () => {
     expect(message).toContain('• 🗺️ Тёмный лес: на вас выходит обычный враг Синий слизень.');
     expect(message).toContain('… ещё 2 события между нынешним мигом и началом схватки');
     expect(message).not.toContain('• 🧭 Путевой эпизод: вы находите свежие следы.');
-    expect(message).not.toContain('• ⚔️ Вы наносите 4 урона врагу Синий слизень.');
+    expect(message).not.toContain('• ⚔️ [Рунный мастер #1001] наносит 4 урона [Синий слизень].');
     expect(message).toContain('• ⚠️ Синий слизень готовит «Кислотный прорыв».');
     expect(message).toContain('• 🏆 Победа!');
     expect(message.indexOf('• 🏆 Победа!')).toBeLessThan(

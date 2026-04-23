@@ -86,6 +86,28 @@ const messageWhen = (condition: boolean, message: string): readonly string[] => 
   condition ? [message] : []
 );
 
+const formatBattleActor = (name: string): string => `[${name}]`;
+
+const formatDamageLine = (
+  actorName: string,
+  targetName: string,
+  damage: number | string,
+): string => `${formatBattleActor(actorName)} наносит ${damage} урона ${formatBattleActor(targetName)}.`;
+
+const formatEnemyAttackLine = (
+  enemyName: string,
+  attackText: string,
+  targetName: string,
+  damage: number | string,
+): string => `${formatBattleActor(enemyName)} ${attackText} ${formatBattleActor(targetName)} и наносит ${damage} урона.`;
+
+const formatSkillLine = (
+  actorName: string,
+  skillName: string,
+  targetName: string,
+  outcome: string,
+): string => `${formatBattleActor(actorName)} применяет «${skillName}» против ${formatBattleActor(targetName)}: ${outcome}.`;
+
 const finalizeBattle = (battle: BattleView, result: BattleResult): BattleView => {
   battle.status = 'COMPLETED';
   battle.result = result;
@@ -305,11 +327,11 @@ const resolveEnemyAttack = (
 
   battle.log = appendBattleLog(
     battle.log,
-    ...(shatteredGuard > 0 ? [`💥 Враг разбивает вашу защиту на ${shatteredGuard}.`] : []),
-    ...(blockedDamage > 0 ? [`🛡️ Защита смягчает удар на ${blockedDamage} урона.`] : []),
+    ...(shatteredGuard > 0 ? [`💥 ${formatBattleActor(battle.enemy.name)} разбивает защиту ${formatBattleActor(battle.player.name)} на ${shatteredGuard}.`] : []),
+    ...(blockedDamage > 0 ? [`🛡️ ${formatBattleActor(battle.player.name)} смягчает удар на ${blockedDamage} урона.`] : []),
     dealtDamage > 0
       ? attackText.replace('{damage}', `${dealtDamage}`)
-      : '🛡️ Враг бьёт, но защита принимает весь удар на себя.',
+      : `🛡️ ${formatBattleActor(battle.player.name)} принимает весь удар защитой.`,
   );
 
   battle.player.currentHealth = Math.max(0, battle.player.currentHealth - dealtDamage);
@@ -462,7 +484,7 @@ export class BattleEngine {
     addGuardPoints(nextBattle.player, outcome.guardGain, outcome.guardCap);
     nextBattle.log = appendBattleLog(
       nextBattle.log,
-      `🛡️ Вы занимаете защитную стойку и готовите защиту на ${outcome.guardGain} урона.`,
+      `🛡️ ${formatBattleActor(nextBattle.player.name)} готовит защиту на ${outcome.guardGain} урона.`,
       ...messageWhen(outcome.intentGuardBonus > 0, '🛡️ Раскрытый тяжёлый удар даёт время встать плотнее обычного.'),
       ...messageWhen(outcome.stoneHoldIntentGuardBonus > 0, '🪨 Твердь держит раскрытую угрозу: стойка становится ещё крепче.'),
       ...messageWhen(outcome.stoneSealGuardBonus > 0, '🪨 Печать Тверди добавляет опору к защитной стойке.'),
@@ -522,7 +544,7 @@ export class BattleEngine {
       nextBattle.enemy.intent = createGuardBreakIntent(nextBattle.enemy);
       nextBattle.log = appendBattleLog(
         nextBattle.log,
-        `⚠️ ${nextBattle.enemy.name} готовит «${nextBattle.enemy.intent.title}». Защита на следующий ход сработает хуже обычного.`,
+        `⚠️ ${formatBattleActor(nextBattle.enemy.name)} готовит «${nextBattle.enemy.intent.title}». Защита на следующий ход сработает хуже обычного.`,
       );
       return finishEnemyPreparation(nextBattle);
     }
@@ -531,7 +553,7 @@ export class BattleEngine {
       nextBattle.enemy.intent = createHeavyStrikeIntent(nextBattle.enemy);
       nextBattle.log = appendBattleLog(
         nextBattle.log,
-        `⚠️ ${nextBattle.enemy.name} готовит «${nextBattle.enemy.intent.title}». Следующий удар будет сильнее обычного.`,
+        `⚠️ ${formatBattleActor(nextBattle.enemy.name)} готовит «${nextBattle.enemy.intent.title}». Следующий удар будет сильнее обычного.`,
       );
       return finishEnemyPreparation(nextBattle);
     }
@@ -541,7 +563,11 @@ export class BattleEngine {
       return nextBattle;
     }
 
-    resolveEnemyAttack(nextBattle, nextBattle.enemy.attack, `👾 ${nextBattle.enemy.name} ${nextBattle.enemy.attackText} и наносит {damage} урона.`);
+    resolveEnemyAttack(
+      nextBattle,
+      nextBattle.enemy.attack,
+      `👾 ${formatEnemyAttackLine(nextBattle.enemy.name, nextBattle.enemy.attackText, nextBattle.player.name, '{damage}')}`,
+    );
     return finishEnemyAction(nextBattle);
   }
 
@@ -559,7 +585,7 @@ export class BattleEngine {
     applyDamageToEnemy(nextBattle, outcome.totalDamage);
     nextBattle.log = appendBattleLog(
       nextBattle.log,
-      `⚔️ Вы наносите ${outcome.totalDamage} урона врагу ${nextBattle.enemy.name}.`,
+      `⚔️ ${formatDamageLine(nextBattle.player.name, nextBattle.enemy.name, outcome.totalDamage)}`,
       ...messageWhen(outcome.emberBonus > 0, `🔥 Школа Пламени усиливает атаку ещё на ${outcome.emberBonus}.`),
       ...messageWhen(outcome.emberPressureIntentBonus > 0, '🔥 Пламя давит пробивающий замах до того, как враг успевает сломать стойку.'),
       ...messageWhen(outcome.emberSealPressureBonus > 0, '🔥 Печать Пламени держит давление даже без нового разгона.'),
@@ -590,7 +616,7 @@ export class BattleEngine {
     nextBattle.turnOwner = initialTurnOwner;
     nextBattle.log = appendBattleLog(
       nextBattle.log,
-      `⚔️ Вы принимаете встречу с ${nextBattle.enemy.name}: бой начинается.`,
+      `⚔️ ${formatBattleActor(nextBattle.player.name)} принимает встречу с ${formatBattleActor(nextBattle.enemy.name)}: бой начинается.`,
     );
 
     return nextBattle;
@@ -612,7 +638,7 @@ export class BattleEngine {
       nextBattle.rewards = null;
       nextBattle.log = appendBattleLog(
         nextBattle.log,
-        `💨 Вы отступаете от ${nextBattle.enemy.name}: бой не начинается.`,
+        `💨 ${formatBattleActor(nextBattle.player.name)} отступает от ${formatBattleActor(nextBattle.enemy.name)}: бой не начинается.`,
       );
 
       return nextBattle;
@@ -625,7 +651,7 @@ export class BattleEngine {
     nextBattle.turnOwner = 'ENEMY';
     nextBattle.log = appendBattleLog(
       nextBattle.log,
-      `💨 Вы пытаетесь отступить, но ${nextBattle.enemy.name} перехватывает путь.`,
+      `💨 ${formatBattleActor(nextBattle.player.name)} пытается отступить от ${formatBattleActor(nextBattle.enemy.name)}, но ${formatBattleActor(nextBattle.enemy.name)} перехватывает путь.`,
     );
 
     return nextBattle;
@@ -640,7 +666,7 @@ export class BattleEngine {
 
     nextBattle.log = appendBattleLog(
       nextBattle.log,
-      `🌀 ${activeAbility.name} прожигает ${nextBattle.enemy.name} на ${damage} урона.`,
+      `🌀 ${formatSkillLine(nextBattle.player.name, activeAbility.name, nextBattle.enemy.name, `${damage} урона`)}`,
       ...messageWhen(intentDamageBonus > 0, '🔮 Руна бьёт точнее по раскрытому замыслу врага.'),
       `💙 Мана: ${nextBattle.player.currentMana}/${nextBattle.player.maxMana}.`,
     );
@@ -676,7 +702,7 @@ export class BattleEngine {
 
     nextBattle.log = appendBattleLog(
       nextBattle.log,
-      `🌀 ${activeAbility.name} наносит ${damage} урона и поднимает каменную защиту на ${guardGain}.`,
+      `🌀 ${formatSkillLine(nextBattle.player.name, activeAbility.name, nextBattle.enemy.name, `${damage} урона и ${guardGain} защиты`)}`,
       ...(intentBonus > 0 ? ['🪨 Школа Тверди укрепляется ещё сильнее против заранее раскрытой угрозы.'] : []),
       ...messageWhen(intentDamageBonus > 0, '🔮 Руна бьёт точнее по раскрытому замыслу врага.'),
       ...(synergyDamageBonus > 0 ? ['🪨 Ответ стойки превращает накопленную защиту в более жёсткий контрудар.'] : []),
@@ -702,7 +728,7 @@ export class BattleEngine {
 
     nextBattle.log = appendBattleLog(
       nextBattle.log,
-      `🌀 ${activeAbility.name} наносит ${damage} урона и готовит защиту на ${guardGain} урона.`,
+      `🌀 ${formatSkillLine(nextBattle.player.name, activeAbility.name, nextBattle.enemy.name, `${damage} урона и ${guardGain} защиты`)}`,
       ...messageWhen(intentDamageBonus > 0, '🔮 Руна бьёт точнее по раскрытому замыслу врага.'),
       ...messageWhen(tempoGuardBonus > 0, '🌪️ Буря забирает темп по раскрытому замыслу: следующий ответ прикрыт лучше.'),
       ...messageWhen(sealTempoGuardBonus > 0, '🌪️ Печать Бури удерживает темп после рывка.'),
@@ -728,7 +754,7 @@ export class BattleEngine {
     resolveEnemyAttack(
       nextBattle,
       nextBattle.enemy.attack + intent.bonusAttack,
-      `💥 ${nextBattle.enemy.name} проводит «${intent.title}» и наносит {damage} урона.`,
+      `💥 ${formatBattleActor(nextBattle.enemy.name)} проводит «${intent.title}» против ${formatBattleActor(nextBattle.player.name)} и наносит {damage} урона.`,
     );
 
     return finishEnemyAction(nextBattle);
@@ -750,7 +776,7 @@ export class BattleEngine {
     resolveEnemyAttack(
       nextBattle,
       nextBattle.enemy.attack + intent.bonusAttack,
-      `🧪 ${nextBattle.enemy.name} проводит «${intent.title}» и наносит {damage} урона.`,
+      `🧪 ${formatBattleActor(nextBattle.enemy.name)} проводит «${intent.title}» против ${formatBattleActor(nextBattle.player.name)} и наносит {damage} урона.`,
       { shattersGuard: intent.shattersGuard },
     );
 

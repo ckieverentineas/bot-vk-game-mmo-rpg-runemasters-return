@@ -332,6 +332,8 @@ export interface GameRepository {
   getActiveParty(playerId: number): Promise<PartyView | null>;
   createParty(playerId: number): Promise<PartyView>;
   joinPartyByInviteCode(playerId: number, inviteCode: string): Promise<PartyView>;
+  leaveParty(playerId: number): Promise<void>;
+  disbandParty(playerId: number): Promise<void>;
   startPartyBattle(
     leaderPlayerId: number,
     partyId: string,
