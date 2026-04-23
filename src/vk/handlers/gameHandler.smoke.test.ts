@@ -443,6 +443,12 @@ const createServices = (): AppServices => {
     unequipCurrentRune: {
       execute: vi.fn().mockResolvedValue(runePlayer),
     } as unknown as AppServices['unequipCurrentRune'],
+    craftItem: {
+      execute: vi.fn().mockResolvedValue({
+        player: runePlayer,
+        acquisitionSummary: null,
+      }),
+    } as unknown as AppServices['craftItem'],
     craftRune: {
       execute: vi.fn().mockResolvedValue({
         player: runePlayer,
@@ -1536,6 +1542,22 @@ describe('GameHandler smoke', () => {
     await handler.handle(ctx as never);
 
     expect(services.craftRune.execute).toHaveBeenCalledWith(1001, 'intent-craft-1', 'state-craft-1', 'payload');
+  });
+
+  it('пробрасывает intentId для алхимии пилюли через transport payload', async () => {
+    const services = createServices();
+    const handler = new GameHandler(services);
+    const ctx = createFakeContext({ command: 'пилюля живучести', intentId: 'intent-pill-1', stateKey: 'state-pill-1' });
+
+    await handler.handle(ctx as never);
+
+    expect(services.craftItem.execute).toHaveBeenCalledWith(
+      1001,
+      'vital_charm',
+      'intent-pill-1',
+      'state-pill-1',
+      'payload',
+    );
   });
 
   it('показывает impact recap после создания руны', async () => {

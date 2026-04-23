@@ -4,6 +4,7 @@ import type { BattleView, PlayerState } from '../../shared/types/game';
 import {
   createBattleKeyboard,
   createBattleResultKeyboard,
+  createAltarKeyboard,
   createDeleteConfirmationKeyboard,
   createMainMenuKeyboard,
   createPendingRewardKeyboard,
@@ -209,6 +210,7 @@ const serializeKeyboard = (
   keyboard:
     | ReturnType<typeof createBattleKeyboard>
     | ReturnType<typeof createBattleResultKeyboard>
+    | ReturnType<typeof createAltarKeyboard>
     | ReturnType<typeof createDeleteConfirmationKeyboard>
     | ReturnType<typeof createMainMenuKeyboard>
     | ReturnType<typeof createPendingRewardKeyboard>
@@ -222,6 +224,7 @@ const collectPayloads = (
   keyboard:
     | ReturnType<typeof createBattleKeyboard>
     | ReturnType<typeof createBattleResultKeyboard>
+    | ReturnType<typeof createAltarKeyboard>
     | ReturnType<typeof createDeleteConfirmationKeyboard>
     | ReturnType<typeof createMainMenuKeyboard>
     | ReturnType<typeof createPendingRewardKeyboard>
@@ -240,6 +243,7 @@ const collectLabels = (
   keyboard:
     | ReturnType<typeof createBattleKeyboard>
     | ReturnType<typeof createBattleResultKeyboard>
+    | ReturnType<typeof createAltarKeyboard>
     | ReturnType<typeof createMainMenuKeyboard>
     | ReturnType<typeof createPendingRewardKeyboard>
     | ReturnType<typeof createRuneDetailKeyboard>
@@ -528,6 +532,38 @@ describe('profile keyboard', () => {
     expect(labels).toContain('🕯 Алтарь');
     expect(labels).not.toContain('🛠 Мастерская');
     expect(payloads).toContainEqual({ command: gameCommands.altar });
+  });
+
+  it('adds pill alchemy actions to the altar without exceeding the VK row limit', () => {
+    const player = createPlayer({
+      inventory: {
+        ...createPlayer().inventory,
+        leather: 2,
+        bone: 1,
+        herb: 2,
+        essence: 1,
+      },
+    });
+    const keyboard = createAltarKeyboard(player);
+    const rows = serializeKeyboard(keyboard).rows;
+    const payloads = collectPayloads(keyboard);
+    const labels = collectLabels(keyboard);
+
+    expect(rows.length).toBeLessThanOrEqual(6);
+    expect(payloads.map((payload) => payload.command)).toEqual(expect.arrayContaining([
+      gameCommands.craftVitalCharm,
+      gameCommands.craftKeenEdge,
+      gameCommands.craftGuardPlate,
+      gameCommands.craftRuneFocus,
+    ]));
+    expect(payloads.find((payload) => payload.command === gameCommands.craftVitalCharm)?.stateKey)
+      .toEqual(expect.any(String));
+    expect(labels).toEqual(expect.arrayContaining([
+      '❤️ Живучесть',
+      '⚔️ Удар',
+      '🛡️ Стойкость',
+      '💠 Фокус',
+    ]));
   });
 
   it('keeps defeat battle-result CTA aligned with rune review instead of school-test retry', () => {

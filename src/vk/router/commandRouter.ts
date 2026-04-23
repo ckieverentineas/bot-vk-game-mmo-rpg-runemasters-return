@@ -3,6 +3,7 @@ import type { CommandIntentSource } from '../../modules/shared/application/comma
 import {
   commandAliases,
   gameCommands,
+  resolveCraftingRecipeCommand,
   resolveRuneCursorDeltaCommand,
   resolveRunePageSlotCommand,
   resolveRuneStatRerollCommand,
@@ -27,6 +28,10 @@ const legacyTextIntentCommands = new Set<string>([
   gameCommands.destroyRune,
   gameCommands.equipRune,
   gameCommands.unequipRune,
+  gameCommands.craftVitalCharm,
+  gameCommands.craftKeenEdge,
+  gameCommands.craftGuardPlate,
+  gameCommands.craftRuneFocus,
   gameCommands.claimQuestReward,
   gameCommands.dailyTrace,
   gameCommands.location,
@@ -50,6 +55,7 @@ const legacyTextIntentMatchers: readonly LegacyTextIntentMatcher[] = [
   (command) => resolveRuneCursorDeltaCommand(command) !== null,
   (command) => resolveRunePageSlotCommand(command) !== null,
   (command) => resolveRuneStatRerollCommand(command) !== null,
+  (command) => resolveCraftingRecipeCommand(command) !== null,
 ];
 
 const supportsLegacyTextIntent = (command: string): boolean => (

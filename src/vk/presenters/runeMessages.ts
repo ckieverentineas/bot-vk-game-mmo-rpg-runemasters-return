@@ -1,4 +1,11 @@
 import { gameBalance } from '../../config/game-balance';
+import {
+  canPayCraftingRecipe,
+  formatCraftingStatDelta,
+  listCraftingRecipes,
+  resolveCraftingRecipeCost,
+  type CraftingRecipeCost,
+} from '../../modules/crafting/domain/crafting-recipes';
 import type { AcquisitionSummaryView } from '../../modules/player/application/read-models/acquisition-summary';
 import {
   buildPlayerNextGoalView,
@@ -46,6 +53,15 @@ const runeStatSummaryLabels: Record<keyof StatBlock, string> = {
   magicDefence: 'МЗАЩ',
   dexterity: 'ЛВК',
   intelligence: 'ИНТ',
+};
+
+const materialTitles: Readonly<Record<string, string>> = {
+  leather: 'кожа',
+  bone: 'кость',
+  herb: 'трава',
+  essence: 'эссенция',
+  metal: 'металл',
+  crystal: 'кристалл',
 };
 
 const schoolIconByCode: Readonly<Record<string, string>> = {
@@ -232,6 +248,23 @@ const renderRuneEconomyLines = (selectedRune?: RuneView | null): readonly string
   ];
 };
 
+const formatCraftingRecipeCost = (cost: CraftingRecipeCost): string => {
+  const parts = Object.entries(cost)
+    .filter(([, amount]) => amount !== undefined && amount > 0)
+    .map(([field, amount]) => `${materialTitles[field] ?? field} ${amount}`);
+
+  return parts.length > 0 ? parts.join(', ') : 'без материалов';
+};
+
+const renderCraftingRecipeLines = (player: PlayerState): readonly string[] => [
+  'Алхимия пилюль из добычи:',
+  ...listCraftingRecipes().map((recipe) => {
+    const marker = canPayCraftingRecipe(player, recipe) ? '✅' : '·';
+    const cost = formatCraftingRecipeCost(resolveCraftingRecipeCost(player, recipe));
+    return `${marker} ${recipe.title}: ${cost} -> ${formatCraftingStatDelta(recipe.statDelta)}.`;
+  }),
+];
+
 export const renderRuneScreen = (
   player: PlayerState,
   acquisitionSummary?: AcquisitionSummaryView | null,
@@ -288,7 +321,10 @@ const renderRuneFocusScreen = (
   ].join('\n');
 };
 
-const renderEmptyAltar = (acquisitionSummary?: AcquisitionSummaryView | null): string => (
+const renderEmptyAltar = (
+  player: PlayerState,
+  acquisitionSummary?: AcquisitionSummaryView | null,
+): string => (
   [
     '🕯 Алтарь рун',
     '',
@@ -297,6 +333,7 @@ const renderEmptyAltar = (acquisitionSummary?: AcquisitionSummaryView | null): s
     'Первая боевая руна откроет школу рун и задаст ваш ранний стиль боя.',
     renderStarterSchoolLine(),
     ...renderRuneEconomyLines(),
+    ...renderCraftingRecipeLines(player),
     'Победы и алтарь помогут собрать первую руну.',
   ].join('\n')
 );
@@ -317,6 +354,10 @@ export const renderAltar = (
   acquisitionSummary?: AcquisitionSummaryView | null,
 ): string => (
   player.runes.length === 0
-    ? renderEmptyAltar(acquisitionSummary)
-    : renderRuneFocusScreen(player, acquisitionSummary, '🕯 Алтарь рун', 'Фокус: руна')
+    ? renderEmptyAltar(player, acquisitionSummary)
+    : [
+        renderRuneFocusScreen(player, acquisitionSummary, '🕯 Алтарь рун', 'Фокус: руна'),
+        '',
+        ...renderCraftingRecipeLines(player),
+      ].join('\n')
 );

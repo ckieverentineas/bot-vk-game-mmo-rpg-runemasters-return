@@ -132,6 +132,27 @@ const buildInventoryAvailabilityWhere = (playerId: number, delta: InventoryDelta
   return where;
 };
 
+const buildPlayerStatDeltaInput = (delta: StatBlock): Prisma.PlayerUpdateInput => {
+  const data: Prisma.PlayerUpdateInput = {};
+  const statFieldMap = {
+    health: 'baseHealth',
+    attack: 'baseAttack',
+    defence: 'baseDefence',
+    magicDefence: 'baseMagicDefence',
+    dexterity: 'baseDexterity',
+    intelligence: 'baseIntelligence',
+  } satisfies Record<keyof StatBlock, keyof Prisma.PlayerUpdateInput>;
+
+  for (const [stat, field] of Object.entries(statFieldMap) as Array<[keyof StatBlock, keyof Prisma.PlayerUpdateInput]>) {
+    const amount = delta[stat];
+    if (amount !== 0) {
+      data[field] = { increment: amount } as never;
+    }
+  }
+
+  return data;
+};
+
 const spendRuneDust = async (
   client: TransactionClient,
   playerId: number,
@@ -1985,6 +2006,45 @@ export class PrismaGameRepository implements GameRepository {
         return mapPlayerRecord(updatedPlayer);
       });
     });
+  }
+
+  public async craftPlayerItem(
+    playerId: number,
+    cost: InventoryDelta,
+    statDelta: StatBlock,
+    intentId?: string,
+    intentStateKey?: string,
+    currentStateKey?: string,
+  ): Promise<PlayerState> {
+    return this.prisma.$transaction(async (tx) => this.runWithCommandIntent(
+      tx,
+      playerId,
+      'CRAFT_ITEM',
+      intentId,
+      intentStateKey,
+      currentStateKey,
+      async () => {
+        const inventorySpend = buildInventoryDeltaInput(cost);
+        const spent = await tx.playerInventory.updateMany({
+          where: buildInventoryAvailabilityWhere(playerId, cost),
+          data: inventorySpend as Prisma.PlayerInventoryUpdateManyMutationInput,
+        });
+
+        if (spent.count === 0) {
+          throw new AppError('not_enough_crafting_resources', 'Материалы для пилюли уже потрачены. Вернитесь к Алтарю.');
+        }
+
+        await tx.player.update({
+          where: { id: playerId },
+          data: {
+            ...buildPlayerStatDeltaInput(statDelta),
+            updatedAt: new Date(),
+          },
+        });
+
+        return mapPlayerRecord(await this.requirePlayerRecord(tx, playerId));
+      },
+    ));
   }
 
   public async adjustInventory(playerId: number, delta: InventoryDelta): Promise<PlayerState> {

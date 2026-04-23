@@ -538,6 +538,57 @@ describe('PrismaGameRepository release hardening', () => {
     }));
   });
 
+  it('spends pill materials and applies the stat delta atomically', async () => {
+    const { repository, tx } = createPrismaMock();
+
+    tx.playerInventory.updateMany.mockResolvedValue({ count: 1 });
+    tx.player.update.mockResolvedValue({});
+    tx.player.findUnique.mockResolvedValue({
+      ...createPlayerRecord(),
+      baseHealth: 9,
+    });
+
+    await expect(repository.craftPlayerItem(
+      1,
+      { leather: -2, bone: -1 },
+      {
+        health: 1,
+        attack: 0,
+        defence: 0,
+        magicDefence: 0,
+        dexterity: 0,
+        intelligence: 0,
+      },
+      'intent-pill-1',
+      'state-pill-1',
+      'state-pill-1',
+    )).resolves.toMatchObject({
+      playerId: 1,
+      baseStats: expect.objectContaining({
+        health: 9,
+      }),
+    });
+
+    expect(tx.playerInventory.updateMany).toHaveBeenCalledWith({
+      where: {
+        playerId: 1,
+        leather: { gte: 2 },
+        bone: { gte: 1 },
+      },
+      data: {
+        leather: { increment: -2 },
+        bone: { increment: -1 },
+      },
+    });
+    expect(tx.player.update).toHaveBeenCalledWith({
+      where: { id: 1 },
+      data: {
+        baseHealth: { increment: 1 },
+        updatedAt: expect.any(Date),
+      },
+    });
+  });
+
   it('recovers a canonical player after a vkId uniqueness race during creation', async () => {
     const { repository, tx } = createPrismaMock();
 

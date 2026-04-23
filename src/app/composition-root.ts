@@ -3,6 +3,7 @@ import { buildWorldCatalog } from '../content/world';
 import { gameContent } from '../content/game-content';
 import { ClaimDailyTrace } from '../modules/activity/application/use-cases/ClaimDailyTrace';
 import { PerformBattleAction } from '../modules/combat/application/use-cases/PerformBattleAction';
+import { CraftItem } from '../modules/crafting/application/use-cases/CraftItem';
 import { GetActiveBattle } from '../modules/combat/application/use-cases/GetActiveBattle';
 import { ExploreLocation } from '../modules/exploration/application/use-cases/ExploreLocation';
 import { EnterTutorialMode } from '../modules/exploration/application/use-cases/EnterTutorialMode';
@@ -54,6 +55,7 @@ export interface AppServices {
   selectRunePageSlot: SelectRunePageSlot;
   equipCurrentRune: EquipCurrentRune;
   unequipCurrentRune: UnequipCurrentRune;
+  craftItem: CraftItem;
   craftRune: CraftRune;
   rerollCurrentRuneStat: RerollCurrentRuneStat;
   destroyCurrentRune: DestroyCurrentRune;
@@ -90,6 +92,7 @@ export const createAppServices = (): AppServices => {
     selectRunePageSlot: new SelectRunePageSlot(repository),
     equipCurrentRune: new EquipCurrentRune(repository, telemetry),
     unequipCurrentRune: new UnequipCurrentRune(repository, telemetry),
+    craftItem: new CraftItem(repository),
     craftRune: new CraftRune(repository, random),
     rerollCurrentRuneStat: new RerollCurrentRuneStat(repository, random),
     destroyCurrentRune: new DestroyCurrentRune(repository),

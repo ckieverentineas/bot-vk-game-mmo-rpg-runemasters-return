@@ -23,6 +23,14 @@ describe('normalizeCommand', () => {
     expect(normalizeCommand('<<руна')).toBe(gameCommands.previousRunePage);
   });
 
+  it('нормализует короткие алиасы алхимии пилюль', () => {
+    expect(normalizeCommand('ЖИВУЧЕСТЬ')).toBe(gameCommands.craftVitalCharm);
+    expect(normalizeCommand('удар')).toBe(gameCommands.craftKeenEdge);
+    expect(normalizeCommand('стойкость')).toBe(gameCommands.craftGuardPlate);
+    expect(normalizeCommand('фокус')).toBe(gameCommands.craftRuneFocus);
+    expect(normalizeCommand('оберег')).toBe(gameCommands.craftVitalCharm);
+  });
+
   it('не ломает неизвестные текстовые команды', () => {
     expect(normalizeCommand('неизвестная-команда')).toBe('неизвестная-команда');
   });
@@ -72,6 +80,22 @@ describe('normalizeCommand', () => {
 
     expect(resolved.command).toBe(gameCommands.craftRune);
     expect(resolved.intentId).toBe('legacy-text:2000000001:1001:77:создать');
+    expect(resolved.stateKey).toBeNull();
+    expect(resolved.intentSource).toBe('legacy_text');
+  });
+
+  it('выводит server-owned intent для legacy text алхимии пилюль', () => {
+    const resolved = resolveCommandEnvelope({
+      text: 'живучесть',
+      senderId: 1001,
+      peerId: 2000000001,
+      conversationMessageId: 84,
+      id: 508,
+      messagePayload: null,
+    } as never);
+
+    expect(resolved.command).toBe(gameCommands.craftVitalCharm);
+    expect(resolved.intentId).toBe('legacy-text:2000000001:1001:84:пилюля живучести');
     expect(resolved.stateKey).toBeNull();
     expect(resolved.intentSource).toBe('legacy_text');
   });

@@ -1,4 +1,5 @@
 import type { StatKey } from '../../shared/types/game';
+import type { CraftingRecipeCode } from '../../modules/crafting/domain/crafting-recipes';
 import type { TrophyActionCode } from '../../modules/rewards/domain/trophy-actions';
 import { runeCollectionPageSize } from '../../modules/runes/domain/rune-collection';
 
@@ -47,6 +48,10 @@ export const gameCommands = {
   unequipRune: 'снять',
   altar: 'алтарь',
   craftRune: 'создать',
+  craftVitalCharm: 'пилюля живучести',
+  craftKeenEdge: 'пилюля удара',
+  craftGuardPlate: 'пилюля стойкости',
+  craftRuneFocus: 'пилюля фокуса',
   rerollRuneMenu: 'изменить руну',
   destroyRune: 'сломать',
   nextRune: '+руна',
@@ -94,6 +99,11 @@ type RuneSlotCommand =
   | typeof gameCommands.selectRuneSlot3
   | typeof gameCommands.selectRuneSlot4
   | typeof gameCommands.selectRuneSlot5;
+type CraftingRecipeCommand =
+  | typeof gameCommands.craftVitalCharm
+  | typeof gameCommands.craftKeenEdge
+  | typeof gameCommands.craftGuardPlate
+  | typeof gameCommands.craftRuneFocus;
 type TrophyActionCommand =
   | typeof gameCommands.collectAllReward
   | typeof gameCommands.skinBeastReward
@@ -137,6 +147,20 @@ const runePageSlotCommandMap = {
   [gameCommands.selectRuneSlot4]: 3,
   [gameCommands.selectRuneSlot5]: 4,
 } satisfies Readonly<Record<RuneSlotCommand, 0 | 1 | 2 | 3 | 4>>;
+
+const craftingRecipeCommandMap = {
+  [gameCommands.craftVitalCharm]: 'vital_charm',
+  [gameCommands.craftKeenEdge]: 'keen_edge',
+  [gameCommands.craftGuardPlate]: 'guard_plate',
+  [gameCommands.craftRuneFocus]: 'rune_focus',
+} satisfies Readonly<Record<CraftingRecipeCommand, CraftingRecipeCode>>;
+
+const craftingRecipeCodeCommandMap = {
+  vital_charm: gameCommands.craftVitalCharm,
+  keen_edge: gameCommands.craftKeenEdge,
+  guard_plate: gameCommands.craftGuardPlate,
+  rune_focus: gameCommands.craftRuneFocus,
+} satisfies Readonly<Record<CraftingRecipeCode, CraftingRecipeCommand>>;
 
 const trophyActionCommandMap = {
   [gameCommands.collectAllReward]: 'claim_all',
@@ -204,6 +228,17 @@ export const commandAliases: Readonly<Record<string, GameCommand>> = {
   'надеть в слот 1': gameCommands.equipRuneSlot1,
   'надеть в слот 2': gameCommands.equipRuneSlot2,
   'надеть в поддержку': gameCommands.equipRuneSlot2,
+  'оберег': gameCommands.craftVitalCharm,
+  'заточка': gameCommands.craftKeenEdge,
+  'пластина': gameCommands.craftGuardPlate,
+  'фокус': gameCommands.craftRuneFocus,
+  'живучесть': gameCommands.craftVitalCharm,
+  'удар': gameCommands.craftKeenEdge,
+  'стойкость': gameCommands.craftGuardPlate,
+  'пилюля живучесть': gameCommands.craftVitalCharm,
+  'пилюля удар': gameCommands.craftKeenEdge,
+  'пилюля стойкость': gameCommands.craftGuardPlate,
+  'пилюля фокус': gameCommands.craftRuneFocus,
   '++руна': gameCommands.nextRune,
   '--руна': gameCommands.previousRune,
   '>>руна': gameCommands.nextRunePage,
@@ -235,6 +270,18 @@ export const resolveRunePageSlotCommand = (command: string): 0 | 1 | 2 | 3 | 4 |
 
   return runePageSlotCommandMap[command];
 };
+
+export const resolveCraftingRecipeCommand = (command: string): CraftingRecipeCode | null => {
+  if (!hasOwn(craftingRecipeCommandMap, command)) {
+    return null;
+  }
+
+  return craftingRecipeCommandMap[command];
+};
+
+export const resolveCraftingRecipeCodeCommand = (recipeCode: CraftingRecipeCode): CraftingRecipeCommand => (
+  craftingRecipeCodeCommandMap[recipeCode]
+);
 
 export const createBestiaryPageCommand = (pageNumber: number): BestiaryPageCommand => {
   const safePageNumber = Number.isFinite(pageNumber)

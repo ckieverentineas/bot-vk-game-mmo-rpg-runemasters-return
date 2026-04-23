@@ -3,6 +3,7 @@ import type { Context } from 'vk-io';
 import { type AppError, isAppError } from '../../shared/domain/AppError';
 import {
   gameCommands,
+  resolveCraftingRecipeCommand,
   resolveRuneCursorDeltaCommand,
   resolveRunePageSlotCommand,
   resolveRuneStatRerollCommand,
@@ -41,6 +42,7 @@ export const recoverableCommandErrorCodes = new Set([
   'command_retry_pending',
   'rune_slot_not_found',
   'not_enough_rune_resources',
+  'not_enough_crafting_resources',
   'not_enough_shards',
   'battle_in_progress',
 ]);
@@ -178,6 +180,18 @@ export const recoveryRules: readonly RecoveryRule[] = [
   },
   {
     matches: (command) => runeManageCommandSet.has(command as GameCommandType),
+    handle: async (handler, ctx, vkId, _command, error) => {
+      const player = await handler.services.getRuneCollection.execute(vkId);
+      await handler.reply(
+        ctx,
+        withErrorHeader(error, renderAltar(player)),
+        createAltarKeyboard(player),
+      );
+      return true;
+    },
+  },
+  {
+    matches: (command) => resolveCraftingRecipeCommand(command) !== null,
     handle: async (handler, ctx, vkId, _command, error) => {
       const player = await handler.services.getRuneCollection.execute(vkId);
       await handler.reply(

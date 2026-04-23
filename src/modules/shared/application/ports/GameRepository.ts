@@ -17,7 +17,7 @@ import type { TrophyActionCode } from '../../../rewards/domain/trophy-actions';
 
 export type RuneLoadoutCommandIntentKey = 'EQUIP_RUNE' | 'UNEQUIP_RUNE';
 export type RuneNavigationCommandIntentKey = 'MOVE_RUNE_CURSOR' | 'SELECT_RUNE_PAGE_SLOT';
-export type RuneCraftCommandIntentKey = 'CRAFT_RUNE' | 'REROLL_RUNE_STAT' | 'DESTROY_RUNE';
+export type RuneCraftCommandIntentKey = 'CRAFT_RUNE' | 'REROLL_RUNE_STAT' | 'DESTROY_RUNE' | 'CRAFT_ITEM';
 export type ExplorationCommandIntentKey = 'ENTER_TUTORIAL_MODE' | 'SKIP_TUTORIAL' | 'RETURN_TO_ADVENTURE' | 'EXPLORE_LOCATION';
 export type QuestRewardCommandIntentKey = 'CLAIM_QUEST_REWARD';
 export type DailyActivityCommandIntentKey = 'CLAIM_DAILY_TRACE';
@@ -240,6 +240,7 @@ export interface GameRepository {
   rerollRuneStat(playerId: number, runeId: string, rarity: RuneRarity, stats: StatBlock, intentId?: string, intentStateKey?: string, currentStateKey?: string): Promise<PlayerState>;
   deleteRune(playerId: number, runeId: string): Promise<PlayerState>;
   destroyRune(playerId: number, runeId: string, refund: InventoryDelta, intentId?: string, intentStateKey?: string, currentStateKey?: string): Promise<PlayerState>;
+  craftPlayerItem(playerId: number, cost: InventoryDelta, statDelta: StatBlock, intentId?: string, intentStateKey?: string, currentStateKey?: string): Promise<PlayerState>;
   adjustInventory(playerId: number, delta: InventoryDelta): Promise<PlayerState>;
   createBattle(playerId: number, battle: CreateBattleInput, options?: CreateBattleOptions): Promise<BattleView>;
   getActiveBattle(playerId: number): Promise<BattleView | null>;
