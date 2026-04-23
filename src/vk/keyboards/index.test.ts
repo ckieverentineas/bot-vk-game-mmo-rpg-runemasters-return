@@ -493,6 +493,15 @@ describe('profile keyboard', () => {
     expect(mainMenuLabels).toContain('⚔️ Цель печати');
   });
 
+  it('keeps the optional daily trace available from the main menu', () => {
+    const player = createPlayer();
+    const labels = collectLabels(createMainMenuKeyboard(player));
+    const payloads = collectPayloads(createMainMenuKeyboard(player));
+
+    expect(labels).toContain('✨ След дня');
+    expect(payloads).toContainEqual({ command: gameCommands.dailyTrace });
+  });
+
   it('keeps defeat battle-result CTA aligned with rune review instead of school-test retry', () => {
     const player = createPlayer({
       victories: 3,

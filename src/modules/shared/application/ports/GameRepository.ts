@@ -20,6 +20,7 @@ export type RuneNavigationCommandIntentKey = 'MOVE_RUNE_CURSOR' | 'SELECT_RUNE_P
 export type RuneCraftCommandIntentKey = 'CRAFT_RUNE' | 'REROLL_RUNE_STAT' | 'DESTROY_RUNE';
 export type ExplorationCommandIntentKey = 'ENTER_TUTORIAL_MODE' | 'SKIP_TUTORIAL' | 'RETURN_TO_ADVENTURE' | 'EXPLORE_LOCATION';
 export type QuestRewardCommandIntentKey = 'CLAIM_QUEST_REWARD';
+export type DailyActivityCommandIntentKey = 'CLAIM_DAILY_TRACE';
 export type BattleActionCommandIntentKey =
   | 'BATTLE_ENGAGE'
   | 'BATTLE_FLEE'
@@ -33,6 +34,7 @@ export type GameCommandIntentKey =
   | RuneNavigationCommandIntentKey
   | ExplorationCommandIntentKey
   | QuestRewardCommandIntentKey
+  | DailyActivityCommandIntentKey
   | BattleActionCommandIntentKey;
 
 export interface SaveRuneLoadoutOptions {
@@ -90,6 +92,13 @@ export interface ClaimQuestRewardOptions {
   readonly currentStateKey?: string;
 }
 
+export interface ClaimDailyActivityRewardOptions {
+  readonly commandKey: DailyActivityCommandIntentKey;
+  readonly intentId?: string;
+  readonly intentStateKey?: string;
+  readonly currentStateKey?: string;
+}
+
 export interface CreateBattleOptions {
   readonly commandKey?: 'EXPLORE_LOCATION';
   readonly intentId?: string;
@@ -112,6 +121,14 @@ export interface CollectPendingRewardResult {
 export interface QuestRewardClaimResult {
   readonly player: PlayerState;
   readonly questCode: string;
+  readonly reward: ResourceReward;
+  readonly claimed: boolean;
+}
+
+export interface DailyActivityRewardClaimResult {
+  readonly player: PlayerState;
+  readonly activityCode: string;
+  readonly gameDay: string;
   readonly reward: ResourceReward;
   readonly claimed: boolean;
 }
@@ -187,6 +204,13 @@ export interface GameRepository {
     reward: ResourceReward,
     options?: ClaimQuestRewardOptions,
   ): Promise<QuestRewardClaimResult>;
+  claimDailyActivityReward(
+    playerId: number,
+    activityCode: string,
+    gameDay: string,
+    reward: ResourceReward,
+    options?: ClaimDailyActivityRewardOptions,
+  ): Promise<DailyActivityRewardClaimResult>;
   findPendingReward(playerId: number): Promise<PendingRewardView | null>;
   collectPendingReward(playerId: number, ledgerKey: string, actionCode: TrophyActionCode): Promise<CollectPendingRewardResult>;
   recoverPendingRewardsOnStart(): Promise<RecoverPendingRewardsResult>;

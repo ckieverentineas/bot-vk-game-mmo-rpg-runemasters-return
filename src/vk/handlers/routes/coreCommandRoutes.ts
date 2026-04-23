@@ -14,4 +14,5 @@ export const coreCommandRoutes = {
     return handler.deletePlayer(ctx, vkId, routeState.intentId, routeState.stateKey, routeState.intentSource);
   },
   [gameCommands.inventory]: (handler, ctx, vkId) => handler.showInventory(ctx, vkId),
+  [gameCommands.dailyTrace]: (handler, ctx, vkId, context) => handler.claimDailyTrace(ctx, vkId, context),
 } satisfies StaticCommandRouteConfig;

@@ -2,6 +2,8 @@ export { renderBattle } from './battleMessages';
 
 export { renderBestiary } from './bestiaryMessages';
 
+export { renderDailyTrace } from './activityMessages';
+
 export { renderExplorationEvent } from './explorationMessages';
 
 export {

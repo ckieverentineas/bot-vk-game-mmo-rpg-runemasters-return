@@ -16,6 +16,10 @@ import {
   createQuestRewardLedgerEntry,
   isQuestRewardLedgerEntry,
 } from './quest-reward-ledger';
+import {
+  createDailyActivityLedgerEntry,
+  isDailyActivityLedgerEntry,
+} from './daily-activity-ledger';
 import { createBattleVictoryRewardIntent } from './reward-intent';
 
 const createRune = (): RuneView => ({
@@ -263,6 +267,58 @@ describe('battle platform contracts', () => {
     expect(isQuestRewardLedgerEntry({
       ...ledger,
       sourceId: 'first_sign',
+    })).toBe(false);
+  });
+
+  it('creates a canonical daily activity ledger entry', () => {
+    const reward = {
+      gold: 6,
+      inventoryDelta: {
+        usualShards: 1,
+        herb: 1,
+      },
+    };
+
+    const ledger = createDailyActivityLedgerEntry(
+      1,
+      'soft_daily_trace',
+      '2026-04-23',
+      reward,
+      '2026-04-23T00:00:00.000Z',
+    );
+
+    expect(ledger).toEqual({
+      schemaVersion: 1,
+      kind: 'DAILY_TRACE',
+      status: 'APPLIED',
+      playerId: 1,
+      ledgerKey: 'daily_activity:1:soft_daily_trace:2026-04-23',
+      sourceType: 'DAILY_TRACE',
+      sourceId: 'soft_daily_trace:2026-04-23',
+      activityCode: 'soft_daily_trace',
+      gameDay: '2026-04-23',
+      reward,
+      appliedAt: '2026-04-23T00:00:00.000Z',
+    });
+    expect(isDailyActivityLedgerEntry(ledger)).toBe(true);
+  });
+
+  it('rejects daily activity ledger entries with mismatched identity', () => {
+    const ledger = createDailyActivityLedgerEntry(
+      1,
+      'soft_daily_trace',
+      '2026-04-23',
+      { inventoryDelta: { usualShards: 1 } },
+      '2026-04-23T00:00:00.000Z',
+    );
+
+    expect(isDailyActivityLedgerEntry({
+      ...ledger,
+      ledgerKey: 'daily_activity:1:soft_daily_trace:2026-04-24',
+    })).toBe(false);
+    expect(isDailyActivityLedgerEntry({
+      ...ledger,
+      sourceId: 'soft_daily_trace:2026-04-24',
     })).toBe(false);
   });
 

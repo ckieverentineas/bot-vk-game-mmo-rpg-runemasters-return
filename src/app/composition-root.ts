@@ -1,6 +1,7 @@
 import { assertValidGameContent } from '../content/validation/validate-game-content';
 import { buildWorldCatalog } from '../content/world';
 import { gameContent } from '../content/game-content';
+import { ClaimDailyTrace } from '../modules/activity/application/use-cases/ClaimDailyTrace';
 import { PerformBattleAction } from '../modules/combat/application/use-cases/PerformBattleAction';
 import { GetActiveBattle } from '../modules/combat/application/use-cases/GetActiveBattle';
 import { ExploreLocation } from '../modules/exploration/application/use-cases/ExploreLocation';
@@ -40,6 +41,7 @@ export interface AppServices {
   getPlayerProfile: GetPlayerProfile;
   getQuestBook: GetQuestBook;
   getBestiary: GetBestiary;
+  claimDailyTrace: ClaimDailyTrace;
   claimQuestReward: ClaimQuestReward;
   enterTutorialMode: EnterTutorialMode;
   returnToAdventure: ReturnToAdventure;
@@ -75,6 +77,7 @@ export const createAppServices = (): AppServices => {
     getPlayerProfile: new GetPlayerProfile(repository),
     getQuestBook: new GetQuestBook(repository, telemetry),
     getBestiary: new GetBestiary(repository, worldCatalog),
+    claimDailyTrace: new ClaimDailyTrace(repository, telemetry),
     claimQuestReward: new ClaimQuestReward(repository, telemetry),
     enterTutorialMode: new EnterTutorialMode(repository),
     returnToAdventure: new ReturnToAdventure(repository, telemetry),

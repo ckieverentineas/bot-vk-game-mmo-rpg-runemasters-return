@@ -102,6 +102,20 @@ export class RepositoryGameTelemetry implements GameTelemetry {
     await this.log(userId, 'quest_reward_not_ready', payload);
   }
 
+  public async dailyTraceClaimed(
+    userId: number,
+    payload: Parameters<NonNullable<GameTelemetry['dailyTraceClaimed']>>[1],
+  ): Promise<void> {
+    await this.log(userId, 'daily_trace_claimed', payload);
+  }
+
+  public async dailyTraceAlreadyClaimed(
+    userId: number,
+    payload: Parameters<NonNullable<GameTelemetry['dailyTraceAlreadyClaimed']>>[1],
+  ): Promise<void> {
+    await this.log(userId, 'daily_trace_already_claimed', payload);
+  }
+
   private async log(userId: number, action: string, details: object): Promise<void> {
     await this.repository.log(userId, action, {
       event_version: 1,

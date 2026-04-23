@@ -393,6 +393,19 @@ const createServices = (): AppServices => {
         claimedNow: true,
       }),
     } as unknown as AppServices['claimQuestReward'],
+    claimDailyTrace: {
+      execute: vi.fn().mockResolvedValue({
+        player: basePlayer,
+        claimedNow: true,
+        trace: {
+          activityCode: 'soft_daily_trace',
+          gameDay: '2026-04-23',
+          title: 'Заметка на старой карте',
+          description: 'На полях карты проступает тихая пометка.',
+          reward: { gold: 6, inventoryDelta: { usualShards: 1, leather: 1 } },
+        },
+      }),
+    } as unknown as AppServices['claimDailyTrace'],
     enterTutorialMode: {
       execute: vi.fn().mockResolvedValue(tutorialPlayer),
     } as unknown as AppServices['enterTutorialMode'],

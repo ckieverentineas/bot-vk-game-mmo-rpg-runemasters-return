@@ -1,6 +1,7 @@
-import type { InventoryDelta, InventoryField, ResourceReward } from '../../../../shared/types/game';
+import type { ResourceReward } from '../../../../shared/types/game';
 
-import { hasSchemaVersion, isJsonRecord } from './versioned-contract';
+import { hasSchemaVersion } from './versioned-contract';
+import { isResourceRewardSnapshot } from './resource-reward-contract';
 
 export const QUEST_REWARD_LEDGER_SCHEMA_VERSION = 1 as const;
 export const QUEST_REWARD_SOURCE_TYPE = 'QUEST_REWARD' as const;
@@ -18,38 +19,8 @@ export interface QuestRewardLedgerEntryV1 {
   readonly appliedAt: string;
 }
 
-const inventoryFields: readonly InventoryField[] = [
-  'usualShards',
-  'unusualShards',
-  'rareShards',
-  'epicShards',
-  'legendaryShards',
-  'mythicalShards',
-  'leather',
-  'bone',
-  'herb',
-  'essence',
-  'metal',
-  'crystal',
-];
-
 const isString = (value: unknown): value is string => typeof value === 'string';
 const isNumber = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value) && value >= 0;
-
-const isInventoryField = (value: unknown): value is InventoryField => (
-  isString(value) && inventoryFields.includes(value as InventoryField)
-);
-
-const isInventoryDelta = (value: unknown): value is InventoryDelta => (
-  isJsonRecord(value)
-  && Object.entries(value).every(([field, amount]) => isInventoryField(field) && isNumber(amount))
-);
-
-const isResourceReward = (value: unknown): value is ResourceReward => (
-  isJsonRecord(value)
-  && (value.gold === undefined || isNumber(value.gold))
-  && (value.inventoryDelta === undefined || isInventoryDelta(value.inventoryDelta))
-);
 
 export const buildQuestRewardLedgerKey = (playerId: number, questCode: string): string => (
   `quest_reward:${playerId}:${questCode}`
@@ -83,7 +54,7 @@ export const isQuestRewardLedgerEntry = (value: unknown): value is QuestRewardLe
     || value.sourceType !== QUEST_REWARD_SOURCE_TYPE
     || !isString(value.sourceId)
     || !isString(value.questCode)
-    || !isResourceReward(value.reward)
+    || !isResourceRewardSnapshot(value.reward)
     || !isString(value.appliedAt)
   ) {
     return false;

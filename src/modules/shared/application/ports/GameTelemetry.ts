@@ -3,7 +3,7 @@ import type { NextGoalType } from '../../../player/application/read-models/next-
 
 export type QuestTelemetryStatus = 'READY_TO_CLAIM' | 'IN_PROGRESS' | 'CLAIMED';
 export type EconomyTransactionType = 'reward_claim';
-export type EconomyTransactionSourceType = 'QUEST_REWARD';
+export type EconomyTransactionSourceType = 'QUEST_REWARD' | 'DAILY_TRACE';
 
 export interface QuestTelemetryPayload {
   readonly playerId: number;
@@ -21,6 +21,15 @@ export interface EconomyTransactionTelemetryPayload {
   readonly resourceShardsDelta: number;
   readonly runeDelta: number;
   readonly playerLevel: number;
+}
+
+export interface DailyTraceTelemetryPayload {
+  readonly playerId: number;
+  readonly activityCode: string;
+  readonly gameDay: string;
+  readonly claimedNow: boolean;
+  readonly rewardDustDelta: number;
+  readonly rewardShardsDelta: number;
 }
 
 export interface GameTelemetry {
@@ -119,4 +128,6 @@ export interface GameTelemetry {
   questRewardClaimed(userId: number, payload: QuestTelemetryPayload): Promise<void>;
   questRewardReplayed(userId: number, payload: QuestTelemetryPayload): Promise<void>;
   questRewardNotReady(userId: number, payload: QuestTelemetryPayload): Promise<void>;
+  dailyTraceClaimed?(userId: number, payload: DailyTraceTelemetryPayload): Promise<void>;
+  dailyTraceAlreadyClaimed?(userId: number, payload: DailyTraceTelemetryPayload): Promise<void>;
 }

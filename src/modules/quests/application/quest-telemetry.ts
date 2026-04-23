@@ -1,5 +1,6 @@
 import { Logger } from '../../../utils/logger';
-import type { ResourceReward, ShardField } from '../../../shared/types/game';
+import type { ResourceReward } from '../../../shared/types/game';
+import { sumResourceRewardShardDelta } from '../../shared/application/resource-reward-summary';
 import type {
   EconomyTransactionTelemetryPayload,
   GameTelemetry,
@@ -15,15 +16,6 @@ type QuestTelemetryMethod =
   | 'questRewardClaimed'
   | 'questRewardReplayed'
   | 'questRewardNotReady';
-
-const shardInventoryFields: readonly ShardField[] = [
-  'usualShards',
-  'unusualShards',
-  'rareShards',
-  'epicShards',
-  'legendaryShards',
-  'mythicalShards',
-];
 
 export const buildQuestTelemetryPayload = (
   book: QuestBookView,
@@ -45,7 +37,7 @@ export const buildQuestRewardEconomyTelemetryPayload = (
   sourceType: 'QUEST_REWARD',
   sourceId,
   resourceDustDelta: reward.gold ?? 0,
-  resourceShardsDelta: sumShardDelta(reward),
+  resourceShardsDelta: sumResourceRewardShardDelta(reward),
   runeDelta: 0,
   playerLevel,
 });
@@ -86,16 +78,4 @@ const trackTelemetrySafely = async (
   } catch (error) {
     Logger.warn('Telemetry logging failed', error);
   }
-};
-
-const sumShardDelta = (reward: ResourceReward): number => {
-  const inventoryDelta = reward.inventoryDelta;
-  if (!inventoryDelta) {
-    return 0;
-  }
-
-  return shardInventoryFields.reduce(
-    (total, field) => total + (inventoryDelta[field] ?? 0),
-    0,
-  );
 };

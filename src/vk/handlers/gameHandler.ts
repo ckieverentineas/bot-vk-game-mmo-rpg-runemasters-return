@@ -7,7 +7,7 @@ import { AppError, isAppError } from '../../shared/domain/AppError';
 import type { BattleActionType, BattleView, PlayerState } from '../../shared/types/game';
 import { Logger } from '../../utils/logger';
 import { createMainMenuKeyboard } from '../keyboards';
-import { renderBattle } from '../presenters/messages';
+import { renderBattle, renderDailyTrace } from '../presenters/messages';
 import { resolveCommandEnvelope } from '../router/commandRouter';
 import {
   config,
@@ -209,6 +209,18 @@ export class GameHandler {
   public async showInventory(ctx: Context, vkId: number): Promise<void> {
     const player = await this.services.getPlayerProfile.execute(vkId);
     await sendInventory(ctx, player);
+  }
+
+  public async claimDailyTrace(ctx: Context, vkId: number, context: CommandIntentContext): Promise<void> {
+    const routeState = toRouteState(context);
+    const result = await this.services.claimDailyTrace.execute(
+      vkId,
+      routeState.intentId,
+      routeState.stateKey,
+      routeState.intentSource,
+    );
+
+    await this.reply(ctx, renderDailyTrace(result), createMainMenuKeyboard(result.player));
   }
 
   public async openQuestBook(ctx: Context, vkId: number, pageNumber = 1): Promise<void> {

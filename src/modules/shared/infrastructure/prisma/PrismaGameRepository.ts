@@ -65,15 +65,18 @@ import {
   createQuestRewardLedgerEntry,
   QUEST_REWARD_SOURCE_TYPE,
 } from '../../domain/contracts/quest-reward-ledger';
+import { createDailyActivityLedgerEntry } from '../../domain/contracts/daily-activity-ledger';
 import { createBattleVictoryRewardIntent } from '../../domain/contracts/reward-intent';
 import type {
   ClaimQuestRewardOptions,
+  ClaimDailyActivityRewardOptions,
   CollectPendingRewardResult,
   CreateBattleOptions,
   FinalizeBattleResult,
   BestiaryDiscoveryView,
   GameCommandIntentKey,
   GameRepository,
+  DailyActivityRewardClaimResult,
   PendingRewardSourceView,
   PendingRewardView,
   QuestRewardClaimResult,
@@ -975,23 +978,8 @@ export class PrismaGameRepository implements GameRepository {
             };
           }
 
-          if (reward.gold !== undefined && reward.gold !== 0) {
-            await tx.player.update({
-              where: { id: playerId },
-              data: {
-                gold: {
-                  increment: reward.gold,
-                },
-              },
-            });
-          }
-
-          if (reward.inventoryDelta) {
-            await this.applyInventoryDelta(tx, playerId, reward.inventoryDelta);
-          }
-
           return {
-            player: mapPlayerRecord(await this.requirePlayerRecord(tx, playerId)),
+            player: await this.applyResourceReward(tx, playerId, reward),
             questCode,
             reward,
             claimed: true,
@@ -1017,6 +1005,89 @@ export class PrismaGameRepository implements GameRepository {
         return {
           player: mapPlayerRecord(await this.requirePlayerRecord(this.prisma, playerId)),
           questCode,
+          reward,
+          claimed: false,
+        };
+      }
+
+      throw error;
+    }
+  }
+
+  public async claimDailyActivityReward(
+    playerId: number,
+    activityCode: string,
+    gameDay: string,
+    reward: ResourceReward,
+    options?: ClaimDailyActivityRewardOptions,
+  ): Promise<DailyActivityRewardClaimResult> {
+    const appliedAt = new Date();
+    const ledger = createDailyActivityLedgerEntry(
+      playerId,
+      activityCode,
+      gameDay,
+      reward,
+      appliedAt.toISOString(),
+    );
+
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        const applyDailyActivityReward = async (): Promise<DailyActivityRewardClaimResult> => {
+          try {
+            await tx.rewardLedgerRecord.create({
+              data: {
+                playerId,
+                ledgerKey: ledger.ledgerKey,
+                sourceType: ledger.sourceType,
+                sourceId: ledger.sourceId,
+                status: ledger.status,
+                entrySnapshot: stringifyJson(ledger, '{}'),
+                appliedAt,
+              },
+            });
+          } catch (error) {
+            if (!isPrismaUniqueConstraintError(error)) {
+              throw error;
+            }
+
+            return {
+              player: mapPlayerRecord(await this.requirePlayerRecord(tx, playerId)),
+              activityCode,
+              gameDay,
+              reward,
+              claimed: false,
+            };
+          }
+
+          return {
+            player: await this.applyResourceReward(tx, playerId, reward),
+            activityCode,
+            gameDay,
+            reward,
+            claimed: true,
+          };
+        };
+
+        if (options?.commandKey && options.intentId && options.intentStateKey) {
+          return this.runWithCommandIntent(
+            tx,
+            playerId,
+            options.commandKey,
+            options.intentId,
+            options.intentStateKey,
+            options.currentStateKey,
+            applyDailyActivityReward,
+          );
+        }
+
+        return applyDailyActivityReward();
+      });
+    } catch (error) {
+      if (isPrismaUniqueConstraintError(error)) {
+        return {
+          player: mapPlayerRecord(await this.requirePlayerRecord(this.prisma, playerId)),
+          activityCode,
+          gameDay,
           reward,
           claimed: false,
         };
@@ -1858,6 +1929,29 @@ export class PrismaGameRepository implements GameRepository {
 
   public async adjustInventory(playerId: number, delta: InventoryDelta): Promise<PlayerState> {
     return this.applyInventoryDelta(this.prisma, playerId, delta);
+  }
+
+  private async applyResourceReward(
+    client: TransactionClient | PrismaClient,
+    playerId: number,
+    reward: ResourceReward,
+  ): Promise<PlayerState> {
+    if (reward.gold !== undefined && reward.gold !== 0) {
+      await client.player.update({
+        where: { id: playerId },
+        data: {
+          gold: {
+            increment: reward.gold,
+          },
+        },
+      });
+    }
+
+    if (reward.inventoryDelta) {
+      return this.applyInventoryDelta(client, playerId, reward.inventoryDelta);
+    }
+
+    return mapPlayerRecord(await this.requirePlayerRecord(client, playerId));
   }
 
   private async applyInventoryDelta(
