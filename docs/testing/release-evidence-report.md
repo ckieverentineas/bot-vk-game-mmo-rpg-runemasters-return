@@ -1,9 +1,9 @@
 # Release Evidence Report
 
-Сгенерировано: 2026-04-23T00:45:35.647Z
-Запрошенное окно: 2026-04-16T00:45:35.513Z → 2026-04-23T00:45:35.513Z
-Окно evidence: 2026-04-21T03:19:53.508Z → 2026-04-23T00:45:12.358Z
-Уникальных игроков в выборке: 47
+Сгенерировано: 2026-04-23T02:28:44.420Z
+Запрошенное окно: 2026-04-16T02:28:44.383Z → 2026-04-23T02:28:44.383Z
+Окно evidence: 2026-04-21T03:19:53.508Z → 2026-04-23T02:28:30.822Z
+Уникальных игроков в выборке: 63
 
 ## Evidence verdict
 
@@ -14,20 +14,20 @@
 
 | Сигнал | Событий | Уникальных игроков |
 | --- | --- | --- |
-| `onboarding_started` | 47 | 47 |
-| `tutorial_path_chosen` | 47 | 47 |
-| `loadout_changed` | 63 | 47 |
-| `first_school_presented` | 60 | 47 |
-| `first_school_committed` | 59 | 47 |
-| `school_novice_elite_encounter_started` | 15 | 5 |
-| `school_novice_follow_up_action_taken` | 87 | 47 |
-| `return_recap_shown` | 4 | 4 |
-| `post_session_next_goal_shown` | 41 | 5 |
-| `reward_claim_applied` | 83 | 47 |
-| `economy_transaction_committed` | 4 | 4 |
-| `quest_book_opened` | 4 | 4 |
-| `quest_reward_claimed` | 4 | 4 |
-| `quest_reward_replayed` | 2 | 2 |
+| `onboarding_started` | 63 | 63 |
+| `tutorial_path_chosen` | 63 | 63 |
+| `loadout_changed` | 143 | 63 |
+| `first_school_presented` | 140 | 63 |
+| `first_school_committed` | 139 | 63 |
+| `school_novice_elite_encounter_started` | 80 | 21 |
+| `school_novice_follow_up_action_taken` | 295 | 63 |
+| `return_recap_shown` | 20 | 20 |
+| `post_session_next_goal_shown` | 190 | 21 |
+| `reward_claim_applied` | 224 | 63 |
+| `economy_transaction_committed` | 20 | 20 |
+| `quest_book_opened` | 22 | 21 |
+| `quest_reward_claimed` | 20 | 20 |
+| `quest_reward_replayed` | 10 | 10 |
 | `quest_reward_not_ready` | 0 | 0 |
 | `battle_stale_action_rejected` | 0 | 0 |
 
@@ -35,15 +35,15 @@
 
 | Tutorial state | Событий | Уникальных игроков |
 | --- | --- | --- |
-| ACTIVE | 47 | 47 |
+| ACTIVE | 63 | 63 |
 
 | Path choice | Событий | Уникальных игроков |
 | --- | --- | --- |
-| continue_tutorial | 47 | 47 |
+| continue_tutorial | 63 | 63 |
 
 | Школа | First presented | First committed |
 | --- | --- | --- |
-| Пламя | 47 | 47 |
+| Пламя | 63 | 63 |
 | Твердь | 0 | 0 |
 | Буря | 0 | 0 |
 | Прорицание | 0 | 0 |
@@ -54,52 +54,53 @@
 
 | Школа | Novice elite | UNUSUAL reward | Open runes | Equip sign | Follow-up battle | RARE seal | Latest event |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| Пламя | 4 | 4 | 4 | 47 | 4 | 3 | 2026-04-23T00:44:57.838Z |
-| Твердь | 3 | 3 | 3 | 3 | 3 | 3 | 2026-04-23T00:45:03.073Z |
-| Буря | 4 | 3 | 3 | 3 | 3 | 3 | 2026-04-23T00:45:07.415Z |
-| Прорицание | 3 | 3 | 3 | 3 | 3 | 3 | 2026-04-23T00:45:11.786Z |
+| Пламя | 20 | 20 | 20 | 63 | 20 | 17 | 2026-04-23T02:28:18.743Z |
+| Твердь | 19 | 19 | 19 | 19 | 19 | 17 | 2026-04-23T02:28:23.137Z |
+| Буря | 20 | 19 | 19 | 19 | 19 | 18 | 2026-04-23T02:28:26.690Z |
+| Прорицание | 19 | 19 | 19 | 19 | 19 | 17 | 2026-04-23T02:28:30.287Z |
 
 ## Post-payoff loadout engagement
 
 | Школа | Aligned reward | Open runes after reward | Equip sign after reward | Loadout change after reward | Next battle after reward | RARE seal |
 | --- | --- | --- | --- | --- | --- | --- |
-| Пламя | 4 | 4 | 3 | 3 | 3 | 3 |
-| Твердь | 3 | 3 | 3 | 3 | 3 | 3 |
-| Буря | 3 | 3 | 3 | 3 | 3 | 3 |
-| Прорицание | 3 | 3 | 3 | 3 | 3 | 3 |
+| Пламя | 20 | 20 | 19 | 19 | 19 | 17 |
+| Твердь | 19 | 19 | 19 | 19 | 19 | 17 |
+| Буря | 19 | 19 | 19 | 19 | 19 | 18 |
+| Прорицание | 19 | 19 | 19 | 19 | 19 | 17 |
 
 ## Post-session next-goal health
 
 | Suggested goal | Shown | Novice elite shown | Follow-up users |
 | --- | --- | --- | --- |
-| equip_dropped_rune | 5 | 0 | 5 |
-| equip_school_sign | 4 | 4 | 4 |
+| equip_dropped_rune | 21 | 0 | 21 |
+| equip_school_sign | 20 | 20 | 20 |
+| review_runes_after_defeat | 3 | 3 | 0 |
 | challenge_school_miniboss | 1 | 0 | 1 |
 | equip_first_rune | 1 | 0 | 1 |
 | hunt_school_elite | 1 | 0 | 0 |
-| review_runes_after_defeat | 1 | 1 | 0 |
 
 ## Return recap health
 
 | Next step | Shown | Без руны | С руной | Follow-up users |
 | --- | --- | --- | --- | --- |
-| equip_school_sign | 3 | 0 | 3 | 0 |
+| equip_school_sign | 17 | 0 | 17 | 0 |
+| challenge_school_miniboss | 2 | 0 | 2 | 0 |
 | hunt_school_elite | 1 | 0 | 1 | 0 |
 
 ## Quest book funnel
 
 | Quest signal | Events | Unique users | Quest codes | Latest event |
 | --- | --- | --- | --- | --- |
-| `quest_book_opened` | 4 | 4 | none | 2026-04-23T00:44:53.669Z |
-| `quest_reward_claimed` | 4 | 4 | awakening_empty_master | 2026-04-23T00:44:54.094Z |
-| `quest_reward_replayed` | 2 | 2 | awakening_empty_master | 2026-04-23T00:44:54.198Z |
+| `quest_book_opened` | 22 | 21 | none | 2026-04-23T02:28:14.949Z |
+| `quest_reward_claimed` | 20 | 20 | awakening_empty_master | 2026-04-23T02:28:15.274Z |
+| `quest_reward_replayed` | 10 | 10 | awakening_empty_master | 2026-04-23T02:28:15.358Z |
 | `quest_reward_not_ready` | 0 | 0 | none | none |
 
 ## Economy health
 
 | Transaction | Source | Events | Unique users | Dust delta | Shards delta | Rune delta | Source IDs | Latest event |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| reward_claim | QUEST_REWARD | 4 | 4 | 20 | 4 | 0 | awakening_empty_master | 2026-04-23T00:44:53.993Z |
+| reward_claim | QUEST_REWARD | 20 | 20 | 100 | 20 | 0 | awakening_empty_master | 2026-04-23T02:28:15.194Z |
 
 ## QA / exploit guardrails
 
