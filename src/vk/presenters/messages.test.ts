@@ -1146,6 +1146,19 @@ describe('messages school-first onboarding framing', () => {
     expect(message).toContain('Лесной волк повержен');
     expect(message).toContain('Уже ваше: +14 опыта · +5 пыли · +2 обычных осколка.');
     expect(message).toContain('🔪 Свежевать — +2 кожи · +1 кость; мастерство: Свежевание.');
+    expect(message).not.toContain('🎒 Забрать добычу');
+  });
+
+  it('renders the safe trophy preview when it is the only collection action', () => {
+    const pendingReward = createPendingReward();
+    const message = renderPendingReward({
+      ...pendingReward,
+      snapshot: {
+        ...pendingReward.snapshot,
+        trophyActions: pendingReward.snapshot.trophyActions.filter((action) => action.code === 'claim_all'),
+      },
+    });
+
     expect(message).toContain('🎒 Забрать добычу — +2 кожи · +1 кость; мастерство: без роста навыка.');
   });
 

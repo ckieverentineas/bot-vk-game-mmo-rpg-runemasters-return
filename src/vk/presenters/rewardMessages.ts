@@ -2,6 +2,7 @@ import type { AcquisitionSummaryView } from '../../modules/player/application/re
 import { buildPlayerNextGoalView } from '../../modules/player/application/read-models/next-goal';
 import type { CollectPendingRewardView } from '../../modules/rewards/application/use-cases/CollectPendingReward';
 import type { PendingRewardView } from '../../modules/shared/application/ports/GameRepository';
+import { listPlayerFacingTrophyActions } from '../trophy-action-presentation';
 import {
   formatInventoryDelta,
   formatRuneDisplayName,
@@ -52,7 +53,7 @@ export const renderPendingReward = (
     'Трофей поддастся только одному подходу; повторный жест не принесёт второй добычи.',
     '',
     'Подход к трофею:',
-    ...pendingReward.snapshot.trophyActions.map(formatTrophyActionPreview),
+    ...listPlayerFacingTrophyActions(pendingReward.snapshot.trophyActions).map(formatTrophyActionPreview),
   ].join('\n');
 };
 

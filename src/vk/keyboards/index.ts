@@ -14,6 +14,7 @@ export {
   createBestiaryLocationKeyboard,
 } from './bestiary';
 export { createPendingRewardKeyboard } from './rewards';
+export { createKeyboardClear } from './clear';
 export { createQuestBookKeyboard } from './quests';
 export {
   createAltarKeyboard,

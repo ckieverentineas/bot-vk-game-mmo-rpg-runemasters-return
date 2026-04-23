@@ -2,8 +2,11 @@ import type { Context } from 'vk-io';
 
 import type { AppServices } from '../../../app/composition-root';
 import type { TrophyActionCode } from '../../../modules/rewards/domain/trophy-actions';
+import type { AcquisitionSummaryView } from '../../../modules/player/application/read-models/acquisition-summary';
+import type { PendingRewardView } from '../../../modules/shared/application/ports/GameRepository';
 import type { PlayerState } from '../../../shared/types/game';
 import {
+  createKeyboardClear,
   createMainMenuKeyboard,
   createPendingRewardKeyboard,
 } from '../../keyboards';
@@ -14,6 +17,20 @@ import {
 } from '../../presenters/messages';
 
 type RewardReplyServices = Pick<AppServices, 'collectPendingReward' | 'getPendingReward'>;
+
+const vkInvisibleKeyboardClearMessage = '\u2063';
+
+export const replyWithPendingRewardCard = async (
+  ctx: Context,
+  pendingReward: PendingRewardView,
+  acquisitionSummary?: AcquisitionSummaryView | null,
+): Promise<void> => {
+  await ctx.reply(vkInvisibleKeyboardClearMessage, { keyboard: createKeyboardClear() });
+  await ctx.reply(
+    renderPendingReward(pendingReward, acquisitionSummary),
+    { keyboard: createPendingRewardKeyboard(pendingReward) },
+  );
+};
 
 export const replyWithPendingRewardIfAny = async (
   ctx: Context,
@@ -26,10 +43,7 @@ export const replyWithPendingRewardIfAny = async (
     return false;
   }
 
-  await ctx.reply(
-    renderPendingReward(result.pendingReward),
-    { keyboard: createPendingRewardKeyboard(result.pendingReward) },
-  );
+  await replyWithPendingRewardCard(ctx, result.pendingReward);
   return true;
 };
 
@@ -48,10 +62,7 @@ export const replyWithPendingRewardScreen = async (
     return;
   }
 
-  await ctx.reply(
-    renderPendingReward(result.pendingReward),
-    { keyboard: createPendingRewardKeyboard(result.pendingReward) },
-  );
+  await replyWithPendingRewardCard(ctx, result.pendingReward);
 };
 
 export const replyWithCollectedPendingReward = async (

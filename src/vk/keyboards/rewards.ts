@@ -2,11 +2,12 @@ import { Keyboard } from 'vk-io';
 
 import type { PendingRewardView } from '../../modules/shared/application/ports/GameRepository';
 import { gameCommands, resolveTrophyActionCodeCommand } from '../commands/catalog';
+import { listPlayerFacingTrophyActions } from '../trophy-action-presentation';
 import { buildKeyboard } from './builder';
 import type { KeyboardBuilder, KeyboardLayout } from './types';
 
 const createPendingRewardLayout = (pendingReward: PendingRewardView): KeyboardLayout => {
-  const actionRows = pendingReward.snapshot.trophyActions.map((action) => [{
+  const actionRows = listPlayerFacingTrophyActions(pendingReward.snapshot.trophyActions).map((action) => [{
     label: action.label,
     command: resolveTrophyActionCodeCommand(action.code),
     color: action.code === 'claim_all' ? Keyboard.SECONDARY_COLOR : Keyboard.POSITIVE_COLOR,

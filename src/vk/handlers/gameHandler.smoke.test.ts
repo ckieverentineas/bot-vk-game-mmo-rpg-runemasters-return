@@ -15,6 +15,12 @@ interface ReplyCall {
   readonly keyboard: unknown;
 }
 
+interface SerializedKeyboard {
+  readonly isInline: boolean;
+  readonly rows: unknown[];
+  readonly currentRow?: unknown[];
+}
+
 interface FakeContextInput {
   readonly senderId?: number;
   readonly peerId?: number;
@@ -63,6 +69,10 @@ const getReplyCalls = (ctx: FakeContext): ReplyCall[] => (
     message,
     keyboard: options?.keyboard ?? null,
   }))
+);
+
+const serializeKeyboard = (keyboard: unknown): SerializedKeyboard => (
+  JSON.parse(JSON.stringify(keyboard)) as SerializedKeyboard
 );
 
 const createPlayer = (overrides: Partial<PlayerState> = {}): PlayerState => ({
@@ -537,8 +547,13 @@ describe('GameHandler smoke', () => {
 
     await handler.handle(ctx as never);
 
-    expect(getReplyCalls(ctx)[0]?.message).toContain('🏁 Трофеи победы');
-    expect(getReplyCalls(ctx)[0]?.message).toContain('Лесной волк повержен');
+    const replies = getReplyCalls(ctx);
+    const keyboardClear = serializeKeyboard(replies[0]?.keyboard);
+
+    expect(keyboardClear.isInline).toBe(false);
+    expect(keyboardClear.rows).toEqual([]);
+    expect(replies[1]?.message).toContain('🏁 Трофеи победы');
+    expect(replies[1]?.message).toContain('Лесной волк повержен');
     expect(services.telemetry.returnRecapShown).not.toHaveBeenCalled();
   });
 
@@ -905,8 +920,13 @@ describe('GameHandler smoke', () => {
 
     await handler.handle(ctx as never);
 
-    expect(getReplyCalls(ctx)[0]?.message).toContain('🏁 Трофеи победы');
-    expect(getReplyCalls(ctx)[0]?.message).toContain('👉 Следом: Откройте «🔮 Руны», наденьте первый знак школы');
+    const replies = getReplyCalls(ctx);
+    const keyboardClear = serializeKeyboard(replies[0]?.keyboard);
+
+    expect(keyboardClear.isInline).toBe(false);
+    expect(keyboardClear.rows).toEqual([]);
+    expect(replies[1]?.message).toContain('🏁 Трофеи победы');
+    expect(replies[1]?.message).toContain('👉 Следом: Откройте «🔮 Руны», наденьте первый знак школы');
     expect(services.telemetry.postSessionNextGoalShown).toHaveBeenCalledWith(1, expect.objectContaining({
       battleOutcome: 'VICTORY',
       suggestedGoalType: 'equip_school_sign',
@@ -955,7 +975,12 @@ describe('GameHandler smoke', () => {
 
     await handler.handle(ctx as never);
 
-    expect(getReplyCalls(ctx)[0]?.message).toContain('🏁 Трофеи победы');
+    const replies = getReplyCalls(ctx);
+    const keyboardClear = serializeKeyboard(replies[0]?.keyboard);
+
+    expect(keyboardClear.isInline).toBe(false);
+    expect(keyboardClear.rows).toEqual([]);
+    expect(replies[1]?.message).toContain('🏁 Трофеи победы');
     expect(services.exploreLocation.execute).not.toHaveBeenCalled();
   });
 
@@ -1162,10 +1187,15 @@ describe('GameHandler smoke', () => {
     await handler.handle(ctx as never);
 
     expect(services.getPendingReward.execute).toHaveBeenCalledWith(1001);
-    expect(getReplyCalls(ctx)[0]?.message).toContain('🏁 Трофеи победы');
-    expect(getReplyCalls(ctx)[0]?.message).toContain('Лесной волк повержен');
-    expect(getReplyCalls(ctx)[0]?.message).toContain('✨ Перемена: Открыт новый слот рун.');
-    expect(getReplyCalls(ctx)[0]?.message).toContain('🔪 Свежевать');
+    const replies = getReplyCalls(ctx);
+    const keyboardClear = serializeKeyboard(replies[0]?.keyboard);
+
+    expect(keyboardClear.isInline).toBe(false);
+    expect(keyboardClear.rows).toEqual([]);
+    expect(replies[1]?.message).toContain('🏁 Трофеи победы');
+    expect(replies[1]?.message).toContain('Лесной волк повержен');
+    expect(replies[1]?.message).toContain('✨ Перемена: Открыт новый слот рун.');
+    expect(replies[1]?.message).toContain('🔪 Свежевать');
   });
 
   it('обрабатывает выбранное действие трофея', async () => {

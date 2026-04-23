@@ -265,11 +265,27 @@ describe('profile keyboard', () => {
     const payloads = collectPayloads(keyboard);
 
     expect(labels).toContain('🔪 Свежевать');
-    expect(labels).toContain('🎒 Забрать добычу');
+    expect(labels).not.toContain('🎒 Забрать добычу');
     expect(payloads.find((payload) => payload.command === gameCommands.skinBeastReward)?.stateKey).toBe('battle-victory:battle-1');
-    expect(payloads.find((payload) => payload.command === gameCommands.collectAllReward)?.stateKey).toBe('battle-victory:battle-1');
+    expect(payloads.find((payload) => payload.command === gameCommands.collectAllReward)).toBeUndefined();
     expect(serializeKeyboard(keyboard).isInline).toBe(true);
     expect(serializeKeyboard(createMainMenuKeyboard(createPlayer())).isInline).toBe(false);
+  });
+
+  it('keeps the safe trophy collection button when no unique trophy action exists', () => {
+    const pendingReward = createPendingReward();
+    const keyboard = createPendingRewardKeyboard({
+      ...pendingReward,
+      snapshot: {
+        ...pendingReward.snapshot,
+        trophyActions: pendingReward.snapshot.trophyActions.filter((action) => action.code === 'claim_all'),
+      },
+    });
+    const labels = collectLabels(keyboard);
+    const payloads = collectPayloads(keyboard);
+
+    expect(labels).toContain('🎒 Забрать добычу');
+    expect(payloads.find((payload) => payload.command === gameCommands.collectAllReward)?.stateKey).toBe('battle-victory:battle-1');
   });
 
   it('turns ember hidden trophy actions into ledger-scoped trophy buttons', () => {

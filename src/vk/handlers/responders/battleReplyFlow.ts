@@ -13,13 +13,12 @@ import {
   createBattleKeyboard,
   createBattleResultKeyboard,
   createMainMenuKeyboard,
-  createPendingRewardKeyboard,
 } from '../../keyboards';
 import {
   renderBattle,
   renderExplorationEvent,
-  renderPendingReward,
 } from '../../presenters/messages';
+import { replyWithPendingRewardCard } from './rewardReplyFlow';
 
 type BattleReplyServices = Pick<AppServices, 'getPendingReward' | 'getPlayerProfile'>;
 
@@ -93,10 +92,7 @@ export const replyWithBattle = async (
   if (battle.result === 'VICTORY' && player) {
     const pendingReward = await services.getPendingReward.execute(player.vkId);
     if (pendingReward.pendingReward) {
-      await ctx.reply(
-        renderPendingReward(pendingReward.pendingReward, result.acquisitionSummary),
-        { keyboard: createPendingRewardKeyboard(pendingReward.pendingReward) },
-      );
+      await replyWithPendingRewardCard(ctx, pendingReward.pendingReward, result.acquisitionSummary);
       await telemetry.trackFirstSchoolPresented(player, result.acquisitionSummary);
       await telemetry.trackPostSessionNextGoalShown(player, battle);
       return;
