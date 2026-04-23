@@ -5,9 +5,14 @@ import { gameCommands } from '../commands/catalog';
 import { buildKeyboard } from './builder';
 import type { KeyboardBuilder, KeyboardLayout } from './types';
 
+const maxQuestKeyboardRows = 6;
+const navigationRowCount = 1;
+const maxVisibleRewardButtons = maxQuestKeyboardRows - navigationRowCount;
+
 const createQuestBookLayout = (book: QuestBookView): KeyboardLayout => {
   const rewardRows = book.quests
     .filter((quest) => quest.status === 'READY_TO_CLAIM')
+    .slice(0, maxVisibleRewardButtons)
     .map((quest) => [{
       label: `🎁 ${quest.title}`,
       command: gameCommands.claimQuestReward,
