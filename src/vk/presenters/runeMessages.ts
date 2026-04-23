@@ -264,21 +264,19 @@ export const renderRuneScreen = (
   ].join('\n');
 };
 
-export const renderRuneDetailScreen = (
+const renderRuneFocusScreen = (
   player: PlayerState,
   acquisitionSummary?: AcquisitionSummaryView | null,
+  title = '🔮 Руна',
+  focusLabel = 'Руна',
 ): string => {
-  if (player.runes.length === 0) {
-    return renderRuneScreen(player, acquisitionSummary);
-  }
-
   const selectedRune = getSelectedRune(player);
   const selectedRuneNumber = normalizeRuneIndex(player.currentRuneIndex, player.runes.length) + 1;
 
   return [
-    '🔮 Руна',
+    title,
     '',
-    `Руна ${selectedRuneNumber} из ${player.runes.length}`,
+    `${focusLabel} ${selectedRuneNumber} из ${player.runes.length}`,
     renderEquippedRuneSlots(player),
     ...renderSchoolMasteryMilestonesBlock(player),
     ...renderAcquisitionSummary(acquisitionSummary),
@@ -290,9 +288,35 @@ export const renderRuneDetailScreen = (
   ].join('\n');
 };
 
+const renderEmptyAltar = (acquisitionSummary?: AcquisitionSummaryView | null): string => (
+  [
+    '🕯 Алтарь рун',
+    '',
+    ...renderAcquisitionSummary(acquisitionSummary),
+    'У вас пока нет рун.',
+    'Первая боевая руна откроет школу рун и задаст ваш ранний стиль боя.',
+    renderStarterSchoolLine(),
+    ...renderRuneEconomyLines(),
+    'Победы и алтарь помогут собрать первую руну.',
+  ].join('\n')
+);
+
+export const renderRuneDetailScreen = (
+  player: PlayerState,
+  acquisitionSummary?: AcquisitionSummaryView | null,
+): string => {
+  if (player.runes.length === 0) {
+    return renderRuneScreen(player, acquisitionSummary);
+  }
+
+  return renderRuneFocusScreen(player, acquisitionSummary);
+};
+
 export const renderAltar = (
   player: PlayerState,
   acquisitionSummary?: AcquisitionSummaryView | null,
 ): string => (
-  renderRuneDetailScreen(player, acquisitionSummary)
+  player.runes.length === 0
+    ? renderEmptyAltar(acquisitionSummary)
+    : renderRuneFocusScreen(player, acquisitionSummary, '🕯 Алтарь рун', 'Фокус: руна')
 );

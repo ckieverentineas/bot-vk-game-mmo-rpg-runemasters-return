@@ -10,6 +10,7 @@ import {
   renderPendingReward,
   renderProfile,
   renderReturnRecap,
+  renderAltar,
   renderRuneDetailScreen,
   renderRuneScreen,
   renderWelcome,
@@ -281,7 +282,7 @@ describe('messages school-first onboarding framing', () => {
       kind: 'resource_find',
       kindLabel: 'находка',
       title: '🎒 Брошенный привал',
-      directorLine: '🎲 Мастер снабжения отмечает находку: малый материал полезен мастерской, но не заменяет рост через бои, руны и школы.',
+      directorLine: '🎲 Мастер снабжения отмечает находку: малый материал пригодится у алтаря, но не заменяет рост через бои, руны и школы.',
       description: 'Под навесом из корней лежит малый запас трав.',
       outcomeLine: 'Боя нет: вы находите малый запас трав.',
       nextStepLine: 'Дальше можно снова исследовать маршрут.',
@@ -321,6 +322,7 @@ describe('messages school-first onboarding framing', () => {
     });
     const message = renderRuneScreen(player);
     const detail = renderRuneDetailScreen(player);
+    const altar = renderAltar(player);
 
     expect(message).toContain('🔮 Руны:');
     expect(message).toContain('🧩 Рун надето ✅1/2');
@@ -343,6 +345,10 @@ describe('messages school-first onboarding framing', () => {
     expect(detail).toContain('Пассивные эффекты:');
     expect(detail).toContain('🛡️ Сердце углей');
     expect(detail).toContain('Пассивно усиливает атакующее давление владельца руны.');
+
+    expect(altar).toContain('🕯 Алтарь рун');
+    expect(altar).toContain('Фокус: руна 2 из 6');
+    expect(altar).toContain('Алтарь: создание от 10 осколков');
   });
 
   it('shows an equipped second rune as a full slot in the carousel', () => {

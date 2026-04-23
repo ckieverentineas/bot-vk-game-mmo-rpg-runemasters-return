@@ -45,7 +45,7 @@ const createMainMenuLayout = (player?: PlayerState): KeyboardLayout => {
     ],
     [
       { label: '🔮 Руны', command: gameCommands.runeCollection, color: Keyboard.POSITIVE_COLOR },
-      { label: '🛠 Мастерская', command: gameCommands.altar, color: Keyboard.SECONDARY_COLOR },
+      { label: '🕯 Алтарь', command: gameCommands.altar, color: Keyboard.SECONDARY_COLOR },
     ],
   ];
 };

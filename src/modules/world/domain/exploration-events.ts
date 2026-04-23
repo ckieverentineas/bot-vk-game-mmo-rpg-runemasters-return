@@ -170,7 +170,7 @@ const standaloneExplorationScenes: readonly ExplorationSceneDefinition[] = [
     kindLabel: explorationSceneKindLabels.resource_find,
     minLocationLevel: 1,
     title: '🧵 Порванная сумка',
-    description: 'Между корнями застряла старая походная сумка. Её владелец ушёл давно, но плотная кожа ещё годится для мастерской.',
+    description: 'Между корнями застряла старая походная сумка. Её владелец ушёл давно, но плотная кожа ещё пригодится у алтаря.',
     outcomeLine: 'Боя нет: вы забираете один пригодный лоскут, без редкой добычи и без скрытого давления на темп.',
     nextStepLine: 'Материал полезен для будущих рецептов, а следующий шаг всё ещё выбирает обычный ход исследования.',
     effect: inventoryFindEffect({ leather: 1 }, 'Найдено: кожа +1.'),

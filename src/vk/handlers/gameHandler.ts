@@ -55,6 +55,7 @@ import {
   replyWithBestiary as sendBestiary,
 } from './responders/bestiaryReplyFlow';
 import {
+  replyWithAltar as sendAltar,
   replyWithRuneDetail as sendRuneDetail,
   replyWithRuneList as sendRuneList,
   replyWithRuneRerollMenu as sendRuneRerollMenu,
@@ -348,9 +349,9 @@ export class GameHandler {
     }
   }
 
-  public async openRuneWorkshop(ctx: Context, vkId: number, trackSchoolNoviceOpen = false): Promise<void> {
+  public async openRuneAltar(ctx: Context, vkId: number, trackSchoolNoviceOpen = false): Promise<void> {
     const player = await this.services.getRuneCollection.execute(vkId);
-    await this.replyWithRuneDetail(ctx, player);
+    await this.replyWithAltar(ctx, player);
     if (trackSchoolNoviceOpen) {
       await this.handlerTelemetry.trackSchoolNoviceRuneHubOpen(player);
     }
@@ -397,7 +398,7 @@ export class GameHandler {
       routeState.stateKey,
       routeState.intentSource,
     );
-    await this.replyWithRuneDetail(ctx, result);
+    await this.replyWithAltar(ctx, result);
   }
 
   public async destroyCurrentRuneCommand(ctx: Context, vkId: number, context: CommandIntentContext): Promise<void> {
@@ -408,7 +409,7 @@ export class GameHandler {
       routeState.stateKey,
       routeState.intentSource,
     );
-    await this.replyWithRuneDetail(ctx, player);
+    await this.replyWithAltar(ctx, player);
   }
 
   public async replyWithRuneList(ctx: Context, state: RuneHubReplyState): Promise<void> {
@@ -417,6 +418,10 @@ export class GameHandler {
 
   public async replyWithRuneDetail(ctx: Context, state: RuneHubReplyState): Promise<void> {
     await sendRuneDetail(ctx, state);
+  }
+
+  public async replyWithAltar(ctx: Context, state: RuneHubReplyState): Promise<void> {
+    await sendAltar(ctx, state);
   }
 
   public async replyWithRuneRerollMenu(ctx: Context, player: PlayerState): Promise<void> {

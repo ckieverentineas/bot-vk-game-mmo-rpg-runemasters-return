@@ -3,6 +3,7 @@ import type { Context } from 'vk-io';
 import type { CraftRuneResultView } from '../../../modules/runes/application/use-cases/CraftRune';
 import type { PlayerState } from '../../../shared/types/game';
 import {
+  createAltarKeyboard,
   createRuneDetailKeyboard,
   createRuneKeyboard,
   createRuneRerollKeyboard,
@@ -39,6 +40,15 @@ export const replyWithRuneDetail = async (ctx: Context, state: RuneHubReplyState
   await ctx.reply(
     renderRuneDetailScreen(result.player, result.acquisitionSummary),
     { keyboard: createRuneDetailKeyboard(result.player) },
+  );
+};
+
+export const replyWithAltar = async (ctx: Context, state: RuneHubReplyState): Promise<void> => {
+  const result = normalizeRuneHubReplyState(state);
+
+  await ctx.reply(
+    renderAltar(result.player, result.acquisitionSummary),
+    { keyboard: createAltarKeyboard(result.player) },
   );
 };
 

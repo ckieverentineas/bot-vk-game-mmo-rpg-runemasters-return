@@ -1912,7 +1912,7 @@ describe('GameHandler smoke', () => {
     expect(getReplyCalls(runeContext)[0]?.message).toContain('Страница 1 из 1');
     expect(getReplyCalls(runeContext)[0]?.message).not.toContain('Список рун');
     expect(getReplyCalls(runeContext)[0]?.message).not.toContain('Редкость: Эпическая руна · Пламя');
-    expect(getReplyCalls(altarContext)[0]?.message).toContain('🔮 Руна');
+    expect(getReplyCalls(altarContext)[0]?.message).toContain('🕯 Алтарь рун');
     expect(getReplyCalls(altarContext)[0]?.message).toContain('Редкость: Эпическая руна · Пламя');
     expect(getReplyCalls(altarContext)[0]?.message).toContain('Стиль: Играй так: дави уроном');
     expect(getReplyCalls(altarContext)[0]?.message).toContain('Импульс углей');
@@ -2069,7 +2069,7 @@ describe('GameHandler smoke', () => {
 
     const replies = getReplyCalls(ctx);
     expect(replies[0]?.message).toContain('Рунный жест ещё в пути');
-    expect(replies[0]?.message).toContain('🔮 Руна');
+    expect(replies[0]?.message).toContain('🕯 Алтарь рун');
     expect(replies[0]?.message).toContain('Редкость: Эпическая руна · Пламя');
   });
 
@@ -2086,7 +2086,7 @@ describe('GameHandler smoke', () => {
 
     const replies = getReplyCalls(ctx);
     expect(replies[0]?.message).toContain('Этот рунный жест уже выцвел');
-    expect(replies[0]?.message).toContain('🔮 Руна');
+    expect(replies[0]?.message).toContain('🕯 Алтарь рун');
     expect(JSON.stringify(replies[0]?.keyboard)).toContain('intentId');
     expect(JSON.stringify(replies[0]?.keyboard)).toContain('надеть');
   });
@@ -2104,7 +2104,7 @@ describe('GameHandler smoke', () => {
 
     const replies = getReplyCalls(ctx);
     expect(replies[0]?.message).toContain('Рунный жест ещё в пути');
-    expect(replies[0]?.message).toContain('🔮 Руна');
+    expect(replies[0]?.message).toContain('🕯 Алтарь рун');
     expect(JSON.stringify(replies[0]?.keyboard)).toContain('надеть');
   });
 

@@ -26,7 +26,7 @@ export const runeCommandRoutes = {
   [gameCommands.unequipRune]: (handler, ctx, vkId, context) => (
     handler.unequipCurrentRuneSlot(ctx, vkId, context)
   ),
-  [gameCommands.altar]: (handler, ctx, vkId) => handler.openRuneWorkshop(ctx, vkId, true),
+  [gameCommands.altar]: (handler, ctx, vkId) => handler.openRuneAltar(ctx, vkId, true),
   [gameCommands.craftRune]: (handler, ctx, vkId, context) => handler.craftRuneCommand(ctx, vkId, context),
   [gameCommands.rerollRuneMenu]: (handler, ctx, vkId) => handler.openRuneRerollMenu(ctx, vkId),
   [gameCommands.destroyRune]: (handler, ctx, vkId, context) => (

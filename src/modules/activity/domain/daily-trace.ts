@@ -34,8 +34,8 @@ const dailyTraceTemplates: readonly DailyTraceTemplate[] = [
     materialField: 'crystal',
   },
   {
-    title: 'Пыль у порога мастерской',
-    description: 'Мастерская оставила горсть полезной пыли: забрать можно, пропустить тоже нормально.',
+    title: 'Пыль у порога алтаря',
+    description: 'У алтаря лежит горсть полезной пыли: забрать можно, пропустить тоже нормально.',
     materialField: 'metal',
   },
 ];

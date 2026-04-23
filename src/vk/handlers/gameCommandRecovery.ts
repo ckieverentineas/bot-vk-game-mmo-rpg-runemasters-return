@@ -9,8 +9,8 @@ import {
 } from '../commands/catalog';
 import {
   createEntryKeyboard,
+  createAltarKeyboard,
   createProfileKeyboard,
-  createRuneDetailKeyboard,
   createRuneKeyboard,
   createRuneRerollKeyboard,
   createTutorialKeyboard,
@@ -20,7 +20,6 @@ import {
   renderBattle,
   renderLocation,
   renderProfile,
-  renderRuneDetailScreen,
   renderRuneScreen,
 } from '../presenters/messages';
 import type { GameHandler } from './gameHandler';
@@ -183,8 +182,8 @@ export const recoveryRules: readonly RecoveryRule[] = [
       const player = await handler.services.getRuneCollection.execute(vkId);
       await handler.reply(
         ctx,
-        withErrorHeader(error, renderRuneDetailScreen(player)),
-        createRuneDetailKeyboard(player),
+        withErrorHeader(error, renderAltar(player)),
+        createAltarKeyboard(player),
       );
       return true;
     },

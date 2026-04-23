@@ -1919,7 +1919,7 @@ export class PrismaGameRepository implements GameRepository {
         });
 
         if (updatedRune.count === 0) {
-          throw new AppError('rune_not_found', 'Выбранный знак уже ушёл из алтаря. Вернитесь к мастерской.');
+          throw new AppError('rune_not_found', 'Выбранный знак уже ушёл из алтаря. Вернитесь к алтарю.');
         }
 
         await tx.player.update({
@@ -1965,7 +1965,7 @@ export class PrismaGameRepository implements GameRepository {
         });
 
         if (deleted.count === 0) {
-          throw new AppError('rune_not_found', 'Этот знак уже ушёл из алтаря. Вернитесь к мастерской.');
+          throw new AppError('rune_not_found', 'Этот знак уже ушёл из алтаря. Вернитесь к алтарю.');
         }
 
         const inventoryUpdate = buildInventoryDeltaInput(refund);
@@ -2030,7 +2030,7 @@ export class PrismaGameRepository implements GameRepository {
     });
 
     if (updated.count === 0) {
-      throw new AppError('inventory_underflow', 'Ресурсов уже не хватает. Вернитесь к текущей мастерской.');
+      throw new AppError('inventory_underflow', 'Ресурсов уже не хватает. Вернитесь к текущему экрану.');
     }
 
     return mapPlayerRecord(await this.requirePlayerRecord(client, playerId));

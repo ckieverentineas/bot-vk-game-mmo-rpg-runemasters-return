@@ -521,6 +521,15 @@ describe('profile keyboard', () => {
     expect(payloads).toContainEqual({ command: gameCommands.dailyTrace });
   });
 
+  it('names the rune action hub as the altar in the main menu', () => {
+    const labels = collectLabels(createMainMenuKeyboard(createPlayer()));
+    const payloads = collectPayloads(createMainMenuKeyboard(createPlayer()));
+
+    expect(labels).toContain('🕯 Алтарь');
+    expect(labels).not.toContain('🛠 Мастерская');
+    expect(payloads).toContainEqual({ command: gameCommands.altar });
+  });
+
   it('keeps defeat battle-result CTA aligned with rune review instead of school-test retry', () => {
     const player = createPlayer({
       victories: 3,
