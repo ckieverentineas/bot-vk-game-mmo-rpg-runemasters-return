@@ -48,7 +48,7 @@
 
 - Дробить проект малыми вертикальными срезами, сохраняя публичные импорты там, где это снижает риск.
 - Функциональное ядро, компонентная оболочка: чистые formatter/resolver функции внутри модулей, сценарные компоненты вокруг них, public barrel для совместимости импортов.
-- Presenter-декомпозиция VK-экранов разнесена по сценариям: `rewardMessages.ts`, `questMessages.ts`, `runeMessages.ts`, `battleMessages.ts`, `homeMessages.ts`, `profileMessages.ts` и `explorationMessages.ts` держат свои flow, а `message-formatting.ts` / `player-progress-formatting.ts` — общие чистые formatter'ы.
+- Presenter-декомпозиция VK-экранов разнесена по сценариям: `rewardMessages.ts`, `questMessages.ts`, `runeMessages.ts`, `battleMessages.ts`, `homeMessages.ts`, `profileMessages.ts` и `explorationMessages.ts` держат свои flow, а `message-formatting.ts`, `player-progress-formatting.ts` и `player-skill-formatting.ts` — общие чистые formatter'ы.
 - Handler-декомпозиция продолжена: `gameCommandRoutes.ts` стал агрегатором, `routes/*CommandRoutes.ts` держат core/tutorial/battle/rune/reward/quest маршруты, а `gameCommandRecovery.ts` — recoverable stale/retry/battle/rune контексты.
 - Responder-декомпозиция продолжена: `responders/homeReplyFlow.ts`, `runeReplyFlow.ts`, `questReplyFlow.ts`, `rewardReplyFlow.ts` и `battleReplyFlow.ts` держат рендер/клавиатуры home/profile/location экранов, рун, книги путей, pending trophy rewards, battle result и exploration result, а `GameHandler` делегирует им reply-flow.
 - `gameHandlerTelemetry.ts` держит transport-level telemetry payloads для return recap, school presentation, rune hub follow-up и post-session next-goal событий, оставляя `GameHandler` тонким orchestrator'ом поверх use-case и responder слоёв.

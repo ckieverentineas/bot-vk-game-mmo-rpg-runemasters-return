@@ -1,6 +1,5 @@
 import type { AcquisitionSummaryView } from '../../modules/player/application/read-models/acquisition-summary';
 import { buildPlayerNextGoalView } from '../../modules/player/application/read-models/next-goal';
-import { getPlayerSkillDefinition } from '../../modules/player/domain/player-skills';
 import type { CollectPendingRewardView } from '../../modules/rewards/application/use-cases/CollectPendingReward';
 import type { PendingRewardView } from '../../modules/shared/application/ports/GameRepository';
 import {
@@ -9,6 +8,10 @@ import {
   renderAcquisitionSummary,
   renderNextGoalSummary,
 } from './message-formatting';
+import {
+  formatPlayerSkillGainLine,
+  formatPlayerSkillTitles,
+} from './player-skill-formatting';
 
 const formatBaseRewardLine = (pendingReward: PendingRewardView): string => {
   const { baseReward } = pendingReward.snapshot;
@@ -22,18 +25,11 @@ const formatBaseRewardLine = (pendingReward: PendingRewardView): string => {
   return parts.join(' · ');
 };
 
-const formatSkillTitles = (skillCodes: readonly string[]): string => {
-  const titles = skillCodes
-    .map((skillCode) => getPlayerSkillDefinition(skillCode)?.title ?? skillCode);
-
-  return titles.length > 0 ? titles.join(', ') : 'без роста навыка';
-};
-
 const formatTrophyActionPreview = (
   action: PendingRewardView['snapshot']['trophyActions'][number],
 ): string => {
   const rewardLine = action.reward ? formatInventoryDelta(action.reward.inventoryDelta) : 'добыча без предпросмотра';
-  return `${action.label} — ${rewardLine}; мастерство: ${formatSkillTitles(action.skillCodes)}.`;
+  return `${action.label} — ${rewardLine}; мастерство: ${formatPlayerSkillTitles(action.skillCodes)}.`;
 };
 
 export const renderPendingReward = (
@@ -64,10 +60,7 @@ export const renderCollectedPendingReward = (result: CollectPendingRewardView): 
   const selectedAction = result.pendingReward.snapshot.trophyActions.find((action) => (
     action.code === result.selectedActionCode
   ));
-  const skillLines = result.appliedResult.skillUps.map((skillUp) => {
-    const title = getPlayerSkillDefinition(skillUp.skillCode)?.title ?? skillUp.skillCode;
-    return `${title}: ${skillUp.experienceBefore} → ${skillUp.experienceAfter}`;
-  });
+  const skillLines = result.appliedResult.skillUps.map(formatPlayerSkillGainLine);
   const sourceLine = result.pendingReward.source
     ? `Трофей разобран: ${result.pendingReward.source.enemyName}.`
     : 'Трофей разобран.';

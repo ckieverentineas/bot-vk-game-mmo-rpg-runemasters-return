@@ -1030,7 +1030,8 @@ describe('GameHandler smoke', () => {
     expect(services.collectPendingReward.execute).toHaveBeenCalledWith(1001, 'skin_beast', 'battle-victory:battle-1');
     expect(getReplyCalls(ctx)[0]?.message).toContain('🔪 Свежевать');
     expect(getReplyCalls(ctx)[0]?.message).toContain('В сумке: +2 кожи · +1 кость.');
-    expect(getReplyCalls(ctx)[0]?.message).toContain('Свежевание: 0 → 1');
+    expect(getReplyCalls(ctx)[0]?.message).toContain('Свежевание: Новичок свежевания · появились первые успехи');
+    expect(getReplyCalls(ctx)[0]?.message).not.toContain('Свежевание: 0 → 1');
   });
 
   it('показывает impact recap в результате боя, если награда реально меняет сборку', async () => {

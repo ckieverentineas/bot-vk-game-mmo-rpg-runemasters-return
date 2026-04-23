@@ -538,7 +538,7 @@ Player-facing decision:
 
 Resolved:
 
-1. Skill display style: player-facing profile/status copy uses rank labels (`Новичок свежевания`), while exact points stay internal/debug/evidence-only.
+1. Skill display style: player-facing profile/status/trophy-result copy uses rank labels and qualitative progress (`Новичок свежевания`, `первые успехи крепнут`), while exact points stay internal/debug/evidence-only.
 
 Перед глубоким внедрением ещё надо решить:
 

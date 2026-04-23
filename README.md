@@ -73,7 +73,7 @@ Runemasters Return — VK MMO RPG на TypeScript с модульным игро
 
 - `src/vk/commands/catalog.ts` — единый источник правды для команд, алиасов и динамических действий;
 - `src/vk/keyboards/*` — сценарные VK-клавиатуры (`main`, `battle`, `runes`, `rewards`, `quests`, `tutorial`) с общим builder'ом и совместимым barrel `index.ts`;
-- `src/vk/presenters/*` — player-facing тексты: общий barrel `messages.ts`, сценарные presenters для trophy/quest/rune/battle/home/profile/exploration flow и общие чистые formatter'ы для повторяемых строк;
+- `src/vk/presenters/*` — player-facing тексты: общий barrel `messages.ts`, сценарные presenters для trophy/quest/rune/battle/home/profile/exploration flow и общие чистые formatter'ы для повторяемых строк, прогресса школ и навыков;
 - `src/vk/handlers/gameCommandRoutes.ts`, `src/vk/handlers/routes/*` и `src/vk/handlers/gameCommandRecovery.ts` — агрегатор маршрутов, сценарные command routes и recoverable stale/retry контексты отдельно от `GameHandler`;
 - `src/vk/handlers/responders/*` — сценарные reply-flow, которые собирают presenter + keyboard для home/profile/location, рун, quest book, pending trophy rewards, battle result и exploration result без раздувания `GameHandler`;
 - `src/vk/handlers/gameHandlerTelemetry.ts` — transport-level telemetry composer для return recap, school presentation и post-session next-goal событий без смешивания analytics payload'ов с маршрутизацией;

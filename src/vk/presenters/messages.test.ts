@@ -976,7 +976,8 @@ describe('messages school-first onboarding framing', () => {
 
     expect(message).toContain('🔪 Свежевать');
     expect(message).toContain('В сумке: +2 кожи · +1 кость.');
-    expect(message).toContain('Свежевание: 3 → 4');
+    expect(message).toContain('Свежевание: Новичок свежевания · первые успехи крепнут');
+    expect(message).not.toContain('Свежевание: 3 → 4');
     expect(message).toContain('👉 Дальше: «⚔️ Исследовать».');
   });
 
