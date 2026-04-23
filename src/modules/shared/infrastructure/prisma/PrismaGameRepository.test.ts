@@ -44,6 +44,8 @@ const materializePlayerRecordFixture = (fileName: string) => {
           currentRuneIndex: fixture.progress.currentRuneIndex ?? 0,
           unlockedRuneSlotCount: fixture.progress.unlockedRuneSlotCount ?? 1,
           activeBattleId: typeof fixture.progress.activeBattleId === 'string' ? fixture.progress.activeBattleId : null,
+          currentHealth: fixture.progress.currentHealth ?? null,
+          currentMana: fixture.progress.currentMana ?? null,
           tutorialState: typeof fixture.progress.tutorialState === 'string' ? fixture.progress.tutorialState : 'ACTIVE',
           victories: fixture.progress.victories ?? 0,
           victoryStreak: fixture.progress.victoryStreak ?? 0,
@@ -126,6 +128,8 @@ const createPlayerRecord = () => ({
     currentRuneIndex: 0,
     unlockedRuneSlotCount: 1,
     activeBattleId: null,
+    currentHealth: null,
+    currentMana: null,
     tutorialState: 'SKIPPED',
     victories: 2,
     victoryStreak: 1,
@@ -2271,6 +2275,44 @@ describe('PrismaGameRepository release hardening', () => {
     expect(tx.playerProgress.update).toHaveBeenCalledWith(expect.objectContaining({
       data: expect.objectContaining({
         activeBattleId: null,
+      }),
+    }));
+  });
+
+  it('persists post-battle vitals on player progress for the next encounter', async () => {
+    const { repository, tx } = createPrismaMock();
+    const currentPlayer = createPlayerRecord();
+    const battle = createBattleView({
+      result: 'DEFEAT',
+      rewards: null,
+      player: {
+        ...createBattleView().player,
+        currentHealth: 0,
+        currentMana: 2,
+      },
+      enemy: {
+        ...createBattleView().enemy,
+        currentHealth: 3,
+      },
+    });
+
+    tx.battleSession.updateMany.mockResolvedValue({ count: 1 });
+    tx.player.findUnique.mockResolvedValue(currentPlayer);
+    tx.player.update.mockResolvedValue({});
+    tx.playerProgress.update.mockResolvedValue({});
+    tx.battleSession.findFirst.mockResolvedValue(createBattleRow({
+      status: 'COMPLETED',
+      result: 'DEFEAT',
+      rewardsSnapshot: null,
+    }));
+
+    await repository.finalizeBattle(1, battle);
+
+    expect(tx.playerProgress.update).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
+        activeBattleId: null,
+        currentHealth: 1,
+        currentMana: 2,
       }),
     }));
   });

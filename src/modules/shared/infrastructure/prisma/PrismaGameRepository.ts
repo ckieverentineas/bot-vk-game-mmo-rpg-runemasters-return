@@ -20,6 +20,7 @@ import type {
 import { buildBattleSnapshot } from '../../domain/contracts/battle-snapshot';
 import {
   DEFAULT_UNLOCKED_RUNE_SLOT_COUNT,
+  derivePostBattleVitals,
   getEquippedRune,
   getEquippedRuneIdsBySlot,
   getSelectedRune,
@@ -1364,6 +1365,8 @@ export class PrismaGameRepository implements GameRepository {
                   currentRuneIndex: 0,
                   unlockedRuneSlotCount: DEFAULT_UNLOCKED_RUNE_SLOT_COUNT,
                   activeBattleId: null,
+                  currentHealth: 8,
+                  currentMana: 4,
                   tutorialState: 'ACTIVE',
                   victories: 0,
                   victoryStreak: 0,
@@ -2152,6 +2155,7 @@ export class PrismaGameRepository implements GameRepository {
       let nextHighestLocationLevel = currentPlayer.highestLocationLevel;
       let nextTutorialState = currentPlayer.tutorialState;
       let nextUnlockedRuneSlotCount = getUnlockedRuneSlotCount(currentPlayer);
+      const nextVitals = derivePostBattleVitals(battle.player);
       const inventoryDelta: InventoryDelta = {};
       const schoolMasteryReward = resolveBattleSchoolMasteryRewardGain(battle);
 
@@ -2263,6 +2267,8 @@ export class PrismaGameRepository implements GameRepository {
           locationLevel: nextLocationLevel,
           unlockedRuneSlotCount: nextUnlockedRuneSlotCount,
           activeBattleId: null,
+          currentHealth: nextVitals.currentHealth,
+          currentMana: nextVitals.currentMana,
           tutorialState: nextTutorialState,
           victories: nextVictories,
           victoryStreak: nextVictoryStreak,

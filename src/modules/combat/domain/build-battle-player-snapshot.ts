@@ -3,7 +3,7 @@ import { buildLoadoutSnapshot, projectBattleRuneLoadout } from '../../shared/dom
 import { getSchoolNovicePathDefinition, hasRuneOfSchoolAtLeastRarity } from '../../player/domain/school-novice-path';
 import { getPlayerSchoolMasteryForArchetype } from '../../player/domain/school-mastery';
 import { getSchoolDefinitionForArchetype } from '../../runes/domain/rune-schools';
-import { getEquippedRune } from '../../player/domain/player-stats';
+import { derivePlayerVitals, getEquippedRune } from '../../player/domain/player-stats';
 
 const resolveSchoolProgressStage = (
   player: Pick<PlayerState, 'runes'>,
@@ -33,7 +33,7 @@ export const buildBattlePlayerSnapshot = (
   playerId: number,
   vkId: number,
   stats: StatBlock,
-  player: Pick<PlayerState, 'runes' | 'schoolMasteries'>,
+  player: Pick<PlayerState, 'runes' | 'schoolMasteries' | 'currentHealth' | 'currentMana'>,
 ): BattlePlayerSnapshot => {
   const equippedRune = getEquippedRune(player as PlayerState, 0);
   const secondaryRune = getEquippedRune(player as PlayerState, 1);
@@ -53,6 +53,7 @@ export const buildBattlePlayerSnapshot = (
   });
   const projectedLoadout = projectBattleRuneLoadout(loadoutSnapshot);
   const projectedSecondaryLoadout = projectBattleRuneLoadout(secondaryLoadoutSnapshot);
+  const vitals = derivePlayerVitals(player, stats);
 
   return {
     playerId,
@@ -62,10 +63,10 @@ export const buildBattlePlayerSnapshot = (
     magicDefence: stats.magicDefence,
     dexterity: stats.dexterity,
     intelligence: stats.intelligence,
-    maxHealth: stats.health,
-    currentHealth: stats.health,
-    maxMana: stats.intelligence * 4,
-    currentMana: stats.intelligence * 4,
+    maxHealth: vitals.maxHealth,
+    currentHealth: vitals.currentHealth,
+    maxMana: vitals.maxMana,
+    currentMana: vitals.currentMana,
     runeLoadout: projectedLoadout,
     supportRuneLoadout: projectedSecondaryLoadout,
     guardPoints: 0,

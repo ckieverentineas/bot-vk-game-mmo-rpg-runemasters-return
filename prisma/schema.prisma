@@ -71,6 +71,8 @@ model PlayerProgress {
   currentRuneIndex      Int      @default(0)
   unlockedRuneSlotCount Int      @default(2)
   activeBattleId        String?
+  currentHealth         Int?
+  currentMana           Int?
   tutorialState         String   @default("ACTIVE")
   victories             Int      @default(0)
   victoryStreak         Int      @default(0)

@@ -17,7 +17,7 @@ import type { RunePageSlot } from '../../modules/runes/domain/rune-collection';
 import { PrismaGameRepository } from '../../modules/shared/infrastructure/prisma/PrismaGameRepository';
 import type { GameRandom } from '../../modules/shared/application/ports/GameRandom';
 import type { PendingRewardView } from '../../modules/shared/application/ports/GameRepository';
-import { resolveAutoEquipRuneSlot } from '../../modules/player/domain/player-stats';
+import { derivePlayerStats, resolveAutoEquipRuneSlot, resolveMaxMana } from '../../modules/player/domain/player-stats';
 import type { BattleView, PlayerState, RuneRarity } from '../../shared/types/game';
 import { gameCommands, resolveTrophyActionCodeCommand } from '../../vk/commands/catalog';
 import { GameHandler } from '../../vk/handlers/gameHandler';
@@ -249,6 +249,21 @@ const getPendingReward = async (runtime: LocalPlaytestRuntime): Promise<PendingR
   return result.pendingReward;
 };
 
+const restoreLocalPlaytestVitals = async (runtime: LocalPlaytestRuntime): Promise<PlayerState> => {
+  const player = await getPlayer(runtime);
+  const stats = derivePlayerStats(player);
+
+  await prisma.playerProgress.update({
+    where: { playerId: player.playerId },
+    data: {
+      currentHealth: Math.max(1, stats.health),
+      currentMana: resolveMaxMana(stats),
+    },
+  });
+
+  return getPlayer(runtime);
+};
+
 const createResourceSnapshot = (player: PlayerState): ResourceSnapshot => ({
   gold: player.gold,
   inventory: { ...player.inventory },
@@ -440,7 +455,7 @@ const prepareSchoolNoviceEvidenceState = async (
     }),
   ]);
 
-  return getPlayer(runtime);
+  return restoreLocalPlaytestVitals(runtime);
 };
 
 const startSchoolEvidenceBattle = async (
@@ -499,6 +514,7 @@ const runSchoolNoviceEvidencePath = async (
   await collectPendingRewardIfAny(runtime);
   await runCommand(runtime, `${path.schoolCode}-novice-rune-hub`, gameCommands.runeCollection);
   await selectAndEquipSchoolRune(runtime, path, novicePath.rewardRarity, 'sign');
+  await restoreLocalPlaytestVitals(runtime);
   await startSchoolEvidenceBattle(runtime, path, 'miniboss', minibossEnemyCode);
 
   await fightUntilFinished(runtime);

@@ -57,6 +57,11 @@ const createBiome = (): BiomeView => ({
   maxLevel: 15,
 });
 
+const createRoamingBiome = (overrides: Partial<BiomeView>): BiomeView => ({
+  ...createBiome(),
+  ...overrides,
+});
+
 const createMobTemplate = (overrides: Partial<MobTemplateView> = {}): MobTemplateView => ({
   code: 'blue-slime',
   biomeCode: 'dark-forest',
@@ -185,6 +190,98 @@ describe('resolveExplorationOutcome', () => {
 
     expect(outcome.kind).toBe('battle');
     expect(outcome.kind === 'battle' ? outcome.enemy.code : null).toBe('ash-matron');
+  });
+
+  it('can pull an old-location mob into a higher-level route as a roaming encounter', () => {
+    const random = {
+      rollPercentage: vi.fn()
+        .mockReturnValueOnce(false)
+        .mockReturnValueOnce(true)
+        .mockReturnValueOnce(false),
+      pickOne: vi.fn(<T>(items: readonly T[]) => items[0]!),
+    };
+    const oldForest = createRoamingBiome({
+      code: 'dark-forest',
+      name: 'Тёмный лес',
+      minLevel: 1,
+      maxLevel: 15,
+    });
+    const caves = createRoamingBiome({
+      code: 'forgotten-caves',
+      name: 'Забытые пещеры',
+      minLevel: 16,
+      maxLevel: 35,
+    });
+
+    const outcome = resolveExplorationOutcome({
+      player: createPlayer(),
+      biome: caves,
+      templates: [createMobTemplate({ code: 'cave-goblin', biomeCode: 'forgotten-caves' })],
+      roamingTemplatePools: [{
+        biome: oldForest,
+        templates: [createMobTemplate({ code: 'forest-wolf', biomeCode: 'dark-forest', name: 'Лесной волк' })],
+        chancePercent: 12,
+        direction: 'LOWER_BIOME',
+      }],
+      locationLevel: 18,
+      currentSchoolCode: null,
+    }, random);
+
+    expect(outcome.kind).toBe('battle');
+    if (outcome.kind !== 'battle') {
+      return;
+    }
+
+    expect(outcome.enemy.code).toBe('forest-wolf');
+    expect(outcome.openingLog).toContain('🧭 Бродячий след: Лесной волк пришёл из места «Тёмный лес».');
+  });
+
+  it('can rarely pull a nearest higher-biome mob into the current route', () => {
+    const random = {
+      rollPercentage: vi.fn()
+        .mockReturnValueOnce(false)
+        .mockReturnValueOnce(false)
+        .mockReturnValueOnce(true)
+        .mockReturnValueOnce(false),
+      pickOne: vi.fn(<T>(items: readonly T[]) => items[0]!),
+    };
+    const forest = createRoamingBiome({
+      code: 'dark-forest',
+      name: 'Тёмный лес',
+      minLevel: 1,
+      maxLevel: 15,
+    });
+    const caves = createRoamingBiome({
+      code: 'forgotten-caves',
+      name: 'Забытые пещеры',
+      minLevel: 16,
+      maxLevel: 35,
+    });
+
+    const outcome = resolveExplorationOutcome({
+      player: createPlayer(),
+      biome: forest,
+      templates: [createMobTemplate({ code: 'forest-wolf', biomeCode: 'dark-forest' })],
+      roamingTemplatePools: [
+        {
+          biome: createRoamingBiome({ code: 'initium', name: 'Порог Инициации', minLevel: 0, maxLevel: 0 }),
+          templates: [createMobTemplate({ code: 'training-wisp', biomeCode: 'initium' })],
+          chancePercent: 12,
+          direction: 'LOWER_BIOME',
+        },
+        {
+          biome: caves,
+          templates: [createMobTemplate({ code: 'cave-goblin', biomeCode: 'forgotten-caves', name: 'Пещерный гоблин' })],
+          chancePercent: 3,
+          direction: 'HIGHER_BIOME',
+        },
+      ],
+      locationLevel: 8,
+      currentSchoolCode: null,
+    }, random);
+
+    expect(outcome.kind).toBe('battle');
+    expect(outcome.kind === 'battle' ? outcome.enemy.code : null).toBe('cave-goblin');
   });
 });
 

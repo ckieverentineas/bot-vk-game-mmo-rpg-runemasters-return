@@ -8,6 +8,8 @@ const serializeStateKey = (value: unknown): string => createHash('sha1').update(
 const buildExplorationSnapshot = (player: PlayerState) => ({
   tutorialState: player.tutorialState,
   activeBattleId: player.activeBattleId,
+  currentHealth: player.currentHealth ?? null,
+  currentMana: player.currentMana ?? null,
   locationLevel: player.locationLevel,
   highestLocationLevel: player.highestLocationLevel,
   victoryStreak: player.victoryStreak,

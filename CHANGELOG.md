@@ -14,6 +14,8 @@
 
 ### Added
 
+- межбоевой attrition для HP/маны: `PlayerProgress` хранит текущие vitals, новый battle snapshot стартует с них, defeat сохраняет безопасный минимум `1 HP`, а main menu/profile/location показывают текущее состояние;
+- бродячие encounter'ы для динамической сложности: ближайший нижний биом иногда подмешивает старых мобов в более высокие уровни, а ближайший верхний биом очень редко даёт опасного гостя снизу; boss-шаблоны из roaming исключены;
 - `📖 Бестиарий` добавлен как отдельный VK-экран: локации идут страницами по 5, противники внутри локации скрыты до первой встречи, а добыча и шанс руны раскрываются только после первого `APPLIED` трофея из существующего reward ledger без новых таблиц;
 - combat skill growth подключён к честным battle action facts: результативная `ATTACK` растит `combat.striking`, поднятая `DEFEND`-защита растит `combat.guard`, а активное рунное действие с расходом маны или запуском отката растит `rune.active_use`; начисление идёт внутри `saveBattle()` / `finalizeBattle()` вместе с revision guard, поэтому replay не дублирует прогресс;
 - player skill foundation для action-based progression: типы навыков, persistence `PlayerSkill`, доменный resolver шанса роста и применение skill experience через repository;

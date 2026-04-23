@@ -37,6 +37,29 @@ export const addStats = (left: StatBlock, right: StatBlock): StatBlock => ({
   intelligence: left.intelligence + right.intelligence,
 });
 
+export interface PlayerVitalsView {
+  readonly maxHealth: number;
+  readonly currentHealth: number;
+  readonly maxMana: number;
+  readonly currentMana: number;
+}
+
+export const resolveMaxMana = (stats: Pick<StatBlock, 'intelligence'>): number => (
+  Math.max(0, stats.intelligence * 4)
+);
+
+const normalizeCurrentVital = (
+  value: number | null | undefined,
+  fallback: number,
+  maxValue: number,
+): number => {
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    return fallback;
+  }
+
+  return clamp(Math.floor(value), 0, Math.max(0, maxValue));
+};
+
 export const getUnlockedRuneSlotCount = (player: Pick<PlayerState, 'unlockedRuneSlotCount' | 'schoolMasteries'>): number => {
   const slotCount = player.unlockedRuneSlotCount ?? DEFAULT_UNLOCKED_RUNE_SLOT_COUNT;
   const persistedSlotCount = Number.isInteger(slotCount) && slotCount > 0 ? slotCount : DEFAULT_UNLOCKED_RUNE_SLOT_COUNT;
@@ -121,6 +144,28 @@ export const derivePlayerStats = (player: PlayerState): StatBlock => {
 };
 
 export const clamp = (value: number, min: number, max: number): number => Math.max(min, Math.min(max, value));
+
+export const derivePlayerVitals = (
+  player: Pick<PlayerState, 'currentHealth' | 'currentMana'>,
+  stats: StatBlock,
+): PlayerVitalsView => {
+  const maxHealth = Math.max(1, stats.health);
+  const maxMana = resolveMaxMana(stats);
+
+  return {
+    maxHealth,
+    currentHealth: normalizeCurrentVital(player.currentHealth, maxHealth, maxHealth),
+    maxMana,
+    currentMana: normalizeCurrentVital(player.currentMana, maxMana, maxMana),
+  };
+};
+
+export const derivePostBattleVitals = (
+  battlePlayer: Pick<PlayerVitalsView, 'maxHealth' | 'currentHealth' | 'maxMana' | 'currentMana'>,
+): Pick<PlayerState, 'currentHealth' | 'currentMana'> => ({
+  currentHealth: Math.max(1, normalizeCurrentVital(battlePlayer.currentHealth, 1, battlePlayer.maxHealth)),
+  currentMana: normalizeCurrentVital(battlePlayer.currentMana, 0, battlePlayer.maxMana),
+});
 
 const calculateCombatPower = (stats: StatBlock): number => (
   stats.health

@@ -11,6 +11,8 @@ import type {
 import { parseJson } from '../../../../shared/utils/json';
 import {
   DEFAULT_UNLOCKED_RUNE_SLOT_COUNT,
+  derivePlayerStats,
+  derivePlayerVitals,
   emptyInventory,
   getRuneEquippedSlot,
 } from '../../../player/domain/player-stats';
@@ -36,6 +38,8 @@ export interface PersistedPlayerStateHydrationInput {
     readonly currentRuneIndex?: number | null;
     readonly unlockedRuneSlotCount?: number | null;
     readonly activeBattleId?: string | null;
+    readonly currentHealth?: number | null;
+    readonly currentMana?: number | null;
     readonly tutorialState?: string | null;
     readonly victories?: number | null;
     readonly victoryStreak?: number | null;
@@ -177,7 +181,7 @@ export const hydratePlayerStateFromPersistence = (
     clampNonNegativeInteger(persisted.progress?.highestLocationLevel, gameBalance.world.introLocationLevel),
   );
 
-  const player: PlayerState = {
+  const playerWithoutVitals: PlayerState = {
     userId: persisted.userId,
     vkId: persisted.vkId,
     playerId: persisted.playerId,
@@ -205,6 +209,15 @@ export const hydratePlayerStateFromPersistence = (
     runes,
     createdAt: persisted.createdAt,
     updatedAt: persisted.updatedAt,
+  };
+  const vitals = derivePlayerVitals({
+    currentHealth: persisted.progress?.currentHealth ?? undefined,
+    currentMana: persisted.progress?.currentMana ?? undefined,
+  }, derivePlayerStats(playerWithoutVitals));
+  const player: PlayerState = {
+    ...playerWithoutVitals,
+    currentHealth: vitals.currentHealth,
+    currentMana: vitals.currentMana,
   };
 
   return skills.length > 0

@@ -24,6 +24,8 @@ describe('hydratePlayerStateFromPersistence', () => {
     const player = hydratePlayerStateFromPersistence(readFixture('player-state-legacy.json'));
 
     expect(player.currentRuneIndex).toBe(0);
+    expect(player.currentHealth).toBe(9);
+    expect(player.currentMana).toBe(4);
     expect(player.highestLocationLevel).toBe(2);
     expect(player.inventory.essence).toBe(0);
     expect(player.runes[0]?.isEquipped).toBe(true);
@@ -65,5 +67,19 @@ describe('hydratePlayerStateFromPersistence', () => {
         rank: 1,
       },
     ]);
+  });
+
+  it('hydrates persisted vitals and clamps them to current equipped stats', () => {
+    const player = hydratePlayerStateFromPersistence({
+      ...readFixture('player-state-current.json'),
+      progress: {
+        ...readFixture('player-state-current.json').progress,
+        currentHealth: 999,
+        currentMana: 1,
+      },
+    });
+
+    expect(player.currentHealth).toBe(9);
+    expect(player.currentMana).toBe(1);
   });
 });

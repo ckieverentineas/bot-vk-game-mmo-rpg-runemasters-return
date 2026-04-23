@@ -30,8 +30,16 @@ export interface ResolveExplorationOutcomeContext {
   readonly player: PlayerState;
   readonly biome: BiomeView;
   readonly templates: readonly MobTemplateView[];
+  readonly roamingTemplatePools?: readonly ExplorationRoamingTemplatePool[];
   readonly locationLevel: number;
   readonly currentSchoolCode: string | null;
+}
+
+export interface ExplorationRoamingTemplatePool {
+  readonly biome: BiomeView;
+  readonly templates: readonly MobTemplateView[];
+  readonly chancePercent: number;
+  readonly direction: 'LOWER_BIOME' | 'HIGHER_BIOME';
 }
 
 export interface ExplorationEventOutcome {
@@ -72,7 +80,7 @@ const shouldPreferSchoolMiniboss = (
 };
 
 const buildOpeningLog = (
-  context: ResolveExplorationOutcomeContext,
+  context: ResolveExplorationOutcomeContext & { readonly roamingOriginBiome?: BiomeView | null },
   enemy: BattleEnemySnapshot,
   random: ExplorationOutcomeRandom,
 ): string[] => {
@@ -91,19 +99,34 @@ const buildOpeningLog = (
 
   return [
     gameMasterLine ? `${encounterLine} ${gameMasterLine}` : encounterLine,
+    ...(context.roamingOriginBiome
+      ? [`🧭 Бродячий след: ${enemy.name} пришёл из места «${context.roamingOriginBiome.name}».`]
+      : []),
     ...(explorationEventLine ? [explorationEventLine] : []),
   ];
 };
+
+const pickRoamingPool = (
+  pools: readonly ExplorationRoamingTemplatePool[],
+  random: ExplorationOutcomeRandom,
+): ExplorationRoamingTemplatePool | null => (
+  pools.find((pool) => pool.templates.length > 0 && random.rollPercentage(pool.chancePercent)) ?? null
+);
 
 const resolveBattleOutcome = (
   context: ResolveExplorationOutcomeContext,
   random: ExplorationOutcomeRandom,
 ): ExplorationBattleOutcome => {
   const preferMiniboss = shouldPreferSchoolMiniboss(context.player, context.currentSchoolCode);
-  const template = pickEncounterTemplate(context.templates, context.locationLevel, {
-    schoolCode: context.currentSchoolCode,
-    preferMiniboss,
-  }, random);
+  const roamingPool = preferMiniboss
+    ? null
+    : pickRoamingPool(context.roamingTemplatePools ?? [], random);
+  const template = roamingPool
+    ? random.pickOne(roamingPool.templates)
+    : pickEncounterTemplate(context.templates, context.locationLevel, {
+        schoolCode: context.currentSchoolCode,
+        preferMiniboss,
+      }, random);
   const playerStats = derivePlayerStats(context.player);
   const enemy = buildEnemySnapshot(template, context.locationLevel);
 
@@ -114,7 +137,10 @@ const resolveBattleOutcome = (
     enemy,
     playerStats,
     turnOwner: resolveInitialTurnOwner(playerStats.dexterity, enemy.dexterity),
-    openingLog: buildOpeningLog(context, enemy, random),
+    openingLog: buildOpeningLog({
+      ...context,
+      roamingOriginBiome: roamingPool?.biome ?? null,
+    }, enemy, random),
     locationLevel: context.locationLevel,
     currentSchoolCode: context.currentSchoolCode,
   };

@@ -107,6 +107,8 @@ export interface PlayerState {
   experience: number;
   gold: number;
   baseStats: StatBlock;
+  currentHealth?: number;
+  currentMana?: number;
   locationLevel: number;
   currentRuneIndex: number;
   unlockedRuneSlotCount?: number;

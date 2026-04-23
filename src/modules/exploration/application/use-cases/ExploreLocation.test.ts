@@ -55,16 +55,17 @@ const createPlayer = (overrides: Partial<PlayerState> = {}): PlayerState => ({
   ...overrides,
 });
 
-const createBiome = (): BiomeView => ({
+const createBiome = (overrides: Partial<BiomeView> = {}): BiomeView => ({
   id: 1,
   code: 'initium',
   name: 'Порог Инициации',
   description: 'Стартовая зона.',
   minLevel: 0,
   maxLevel: 10,
+  ...overrides,
 });
 
-const createMobTemplate = (): MobTemplateView => ({
+const createMobTemplate = (overrides: Partial<MobTemplateView> = {}): MobTemplateView => ({
   code: 'training-wisp',
   biomeCode: 'initium',
   name: 'Учебный огонёк',
@@ -92,6 +93,7 @@ const createMobTemplate = (): MobTemplateView => ({
   runeDropChance: 0,
   lootTable: {},
   attackText: 'касается искрой',
+  ...overrides,
 });
 
 const createWorldCatalog = (overrides: Partial<WorldCatalog> = {}): WorldCatalog => ({
@@ -302,6 +304,70 @@ describe('ExploreLocation', () => {
 
     expect(battle.log[0]).toContain('на вас выходит');
     expect(battle.log.some((entry) => entry.includes('Путевой эпизод'))).toBe(true);
+  });
+
+  it('can create a roaming encounter from the nearest lower biome', async () => {
+    const player = createPlayer({ tutorialState: 'SKIPPED', locationLevel: 18, level: 18 });
+    const darkForest = createBiome({
+      id: 2,
+      code: 'dark-forest',
+      name: 'Тёмный лес',
+      minLevel: 1,
+      maxLevel: 15,
+    });
+    const forgottenCaves = createBiome({
+      id: 3,
+      code: 'forgotten-caves',
+      name: 'Забытые пещеры',
+      minLevel: 16,
+      maxLevel: 35,
+    });
+    const repository = {
+      findPlayerByVkId: vi.fn().mockResolvedValue(player),
+      getCommandIntentResult: vi.fn().mockResolvedValue(null),
+      getActiveBattle: vi.fn().mockResolvedValue(null),
+      createBattle: vi.fn().mockImplementation(async (_playerId: number, battle: Omit<BattleView, 'id' | 'playerId' | 'createdAt' | 'updatedAt'>) => ({
+        id: 'battle-roaming',
+        playerId: player.playerId,
+        createdAt: '2026-04-12T00:00:00.000Z',
+        updatedAt: '2026-04-12T00:00:00.000Z',
+        ...battle,
+      })),
+    } as unknown as GameRepository;
+    const random: GameRandom = {
+      nextInt: vi.fn().mockReturnValue(1),
+      rollPercentage: vi.fn()
+        .mockReturnValueOnce(false)
+        .mockReturnValueOnce(true)
+        .mockReturnValueOnce(false),
+      pickOne: vi.fn(<T>(items: readonly T[]) => items[0]!),
+    };
+    const worldCatalog = createWorldCatalog({
+      listBiomes: vi.fn().mockReturnValue([darkForest, forgottenCaves]),
+      findBiomeForLocationLevel: vi.fn().mockReturnValue(forgottenCaves),
+      listMobTemplatesForBiome: vi.fn((biomeCode: string) => {
+        if (biomeCode === 'dark-forest') {
+          return [createMobTemplate({
+            code: 'forest-wolf',
+            biomeCode: 'dark-forest',
+            name: 'Лесной волк',
+          })];
+        }
+
+        return [createMobTemplate({
+          code: 'cave-goblin',
+          biomeCode: 'forgotten-caves',
+          name: 'Пещерный гоблин',
+        })];
+      }),
+    });
+    const useCase = new ExploreLocation(repository, worldCatalog, random);
+
+    const battle = await useCase.execute(player.vkId, 'intent-explore-roaming-1', buildExploreLocationIntentStateKey(player), 'payload') as BattleView;
+
+    expect(battle.enemyCode).toBe('forest-wolf');
+    expect(battle.biomeCode).toBe('forgotten-caves');
+    expect(battle.log).toContain('🧭 Бродячий след: Лесной волк пришёл из места «Тёмный лес».');
   });
 
   it('can resolve a standalone exploration event without creating a battle', async () => {

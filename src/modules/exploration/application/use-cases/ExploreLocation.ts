@@ -1,5 +1,5 @@
 import { AppError } from '../../../../shared/domain/AppError';
-import type { BattleView, PlayerState } from '../../../../shared/types/game';
+import type { BattleView, BiomeView, MobTemplateView, PlayerState } from '../../../../shared/types/game';
 import { finalizeRecoveredBattleIfNeeded } from '../../../combat/application/finalize-recovered-battle';
 import { BattleEngine } from '../../../combat/domain/battle-engine';
 import { createBattleEncounter, isBattleEncounterOffered } from '../../../combat/domain/battle-encounter';
@@ -23,6 +23,7 @@ import {
 } from '../../../world/domain/exploration-events';
 import {
   type ExplorationBattleOutcome,
+  type ExplorationRoamingTemplatePool,
   resolveExplorationOutcome,
   resolveExplorationSchoolCode,
 } from '../../domain/exploration-outcome';
@@ -64,6 +65,60 @@ const markExploreLocationReplay = (result: ExploreLocationResult): ExploreLocati
   }
 
   return { battle: result, replayed: true };
+};
+
+const lowerBiomeRoamingChancePercent = 12;
+const higherBiomeRoamingChancePercent = 3;
+
+const sortBiomesByLevel = (biomes: readonly BiomeView[]): BiomeView[] => (
+  [...biomes].sort((left, right) => (
+    left.minLevel - right.minLevel
+    || left.maxLevel - right.maxLevel
+    || left.code.localeCompare(right.code)
+  ))
+);
+
+const listRoamingMobTemplates = (
+  worldCatalog: WorldCatalog,
+  biome: BiomeView | undefined,
+): readonly MobTemplateView[] => (
+  biome
+    ? worldCatalog.listMobTemplatesForBiome(biome.code).filter((template) => !template.isBoss)
+    : []
+);
+
+const buildRoamingTemplatePools = (
+  worldCatalog: WorldCatalog,
+  currentBiome: BiomeView,
+): readonly ExplorationRoamingTemplatePool[] => {
+  const biomes = sortBiomesByLevel(worldCatalog.listBiomes());
+  const currentIndex = biomes.findIndex((biome) => biome.code === currentBiome.code);
+  if (currentIndex < 0) {
+    return [];
+  }
+
+  const lowerBiome = biomes
+    .slice(0, currentIndex)
+    .reverse()
+    .find((biome) => biome.minLevel > 0);
+  const higherBiome = biomes[currentIndex + 1];
+
+  return [
+    {
+      biome: lowerBiome,
+      templates: listRoamingMobTemplates(worldCatalog, lowerBiome),
+      chancePercent: lowerBiomeRoamingChancePercent,
+      direction: 'LOWER_BIOME',
+    },
+    {
+      biome: higherBiome,
+      templates: listRoamingMobTemplates(worldCatalog, higherBiome),
+      chancePercent: higherBiomeRoamingChancePercent,
+      direction: 'HIGHER_BIOME',
+    },
+  ].filter((pool): pool is ExplorationRoamingTemplatePool => (
+    pool.biome !== undefined && pool.templates.length > 0
+  ));
 };
 
 export class ExploreLocation {
@@ -165,6 +220,9 @@ export class ExploreLocation {
       player: currentPlayer,
       biome,
       templates: this.worldCatalog.listMobTemplatesForBiome(biome.code),
+      roamingTemplatePools: currentPlayer.tutorialState === 'ACTIVE'
+        ? []
+        : buildRoamingTemplatePools(this.worldCatalog, biome),
       currentSchoolCode,
       locationLevel,
     }, this.random);

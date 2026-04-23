@@ -2,6 +2,7 @@ import { buildPlayerNextGoalView } from '../../modules/player/application/read-m
 import { buildPlayerSchoolRecognitionView } from '../../modules/player/application/read-models/school-recognition';
 import {
   derivePlayerStats,
+  derivePlayerVitals,
   getEquippedRune,
   getUnlockedRuneSlotCount,
   isPlayerInTutorial,
@@ -24,6 +25,12 @@ const renderSchoolFirstLoopLine = (): string => (
 const renderSchoolFirstRarityLine = (): string => (
   'Сначала первая руна открывает школу рун, а новая редкость позже расширяет сборку.'
 );
+
+const renderPlayerVitalsLine = (player: PlayerState): string => {
+  const vitals = derivePlayerVitals(player, derivePlayerStats(player));
+
+  return `💓 Состояние: ${vitals.currentHealth}/${vitals.maxHealth} HP · ${vitals.currentMana}/${vitals.maxMana} маны`;
+};
 
 const resolveReturnStateLine = (player: PlayerState): string => {
   if (player.tutorialState === 'ACTIVE') {
@@ -126,6 +133,7 @@ export const renderMainMenu = (player: PlayerState): string => {
     `💰 Руная пыль: ${player.gold}`,
     `🧭 Самый дальний след: ${player.highestLocationLevel}`,
     `🧩 Слоты рун: ${getUnlockedRuneSlotCount(player)} открыто`,
+    renderPlayerVitalsLine(player),
     `🔮 Экипирована: ${formatRuneDisplayName(equippedRune)}`,
     renderSchoolMasteryLine(player),
     ...(player.tutorialState === 'ACTIVE'
@@ -177,6 +185,7 @@ export const renderLocation = (player: PlayerState): string => {
       ? 'Учебная зона тише большого мира: здесь удобно почувствовать первый бой.'
       : 'Дороги открыты. Угроза подстраивается под вашу силу и след последних боёв.',
     `🎯 Зов угрозы: ${resolveAdaptiveAdventureLocationLevel(player)}`,
+    renderPlayerVitalsLine(player),
     `🧭 Максимально пройденная сложность: ${player.highestLocationLevel}`,
     defeatStreakLine,
     ...renderNextGoalSummary(buildPlayerNextGoalView(player)),

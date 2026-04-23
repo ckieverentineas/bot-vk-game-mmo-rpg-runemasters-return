@@ -1,6 +1,7 @@
 import { gameBalance } from '../../config/game-balance';
 import {
   derivePlayerStats,
+  derivePlayerVitals,
   getUnlockedRuneSlotCount,
 } from '../../modules/player/domain/player-stats';
 import type { PlayerState, StatBlock } from '../../shared/types/game';
@@ -33,6 +34,7 @@ const renderPlayerSkillsBlock = (player: PlayerState): readonly string[] => {
 
 export const renderProfile = (player: PlayerState): string => {
   const stats = derivePlayerStats(player);
+  const vitals = derivePlayerVitals(player, stats);
   const nextLevelXp = gameBalance.progression.experienceForNextLevel(player.level);
 
   return [
@@ -41,6 +43,7 @@ export const renderProfile = (player: PlayerState): string => {
     `⭐ Уровень: ${player.level}`,
     `📊 Опыт: ${player.experience}/${nextLevelXp}`,
     `💰 Руная пыль: ${player.gold}`,
+    `💓 Состояние: ${vitals.currentHealth}/${vitals.maxHealth} HP · ${vitals.currentMana}/${vitals.maxMana} маны`,
     `🏆 Победы / Поражения: ${player.victories}/${player.defeats}`,
     `🧩 Слоты рун: ${getUnlockedRuneSlotCount(player)} открыто`,
     renderSchoolMasteryLine(player),

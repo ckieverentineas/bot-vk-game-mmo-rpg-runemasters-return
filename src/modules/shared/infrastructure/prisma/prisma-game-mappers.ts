@@ -199,6 +199,8 @@ export const mapPlayerRecord = (player: PlayerRecord): PlayerState => hydratePla
         currentRuneIndex: player.progress.currentRuneIndex,
         unlockedRuneSlotCount: player.progress.unlockedRuneSlotCount,
         activeBattleId: player.progress.activeBattleId,
+        currentHealth: player.progress.currentHealth,
+        currentMana: player.progress.currentMana,
         tutorialState: player.progress.tutorialState,
         victories: player.progress.victories,
         victoryStreak: player.progress.victoryStreak,
