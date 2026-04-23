@@ -54,6 +54,27 @@ export interface TrophyActionReward {
 }
 
 const materialFields: readonly MaterialField[] = ['leather', 'bone', 'herb', 'essence', 'metal', 'crystal'];
+const trophyActionUnlockExperienceThreshold = 10;
+const trophyActionQualityExperienceThreshold = 20;
+
+interface TrophyActionQualityPayoff {
+  readonly actionCode: TrophyActionCode;
+  readonly skillCode: PlayerSkillCode;
+  readonly rewardField: MaterialField;
+}
+
+const trophyActionQualityPayoffs: readonly TrophyActionQualityPayoff[] = [
+  {
+    actionCode: 'skin_beast',
+    skillCode: 'gathering.skinning',
+    rewardField: 'leather',
+  },
+  {
+    actionCode: 'gather_slime',
+    skillCode: 'gathering.reagent_gathering',
+    rewardField: 'herb',
+  },
+];
 
 const claimAllAction: TrophyActionDefinition = {
   code: 'claim_all',
@@ -196,17 +217,28 @@ const isEssenceThresholdEnemy = (enemy: TrophyActionEnemyContext): boolean => (
 const resolveSkillThresholdTrophyActions = (
   enemy: TrophyActionEnemyContext,
 ): readonly TrophyActionDefinition[] => {
-  if (enemy.kind === 'wolf' && hasSkillExperience(enemy, 'gathering.skinning', 10)) {
+  if (
+    enemy.kind === 'wolf'
+    && hasSkillExperience(enemy, 'gathering.skinning', trophyActionUnlockExperienceThreshold)
+  ) {
     return [carefulSkinningAction];
   }
 
-  if (enemy.kind === 'slime' && hasSkillExperience(enemy, 'gathering.reagent_gathering', 10)) {
+  if (enemy.kind === 'slime' && hasSkillExperience(
+    enemy,
+    'gathering.reagent_gathering',
+    trophyActionUnlockExperienceThreshold,
+  )) {
     return [refinedSlimeCoreAction];
   }
 
   if (
     isEssenceThresholdEnemy(enemy)
-    && hasSkillExperience(enemy, 'gathering.essence_extraction', 10)
+    && hasSkillExperience(
+      enemy,
+      'gathering.essence_extraction',
+      trophyActionUnlockExperienceThreshold,
+    )
   ) {
     return [stabilizedEssenceAction];
   }
@@ -224,11 +256,57 @@ const resolveHiddenTrophyActions = (
   return [];
 };
 
+const resolveTrophyActionQualityPayoff = (
+  enemy: TrophyActionEnemyContext,
+  action: TrophyActionDefinition,
+): TrophyActionQualityPayoff | undefined => (
+  trophyActionQualityPayoffs.find((payoff) => (
+    payoff.actionCode === action.code
+    && hasSkillExperience(enemy, payoff.skillCode, trophyActionQualityExperienceThreshold)
+  ))
+);
+
+const resolveQualityActionLabel = (
+  enemy: TrophyActionEnemyContext,
+  action: TrophyActionDefinition,
+): string => {
+  if (!resolveTrophyActionQualityPayoff(enemy, action)) {
+    return action.label;
+  }
+
+  if (action.code === 'skin_beast') {
+    return enemy.kind === 'boar'
+      ? '🔪 Мастерски снять шкуру и рог'
+      : '🔪 Мастерски свежевать';
+  }
+
+  if (action.code === 'gather_slime') {
+    return '🧪 Мастерски собрать слизь';
+  }
+
+  return action.label;
+};
+
+const applyQualityActionLabels = (
+  enemy: TrophyActionEnemyContext,
+  actions: readonly TrophyActionDefinition[],
+): readonly TrophyActionDefinition[] => (
+  actions.map((action) => ({
+    ...action,
+    label: resolveQualityActionLabel(enemy, action),
+  }))
+);
+
 export const resolveTrophyActions = (enemy: TrophyActionEnemyContext): readonly TrophyActionDefinition[] => {
   const hiddenActions = resolveHiddenTrophyActions(enemy);
   const contextualActions = trophyActionsByEnemyKind[enemy.kind] ?? [];
   const skillThresholdActions = resolveSkillThresholdTrophyActions(enemy);
-  return [...hiddenActions, ...contextualActions, ...skillThresholdActions, claimAllAction];
+  return applyQualityActionLabels(enemy, [
+    ...hiddenActions,
+    ...contextualActions,
+    ...skillThresholdActions,
+    claimAllAction,
+  ]);
 };
 
 const isMaterialField = (field: InventoryField): field is MaterialField => (
@@ -422,35 +500,52 @@ const applyEmberHiddenRewardVariation = (
   };
 };
 
+const applySkillQualityRewardVariation = (
+  enemy: TrophyActionRewardEnemyContext,
+  action: TrophyActionDefinition,
+  inventoryDelta: InventoryDelta,
+): InventoryDelta => {
+  const payoff = resolveTrophyActionQualityPayoff(enemy, action);
+  if (!payoff) {
+    return inventoryDelta;
+  }
+
+  const amount = inventoryDelta[payoff.rewardField] ?? 0;
+  if (amount <= 0) {
+    return inventoryDelta;
+  }
+
+  return {
+    ...inventoryDelta,
+    [payoff.rewardField]: amount + 1,
+  };
+};
+
+type TrophyRewardVariationResolver = (
+  enemy: TrophyActionRewardEnemyContext,
+  action: TrophyActionDefinition,
+  inventoryDelta: InventoryDelta,
+) => InventoryDelta;
+
+const trophyRewardVariationResolvers: readonly TrophyRewardVariationResolver[] = [
+  applySkinningRewardVariation,
+  applyCarefulSkinningRewardVariation,
+  applyRefinedSlimeCoreRewardVariation,
+  applyStabilizedEssenceRewardVariation,
+  applyReagentGatheringRewardVariation,
+  applyEssenceExtractionRewardVariation,
+  applyEmberHiddenRewardVariation,
+  applySkillQualityRewardVariation,
+];
+
 const applyTrophyRewardVariations = (
   enemy: TrophyActionRewardEnemyContext,
   action: TrophyActionDefinition,
   inventoryDelta: InventoryDelta,
 ): InventoryDelta => (
-  applyEmberHiddenRewardVariation(
-    enemy,
-    action,
-    applyEssenceExtractionRewardVariation(
-      enemy,
-      action,
-      applyReagentGatheringRewardVariation(
-        enemy,
-        action,
-        applyStabilizedEssenceRewardVariation(
-          enemy,
-          action,
-          applyRefinedSlimeCoreRewardVariation(
-            enemy,
-            action,
-            applyCarefulSkinningRewardVariation(
-              enemy,
-              action,
-              applySkinningRewardVariation(enemy, action, inventoryDelta),
-            ),
-          ),
-        ),
-      ),
-    ),
+  trophyRewardVariationResolvers.reduce(
+    (delta, resolver) => resolver(enemy, action, delta),
+    inventoryDelta,
   )
 );
 

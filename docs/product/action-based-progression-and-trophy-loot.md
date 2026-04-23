@@ -534,10 +534,11 @@ Player-facing decision:
 21. Later: `feat: expand hidden drop pools by school`
 22. Done: `feat: unlock trophy action by skill threshold`
 23. Done: `feat: expand trophy action skill thresholds`
-24. Later: `feat: connect rune school behavior to school growth`
-25. Done: `feat: connect combat action facts to skill growth`
-26. Later: `feat: connect combat behavior to stat growth`
-27. Done: `docs: update OBT tester guide for action progression`
+24. Done: `feat: add trophy skill quality thresholds`
+25. Later: `feat: connect rune school behavior to school growth`
+26. Done: `feat: connect combat action facts to skill growth`
+27. Later: `feat: connect combat behavior to stat growth`
+28. Done: `docs: update OBT tester guide for action progression`
 
 ---
 

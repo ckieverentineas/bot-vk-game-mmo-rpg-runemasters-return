@@ -71,6 +71,22 @@ describe('resolveTrophyActions', () => {
     ]);
   });
 
+  it('marks skinning as a quality action after the second skinning threshold', () => {
+    expect(resolveTrophyActions({
+      kind: 'wolf',
+      skillExperiences: {
+        'gathering.skinning': 19,
+      },
+    })[0]?.label).toBe('🔪 Свежевать');
+
+    expect(resolveTrophyActions({
+      kind: 'wolf',
+      skillExperiences: {
+        'gathering.skinning': 20,
+      },
+    })[0]?.label).toBe('🔪 Мастерски свежевать');
+  });
+
   it('unlocks refined slime gathering at the reagent threshold', () => {
     expect(resolveTrophyActions({
       kind: 'slime',
@@ -97,6 +113,22 @@ describe('resolveTrophyActions', () => {
         visibleRewardFields: [],
       },
     ]);
+  });
+
+  it('marks slime gathering as a quality action after the second reagent threshold', () => {
+    expect(resolveTrophyActions({
+      kind: 'slime',
+      skillExperiences: {
+        'gathering.reagent_gathering': 19,
+      },
+    })[0]?.label).toBe('🧪 Собрать слизь');
+
+    expect(resolveTrophyActions({
+      kind: 'slime',
+      skillExperiences: {
+        'gathering.reagent_gathering': 20,
+      },
+    })[0]?.label).toBe('🧪 Мастерски собрать слизь');
   });
 
   it.each(['spirit', 'mage'])('unlocks stabilized essence for %s enemies at the essence threshold', (kind) => {
@@ -299,6 +331,74 @@ describe('resolveTrophyActions', () => {
     });
   });
 
+  it('keeps practiced skinning quality locked below the second skinning threshold', () => {
+    const [skinning] = resolveTrophyActions({
+      kind: 'wolf',
+      skillExperiences: {
+        'gathering.skinning': 19,
+      },
+    });
+
+    expect(resolveTrophyActionReward({
+      kind: 'wolf',
+      isElite: false,
+      isBoss: false,
+      skillExperiences: {
+        'gathering.skinning': 19,
+      },
+      lootTable: {
+        leather: 2,
+        bone: 1,
+      },
+    }, skinning!)).toEqual({
+      actionCode: 'skin_beast',
+      inventoryDelta: {
+        leather: 2,
+        bone: 1,
+      },
+      skillPoints: [
+        {
+          skillCode: 'gathering.skinning',
+          points: 1,
+        },
+      ],
+    });
+  });
+
+  it('adds a practiced skinning quality payoff at the second skinning threshold', () => {
+    const [skinning] = resolveTrophyActions({
+      kind: 'wolf',
+      skillExperiences: {
+        'gathering.skinning': 20,
+      },
+    });
+
+    expect(resolveTrophyActionReward({
+      kind: 'wolf',
+      isElite: false,
+      isBoss: false,
+      skillExperiences: {
+        'gathering.skinning': 20,
+      },
+      lootTable: {
+        leather: 2,
+        bone: 1,
+      },
+    }, skinning!)).toEqual({
+      actionCode: 'skin_beast',
+      inventoryDelta: {
+        leather: 3,
+        bone: 1,
+      },
+      skillPoints: [
+        {
+          skillCode: 'gathering.skinning',
+          points: 1,
+        },
+      ],
+    });
+  });
+
   it('adds a careful skinning reward variation for preserved hide', () => {
     const carefulSkinning = resolveTrophyActions({
       kind: 'wolf',
@@ -372,6 +472,39 @@ describe('resolveTrophyActions', () => {
       actionCode: 'gather_slime',
       inventoryDelta: {
         herb: 1,
+      },
+      skillPoints: [
+        {
+          skillCode: 'gathering.reagent_gathering',
+          points: 1,
+        },
+      ],
+    });
+  });
+
+  it('adds a practiced reagent quality payoff at the second reagent threshold', () => {
+    const [gatherSlime] = resolveTrophyActions({
+      kind: 'slime',
+      skillExperiences: {
+        'gathering.reagent_gathering': 20,
+      },
+    });
+
+    expect(resolveTrophyActionReward({
+      kind: 'slime',
+      isElite: false,
+      isBoss: false,
+      skillExperiences: {
+        'gathering.reagent_gathering': 20,
+      },
+      lootTable: {
+        herb: 1,
+        leather: 1,
+      },
+    }, gatherSlime!)).toEqual({
+      actionCode: 'gather_slime',
+      inventoryDelta: {
+        herb: 2,
       },
       skillPoints: [
         {
