@@ -10,7 +10,9 @@ export const resolveSchoolContinuationLabel = (
   }
 
   const nextGoal = buildPlayerNextGoalView(player);
-  return nextGoal.goalType === 'challenge_school_miniboss' || nextGoal.goalType === 'prove_school_seal'
+  return nextGoal.goalType === 'challenge_school_miniboss'
+    || nextGoal.goalType === 'prove_school_seal'
+    || nextGoal.goalType === 'recover_before_fight'
     ? nextGoal.primaryActionLabel
     : fallbackLabel;
 };

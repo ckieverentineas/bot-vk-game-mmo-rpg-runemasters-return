@@ -493,6 +493,25 @@ describe('profile keyboard', () => {
     expect(mainMenuLabels).toContain('⚔️ Цель печати');
   });
 
+  it('labels the main explore CTA as rest while anti-stall recovery is active', () => {
+    const player = createPlayer({
+      currentHealth: 2,
+      currentMana: 1,
+      runes: [
+        {
+          ...createPlayer().runes[0],
+          isEquipped: true,
+          equippedSlot: 0,
+        },
+      ],
+    });
+
+    const mainMenuLabels = collectLabels(createMainMenuKeyboard(player));
+
+    expect(mainMenuLabels).toContain('🌿 Передышка');
+    expect(mainMenuLabels).not.toContain('⚔️ Цель печати');
+  });
+
   it('keeps the optional daily trace available from the main menu', () => {
     const player = createPlayer();
     const labels = collectLabels(createMainMenuKeyboard(player));

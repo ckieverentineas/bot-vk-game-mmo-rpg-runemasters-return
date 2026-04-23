@@ -4,7 +4,9 @@ import type { BiomeView } from '../../../shared/types/game';
 import {
   getExplorationSceneEffectLine,
   getExplorationSceneInventoryDelta,
+  getExplorationSceneVitalRecovery,
   resolveExplorationEventLine,
+  resolveRecoveryRestExplorationEvent,
   resolveStandaloneExplorationEvent,
 } from './exploration-events';
 
@@ -130,7 +132,23 @@ describe('resolveStandaloneExplorationEvent', () => {
     expect(event?.directorLine).toContain('Наставник Совета рун');
     expect(event?.outcomeLine).toContain('Боя нет');
     expect(event?.outcomeLine).not.toContain('быстрее');
-    expect(event?.effect.kind).toBe('none');
+    expect(event?.effect.kind).toBe('vital_recovery');
+    expect(getExplorationSceneVitalRecovery(event!)).toEqual({ healthRatio: 0.7, manaRatio: 0.75 });
+    expect(getExplorationSceneEffectLine(event!)).toContain('Восстановление');
+  });
+
+  it('can force a recovery rest scene for anti-stall routes', () => {
+    const event = resolveRecoveryRestExplorationEvent({
+      biome: createBiome(),
+      currentSchoolCode: null,
+      locationLevel: 3,
+    });
+
+    expect(event).toMatchObject({
+      code: 'quiet-rest',
+      kind: 'rest',
+    });
+    expect(getExplorationSceneVitalRecovery(event!)).toEqual({ healthRatio: 0.7, manaRatio: 0.75 });
   });
 
   it('can return a resource-find scene with a small exact-once inventory effect', () => {

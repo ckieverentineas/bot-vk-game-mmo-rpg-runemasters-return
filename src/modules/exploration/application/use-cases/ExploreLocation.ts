@@ -10,7 +10,11 @@ import {
   getSchoolNovicePathDefinitionForEnemy,
   hasRuneOfSchoolAtLeastRarity,
 } from '../../../player/domain/school-novice-path';
-import { resolveEncounterLocationLevel } from '../../../player/domain/player-stats';
+import {
+  derivePlayerStats,
+  derivePlayerVitals,
+  resolveEncounterLocationLevel,
+} from '../../../player/domain/player-stats';
 import { resolveCommandIntent, type CommandIntentSource } from '../../../shared/application/command-intent';
 import type { GameTelemetry } from '../../../shared/application/ports/GameTelemetry';
 import { requirePlayerByVkId } from '../../../shared/application/require-player';
@@ -19,6 +23,7 @@ import type { GameRepository } from '../../../shared/application/ports/GameRepos
 import type { WorldCatalog } from '../../../world/application/ports/WorldCatalog';
 import {
   getExplorationSceneInventoryDelta,
+  getExplorationSceneVitalRecovery,
   type ExplorationSceneView,
 } from '../../../world/domain/exploration-events';
 import {
@@ -65,6 +70,18 @@ const markExploreLocationReplay = (result: ExploreLocationResult): ExploreLocati
   }
 
   return { battle: result, replayed: true };
+};
+
+const resolveRecoveredPlayerVitals = (
+  player: PlayerState,
+  recovery: { readonly healthRatio: number; readonly manaRatio: number },
+): Required<Pick<PlayerState, 'currentHealth' | 'currentMana'>> => {
+  const vitals = derivePlayerVitals(player, derivePlayerStats(player));
+
+  return {
+    currentHealth: Math.max(vitals.currentHealth, Math.ceil(vitals.maxHealth * recovery.healthRatio)),
+    currentMana: Math.max(vitals.currentMana, Math.ceil(vitals.maxMana * recovery.manaRatio)),
+  };
 };
 
 const lowerBiomeRoamingChancePercent = 10;
@@ -300,11 +317,24 @@ export class ExploreLocation {
     commandOptions: ExploreLocationCommandOptions,
   ): Promise<ExploreLocationEventResult> {
     const inventoryDelta = getExplorationSceneInventoryDelta(result.event);
+    const vitalRecovery = getExplorationSceneVitalRecovery(result.event);
 
     if (inventoryDelta) {
       return this.repository.recordInventoryDeltaResult(
         player.playerId,
         inventoryDelta,
+        commandOptions,
+        (updatedPlayer) => ({
+          ...result,
+          player: updatedPlayer,
+        }),
+      );
+    }
+
+    if (vitalRecovery) {
+      return this.repository.recordPlayerVitalsResult(
+        player.playerId,
+        resolveRecoveredPlayerVitals(player, vitalRecovery),
         commandOptions,
         (updatedPlayer) => ({
           ...result,

@@ -85,6 +85,13 @@ export interface RecordInventoryDeltaResultOptions {
   readonly currentStateKey?: string;
 }
 
+export interface RecordPlayerVitalsResultOptions {
+  readonly commandKey: GameCommandIntentKey;
+  readonly intentId?: string;
+  readonly intentStateKey?: string;
+  readonly currentStateKey?: string;
+}
+
 export interface ClaimQuestRewardOptions {
   readonly commandKey: QuestRewardCommandIntentKey;
   readonly intentId?: string;
@@ -193,6 +200,12 @@ export interface GameRepository {
     playerId: number,
     delta: InventoryDelta,
     options: RecordInventoryDeltaResultOptions,
+    buildResult: (player: PlayerState) => TResult,
+  ): Promise<TResult>;
+  recordPlayerVitalsResult<TResult>(
+    playerId: number,
+    vitals: Required<Pick<PlayerState, 'currentHealth' | 'currentMana'>>,
+    options: RecordPlayerVitalsResultOptions,
     buildResult: (player: PlayerState) => TResult,
   ): Promise<TResult>;
   applyPlayerSkillExperience(playerId: number, gains: readonly PlayerSkillPointGain[]): Promise<PlayerState>;

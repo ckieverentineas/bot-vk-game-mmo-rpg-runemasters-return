@@ -1,4 +1,5 @@
 import type { BattleView, PlayerState } from '../../../../shared/types/game';
+import { buildAntiStallRecoveryView } from '../../domain/anti-stall-recovery';
 import {
   findBestRuneOfSchoolAtLeastRarity,
   getSchoolNovicePathDefinition,
@@ -28,7 +29,8 @@ export type NextGoalType =
   | 'fill_rune_slot'
   | 'push_higher_threat'
   | 'equip_dropped_rune'
-  | 'review_runes_after_defeat';
+  | 'review_runes_after_defeat'
+  | 'recover_before_fight';
 
 export type NextGoalPrimaryAction = 'tutorial_battle' | 'explore' | 'open_runes';
 
@@ -149,6 +151,42 @@ export const buildPlayerNextGoalView = (player: PlayerState): NextGoalView => {
   const equippedSchool = getRuneSchoolPresentation(equippedRune.archetypeCode);
   const schoolDefinition = getSchoolDefinitionForArchetype(equippedRune.archetypeCode);
   const novicePath = schoolDefinition ? getSchoolNovicePathDefinition(schoolDefinition.code) : null;
+  const antiStallRecovery = buildAntiStallRecoveryView(player);
+  if (antiStallRecovery?.shouldReviewRunes) {
+    return createGoalView(
+      'review_runes_after_defeat',
+      'open_runes',
+      'откройте «🔮 Руны» и наденьте свободную руну перед осторожным выходом',
+      {
+        schoolCode: schoolDefinition?.code ?? null,
+        schoolName: equippedSchool?.name ?? null,
+        whyText: antiStallRecovery.reason === 'LOW_HEALTH'
+          ? 'Вы ранены: лишний знак в сборке безопаснее, чем сразу снова давить маршрут силой.'
+          : 'После серии поражений лучше сначала закрыть свободный слот, а уже потом идти к лёгкой встрече.',
+      },
+    );
+  }
+
+  if (antiStallRecovery) {
+    return createGoalView(
+      'recover_before_fight',
+      'explore',
+      antiStallRecovery.reason === 'LOW_HEALTH'
+        ? 'найдите передышку: маршрут сначала поднимет HP/ману или даст очень лёгкую встречу'
+        : 'вернитесь через осторожную встречу: маршрут временно уберёт тяжёлые цели и даст более мягкий бой',
+      {
+        primaryActionLabel: antiStallRecovery.reason === 'LOW_HEALTH'
+          ? '🌿 Передышка'
+          : '⚔️ Осторожно дальше',
+        schoolCode: schoolDefinition?.code ?? null,
+        schoolName: equippedSchool?.name ?? null,
+        whyText: antiStallRecovery.reason === 'LOW_HEALTH'
+          ? 'Низкое HP не должно превращать маршрут в тупик: сначала восстановление, потом обычный темп.'
+          : 'Серия поражений временно включает мягкий маршрут без школьных испытаний и верхних угроз.',
+      },
+    );
+  }
+
   const shouldFocusActiveSkill = describeRuneContent(equippedRune).activeAbilities.length > 0
     && (player.victories === 0 || (player.victories <= 2 && !novicePath));
   if (shouldFocusActiveSkill) {

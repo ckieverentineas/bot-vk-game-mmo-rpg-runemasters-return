@@ -528,4 +528,37 @@ describe('next goal read-model', () => {
     expect(goal?.objectiveText).toContain('проверьте «🔮 Руны», затем вернитесь через осторожную встречу');
     expect(goal?.whyText).toContain('руны и прогресс остаются');
   });
+
+  it('prioritizes a rest route while the player is too wounded for the normal path', () => {
+    const goal = buildPlayerNextGoalView(createPlayer({
+      currentHealth: 2,
+      currentMana: 1,
+    }));
+
+    expect(goal.goalType).toBe('recover_before_fight');
+    expect(goal.primaryAction).toBe('explore');
+    expect(goal.primaryActionLabel).toBe('🌿 Передышка');
+    expect(goal.objectiveText).toContain('найдите передышку');
+  });
+
+  it('points a stalled player to runes when a free slot can be filled', () => {
+    const goal = buildPlayerNextGoalView(createPlayer({
+      defeatStreak: 2,
+      runes: [
+        createPlayer().runes[0]!,
+        {
+          ...createPlayer().runes[0]!,
+          id: 'rune-2',
+          runeCode: 'rune-2',
+          name: 'Запасная руна',
+          isEquipped: false,
+          equippedSlot: null,
+        },
+      ],
+    }));
+
+    expect(goal.goalType).toBe('review_runes_after_defeat');
+    expect(goal.primaryAction).toBe('open_runes');
+    expect(goal.objectiveText).toContain('наденьте свободную руну');
+  });
 });

@@ -7,6 +7,7 @@ import type {
   StatBlock,
   TurnOwner,
 } from '../../../shared/types/game';
+import { buildAntiStallRecoveryView, type AntiStallRecoveryView } from '../../player/domain/anti-stall-recovery';
 import {
   getSchoolNovicePathDefinition,
   hasEquippedRuneOfSchoolAtLeastRarity,
@@ -19,6 +20,7 @@ import { buildEnemySnapshot, describeEncounter, pickEncounterTemplate, resolveIn
 import {
   type ExplorationSceneView,
   resolveExplorationEventLine,
+  resolveRecoveryRestExplorationEvent,
   resolveStandaloneExplorationEvent,
 } from '../../world/domain/exploration-events';
 import { resolveGameMasterEncounterLine } from '../../world/domain/game-master-director';
@@ -151,6 +153,26 @@ const ambushMinLocationLevel = 4;
 const ambushMinVictories = 3;
 const wearyEnemyMinLocationLevel = 2;
 const wearyEnemyHealthMultiplier = 0.75;
+const recoveryEnemyHealthMultiplier = 0.6;
+
+const calculateTemplateThreat = (template: MobTemplateView): number => (
+  template.baseStats.health
+  + template.baseStats.attack * 4
+  + template.baseStats.defence * 3
+  + template.baseStats.magicDefence
+  + template.baseStats.dexterity
+  + template.baseStats.intelligence
+);
+
+const pickRecoveryEncounterTemplate = (templates: readonly MobTemplateView[]): MobTemplateView => {
+  const normalTemplates = templates.filter((template) => !template.isElite && !template.isBoss);
+  const candidateTemplates = normalTemplates.length > 0 ? normalTemplates : templates;
+
+  return [...candidateTemplates].sort((left, right) => (
+    calculateTemplateThreat(left) - calculateTemplateThreat(right)
+    || left.code.localeCompare(right.code)
+  ))[0] ?? pickEncounterTemplate(templates, 1);
+};
 
 const createTrailVariant = (enemy: BattleEnemySnapshot): ExplorationEncounterVariant => ({
   kind: 'TRAIL',
@@ -179,6 +201,16 @@ const createWearyEnemyVariant = (enemy: BattleEnemySnapshot): ExplorationEncount
   enemyHealthMultiplier: wearyEnemyHealthMultiplier,
 });
 
+const createRecoveryEncounterVariant = (enemy: BattleEnemySnapshot): ExplorationEncounterVariant => ({
+  kind: 'WEARY_ENEMY',
+  title: 'Осторожная встреча',
+  description: `${enemy.name} замечен заранее: маршрут даёт пространство вернуть темп.`,
+  effectLine: 'Первый ход за вами, враг начинает с 60% HP, отступить проще: +15%.',
+  fleeChanceModifierPercent: 15,
+  initialTurnOwner: 'PLAYER',
+  enemyHealthMultiplier: recoveryEnemyHealthMultiplier,
+});
+
 const createEliteTrailVariant = (enemy: BattleEnemySnapshot): ExplorationEncounterVariant => ({
   kind: 'ELITE_TRAIL',
   title: 'Элитный след',
@@ -191,9 +223,14 @@ const resolveEncounterVariant = (
   context: ResolveExplorationOutcomeContext,
   enemy: BattleEnemySnapshot,
   random: ExplorationOutcomeRandom,
+  recovery: AntiStallRecoveryView | null,
 ): ExplorationEncounterVariant | null => {
   if (context.locationLevel <= 0) {
     return null;
+  }
+
+  if (recovery) {
+    return createRecoveryEncounterVariant(enemy);
   }
 
   if (enemy.isElite || enemy.isBoss) {
@@ -241,15 +278,18 @@ const resolveBattleOutcome = (
   context: ResolveExplorationOutcomeContext,
   random: ExplorationOutcomeRandom,
 ): ExplorationBattleOutcome => {
-  const suppressChallengeEncounters = context.player.defeatStreak > 0;
+  const recovery = buildAntiStallRecoveryView(context.player);
+  const suppressChallengeEncounters = context.player.defeatStreak > 0 || !!recovery;
   const preferMiniboss = shouldPreferSchoolMiniboss(context.player, context.currentSchoolCode)
     && !suppressChallengeEncounters;
   const preferSealTarget = shouldPreferSchoolSealTarget(context.player, context.currentSchoolCode)
     && !suppressChallengeEncounters;
-  const roamingPool = preferMiniboss || preferSealTarget
+  const roamingPool = preferMiniboss || preferSealTarget || recovery
     ? null
     : pickRoamingPool(context.roamingTemplatePools ?? [], random);
-  const template = roamingPool
+  const template = recovery
+    ? pickRecoveryEncounterTemplate(context.templates)
+    : roamingPool
     ? random.pickOne(roamingPool.templates)
     : pickEncounterTemplate(context.templates, context.locationLevel, {
         schoolCode: context.currentSchoolCode,
@@ -263,7 +303,7 @@ const resolveBattleOutcome = (
     ...context,
     roamingOriginBiome: roamingPool?.biome ?? null,
   }, enemy, random);
-  const encounterVariant = resolveEncounterVariant(context, enemy, random);
+  const encounterVariant = resolveEncounterVariant(context, enemy, random, recovery);
 
   return {
     kind: 'battle',
@@ -283,6 +323,22 @@ export const resolveExplorationOutcome = (
   context: ResolveExplorationOutcomeContext,
   random: ExplorationOutcomeRandom,
 ): ExplorationOutcome => {
+  const recovery = buildAntiStallRecoveryView(context.player);
+  if (recovery?.shouldOfferRest) {
+    const restEvent = resolveRecoveryRestExplorationEvent({
+      biome: context.biome,
+      currentSchoolCode: context.currentSchoolCode,
+      locationLevel: context.locationLevel,
+    });
+
+    if (restEvent) {
+      return {
+        kind: 'event',
+        event: restEvent,
+      };
+    }
+  }
+
   const standaloneEvent = resolveStandaloneExplorationEvent({
     biome: context.biome,
     currentSchoolCode: context.currentSchoolCode,

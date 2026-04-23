@@ -22,11 +22,22 @@ export type ExplorationSceneKind =
   | 'trial_master'
   | 'danger_sign';
 
+export interface ExplorationVitalRecovery {
+  readonly healthRatio: number;
+  readonly manaRatio: number;
+}
+
 export type ExplorationSceneEffect =
   | { readonly kind: 'none' }
   | {
     readonly kind: 'inventory_delta';
     readonly delta: InventoryDelta;
+    readonly line: string;
+  }
+  | {
+    readonly kind: 'vital_recovery';
+    readonly healthRatio: ExplorationVitalRecovery['healthRatio'];
+    readonly manaRatio: ExplorationVitalRecovery['manaRatio'];
     readonly line: string;
   };
 
@@ -54,6 +65,16 @@ const standaloneExplorationEventChancePercent = 40;
 const inventoryFindEffect = (delta: InventoryDelta, line: string): ExplorationSceneEffect => ({
   kind: 'inventory_delta',
   delta,
+  line,
+});
+
+const vitalRecoveryEffect = (
+  recovery: ExplorationVitalRecovery,
+  line: string,
+): ExplorationSceneEffect => ({
+  kind: 'vital_recovery',
+  healthRatio: recovery.healthRatio,
+  manaRatio: recovery.manaRatio,
   line,
 });
 
@@ -117,6 +138,10 @@ const standaloneExplorationScenes: readonly ExplorationSceneDefinition[] = [
     description: 'Вы находите сухой уступ под корнями и на несколько минут уходите с линии угрозы.',
     outcomeLine: 'Боя нет: экспедиция получает паузу без штрафов и скрытого давления на темп.',
     nextStepLine: 'Когда будете готовы, можно снова двинуться глубже.',
+    effect: vitalRecoveryEffect(
+      { healthRatio: 0.7, manaRatio: 0.75 },
+      'Восстановление: HP и мана поднимаются до безопасного уровня перед следующим шагом.',
+    ),
   },
   {
     code: 'broken-ward',
@@ -280,9 +305,36 @@ export const getExplorationSceneInventoryDelta = (event: ExplorationSceneView): 
   event.effect?.kind === 'inventory_delta' ? event.effect.delta : null
 );
 
-export const getExplorationSceneEffectLine = (event: ExplorationSceneView): string | null => (
-  event.effect?.kind === 'inventory_delta' ? event.effect.line : null
+export const getExplorationSceneVitalRecovery = (
+  event: ExplorationSceneView,
+): ExplorationVitalRecovery | null => (
+  event.effect?.kind === 'vital_recovery'
+    ? {
+        healthRatio: event.effect.healthRatio,
+        manaRatio: event.effect.manaRatio,
+      }
+    : null
 );
+
+export const getExplorationSceneEffectLine = (event: ExplorationSceneView): string | null => (
+  event.effect?.kind === 'inventory_delta' || event.effect?.kind === 'vital_recovery'
+    ? event.effect.line
+    : null
+);
+
+export const resolveRecoveryRestExplorationEvent = (
+  context: ExplorationEventContext,
+): ExplorationSceneView | null => {
+  if (context.biome.code === 'initium') {
+    return null;
+  }
+
+  const restScene = standaloneExplorationScenes.find((event) => (
+    event.kind === 'rest' && isSceneAvailable(event, context)
+  ));
+
+  return restScene ? toSceneView(restScene, context) : null;
+};
 
 export const resolveStandaloneExplorationEvent = (
   context: ExplorationEventContext,

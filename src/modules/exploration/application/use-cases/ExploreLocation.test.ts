@@ -565,6 +565,16 @@ describe('ExploreLocation', () => {
         _currentStateKey: string | undefined,
         result: unknown,
       ) => result),
+      recordPlayerVitalsResult: vi.fn(async (
+        _playerId: number,
+        _vitals: unknown,
+        _options: unknown,
+        buildResult: (player: PlayerState) => unknown,
+      ) => buildResult(createPlayer({
+        ...player,
+        currentHealth: 8,
+        currentMana: 4,
+      }))),
       createBattle: vi.fn(),
     } as unknown as GameRepository;
     const random: GameRandom = {
@@ -587,17 +597,83 @@ describe('ExploreLocation', () => {
 
     expect('event' in result && result.event.title).toContain('Тихая передышка');
     expect(repository.createBattle).not.toHaveBeenCalled();
-    expect(repository.recordCommandIntentResult).toHaveBeenCalledWith(
+    expect(repository.recordCommandIntentResult).not.toHaveBeenCalled();
+    expect(repository.recordPlayerVitalsResult).toHaveBeenCalledWith(
       player.playerId,
-      'EXPLORE_LOCATION',
-      'intent-explore-scene-1',
-      stateKey,
-      stateKey,
+      { currentHealth: 8, currentMana: 4 },
       expect.objectContaining({
-        event: expect.objectContaining({ code: 'quiet-rest' }),
-        player,
+        commandKey: 'EXPLORE_LOCATION',
+        intentId: 'intent-explore-scene-1',
+        intentStateKey: stateKey,
+        currentStateKey: stateKey,
       }),
+      expect.any(Function),
     );
+  });
+
+  it('persists anti-stall recovery rest when the player explores at low health', async () => {
+    const player = createPlayer({
+      tutorialState: 'SKIPPED',
+      locationLevel: 4,
+      currentHealth: 2,
+      currentMana: 0,
+    });
+    const recoveredPlayer = createPlayer({
+      ...player,
+      currentHealth: 6,
+      currentMana: 3,
+    });
+    const stateKey = buildExploreLocationIntentStateKey(player);
+    const repository = {
+      findPlayerByVkId: vi.fn().mockResolvedValue(player),
+      getCommandIntentResult: vi.fn().mockResolvedValue(null),
+      getActiveBattle: vi.fn().mockResolvedValue(null),
+      recordPlayerVitalsResult: vi.fn(async (
+        _playerId: number,
+        _vitals: unknown,
+        _options: unknown,
+        buildResult: (player: PlayerState) => unknown,
+      ) => buildResult(recoveredPlayer)),
+      createBattle: vi.fn(),
+    } as unknown as GameRepository;
+    const random: GameRandom = {
+      nextInt: vi.fn().mockReturnValue(1),
+      rollPercentage: vi.fn().mockReturnValue(false),
+      pickOne: vi.fn(<T>(items: readonly T[]) => items[0]!),
+    };
+    const worldCatalog = createWorldCatalog({
+      findBiomeForLocationLevel: vi.fn().mockReturnValue({
+        ...createBiome(),
+        code: 'dark-forest',
+        name: 'Тёмный лес',
+        minLevel: 1,
+        maxLevel: 15,
+      }),
+    });
+    const useCase = new ExploreLocation(repository, worldCatalog, random);
+
+    const result = await useCase.execute(player.vkId, 'intent-explore-low-hp-rest-1', stateKey, 'payload');
+
+    if (!('event' in result)) {
+      throw new Error('Expected anti-stall exploration event result.');
+    }
+
+    expect(result.event.code).toBe('quiet-rest');
+    expect(result.player.currentHealth).toBe(6);
+    expect(result.player.currentMana).toBe(3);
+    expect(repository.createBattle).not.toHaveBeenCalled();
+    expect(repository.recordPlayerVitalsResult).toHaveBeenCalledWith(
+      player.playerId,
+      { currentHealth: 6, currentMana: 3 },
+      expect.objectContaining({
+        commandKey: 'EXPLORE_LOCATION',
+        intentId: 'intent-explore-low-hp-rest-1',
+        intentStateKey: stateKey,
+        currentStateKey: stateKey,
+      }),
+      expect.any(Function),
+    );
+    expect(random.rollPercentage).not.toHaveBeenCalled();
   });
 
   it('persists a standalone resource event through an exact-once inventory result', async () => {

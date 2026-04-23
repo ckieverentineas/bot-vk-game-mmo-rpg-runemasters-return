@@ -131,6 +131,25 @@ describe('resolveExplorationOutcome', () => {
     expect(outcome.kind === 'event' ? outcome.event.code : null).toBe('quiet-rest');
   });
 
+  it('routes a low-health player into a recovery rest before rolling a battle', () => {
+    const random = {
+      rollPercentage: vi.fn().mockReturnValue(false),
+      pickOne: vi.fn(<T>(items: readonly T[]) => items[0]!),
+    };
+
+    const outcome = resolveExplorationOutcome({
+      player: createPlayer({ currentHealth: 2, currentMana: 1 }),
+      biome: createBiome(),
+      templates: [createMobTemplate()],
+      locationLevel: 4,
+      currentSchoolCode: null,
+    }, random);
+
+    expect(outcome.kind).toBe('event');
+    expect(outcome.kind === 'event' ? outcome.event.code : null).toBe('quiet-rest');
+    expect(random.rollPercentage).not.toHaveBeenCalled();
+  });
+
   it('builds a battle plan with path episode and opening framing', () => {
     const random = {
       rollPercentage: vi.fn()
@@ -227,6 +246,46 @@ describe('resolveExplorationOutcome', () => {
     expect(outcome.kind).toBe('battle');
     expect(outcome.kind === 'battle' ? outcome.encounterVariant?.kind : null).toBe('TRAIL');
     expect(outcome.kind === 'battle' ? outcome.encounterVariant?.initialTurnOwner : null).toBe('PLAYER');
+  });
+
+  it('uses the lightest normal encounter for repeated defeats after vitals recover', () => {
+    const random = {
+      rollPercentage: vi.fn().mockReturnValue(false),
+      pickOne: vi.fn(<T>(items: readonly T[]) => items[0]!),
+    };
+
+    const outcome = resolveExplorationOutcome({
+      player: createPlayer({ defeatStreak: 2, currentHealth: 8, currentMana: 4 }),
+      biome: createBiome(),
+      templates: [
+        createMobTemplate({
+          code: 'heavy-brute',
+          baseStats: {
+            health: 20,
+            attack: 8,
+            defence: 4,
+            magicDefence: 1,
+            dexterity: 2,
+            intelligence: 1,
+          },
+        }),
+        createMobTemplate({ code: 'thin-shade', name: 'Тонкая тень', baseStats: { health: 4, attack: 1, defence: 0, magicDefence: 0, dexterity: 1, intelligence: 1 } }),
+        createMobTemplate({ code: 'hard-elite', isElite: true }),
+      ],
+      locationLevel: 4,
+      currentSchoolCode: null,
+    }, random);
+
+    expect(outcome.kind).toBe('battle');
+    if (outcome.kind !== 'battle') {
+      return;
+    }
+
+    expect(outcome.enemy.code).toBe('thin-shade');
+    expect(outcome.encounterVariant?.kind).toBe('WEARY_ENEMY');
+    expect(outcome.encounterVariant?.title).toBe('Осторожная встреча');
+    expect(outcome.encounterVariant?.initialTurnOwner).toBe('PLAYER');
+    expect(outcome.enemy.currentHealth).toBe(Math.ceil(outcome.enemy.maxHealth * 0.6));
   });
 
   it('marks elite enemies as an elite trail instead of a plain random encounter', () => {

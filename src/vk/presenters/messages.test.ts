@@ -262,6 +262,19 @@ describe('messages school-first onboarding framing', () => {
     expect(message).toContain('заберите первую боевую руну и откройте свою школу рун');
   });
 
+  it('points a wounded player toward recovery instead of the normal route', () => {
+    const message = renderMainMenu(createPlayer({
+      tutorialState: 'SKIPPED',
+      locationLevel: 4,
+      currentHealth: 2,
+      currentMana: 1,
+      runes: [createEquippedRune()],
+    }));
+
+    expect(message).toContain('🎯 След: найдите передышку');
+    expect(message).toContain('👉 Сделать шаг: «🌿 Передышка».');
+  });
+
   it('shows standalone exploration resource effects without battle controls', () => {
     const message = renderExplorationEvent({
       code: 'abandoned-camp',

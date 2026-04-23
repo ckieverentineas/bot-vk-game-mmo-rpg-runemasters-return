@@ -81,6 +81,7 @@ import type {
   PendingRewardView,
   QuestRewardClaimResult,
   RecordInventoryDeltaResultOptions,
+  RecordPlayerVitalsResultOptions,
   RecoverPendingRewardsResult,
   SaveBattleOptions,
   SaveExplorationOptions,
@@ -859,6 +860,34 @@ export class PrismaGameRepository implements GameRepository {
       options.currentStateKey,
       async () => {
         const updatedPlayer = await this.applyInventoryDelta(tx, playerId, delta);
+        return buildResult(updatedPlayer);
+      },
+    ));
+  }
+
+  public async recordPlayerVitalsResult<TResult>(
+    playerId: number,
+    vitals: Required<Pick<PlayerState, 'currentHealth' | 'currentMana'>>,
+    options: RecordPlayerVitalsResultOptions,
+    buildResult: (player: PlayerState) => TResult,
+  ): Promise<TResult> {
+    return this.prisma.$transaction((tx) => this.runWithCommandIntent(
+      tx,
+      playerId,
+      options.commandKey,
+      options.intentId,
+      options.intentStateKey,
+      options.currentStateKey,
+      async () => {
+        await tx.playerProgress.update({
+          where: { playerId },
+          data: {
+            currentHealth: vitals.currentHealth,
+            currentMana: vitals.currentMana,
+          },
+        });
+
+        const updatedPlayer = mapPlayerRecord(await this.requirePlayerRecord(tx, playerId));
         return buildResult(updatedPlayer);
       },
     ));
