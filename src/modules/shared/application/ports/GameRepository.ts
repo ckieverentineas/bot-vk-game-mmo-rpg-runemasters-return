@@ -2,6 +2,7 @@ import type {
   BattleView,
   CreateBattleInput,
   InventoryDelta,
+  PartyView,
   PlayerSkillPointGain,
   PlayerState,
   ResourceReward,
@@ -28,6 +29,7 @@ export type RuneCraftCommandIntentKey = 'CRAFT_RUNE' | 'REROLL_RUNE_STAT' | 'DES
 export type ExplorationCommandIntentKey = 'ENTER_TUTORIAL_MODE' | 'SKIP_TUTORIAL' | 'RETURN_TO_ADVENTURE' | 'EXPLORE_LOCATION';
 export type QuestRewardCommandIntentKey = 'CLAIM_QUEST_REWARD';
 export type DailyActivityCommandIntentKey = 'CLAIM_DAILY_TRACE';
+export type PartyCommandIntentKey = 'CREATE_PARTY' | 'JOIN_PARTY' | 'EXPLORE_PARTY';
 export type BattleActionCommandIntentKey =
   | 'BATTLE_ENGAGE'
   | 'BATTLE_FLEE'
@@ -42,6 +44,7 @@ export type GameCommandIntentKey =
   | ExplorationCommandIntentKey
   | QuestRewardCommandIntentKey
   | DailyActivityCommandIntentKey
+  | PartyCommandIntentKey
   | WorkshopCommandIntentKey
   | BattleActionCommandIntentKey;
 
@@ -80,6 +83,7 @@ export interface SaveExplorationOptions {
 
 export interface SaveBattleOptions {
   readonly commandKey?: BattleCommandIntentKey;
+  readonly actingPlayerId?: number;
   readonly intentId?: string;
   readonly intentStateKey?: string;
   readonly currentStateKey?: string;
@@ -116,6 +120,13 @@ export interface ClaimDailyActivityRewardOptions {
 
 export interface CreateBattleOptions {
   readonly commandKey?: 'EXPLORE_LOCATION';
+  readonly intentId?: string;
+  readonly intentStateKey?: string;
+  readonly currentStateKey?: string;
+}
+
+export interface StartPartyBattleOptions {
+  readonly commandKey?: 'EXPLORE_PARTY';
   readonly intentId?: string;
   readonly intentStateKey?: string;
   readonly currentStateKey?: string;
@@ -318,6 +329,15 @@ export interface GameRepository {
     options?: WorkshopMutationOptions,
   ): Promise<PlayerCraftedItemView>;
   adjustInventory(playerId: number, delta: InventoryDelta): Promise<PlayerState>;
+  getActiveParty(playerId: number): Promise<PartyView | null>;
+  createParty(playerId: number): Promise<PartyView>;
+  joinPartyByInviteCode(playerId: number, inviteCode: string): Promise<PartyView>;
+  startPartyBattle(
+    leaderPlayerId: number,
+    partyId: string,
+    battle: CreateBattleInput,
+    options?: StartPartyBattleOptions,
+  ): Promise<BattleView>;
   createBattle(playerId: number, battle: CreateBattleInput, options?: CreateBattleOptions): Promise<BattleView>;
   getActiveBattle(playerId: number): Promise<BattleView | null>;
   saveBattle(battle: BattleView, options?: SaveBattleOptions): Promise<BattleView>;

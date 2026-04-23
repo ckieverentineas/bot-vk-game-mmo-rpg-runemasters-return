@@ -1,11 +1,13 @@
 import { AppError } from '../../../shared/domain/AppError';
 import type {
   BattleActionType,
+  BattlePartyMemberSnapshot,
   BattlePlayerSnapshot,
   BattleResult,
   BattleRuneActionSnapshot,
   BattleView,
 } from '../../../shared/types/game';
+import { cloneJsonValue } from '../../../shared/utils/json';
 import { isBattleEncounterOffered } from './battle-encounter';
 import { appendBattleLog, calculatePhysicalDamage, cloneBattle } from './battle-utils';
 import {
@@ -105,6 +107,105 @@ const finalizeBattle = (battle: BattleView, result: BattleResult): BattleView =>
   return battle;
 };
 
+const isPartyBattle = (battle: BattleView): battle is BattleView & { party: NonNullable<BattleView['party']> } => (
+  battle.battleType === 'PARTY_PVE' && battle.party !== undefined && battle.party !== null
+);
+
+const clonePlayerSnapshot = (snapshot: BattlePlayerSnapshot): BattlePlayerSnapshot => cloneJsonValue(snapshot);
+
+const findPartyMember = (
+  battle: BattleView & { party: NonNullable<BattleView['party']> },
+  playerId: number,
+): BattlePartyMemberSnapshot | null => (
+  battle.party.members.find((member) => member.playerId === playerId) ?? null
+);
+
+const listLivingPartyMembers = (
+  battle: BattleView & { party: NonNullable<BattleView['party']> },
+): BattlePartyMemberSnapshot[] => (
+  battle.party.members.filter((member) => member.snapshot.currentHealth > 0)
+);
+
+const syncCurrentPartyMemberSnapshot = (battle: BattleView): void => {
+  if (!isPartyBattle(battle)) {
+    return;
+  }
+
+  const member = findPartyMember(battle, battle.player.playerId);
+  if (!member) {
+    return;
+  }
+
+  member.snapshot = clonePlayerSnapshot(battle.player);
+};
+
+const setCurrentPartyMember = (
+  battle: BattleView & { party: NonNullable<BattleView['party']> },
+  member: BattlePartyMemberSnapshot,
+): void => {
+  battle.party.currentTurnPlayerId = member.playerId;
+  battle.player = clonePlayerSnapshot(member.snapshot);
+};
+
+const addActedPartyMember = (
+  battle: BattleView & { party: NonNullable<BattleView['party']> },
+  playerId: number,
+): void => {
+  battle.party.actedPlayerIds = [...new Set([...battle.party.actedPlayerIds, playerId])];
+};
+
+const finishPartyPlayerAction = (
+  battle: BattleView & { party: NonNullable<BattleView['party']> },
+): BattleView => {
+  syncCurrentPartyMemberSnapshot(battle);
+
+  if (battle.enemy.currentHealth === 0) {
+    return finalizeBattle(battle, 'VICTORY');
+  }
+
+  addActedPartyMember(battle, battle.player.playerId);
+
+  const nextMember = listLivingPartyMembers(battle)
+    .find((member) => !battle.party.actedPlayerIds.includes(member.playerId));
+
+  if (nextMember) {
+    setCurrentPartyMember(battle, nextMember);
+    battle.turnOwner = 'PLAYER';
+    return battle;
+  }
+
+  battle.party.currentTurnPlayerId = null;
+  battle.turnOwner = 'ENEMY';
+  return battle;
+};
+
+const selectEnemyPartyTarget = (
+  battle: BattleView & { party: NonNullable<BattleView['party']> },
+): BattlePartyMemberSnapshot | null => {
+  const livingMembers = listLivingPartyMembers(battle);
+  if (livingMembers.length === 0) {
+    return null;
+  }
+
+  return livingMembers.find((member) => member.playerId === battle.party.enemyTargetPlayerId)
+    ?? livingMembers[0];
+};
+
+const preparePartyEnemyTarget = (battle: BattleView): BattleView => {
+  if (!isPartyBattle(battle)) {
+    return battle;
+  }
+
+  const target = selectEnemyPartyTarget(battle);
+  if (!target) {
+    return finalizeBattle(battle, 'DEFEAT');
+  }
+
+  battle.party.enemyTargetPlayerId = target.playerId;
+  battle.player = clonePlayerSnapshot(target.snapshot);
+  return battle;
+};
+
 const getGuardPoints = (player: BattlePlayerSnapshot): number => player.guardPoints ?? 0;
 
 const resolveGuardCapWithBonuses = (battle: BattleView, bonuses: readonly number[] = []): number => (
@@ -155,6 +256,23 @@ const refreshPlayerTurnResources = (battle: BattleView): void => {
   );
 };
 
+const beginPartyPlayerRound = (
+  battle: BattleView & { party: NonNullable<BattleView['party']> },
+): BattleView => {
+  const nextMember = listLivingPartyMembers(battle)[0];
+  if (!nextMember) {
+    return finalizeBattle(battle, 'DEFEAT');
+  }
+
+  battle.party.actedPlayerIds = [];
+  setCurrentPartyMember(battle, nextMember);
+  refreshPlayerTurnResources(battle);
+  syncCurrentPartyMemberSnapshot(battle);
+  battle.turnOwner = 'PLAYER';
+
+  return battle;
+};
+
 const consumeGuardAgainstDamage = (
   player: BattlePlayerSnapshot,
   rawDamage: number,
@@ -202,6 +320,10 @@ const applyDamageToEnemy = (battle: BattleView, damage: number): void => {
 };
 
 const finishPlayerAction = (battle: BattleView): BattleView => {
+  if (isPartyBattle(battle)) {
+    return finishPartyPlayerAction(battle);
+  }
+
   if (battle.enemy.currentHealth === 0) {
     return finalizeBattle(battle, 'VICTORY');
   }
@@ -211,6 +333,16 @@ const finishPlayerAction = (battle: BattleView): BattleView => {
 };
 
 const finishEnemyAction = (battle: BattleView): BattleView => {
+  if (isPartyBattle(battle)) {
+    syncCurrentPartyMemberSnapshot(battle);
+
+    if (listLivingPartyMembers(battle).length === 0) {
+      return finalizeBattle(battle, 'DEFEAT');
+    }
+
+    return beginPartyPlayerRound(battle);
+  }
+
   if (battle.player.currentHealth === 0) {
     return finalizeBattle(battle, 'DEFEAT');
   }
@@ -221,6 +353,10 @@ const finishEnemyAction = (battle: BattleView): BattleView => {
 };
 
 const finishEnemyPreparation = (battle: BattleView): BattleView => {
+  if (isPartyBattle(battle)) {
+    return beginPartyPlayerRound(battle);
+  }
+
   refreshPlayerTurnResources(battle);
   battle.turnOwner = 'PLAYER';
   return battle;
@@ -332,9 +468,7 @@ export class BattleEngine {
       ...messageWhen(outcome.stoneSealGuardBonus > 0, '🪨 Печать Тверди добавляет опору к защитной стойке.'),
       ...messageWhen(outcome.stoneMasteryGuardGainBonus > 0, '🪨 Мастерство Тверди усиливает защитную стойку.'),
     );
-    nextBattle.turnOwner = 'ENEMY';
-
-    return nextBattle;
+    return finishPlayerAction(nextBattle);
   }
 
   public static useRuneSkill(battle: BattleView, action: BattleActionType = 'RUNE_SKILL_SLOT_1'): BattleView {
@@ -400,6 +534,11 @@ export class BattleEngine {
         `⚠️ ${nextBattle.enemy.name} готовит «${nextBattle.enemy.intent.title}». Следующий удар будет сильнее обычного.`,
       );
       return finishEnemyPreparation(nextBattle);
+    }
+
+    preparePartyEnemyTarget(nextBattle);
+    if (nextBattle.status === 'COMPLETED') {
+      return nextBattle;
     }
 
     resolveEnemyAttack(nextBattle, nextBattle.enemy.attack, `👾 ${nextBattle.enemy.name} ${nextBattle.enemy.attackText} и наносит {damage} урона.`);
@@ -581,6 +720,11 @@ export class BattleEngine {
 
     nextBattle.enemy.intent = null;
     nextBattle.enemy.hasUsedSignatureMove = true;
+    preparePartyEnemyTarget(nextBattle);
+    if (nextBattle.status === 'COMPLETED') {
+      return nextBattle;
+    }
+
     resolveEnemyAttack(
       nextBattle,
       nextBattle.enemy.attack + intent.bonusAttack,
@@ -598,6 +742,11 @@ export class BattleEngine {
 
     nextBattle.enemy.intent = null;
     nextBattle.enemy.hasUsedSignatureMove = true;
+    preparePartyEnemyTarget(nextBattle);
+    if (nextBattle.status === 'COMPLETED') {
+      return nextBattle;
+    }
+
     resolveEnemyAttack(
       nextBattle,
       nextBattle.enemy.attack + intent.bonusAttack,

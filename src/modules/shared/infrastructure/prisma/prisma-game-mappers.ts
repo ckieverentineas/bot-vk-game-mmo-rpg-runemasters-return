@@ -270,6 +270,7 @@ export const mapBattleRecord = (battle: BattleRecord): BattleView => {
     : {
         player: playerSnapshot,
         enemy: enemySnapshot,
+        party: null,
         encounter: null,
         log: battleLog,
         result: battle.result as BattleView['result'],
@@ -292,6 +293,7 @@ export const mapBattleRecord = (battle: BattleRecord): BattleView => {
     turnOwner: battle.turnOwner as BattleView['turnOwner'],
     player: hydrateBattlePlayerSnapshot(battle.playerId, battleSnapshot.player, persistedLoadoutSnapshot.snapshot),
     enemy: battleSnapshot.enemy,
+    party: battleSnapshot.party ?? null,
     encounter: battleSnapshot.encounter ?? null,
     log: battleSnapshot.log,
     result: battleSnapshot.result,

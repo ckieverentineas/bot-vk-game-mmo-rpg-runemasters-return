@@ -14,6 +14,10 @@ import { finalizeRecoveredBattleIfNeeded } from '../finalize-recovered-battle';
 import { RewardEngine } from '../../domain/reward-engine';
 import { resolveVictoryRewardOptions } from '../resolve-victory-reward-options';
 
+const isPartyBattle = (battle: BattleView): battle is BattleView & { party: NonNullable<BattleView['party']> } => (
+  battle.battleType === 'PARTY_PVE' && battle.party !== undefined && battle.party !== null
+);
+
 export interface BattleActionResultView {
   readonly battle: BattleView;
   readonly player: PlayerState | null;
@@ -121,17 +125,19 @@ export class PerformBattleAction {
       return result;
     }
 
+    const actorBattle = this.prepareBattleForActor(recoveredBattle.battle, player);
     const fleeSucceeded = action === 'FLEE'
-      && recoveredBattle.battle.encounter?.canFlee === true
-      && this.random.rollPercentage(recoveredBattle.battle.encounter.fleeChancePercent);
-    const battleAfterPlayerAction = BattleEngine.performPlayerAction(recoveredBattle.battle, action, { fleeSucceeded });
+      && actorBattle.encounter?.canFlee === true
+      && this.random.rollPercentage(actorBattle.encounter.fleeChancePercent);
+    const battleAfterPlayerAction = BattleEngine.performPlayerAction(actorBattle, action, { fleeSucceeded });
     const playerSkillGains = resolveBattleActionSkillGains({
       action,
-      before: recoveredBattle.battle,
+      before: actorBattle,
       afterPlayerAction: battleAfterPlayerAction,
     });
     const battlePersistenceOptions = {
       ...commandOptions,
+      actingPlayerId: player.playerId,
       playerSkillGains,
     } as const;
     let battle = battleAfterPlayerAction;
@@ -158,6 +164,29 @@ export class PerformBattleAction {
     const result = this.wrapBattleResult(await this.repository.saveBattle(battle, battlePersistenceOptions));
     await this.persistReplayResult(player.playerId, intent?.intentId, result);
     return result;
+  }
+
+  private prepareBattleForActor(battle: BattleView, player: PlayerState): BattleView {
+    if (!isPartyBattle(battle)) {
+      return battle;
+    }
+
+    const currentTurnPlayerId = battle.party.currentTurnPlayerId;
+    if (currentTurnPlayerId !== player.playerId) {
+      const currentMember = battle.party.members.find((member) => member.playerId === currentTurnPlayerId);
+      const currentMemberName = currentMember?.name ?? 'другой мастер';
+      throw new AppError('party_member_turn_required', `Сейчас ходит ${currentMemberName}. Дождитесь своего хода.`);
+    }
+
+    const partyMember = battle.party.members.find((member) => member.playerId === player.playerId);
+    if (!partyMember) {
+      throw new AppError('party_member_not_found', 'Вы уже не состоите в этом отряде.');
+    }
+
+    return {
+      ...battle,
+      player: partyMember.snapshot,
+    };
   }
 
   private wrapBattleResult(battle: BattleView, replayed = false): BattleActionResultView {

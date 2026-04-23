@@ -198,6 +198,47 @@ describe('PerformBattleAction', () => {
     expect(repository.getActiveBattle).not.toHaveBeenCalled();
   });
 
+  it('rejects party actions before the member turn', async () => {
+    const waitingPlayer = createPlayer({ vkId: 1002, playerId: 2 });
+    const firstMember = createBattle().player;
+    const secondMember = {
+      ...createBattle().player,
+      playerId: 2,
+      name: 'Рунный мастер #1002',
+    };
+    const activeBattle = createBattle({
+      battleType: 'PARTY_PVE',
+      party: {
+        id: 'party-1',
+        inviteCode: 'ABC123',
+        leaderPlayerId: 1,
+        currentTurnPlayerId: 1,
+        enemyTargetPlayerId: null,
+        actedPlayerIds: [],
+        members: [
+          { playerId: 1, vkId: 1001, name: firstMember.name, snapshot: firstMember },
+          { playerId: 2, vkId: 1002, name: secondMember.name, snapshot: secondMember },
+        ],
+      },
+    });
+    const repository = {
+      findPlayerByVkId: vi.fn().mockResolvedValue(waitingPlayer),
+      getCommandIntentResult: vi.fn().mockResolvedValue(null),
+      storeCommandIntentResult: vi.fn().mockResolvedValue(undefined),
+      getActiveBattle: vi.fn().mockResolvedValue(activeBattle),
+      saveBattle: vi.fn(),
+      finalizeBattle: vi.fn(),
+    } as unknown as GameRepository;
+    const useCase = new PerformBattleAction(repository, createRandom());
+
+    await expect(useCase.execute(waitingPlayer.vkId, 'ATTACK')).rejects.toMatchObject({
+      code: 'party_member_turn_required',
+    });
+
+    expect(repository.saveBattle).not.toHaveBeenCalled();
+    expect(repository.finalizeBattle).not.toHaveBeenCalled();
+  });
+
   it('passes guarded battle options to saveBattle for payload actions', async () => {
     const player = createPlayer();
     const activeBattle = createBattle({

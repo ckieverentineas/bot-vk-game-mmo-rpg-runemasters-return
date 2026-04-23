@@ -42,6 +42,8 @@ model Player {
   skills           PlayerSkill[]
   blueprints       PlayerBlueprint[]
   craftedItems     PlayerCraftedItem[]
+  ledParties       PlayerParty[]          @relation("PartyLeader")
+  partyMemberships PlayerPartyMember[]
 }
 
 model PlayerSchoolMastery {
@@ -184,6 +186,34 @@ model BattleSession {
   player          Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
 
   @@index([playerId, status])
+}
+
+model PlayerParty {
+  id             String              @id @default(cuid())
+  inviteCode     String              @unique
+  leaderPlayerId Int
+  status         String              @default("OPEN")
+  activeBattleId String?
+  maxMembers     Int                 @default(2)
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+  leader         Player              @relation("PartyLeader", fields: [leaderPlayerId], references: [id], onDelete: Cascade)
+  members        PlayerPartyMember[]
+
+  @@index([leaderPlayerId, status])
+  @@index([status, activeBattleId])
+}
+
+model PlayerPartyMember {
+  partyId  String
+  playerId Int
+  role     String   @default("MEMBER")
+  joinedAt DateTime @default(now())
+  party    PlayerParty @relation(fields: [partyId], references: [id], onDelete: Cascade)
+  player   Player      @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@id([partyId, playerId])
+  @@index([playerId])
 }
 
 model RewardLedgerRecord {

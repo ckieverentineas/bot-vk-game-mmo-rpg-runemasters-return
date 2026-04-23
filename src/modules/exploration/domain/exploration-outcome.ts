@@ -279,7 +279,7 @@ const applyEncounterVariantToEnemy = (
   };
 };
 
-const resolveBattleOutcome = (
+export const resolveExplorationBattleOutcome = (
   context: ResolveExplorationOutcomeContext,
   random: ExplorationOutcomeRandom,
 ): ExplorationBattleOutcome => {
@@ -360,5 +360,5 @@ export const resolveExplorationOutcome = (
     };
   }
 
-  return resolveBattleOutcome(context, random);
+  return resolveExplorationBattleOutcome(context, random);
 };

@@ -101,6 +101,22 @@ const renderBattleActorBlock = (
   ].join('\n');
 };
 
+const renderBattlePartyLines = (battle: BattleView): string[] => {
+  if (!battle.party) {
+    return [];
+  }
+
+  return [
+    'Отряд',
+    ...battle.party.members.map((member) => {
+      const marker = member.playerId === battle.party?.currentTurnPlayerId ? '▶' : '•';
+      const health = `${member.snapshot.currentHealth}/${member.snapshot.maxHealth} HP`;
+      return `${marker} ${member.name} · ${health}`;
+    }),
+    '',
+  ];
+};
+
 const renderBattleRuneState = (battle: BattleView): string => {
   const runeLoadouts = listBattleRuneLoadouts(battle.player);
   if (runeLoadouts.length === 0) {
@@ -335,7 +351,8 @@ export const renderBattle = (
     battleStateLine,
     '',
     'Поле боя',
-    renderBattleActorBlock('Вы', battle.player, { guardPoints: battle.player.guardPoints }),
+    ...renderBattlePartyLines(battle),
+    renderBattleActorBlock(battle.party ? 'Сейчас действует' : 'Вы', battle.player, { guardPoints: battle.player.guardPoints }),
     renderBattleActorBlock('Враг', battle.enemy),
     '',
     ...(isEncounterOffered

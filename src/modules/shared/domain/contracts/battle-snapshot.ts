@@ -3,6 +3,7 @@ import type {
   BattleEncounterKind,
   BattleEnemySnapshot,
   BattleEncounterView,
+  BattlePartySnapshot,
   BattlePlayerSnapshot,
   BattleResult,
   BattleRewardView,
@@ -23,6 +24,7 @@ export interface BattleSnapshotV1 {
   readonly actionRevision: number;
   readonly player: BattlePlayerSnapshot;
   readonly enemy: BattleEnemySnapshot;
+  readonly party?: BattlePartySnapshot | null;
   readonly encounter?: BattleEncounterView | null;
   readonly log: string[];
   readonly result: BattleResult | null;
@@ -104,6 +106,27 @@ const isBattlePlayerSnapshot = (value: unknown): value is BattlePlayerSnapshot =
   && (value.guardPoints === undefined || isNumber(value.guardPoints))
 );
 
+const isBattlePartyMemberSnapshot = (value: unknown): value is BattlePartySnapshot['members'][number] => (
+  isJsonRecord(value)
+  && isNumber(value.playerId)
+  && isNumber(value.vkId)
+  && isString(value.name)
+  && isBattlePlayerSnapshot(value.snapshot)
+);
+
+const isBattlePartySnapshot = (value: unknown): value is BattlePartySnapshot => (
+  isJsonRecord(value)
+  && isString(value.id)
+  && isString(value.inviteCode)
+  && isNumber(value.leaderPlayerId)
+  && (value.currentTurnPlayerId === null || isNumber(value.currentTurnPlayerId))
+  && (value.enemyTargetPlayerId === null || isNumber(value.enemyTargetPlayerId))
+  && Array.isArray(value.actedPlayerIds)
+  && value.actedPlayerIds.every(isNumber)
+  && Array.isArray(value.members)
+  && value.members.every(isBattlePartyMemberSnapshot)
+);
+
 const isBattleEnemyIntentSnapshot = (value: unknown): value is NonNullable<BattleEnemySnapshot['intent']> => (
   isJsonRecord(value)
   && isString(value.code)
@@ -169,6 +192,7 @@ export const isBattleSnapshot = (value: unknown): value is BattleSnapshot => (
   && isNumber(value.actionRevision)
   && isBattlePlayerSnapshot(value.player)
   && isBattleEnemySnapshot(value.enemy)
+  && (value.party === undefined || value.party === null || isBattlePartySnapshot(value.party))
   && (value.encounter === undefined || value.encounter === null || isBattleEncounterView(value.encounter))
   && isStringArray(value.log)
   && (value.result === null || value.result === 'VICTORY' || value.result === 'DEFEAT' || value.result === 'FLED')
@@ -176,12 +200,13 @@ export const isBattleSnapshot = (value: unknown): value is BattleSnapshot => (
 );
 
 export const buildBattleSnapshot = (
-  battle: Pick<BattleView, 'actionRevision' | 'player' | 'enemy' | 'encounter' | 'log' | 'result' | 'rewards'>,
+  battle: Pick<BattleView, 'actionRevision' | 'player' | 'enemy' | 'party' | 'encounter' | 'log' | 'result' | 'rewards'>,
 ): BattleSnapshot => ({
   schemaVersion: BATTLE_SNAPSHOT_SCHEMA_VERSION,
   actionRevision: battle.actionRevision,
   player: battle.player,
   enemy: battle.enemy,
+  party: battle.party ?? null,
   encounter: battle.encounter ?? null,
   log: [...battle.log],
   result: battle.result,

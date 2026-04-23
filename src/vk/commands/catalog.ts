@@ -18,6 +18,9 @@ export const gameCommands = {
   questBook: 'книга путей',
   mastery: 'мастерство',
   bestiary: 'бестиарий',
+  party: 'отряд',
+  createParty: 'создать отряд',
+  exploreParty: 'исследовать отрядом',
   claimQuestReward: 'забрать награду',
   location: 'локация',
   skipTutorial: 'пропустить обучение',
@@ -82,6 +85,7 @@ export const bestiaryLocationCommandPrefix = 'бестиарий локация 
 export const questBookPageCommandPrefix = 'книга путей страница ';
 export const workshopCraftCommandPrefix = 'мастерская чертеж ';
 export const workshopRepairCommandPrefix = 'мастерская ремонт ';
+export const partyJoinCommandPrefix = 'отряд ';
 
 export const workshopEquipCommandPrefix = 'workshop equip ';
 export const workshopUnequipCommandPrefix = 'workshop unequip ';
@@ -94,6 +98,7 @@ export type WorkshopCraftCommand = `${typeof workshopCraftCommandPrefix}${Worksh
 export type WorkshopRepairCommand = `${typeof workshopRepairCommandPrefix}${string} ${WorkshopBlueprintCode}`;
 export type WorkshopEquipCommand = `${typeof workshopEquipCommandPrefix}${string}`;
 export type WorkshopUnequipCommand = `${typeof workshopUnequipCommandPrefix}${string}`;
+export type PartyJoinCommand = `${typeof partyJoinCommandPrefix}${string}`;
 export type GameCommand =
   | StaticGameCommand
   | BestiaryPageCommand
@@ -102,7 +107,8 @@ export type GameCommand =
   | WorkshopCraftCommand
   | WorkshopRepairCommand
   | WorkshopEquipCommand
-  | WorkshopUnequipCommand;
+  | WorkshopUnequipCommand
+  | PartyJoinCommand;
 
 export interface WorkshopRepairCommandPayload {
   readonly itemId: string;
@@ -245,6 +251,12 @@ export const commandAliases: Readonly<Record<string, GameCommand>> = {
   'книга зверей': gameCommands.bestiary,
   'монстры': gameCommands.bestiary,
   'враги': gameCommands.bestiary,
+  'кооп': gameCommands.party,
+  'пати': gameCommands.party,
+  'группа': gameCommands.party,
+  'создать группу': gameCommands.createParty,
+  'создать пати': gameCommands.createParty,
+  'кооп бой': gameCommands.exploreParty,
   'проверить школу': gameCommands.explore,
   'испытать знак': gameCommands.explore,
   'цель печати': gameCommands.explore,
@@ -439,6 +451,21 @@ export const resolveWorkshopUnequipCommand = (command: string): string | null =>
 
   const itemId = trimmedCommand.slice(workshopUnequipCommandPrefix.length).trim();
   return itemId.length > 0 ? itemId : null;
+};
+
+export const createPartyJoinCommand = (inviteCode: string): PartyJoinCommand => (
+  `${partyJoinCommandPrefix}${inviteCode}` as PartyJoinCommand
+);
+
+export const resolvePartyJoinCommand = (command: string): string | null => {
+  const trimmedCommand = command.trim();
+
+  if (!trimmedCommand.startsWith(partyJoinCommandPrefix)) {
+    return null;
+  }
+
+  const inviteCode = trimmedCommand.slice(partyJoinCommandPrefix.length).trim();
+  return inviteCode.length > 0 ? inviteCode : null;
 };
 
 export const resolveTrophyActionCommand = (command: string): TrophyActionCode | null => {

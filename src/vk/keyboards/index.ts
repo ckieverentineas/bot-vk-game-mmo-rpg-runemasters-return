@@ -24,3 +24,4 @@ export {
 } from './runes';
 export { createTutorialKeyboard } from './tutorial';
 export { createWorkshopKeyboard } from './workshop';
+export { createPartyKeyboard } from './party';

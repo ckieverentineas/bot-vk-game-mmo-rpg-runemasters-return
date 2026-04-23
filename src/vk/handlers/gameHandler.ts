@@ -6,8 +6,8 @@ import type { SkipTutorialReplayResult } from '../../modules/exploration/applica
 import { AppError, isAppError } from '../../shared/domain/AppError';
 import type { BattleActionType, BattleView, PlayerState } from '../../shared/types/game';
 import { Logger } from '../../utils/logger';
-import { createMainMenuKeyboard } from '../keyboards';
-import { renderBattle, renderDailyTrace } from '../presenters/messages';
+import { createMainMenuKeyboard, createPartyKeyboard } from '../keyboards';
+import { renderBattle, renderDailyTrace, renderParty } from '../presenters/messages';
 import { resolveCommandEnvelope } from '../router/commandRouter';
 import {
   config,
@@ -223,6 +223,21 @@ export class GameHandler {
     await sendInventory(ctx, player);
   }
 
+  public async showParty(ctx: Context, vkId: number): Promise<void> {
+    const view = await this.services.getParty.execute(vkId);
+    await this.reply(ctx, renderParty(view.player, view.party), createPartyKeyboard(view.party, view.player.playerId));
+  }
+
+  public async createParty(ctx: Context, vkId: number): Promise<void> {
+    const result = await this.services.createParty.execute(vkId);
+    await this.reply(ctx, renderParty(result.player, result.party), createPartyKeyboard(result.party, result.player.playerId));
+  }
+
+  public async joinParty(ctx: Context, vkId: number, inviteCode: string): Promise<void> {
+    const result = await this.services.joinParty.execute(vkId, inviteCode);
+    await this.reply(ctx, renderParty(result.player, result.party), createPartyKeyboard(result.party, result.player.playerId));
+  }
+
   public async claimDailyTrace(ctx: Context, vkId: number, context: CommandIntentContext): Promise<void> {
     const routeState = toRouteState(context);
     const result = await this.services.claimDailyTrace.execute(
@@ -309,6 +324,16 @@ export class GameHandler {
     const routeState = toRouteState(context);
     const result = await this.services.exploreLocation.execute(vkId, routeState.intentId, routeState.stateKey, routeState.intentSource);
     await this.replyWithExplorationResult(ctx, result, vkId);
+  }
+
+  public async exploreParty(ctx: Context, vkId: number): Promise<void> {
+    const player = await this.services.getPlayerProfile.execute(vkId);
+    if (await sendPendingRewardIfAny(ctx, this.services, player)) {
+      return;
+    }
+
+    const battle = await this.services.exploreParty.execute(vkId);
+    await this.replyWithBattle(ctx, battle, vkId);
   }
 
   public async showPendingReward(ctx: Context, vkId: number): Promise<void> {

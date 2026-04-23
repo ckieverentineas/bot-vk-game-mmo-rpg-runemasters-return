@@ -261,6 +261,45 @@ export interface BattleRewardView {
   droppedRune: RuneDraft | null;
 }
 
+export interface BattlePartyMemberSnapshot {
+  playerId: number;
+  vkId: number;
+  name: string;
+  snapshot: BattlePlayerSnapshot;
+}
+
+export interface BattlePartySnapshot {
+  id: string;
+  inviteCode: string;
+  leaderPlayerId: number;
+  currentTurnPlayerId: number | null;
+  enemyTargetPlayerId: number | null;
+  actedPlayerIds: number[];
+  members: BattlePartyMemberSnapshot[];
+}
+
+export type PartyStatus = 'OPEN' | 'IN_BATTLE' | 'COMPLETED';
+
+export interface PartyMemberView {
+  playerId: number;
+  vkId: number;
+  name: string;
+  role: 'LEADER' | 'MEMBER';
+  joinedAt: string;
+}
+
+export interface PartyView {
+  id: string;
+  inviteCode: string;
+  leaderPlayerId: number;
+  status: PartyStatus;
+  activeBattleId: string | null;
+  maxMembers: number;
+  members: PartyMemberView[];
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface AbilityDefinition {
   code: string;
   name: string;
@@ -298,7 +337,7 @@ export interface BattleView {
   id: string;
   playerId: number;
   status: BattleStatus;
-  battleType: 'PVE';
+  battleType: 'PVE' | 'PARTY_PVE';
   actionRevision: number;
   locationLevel: number;
   biomeCode: string;
@@ -306,6 +345,7 @@ export interface BattleView {
   turnOwner: TurnOwner;
   player: BattlePlayerSnapshot;
   enemy: BattleEnemySnapshot;
+  party?: BattlePartySnapshot | null;
   encounter?: BattleEncounterView | null;
   log: string[];
   result: BattleResult | null;

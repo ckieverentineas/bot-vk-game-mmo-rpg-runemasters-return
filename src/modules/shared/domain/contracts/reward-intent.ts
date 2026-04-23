@@ -83,7 +83,7 @@ export const buildBattleRewardViewFromIntent = (intent: RewardIntent): BattleRew
 
 export const createBattleVictoryRewardIntent = (
   playerId: number,
-  battle: Pick<BattleView, 'id' | 'result' | 'rewards'>,
+  battle: Pick<BattleView, 'id' | 'battleType' | 'result' | 'rewards'>,
 ): RewardIntent | null => {
   if (battle.result !== 'VICTORY' || !battle.rewards) {
     return null;
@@ -91,7 +91,9 @@ export const createBattleVictoryRewardIntent = (
 
   return {
     schemaVersion: REWARD_INTENT_SCHEMA_VERSION,
-    intentId: `battle-victory:${battle.id}`,
+    intentId: battle.battleType === 'PARTY_PVE'
+      ? `battle-victory:${battle.id}:player:${playerId}`
+      : `battle-victory:${battle.id}`,
     sourceType: 'BATTLE_VICTORY',
     sourceId: battle.id,
     playerId,

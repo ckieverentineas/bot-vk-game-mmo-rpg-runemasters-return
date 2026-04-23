@@ -15,6 +15,8 @@ export const buildBattleActionIntentStateKey = (battle: BattleView, action: Batt
     status: battle.status,
     actionRevision: battle.actionRevision,
     turnOwner: battle.turnOwner,
+    currentTurnPlayerId: battle.party?.currentTurnPlayerId ?? null,
+    actedPlayerIds: battle.party?.actedPlayerIds ?? [],
     action,
     encounter: battle.encounter
       ? {

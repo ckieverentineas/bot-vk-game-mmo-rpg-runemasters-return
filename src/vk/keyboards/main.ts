@@ -27,6 +27,7 @@ const createMainMenuLayout = (player?: PlayerState): KeyboardLayout => {
     [
       { label: '📖 Бестиарий', command: gameCommands.bestiary, color: Keyboard.SECONDARY_COLOR },
       { label: '📜 Мастерство', command: gameCommands.mastery, color: Keyboard.PRIMARY_COLOR },
+      { label: '🤝 Отряд', command: gameCommands.party, color: Keyboard.PRIMARY_COLOR },
     ],
     [
       {

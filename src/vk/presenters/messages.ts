@@ -22,6 +22,8 @@ export {
   renderProfile,
 } from './profileMessages';
 
+export { renderParty } from './partyMessages';
+
 export { renderSchoolMastery } from './masteryMessages';
 
 export {

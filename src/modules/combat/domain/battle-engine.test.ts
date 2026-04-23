@@ -76,6 +76,61 @@ afterEach(() => {
 });
 
 describe('BattleEngine', () => {
+  it('passes the turn through both party members before the enemy acts', () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0.5);
+    const firstMember = createBattle().player;
+    const secondMember = {
+      ...createBattle().player,
+      playerId: 2,
+      name: 'Рунный мастер #1002',
+      attack: 3,
+      currentHealth: 7,
+      maxHealth: 7,
+    };
+    const battle = createBattle({
+      battleType: 'PARTY_PVE',
+      enemy: {
+        ...createBattle().enemy,
+        currentHealth: 30,
+      },
+      party: {
+        id: 'party-1',
+        inviteCode: 'ABC123',
+        leaderPlayerId: 1,
+        currentTurnPlayerId: 1,
+        enemyTargetPlayerId: null,
+        actedPlayerIds: [],
+        members: [
+          { playerId: 1, vkId: 1001, name: firstMember.name, snapshot: firstMember },
+          { playerId: 2, vkId: 1002, name: secondMember.name, snapshot: secondMember },
+        ],
+      },
+    });
+
+    const afterFirstAction = BattleEngine.attack(battle);
+
+    expect(afterFirstAction.status).toBe('ACTIVE');
+    expect(afterFirstAction.turnOwner).toBe('PLAYER');
+    expect(afterFirstAction.player.playerId).toBe(2);
+    expect(afterFirstAction.party?.currentTurnPlayerId).toBe(2);
+    expect(afterFirstAction.party?.actedPlayerIds).toEqual([1]);
+
+    const afterSecondAction = BattleEngine.attack(afterFirstAction);
+
+    expect(afterSecondAction.status).toBe('ACTIVE');
+    expect(afterSecondAction.turnOwner).toBe('ENEMY');
+    expect(afterSecondAction.party?.currentTurnPlayerId).toBeNull();
+    expect(afterSecondAction.party?.actedPlayerIds).toEqual([1, 2]);
+
+    const afterEnemyTurn = BattleEngine.resolveEnemyTurn(afterSecondAction);
+
+    expect(afterEnemyTurn.status).toBe('ACTIVE');
+    expect(afterEnemyTurn.turnOwner).toBe('PLAYER');
+    expect(afterEnemyTurn.player.playerId).toBe(1);
+    expect(afterEnemyTurn.party?.currentTurnPlayerId).toBe(1);
+    expect(afterEnemyTurn.party?.actedPlayerIds).toEqual([]);
+  });
+
   it('завершает бой победой, если атака добивает врага', () => {
     vi.spyOn(Math, 'random').mockReturnValue(0.5);
     const battle = createBattle({

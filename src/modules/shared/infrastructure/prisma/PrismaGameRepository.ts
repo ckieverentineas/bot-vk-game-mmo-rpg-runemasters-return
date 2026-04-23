@@ -1,5 +1,7 @@
 import { Prisma, PrismaClient, type PlayerBlueprint, type PlayerCraftedItem } from '@prisma/client';
 
+import { randomBytes } from 'node:crypto';
+
 import { env } from '../../../../config/env';
 import { gameBalance } from '../../../../config/game-balance';
 import { AppError } from '../../../../shared/domain/AppError';
@@ -10,6 +12,7 @@ import type {
   CreateBattleInput,
   InventoryDelta,
   MaterialField,
+  PartyView,
   PlayerSkillCode,
   PlayerSkillPointGain,
   PlayerSkillView,
@@ -125,6 +128,7 @@ import type {
   SaveExplorationOptions,
   SaveRuneCursorOptions,
   SaveRuneLoadoutOptions,
+  StartPartyBattleOptions,
 } from '../../application/ports/GameRepository';
 import {
   mapBattleRecord,
@@ -136,7 +140,26 @@ import {
 type TransactionClient = Prisma.TransactionClient;
 type CommandIntentKey = GameCommandIntentKey;
 
-type PersistedBattleState = Pick<BattleView, 'status' | 'turnOwner' | 'player' | 'enemy' | 'encounter' | 'log' | 'result' | 'rewards' | 'actionRevision'>;
+type PersistedBattleState = Pick<BattleView, 'status' | 'turnOwner' | 'player' | 'enemy' | 'party' | 'encounter' | 'log' | 'result' | 'rewards' | 'actionRevision'>;
+
+const activePartyStatuses = ['OPEN', 'IN_BATTLE'] as const;
+
+const partyInclude = {
+  members: {
+    include: {
+      player: {
+        include: {
+          user: true,
+        },
+      },
+    },
+    orderBy: {
+      joinedAt: 'asc' as const,
+    },
+  },
+} satisfies Prisma.PlayerPartyInclude;
+
+type PartyRecord = Prisma.PlayerPartyGetPayload<{ include: typeof partyInclude }>;
 
 const isPrismaUniqueConstraintError = (error: unknown): error is Prisma.PrismaClientKnownRequestError => (
   error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002'
@@ -620,6 +643,36 @@ const mapBattlePersistence = (battle: PersistedBattleState) => ({
   log: stringifyJson(battle.log, '[]'),
   result: battle.result,
   rewardsSnapshot: battle.rewards ? stringifyJson(battle.rewards, 'null') : null,
+});
+
+const createPartyInviteCode = (): string => randomBytes(3).toString('hex').toUpperCase();
+
+const normalizePartyInviteCode = (inviteCode: string): string => (
+  inviteCode.trim().replace(/\s+/g, '').toUpperCase()
+);
+
+const normalizePartyRole = (role: string): PartyView['members'][number]['role'] => (
+  role === 'LEADER' ? 'LEADER' : 'MEMBER'
+);
+
+const formatPartyMemberName = (vkId: number): string => `Рунный мастер #${vkId}`;
+
+const mapPartyRecord = (party: PartyRecord): PartyView => ({
+  id: party.id,
+  inviteCode: party.inviteCode,
+  leaderPlayerId: party.leaderPlayerId,
+  status: party.status as PartyView['status'],
+  activeBattleId: party.activeBattleId,
+  maxMembers: party.maxMembers,
+  members: party.members.map((member) => ({
+    playerId: member.playerId,
+    vkId: member.player.user.vkId,
+    name: formatPartyMemberName(member.player.user.vkId),
+    role: normalizePartyRole(member.role),
+    joinedAt: member.joinedAt.toISOString(),
+  })),
+  createdAt: party.createdAt.toISOString(),
+  updatedAt: party.updatedAt.toISOString(),
 });
 
 const resolvePersistedEquippedSlot = (rune: Pick<RuneDraft, 'equippedSlot' | 'isEquipped'>): number | null => (
@@ -2895,6 +2948,229 @@ export class PrismaGameRepository implements GameRepository {
     }
   }
 
+  private async findActivePartyRecord(
+    client: TransactionClient | PrismaClient,
+    playerId: number,
+  ): Promise<PartyRecord | null> {
+    return client.playerParty.findFirst({
+      where: {
+        status: { in: [...activePartyStatuses] },
+        members: {
+          some: { playerId },
+        },
+      },
+      include: partyInclude,
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  public async getActiveParty(playerId: number): Promise<PartyView | null> {
+    const party = await this.findActivePartyRecord(this.prisma, playerId);
+    return party ? mapPartyRecord(party) : null;
+  }
+
+  public async createParty(playerId: number): Promise<PartyView> {
+    return this.prisma.$transaction(async (tx) => {
+      const existingParty = await this.findActivePartyRecord(tx, playerId);
+      if (existingParty) {
+        return mapPartyRecord(existingParty);
+      }
+
+      const player = await this.requirePlayerRecord(tx, playerId);
+      if (player.progress?.activeBattleId) {
+        throw new AppError('party_player_busy', 'Сначала завершите текущий бой, затем собирайте отряд.');
+      }
+
+      for (let attempt = 0; attempt < 5; attempt += 1) {
+        try {
+          const party = await tx.playerParty.create({
+            data: {
+              inviteCode: createPartyInviteCode(),
+              leaderPlayerId: playerId,
+              maxMembers: 2,
+              members: {
+                create: {
+                  playerId,
+                  role: 'LEADER',
+                },
+              },
+            },
+            include: partyInclude,
+          });
+
+          return mapPartyRecord(party);
+        } catch (error) {
+          if (!isPrismaUniqueConstraintError(error)) {
+            throw error;
+          }
+        }
+      }
+
+      throw new AppError('party_invite_code_collision', 'Не удалось создать код отряда. Попробуйте ещё раз.');
+    });
+  }
+
+  public async joinPartyByInviteCode(playerId: number, inviteCode: string): Promise<PartyView> {
+    const normalizedInviteCode = normalizePartyInviteCode(inviteCode);
+    if (!normalizedInviteCode) {
+      throw new AppError('party_invite_code_invalid', 'Введите код отряда после команды.');
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      const party = await tx.playerParty.findFirst({
+        where: {
+          inviteCode: normalizedInviteCode,
+          status: 'OPEN',
+        },
+        include: partyInclude,
+      });
+
+      if (!party) {
+        throw new AppError('party_not_found', 'Отряд с таким кодом не найден или уже ушёл в бой.');
+      }
+
+      if (party.members.some((member) => member.playerId === playerId)) {
+        return mapPartyRecord(party);
+      }
+
+      const existingParty = await this.findActivePartyRecord(tx, playerId);
+      if (existingParty) {
+        throw new AppError('party_already_joined', 'Вы уже состоите в активном отряде.');
+      }
+
+      const player = await this.requirePlayerRecord(tx, playerId);
+      if (player.progress?.activeBattleId) {
+        throw new AppError('party_player_busy', 'Сначала завершите текущий бой, затем входите в отряд.');
+      }
+
+      if (party.members.length >= party.maxMembers) {
+        throw new AppError('party_full', 'В этом отряде уже два мастера.');
+      }
+
+      await tx.playerPartyMember.create({
+        data: {
+          partyId: party.id,
+          playerId,
+          role: 'MEMBER',
+        },
+      });
+
+      const updatedParty = await tx.playerParty.findUnique({
+        where: { id: party.id },
+        include: partyInclude,
+      });
+
+      if (!updatedParty) {
+        throw new AppError('party_not_found', 'Отряд уже рассеялся.');
+      }
+
+      return mapPartyRecord(updatedParty);
+    });
+  }
+
+  public async startPartyBattle(
+    leaderPlayerId: number,
+    partyId: string,
+    battle: CreateBattleInput,
+    options?: StartPartyBattleOptions,
+  ): Promise<BattleView> {
+    return this.prisma.$transaction(async (tx) => {
+      const apply = async (): Promise<BattleView> => {
+        const party = await tx.playerParty.findFirst({
+          where: {
+            id: partyId,
+            leaderPlayerId,
+            status: { in: ['OPEN', 'IN_BATTLE'] },
+          },
+          include: partyInclude,
+        });
+
+        if (!party) {
+          throw new AppError('party_not_found', 'Отряд не найден или вы не ведёте этот отряд.');
+        }
+
+        if (party.status === 'IN_BATTLE' && party.activeBattleId) {
+          const activeBattle = await tx.battleSession.findFirst({
+            where: {
+              id: party.activeBattleId,
+              status: 'ACTIVE',
+            },
+          });
+
+          if (activeBattle) {
+            return mapBattleRecord(activeBattle);
+          }
+        }
+
+        if (party.members.length < party.maxMembers) {
+          throw new AppError('party_not_ready', 'Для отрядного выхода нужен второй мастер.');
+        }
+
+        const memberPlayerIds = party.members.map((member) => member.playerId);
+        const busyMemberCount = await tx.playerProgress.count({
+          where: {
+            playerId: { in: memberPlayerIds },
+            activeBattleId: { not: null },
+          },
+        });
+
+        if (busyMemberCount > 0) {
+          throw new AppError('party_member_busy', 'Кто-то из отряда уже занят боем.');
+        }
+
+        const persistedBattle = mapBattlePersistence(battle);
+        const battleRow = await tx.battleSession.create({
+          data: {
+            playerId: leaderPlayerId,
+            battleType: battle.battleType,
+            locationLevel: battle.locationLevel,
+            biomeCode: battle.biomeCode,
+            enemyCode: battle.enemyCode,
+            enemyName: battle.enemy.name,
+            ...persistedBattle,
+          },
+        });
+
+        const claimedProgress = await tx.playerProgress.updateMany({
+          where: {
+            playerId: { in: memberPlayerIds },
+            activeBattleId: null,
+          },
+          data: { activeBattleId: battleRow.id },
+        });
+
+        if (claimedProgress.count !== memberPlayerIds.length) {
+          await tx.battleSession.delete({ where: { id: battleRow.id } });
+          throw new AppError('party_member_busy', 'Кто-то из отряда уже успел начать другой бой.');
+        }
+
+        await tx.playerParty.update({
+          where: { id: party.id },
+          data: {
+            status: 'IN_BATTLE',
+            activeBattleId: battleRow.id,
+          },
+        });
+
+        return mapBattleRecord(battleRow);
+      };
+
+      if (options?.commandKey && options.intentId && options.intentStateKey) {
+        return this.runWithCommandIntent(
+          tx,
+          leaderPlayerId,
+          options.commandKey,
+          options.intentId,
+          options.intentStateKey,
+          options.currentStateKey,
+          apply,
+        );
+      }
+
+      return apply();
+    });
+  }
+
   public async createBattle(playerId: number, battle: CreateBattleInput, options?: CreateBattleOptions): Promise<BattleView> {
     const created = await this.prisma.$transaction(async (tx) => {
       const apply = async (): Promise<BattleView> => {
@@ -2983,6 +3259,34 @@ export class PrismaGameRepository implements GameRepository {
   }
 
   public async getActiveBattle(playerId: number): Promise<BattleView | null> {
+    const progressDelegate = (this.prisma as unknown as {
+      readonly playerProgress?: {
+        readonly findUnique?: (args: {
+          readonly where: { readonly playerId: number };
+          readonly select: { readonly activeBattleId: true };
+        }) => Promise<{ readonly activeBattleId: string | null } | null>;
+      };
+    }).playerProgress;
+    const progress = typeof progressDelegate?.findUnique === 'function'
+      ? await progressDelegate.findUnique({
+          where: { playerId },
+          select: { activeBattleId: true },
+        })
+      : null;
+
+    if (progress?.activeBattleId) {
+      const activeBattle = await this.prisma.battleSession.findFirst({
+        where: {
+          id: progress.activeBattleId,
+          status: 'ACTIVE',
+        },
+      });
+
+      if (activeBattle) {
+        return mapBattleRecord(activeBattle);
+      }
+    }
+
     const battle = await this.prisma.battleSession.findFirst({
       where: {
         playerId,
@@ -2995,6 +3299,8 @@ export class PrismaGameRepository implements GameRepository {
   }
 
   public async saveBattle(battle: BattleView, options?: SaveBattleOptions): Promise<BattleView> {
+    const actingPlayerId = options?.actingPlayerId ?? battle.playerId;
+
     return this.prisma.$transaction(async (tx) => {
       const apply = async (): Promise<BattleView> => {
         const persistedBattle = mapBattlePersistence(battle);
@@ -3033,7 +3339,7 @@ export class PrismaGameRepository implements GameRepository {
           }
 
           if (isStaleBattleMutation(battle.actionRevision, currentBattle)) {
-            await this.logStaleBattleMutation(tx, battle.playerId, battle, currentBattle.actionRevision);
+            await this.logStaleBattleMutation(tx, actingPlayerId, battle, currentBattle.actionRevision);
           }
 
           return mapBattleRecord(currentBattle);
@@ -3050,7 +3356,7 @@ export class PrismaGameRepository implements GameRepository {
           throw new AppError('battle_not_found', 'Текущая схватка уже рассеялась. Ищите новую встречу.');
         }
 
-        await this.persistPlayerSkillGains(tx, battle.playerId, options?.playerSkillGains);
+        await this.persistPlayerSkillGains(tx, actingPlayerId, options?.playerSkillGains);
 
         return mapBattleRecord(currentBattle);
       };
@@ -3058,7 +3364,7 @@ export class PrismaGameRepository implements GameRepository {
       if (options?.commandKey && options.intentId && options.intentStateKey) {
         return this.runWithCommandIntent<BattleView>(
           tx,
-          battle.playerId,
+          actingPlayerId,
           options.commandKey,
           options.intentId,
           options.intentStateKey,
@@ -3105,7 +3411,7 @@ export class PrismaGameRepository implements GameRepository {
       const finalized = await tx.battleSession.updateMany({
         where: {
           id: battle.id,
-          playerId,
+          playerId: battle.playerId,
           status: 'ACTIVE',
           actionRevision: battle.actionRevision,
         },
@@ -3121,7 +3427,7 @@ export class PrismaGameRepository implements GameRepository {
       const currentBattle = await tx.battleSession.findFirst({
         where: {
           id: battle.id,
-          playerId,
+          playerId: battle.playerId,
         },
       });
 
@@ -3144,6 +3450,60 @@ export class PrismaGameRepository implements GameRepository {
           player: mapPlayerRecord(updatedPlayer),
           battle: mappedBattle,
         };
+      }
+
+      if (battle.battleType === 'PARTY_PVE' && battle.party) {
+        let updatedActor: PlayerState | null = null;
+
+        for (const member of battle.party.members) {
+          const memberBattle = this.buildBattleForPartyMember(battle, member.playerId);
+          const memberSkillGains = member.playerId === playerId
+            ? options?.playerSkillGains
+            : undefined;
+          const updatedMember = await this.applyBattleOutcomeToPlayer(
+            tx,
+            member.playerId,
+            memberBattle,
+            memberSkillGains,
+          );
+
+          if (member.playerId === playerId) {
+            updatedActor = updatedMember;
+          }
+        }
+
+        await tx.playerParty.updateMany({
+          where: {
+            id: battle.party.id,
+            activeBattleId: battle.id,
+          },
+          data: {
+            status: 'COMPLETED',
+            activeBattleId: null,
+          },
+        });
+
+        const finalizedBattle = await tx.battleSession.findFirst({
+          where: {
+            id: battle.id,
+            playerId: battle.playerId,
+          },
+        });
+
+        if (!finalizedBattle) {
+          throw new AppError('battle_not_found', 'Текущая схватка уже рассеялась. Ищите новую встречу.');
+        }
+
+        const result = {
+          player: updatedActor ?? mapPlayerRecord(await this.requirePlayerRecord(tx, playerId)),
+          battle: mapBattleRecord(finalizedBattle),
+        };
+
+        if (options?.commandKey && options.intentId && options.intentStateKey) {
+          await this.finalizeCommandIntent<BattleView>(tx, playerId, options.intentId, result.battle);
+        }
+
+        return result;
       }
 
       const player = await this.requirePlayerRecord(tx, playerId);
@@ -3384,6 +3744,203 @@ export class PrismaGameRepository implements GameRepository {
 
       return result;
     });
+  }
+
+  private buildBattleForPartyMember(battle: BattleView, playerId: number): BattleView {
+    const member = battle.party?.members.find((partyMember) => partyMember.playerId === playerId);
+
+    return member
+      ? { ...battle, player: member.snapshot }
+      : battle;
+  }
+
+  private async applyBattleOutcomeToPlayer(
+    tx: TransactionClient,
+    playerId: number,
+    battle: BattleView,
+    playerSkillGains?: readonly PlayerSkillPointGain[],
+  ): Promise<PlayerState> {
+    const player = await this.requirePlayerRecord(tx, playerId);
+    const currentPlayer = mapPlayerRecord(player);
+    const rewardIntent = battle.result === 'VICTORY'
+      ? createBattleVictoryRewardIntent(playerId, battle)
+      : null;
+
+    if (battle.result === 'VICTORY' && !rewardIntent) {
+      throw new AppError('battle_reward_missing', 'Нельзя завершить победный бой без зафиксированной награды.');
+    }
+
+    let nextLevel = player.level;
+    let nextExperience = player.experience;
+    let nextGold = player.gold;
+    let nextVictories = player.progress?.victories ?? 0;
+    let nextDefeats = player.progress?.defeats ?? 0;
+    let nextMobsKilled = player.progress?.mobsKilled ?? 0;
+    let nextVictoryStreak = currentPlayer.victoryStreak;
+    let nextDefeatStreak = currentPlayer.defeatStreak;
+    let nextLocationLevel = currentPlayer.locationLevel;
+    let nextHighestLocationLevel = currentPlayer.highestLocationLevel;
+    let nextTutorialState = currentPlayer.tutorialState;
+    let nextUnlockedRuneSlotCount = getUnlockedRuneSlotCount(currentPlayer);
+    const nextVitals = derivePostBattleVitals(battle.player, { battleResult: battle.result });
+    const inventoryDelta: InventoryDelta = {};
+    const schoolMasteryReward = resolveBattleSchoolMasteryRewardGain(battle);
+
+    if (battle.result === 'VICTORY' && rewardIntent) {
+      const progression = resolveLevelProgression(
+        player.level,
+        player.experience,
+        rewardIntent.payload.experience,
+      );
+      nextLevel = progression.level;
+      nextExperience = progression.experience;
+      nextGold = player.gold + rewardIntent.payload.gold;
+      nextVictories += 1;
+      nextVictoryStreak += 1;
+      nextDefeatStreak = 0;
+      nextMobsKilled += 1;
+
+      if (battle.locationLevel > gameBalance.world.introLocationLevel) {
+        nextHighestLocationLevel = Math.max(currentPlayer.highestLocationLevel, battle.locationLevel);
+      }
+
+      for (const [rarity, amount] of Object.entries(rewardIntent.payload.shards) as Array<[RuneRarity, number | undefined]>) {
+        if (amount !== undefined && amount > 0) {
+          const shardField = shardFieldForRarity(rarity);
+          inventoryDelta[shardField] = (inventoryDelta[shardField] ?? 0) + amount;
+        }
+      }
+    } else if (battle.result === 'DEFEAT') {
+      nextDefeats += 1;
+      nextVictoryStreak = 0;
+      nextDefeatStreak += 1;
+    }
+
+    const projectedPlayer: PlayerState = {
+      ...currentPlayer,
+      level: nextLevel,
+      experience: nextExperience,
+      gold: nextGold,
+      victories: nextVictories,
+      victoryStreak: nextVictoryStreak,
+      defeats: nextDefeats,
+      defeatStreak: nextDefeatStreak,
+      mobsKilled: nextMobsKilled,
+      tutorialState: nextTutorialState,
+    };
+
+    const nextAdventureLocationLevel = resolveAdaptiveAdventureLocationLevel(projectedPlayer);
+
+    if (battle.locationLevel === gameBalance.world.introLocationLevel) {
+      if (currentPlayer.tutorialState === 'ACTIVE') {
+        if (battle.result === 'VICTORY') {
+          nextTutorialState = 'COMPLETED';
+          nextLocationLevel = nextAdventureLocationLevel;
+        } else {
+          nextLocationLevel = gameBalance.world.introLocationLevel;
+        }
+      } else {
+        nextLocationLevel = nextAdventureLocationLevel;
+      }
+    } else {
+      nextLocationLevel = nextAdventureLocationLevel;
+    }
+
+    if (schoolMasteryReward) {
+      const currentMastery = currentPlayer.schoolMasteries?.find((entry) => entry.schoolCode === schoolMasteryReward.schoolCode) ?? null;
+      const nextMastery = applySchoolMasteryExperience(currentMastery, schoolMasteryReward.schoolCode, schoolMasteryReward.experienceGain);
+      const nextSchoolMasteries = [
+        ...(currentPlayer.schoolMasteries?.filter((entry) => entry.schoolCode !== schoolMasteryReward.schoolCode) ?? []),
+        nextMastery,
+      ];
+
+      nextUnlockedRuneSlotCount = resolveUnlockedRuneSlotCountFromSchoolMasteries(
+        { schoolMasteries: nextSchoolMasteries },
+        nextUnlockedRuneSlotCount,
+      );
+
+      await tx.playerSchoolMastery.upsert({
+        where: {
+          playerId_schoolCode: {
+            playerId,
+            schoolCode: schoolMasteryReward.schoolCode,
+          },
+        },
+        update: {
+          experience: nextMastery.experience,
+          rank: nextMastery.rank,
+        },
+        create: {
+          playerId,
+          schoolCode: schoolMasteryReward.schoolCode,
+          experience: nextMastery.experience,
+          rank: nextMastery.rank,
+        },
+      });
+    }
+
+    await tx.player.update({
+      where: { id: playerId },
+      data: {
+        level: nextLevel,
+        experience: nextExperience,
+        gold: nextGold,
+      },
+    });
+
+    await tx.playerProgress.update({
+      where: { playerId },
+      data: {
+        locationLevel: nextLocationLevel,
+        unlockedRuneSlotCount: nextUnlockedRuneSlotCount,
+        activeBattleId: null,
+        currentHealth: nextVitals.currentHealth,
+        currentMana: nextVitals.currentMana,
+        tutorialState: nextTutorialState,
+        victories: nextVictories,
+        victoryStreak: nextVictoryStreak,
+        defeats: nextDefeats,
+        defeatStreak: nextDefeatStreak,
+        mobsKilled: nextMobsKilled,
+        highestLocationLevel: nextHighestLocationLevel,
+      },
+    });
+
+    const inventoryUpdate = buildInventoryDeltaInput(inventoryDelta);
+    if (Object.keys(inventoryUpdate).length > 0) {
+      await tx.playerInventory.update({
+        where: { playerId },
+        data: inventoryUpdate as Prisma.PlayerInventoryUpdateInput,
+      });
+    }
+
+    if (rewardIntent?.payload.droppedRune) {
+      await tx.rune.create({
+        data: mapRuneDraftPersistence(playerId, rewardIntent.payload.droppedRune, false),
+      });
+    }
+
+    if (rewardIntent) {
+      const rewardLedger = createPendingRewardLedgerForBattle(
+        playerId,
+        battle,
+        new Date().toISOString(),
+        currentPlayer.skills,
+      );
+
+      if (!rewardLedger) {
+        throw new AppError('battle_reward_missing', 'Нельзя завершить победный бой без зафиксированной награды.');
+      }
+
+      await tx.rewardLedgerRecord.create({
+        data: mapPendingRewardLedgerCreateData(rewardLedger),
+      });
+    }
+
+    await this.decayWorkshopLoadout(tx, playerId, battle);
+    await this.persistPlayerSkillGains(tx, playerId, playerSkillGains);
+
+    return mapPlayerRecord(await this.requirePlayerRecord(tx, playerId));
   }
 
   public async log(userId: number, action: string, details: unknown): Promise<void> {
