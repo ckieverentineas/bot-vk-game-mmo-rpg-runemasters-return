@@ -12,12 +12,13 @@ import {
   createTestInventory,
   createTestPlayer,
 } from '../../shared/testing/game-factories';
-import type { BattleView, PlayerState } from '../../shared/types/game';
+import type { BattleView, PartyView, PlayerState } from '../../shared/types/game';
 import {
   createBestiaryEnemyCommand,
   createBestiaryEnemyRewardCommand,
   createBestiaryLocationCommand,
   createBestiaryLocationRewardCommand,
+  createPartyJoinCommand,
   createWorkshopCraftCommand,
   createWorkshopRepairCommand,
   gameCommands,
@@ -172,6 +173,34 @@ const createPartyBattle = (overrides: Partial<BattleView> = {}): BattleView => {
     ...overrides,
   });
 };
+
+const createPartyView = (overrides: Partial<PartyView> = {}): PartyView => ({
+  id: 'party-1',
+  inviteCode: 'ABC123',
+  leaderPlayerId: 1,
+  status: 'OPEN',
+  activeBattleId: null,
+  maxMembers: 2,
+  members: [
+    {
+      playerId: 1,
+      vkId: 1001,
+      name: 'Рунный мастер #1001',
+      role: 'LEADER',
+      joinedAt: '2026-04-12T00:00:00.000Z',
+    },
+    {
+      playerId: 2,
+      vkId: 1002,
+      name: 'Рунный мастер #1002',
+      role: 'MEMBER',
+      joinedAt: '2026-04-12T00:01:00.000Z',
+    },
+  ],
+  createdAt: '2026-04-12T00:00:00.000Z',
+  updatedAt: '2026-04-12T00:01:00.000Z',
+  ...overrides,
+});
 
 const createPendingReward = (): PendingRewardView => ({
   ledgerKey: 'battle-victory:battle-1',
@@ -2682,6 +2711,51 @@ describe('GameHandler smoke', () => {
     expect(directMessages[0]?.userId).toBe(1002);
     expect(directMessages[0]?.message).toContain('👤 Вы: Рунный мастер #1002');
     expect(directMessages[0]?.message).toContain('👤 Товарищ: Рунный мастер #1001');
+  });
+
+  it('досылает капитану сообщение, когда союзник вступает в отряд', async () => {
+    const services = createServices();
+    const leader = createPlayer({ vkId: 1001, playerId: 1 });
+    const ally = createPlayer({ vkId: 1002, playerId: 2 });
+    vi.mocked(services.joinParty.execute).mockResolvedValueOnce({
+      player: ally,
+      party: createPartyView(),
+      joinedNow: true,
+    } as never);
+    const handler = new GameHandler(services);
+    const ctx = createFakeContext({
+      senderId: ally.vkId,
+      command: createPartyJoinCommand('ABC123'),
+    });
+
+    await handler.handle(ctx as never);
+
+    expect(services.joinParty.execute).toHaveBeenCalledWith(ally.vkId, 'abc123');
+    const directMessages = getDirectMessageCalls(ctx);
+    expect(directMessages).toHaveLength(1);
+    expect(directMessages[0]?.userId).toBe(leader.vkId);
+    expect(directMessages[0]?.message).toContain('Союзник вступил в отряд');
+    expect(directMessages[0]?.message).toContain('Рунный мастер #1002');
+    expect(directMessages[0]?.message).toContain('Можно начать совместное исследование');
+    expect(JSON.stringify(directMessages[0]?.keyboard)).toContain('Исследовать отрядом');
+  });
+
+  it('не тревожит капитана, когда участник повторяет уже принятый код отряда', async () => {
+    const services = createServices();
+    vi.mocked(services.joinParty.execute).mockResolvedValueOnce({
+      player: createPlayer({ vkId: 1002, playerId: 2 }),
+      party: createPartyView(),
+      joinedNow: false,
+    } as never);
+    const handler = new GameHandler(services);
+    const ctx = createFakeContext({
+      senderId: 1002,
+      command: createPartyJoinCommand('ABC123'),
+    });
+
+    await handler.handle(ctx as never);
+
+    expect(getDirectMessageCalls(ctx)).toHaveLength(0);
   });
 
   it('досылает союзнику совместное событие исследования без старта боя', async () => {

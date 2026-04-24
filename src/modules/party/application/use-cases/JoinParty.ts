@@ -4,11 +4,12 @@ import { requirePlayerByVkId } from '../../../shared/application/require-player'
 import type { GameRepository } from '../../../shared/application/ports/GameRepository';
 import type { FindPlayerByVkIdRepository } from '../../../shared/application/ports/repository-scopes';
 
-type JoinPartyRepository = FindPlayerByVkIdRepository & Pick<GameRepository, 'joinPartyByInviteCode'>;
+type JoinPartyRepository = FindPlayerByVkIdRepository & Pick<GameRepository, 'getActiveParty' | 'joinPartyByInviteCode'>;
 
 export interface JoinPartyResult {
   readonly player: PlayerState;
   readonly party: PartyView;
+  readonly joinedNow: boolean;
 }
 
 export class JoinParty {
@@ -21,8 +22,13 @@ export class JoinParty {
     }
 
     const player = await requirePlayerByVkId(this.repository, vkId);
+    const activePartyBeforeJoin = await this.repository.getActiveParty(player.playerId);
     const party = await this.repository.joinPartyByInviteCode(player.playerId, normalizedInviteCode);
 
-    return { player, party };
+    return {
+      player,
+      party,
+      joinedNow: activePartyBeforeJoin === null,
+    };
   }
 }

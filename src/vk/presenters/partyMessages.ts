@@ -54,3 +54,20 @@ export const renderParty = (player: PlayerState, party: PartyView | null): strin
         : '⏳ Ждите лидера или выйдите.',
   ].join('\n');
 };
+
+export const renderPartyLeaderJoinNotification = (
+  joinedPlayer: PlayerState,
+  party: PartyView,
+): string => {
+  const joinedMember = party.members.find((member) => member.playerId === joinedPlayer.playerId);
+  const joinedMemberName = joinedMember?.name ?? `Игрок #${joinedPlayer.vkId}`;
+
+  return [
+    '🤝 Союзник вступил в отряд',
+    '',
+    `👤 ${joinedMemberName} готов идти рядом.`,
+    `👥 Отряд: ${party.members.length}/${party.maxMembers}`,
+    '',
+    '💡 Можно начать совместное исследование.',
+  ].join('\n');
+};

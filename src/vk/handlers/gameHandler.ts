@@ -7,11 +7,13 @@ import {
   isExplorePartyEventResult,
   type ExplorePartyEventResult,
 } from '../../modules/party/application/use-cases/ExploreParty';
+import type { JoinPartyResult } from '../../modules/party/application/use-cases/JoinParty';
 import { AppError, isAppError } from '../../shared/domain/AppError';
 import type { BattleActionType, BattleView, PlayerState } from '../../shared/types/game';
 import { Logger } from '../../utils/logger';
-import { createMainMenuKeyboard } from '../keyboards';
+import { createMainMenuKeyboard, createPartyKeyboard } from '../keyboards';
 import { renderBattle } from '../presenters/messages';
+import { renderPartyLeaderJoinNotification } from '../presenters/partyMessages';
 import { resolveCommandEnvelope } from '../router/commandRouter';
 import {
   config,
@@ -250,6 +252,7 @@ export class GameHandler {
   public async joinParty(ctx: Context, vkId: number, inviteCode: string): Promise<void> {
     const result = await this.services.joinParty.execute(vkId, inviteCode);
     await sendParty(ctx, result);
+    await this.notifyPartyLeaderAboutJoin(ctx, result);
   }
 
   public async leaveParty(ctx: Context, vkId: number): Promise<void> {
@@ -640,6 +643,28 @@ export class GameHandler {
 
       await sendPartyExplorationEvent(peerContext, result, member.player.vkId);
     }
+  }
+
+  private async notifyPartyLeaderAboutJoin(ctx: Context, result: JoinPartyResult): Promise<void> {
+    if (!result.joinedNow) {
+      return;
+    }
+
+    const leader = result.party.members.find((member) => member.playerId === result.party.leaderPlayerId);
+    if (!leader || leader.vkId === result.player.vkId) {
+      return;
+    }
+
+    const leaderContext = this.createPeerReplyContext(ctx, leader.vkId);
+    if (!leaderContext) {
+      return;
+    }
+
+    await this.reply(
+      leaderContext,
+      renderPartyLeaderJoinNotification(result.player, result.party),
+      createPartyKeyboard(result.party, leader.playerId),
+    );
   }
 
   private createPeerReplyContext(ctx: Context, vkId: number): Context | null {
