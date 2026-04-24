@@ -356,8 +356,8 @@ describe('messages school-first onboarding framing', () => {
     expect(message).toContain('🔮 Школа Пламени · штурм.');
     expect(message).toContain('⭐ Вы уже пережили большой бой Пламени: школа доверила вам печать давления и дожима');
     expect(message).toContain('💡 След: проверьте печать школы Пламени на цели печати');
-    expect(message).toContain('💡 Печать уже даёт +1 к давлению базовой атаки');
     expect(message).toContain('💡 Дальше: «⚔️ Цель печати».');
+    expect(message).not.toContain('💡 Печать уже даёт +1 к давлению базовой атаки');
   });
 
   it('keeps school mastery details out of the main menu once a rune is equipped', () => {
@@ -1220,7 +1220,7 @@ describe('messages school-first onboarding framing', () => {
     expect(message).toContain('🎒 Забрать добычу — +2 кожи · +1 кость · без роста навыка');
   });
 
-  it('renders collected trophy results and the next player goal', () => {
+  it('renders collected trophy results without repeating route guidance', () => {
     const result: CollectPendingRewardView = {
       player: createPlayer({ tutorialState: 'SKIPPED', locationLevel: 1 }),
       playerBeforeCollect: createPlayer({ tutorialState: 'SKIPPED', locationLevel: 1 }),
@@ -1250,10 +1250,11 @@ describe('messages school-first onboarding framing', () => {
     expect(message).toContain('🎒 +2 кожи · +1 кость.');
     expect(message).toContain('Свежевание: Ученик свежевания · движение стало вернее');
     expect(message).not.toContain('Свежевание: 3 → 4');
-    expect(message).toContain('💡 Дальше: «⚔️ Исследовать».');
+    expect(message).not.toContain('💡 След:');
+    expect(message).not.toContain('💡 Дальше:');
   });
 
-  it('renders the collected trophy result as a handoff to equipping the school sign', () => {
+  it('keeps collected trophy school payoff separate from the next-goal handoff', () => {
     const player = createPlayer({
       tutorialState: 'SKIPPED',
       locationLevel: 3,
@@ -1284,7 +1285,8 @@ describe('messages school-first onboarding framing', () => {
 
     const message = renderCollectedPendingReward(result);
 
-    expect(message).toContain('💡 След: откройте «🔮 Руны» и наденьте первый знак школы Пламени.');
-    expect(message).toContain('💡 Дальше: «🔮 Руны».');
+    expect(message).toContain('🎒 +1 эссенция.');
+    expect(message).not.toContain('💡 След: откройте «🔮 Руны»');
+    expect(message).not.toContain('💡 Дальше: «🔮 Руны».');
   });
 });

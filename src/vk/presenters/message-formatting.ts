@@ -266,7 +266,6 @@ export const renderNextGoalSummary = (
 ): string[] => renderHintBlock([
   `След: ${withSentencePeriod(nextGoal.objectiveText)}`,
   `${trimActionPrefixIcon(actionPrefix)}: «${nextGoal.primaryActionLabel}»`,
-  nextGoal.whyText,
 ]);
 
 export const renderStarterSchoolLine = (): string => {
