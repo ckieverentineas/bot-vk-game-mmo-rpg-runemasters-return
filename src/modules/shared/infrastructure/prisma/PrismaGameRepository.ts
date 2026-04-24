@@ -86,6 +86,7 @@ import {
   createBestiaryLocationDiscoveryLedgerEntry,
 } from '../../domain/contracts/bestiary-location-discovery-ledger';
 import { createBattleVictoryRewardIntent } from '../../domain/contracts/reward-intent';
+import { resolveRoamingThreatSurvival } from '../../../world/domain/roaming-threats';
 import type {
   BestiaryEnemyKillMilestoneRewardClaimResult,
   ClaimQuestRewardOptions,
@@ -431,6 +432,52 @@ export class PrismaGameRepository implements GameRepository {
           expectedRevision: battle.actionRevision,
           actualRevision,
         }, '{}'),
+      },
+    });
+  }
+
+  private async recordRoamingThreatSurvival(
+    client: TransactionClient,
+    battle: BattleView,
+  ): Promise<void> {
+    const threat = resolveRoamingThreatSurvival(battle);
+    if (!threat) {
+      return;
+    }
+
+    await client.roamingThreat.upsert({
+      where: {
+        enemyCode_originBiomeCode_currentBiomeCode: {
+          enemyCode: threat.enemyCode,
+          originBiomeCode: threat.originBiomeCode,
+          currentBiomeCode: threat.currentBiomeCode,
+        },
+      },
+      update: {
+        enemyName: threat.enemyName,
+        originBiomeName: threat.originBiomeName,
+        lastSeenBattleId: threat.battleId,
+        lastSeenLocationLevel: threat.lastSeenLocationLevel,
+        lastSurvivalResult: threat.survivalResult,
+        survivalCount: { increment: 1 },
+        experience: { increment: threat.experienceGain },
+        levelBonus: { increment: 1 },
+        status: 'ACTIVE',
+      },
+      create: {
+        enemyCode: threat.enemyCode,
+        enemyName: threat.enemyName,
+        originBiomeCode: threat.originBiomeCode,
+        originBiomeName: threat.originBiomeName,
+        currentBiomeCode: threat.currentBiomeCode,
+        firstSeenBattleId: threat.battleId,
+        lastSeenBattleId: threat.battleId,
+        lastSeenLocationLevel: threat.lastSeenLocationLevel,
+        lastSurvivalResult: threat.survivalResult,
+        survivalCount: 1,
+        experience: threat.experienceGain,
+        levelBonus: threat.levelBonus,
+        status: 'ACTIVE',
       },
     });
   }
@@ -2616,6 +2663,8 @@ export class PrismaGameRepository implements GameRepository {
           }
         }
 
+        await this.recordRoamingThreatSurvival(tx, battle);
+
         await tx.playerParty.updateMany({
           where: {
             id: battle.party.id,
@@ -2864,6 +2913,7 @@ export class PrismaGameRepository implements GameRepository {
         });
       }
 
+      await this.recordRoamingThreatSurvival(tx, battle);
       await this.decayWorkshopLoadout(tx, playerId, battle);
       await this.persistPlayerSkillGains(tx, playerId, options?.playerSkillGains);
 

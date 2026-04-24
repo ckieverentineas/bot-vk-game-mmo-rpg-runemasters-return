@@ -193,6 +193,29 @@ model BattleSession {
   @@index([playerId, status])
 }
 
+model RoamingThreat {
+  id                    String   @id @default(cuid())
+  enemyCode             String
+  enemyName             String
+  originBiomeCode       String
+  originBiomeName       String
+  currentBiomeCode      String
+  firstSeenBattleId     String
+  lastSeenBattleId      String
+  lastSeenLocationLevel Int
+  lastSurvivalResult    String
+  survivalCount         Int      @default(0)
+  experience            Int      @default(0)
+  levelBonus            Int      @default(0)
+  status                String   @default("ACTIVE")
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@unique([enemyCode, originBiomeCode, currentBiomeCode])
+  @@index([status, levelBonus])
+  @@index([originBiomeCode, status])
+}
+
 model PlayerParty {
   id             String              @id @default(cuid())
   inviteCode     String              @unique

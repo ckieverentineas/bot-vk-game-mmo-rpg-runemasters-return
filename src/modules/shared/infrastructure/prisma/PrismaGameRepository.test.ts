@@ -633,6 +633,9 @@ const createPrismaMock = () => {
       findMany: vi.fn(),
       updateMany: vi.fn(),
     },
+    roamingThreat: {
+      upsert: vi.fn(),
+    },
     commandIntentRecord: {
       create: vi.fn(),
       findUnique: vi.fn(),
@@ -3246,6 +3249,80 @@ describe('PrismaGameRepository release hardening', () => {
       data: expect.objectContaining({
         action: 'reward_claim_applied',
       }),
+    });
+  });
+
+  it('records a surviving higher-biome roaming enemy as a server threat', async () => {
+    const { repository, tx } = createPrismaMock();
+    const battleView = createBattleView({
+      result: 'DEFEAT',
+      rewards: null,
+      locationLevel: 8,
+      biomeCode: 'dark-forest',
+      enemyCode: 'cave-stalker',
+      enemy: {
+        ...createBattleView().enemy,
+        code: 'cave-stalker',
+        name: 'Пещерный следопыт',
+        currentHealth: 7,
+        experienceReward: 20,
+        roaming: {
+          direction: 'HIGHER_BIOME',
+          originBiomeCode: 'forgotten-caves',
+          originBiomeName: 'Забытые пещеры',
+          levelBonus: 2,
+          experienceBonus: 4,
+        },
+      },
+    });
+    const persistedBattle = createBattleRow({
+      status: 'COMPLETED',
+      result: 'DEFEAT',
+      rewardsSnapshot: null,
+    });
+
+    tx.battleSession.updateMany.mockResolvedValue({ count: 1 });
+    tx.player.findUnique.mockResolvedValue(createPlayerRecord());
+    tx.player.update.mockResolvedValue({});
+    tx.playerProgress.update.mockResolvedValue({});
+    tx.battleSession.findFirst.mockResolvedValue(persistedBattle);
+
+    await repository.finalizeBattle(1, battleView);
+
+    expect(tx.roamingThreat.upsert).toHaveBeenCalledWith({
+      where: {
+        enemyCode_originBiomeCode_currentBiomeCode: {
+          enemyCode: 'cave-stalker',
+          originBiomeCode: 'forgotten-caves',
+          currentBiomeCode: 'dark-forest',
+        },
+      },
+      update: {
+        enemyName: 'Пещерный следопыт',
+        originBiomeName: 'Забытые пещеры',
+        lastSeenBattleId: 'battle-1',
+        lastSeenLocationLevel: 8,
+        lastSurvivalResult: 'DEFEAT',
+        survivalCount: { increment: 1 },
+        experience: { increment: 12 },
+        levelBonus: { increment: 1 },
+        status: 'ACTIVE',
+      },
+      create: {
+        enemyCode: 'cave-stalker',
+        enemyName: 'Пещерный следопыт',
+        originBiomeCode: 'forgotten-caves',
+        originBiomeName: 'Забытые пещеры',
+        currentBiomeCode: 'dark-forest',
+        firstSeenBattleId: 'battle-1',
+        lastSeenBattleId: 'battle-1',
+        lastSeenLocationLevel: 8,
+        lastSurvivalResult: 'DEFEAT',
+        survivalCount: 1,
+        experience: 12,
+        levelBonus: 2,
+        status: 'ACTIVE',
+      },
     });
   });
 
