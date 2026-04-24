@@ -21,6 +21,10 @@ import {
 import { requirePlayerByVkId } from '../../../shared/application/require-player';
 import type { GameRandom } from '../../../shared/application/ports/GameRandom';
 import type { GameRepository } from '../../../shared/application/ports/GameRepository';
+import type {
+  FindPlayerByIdRepository,
+  FindPlayerByVkIdRepository,
+} from '../../../shared/application/ports/repository-scopes';
 import type { PlayerCraftedItemView } from '../../../workshop/application/workshop-persistence';
 import {
   resolveWorkshopEquipmentStatBonus,
@@ -168,9 +172,24 @@ const resolvePartyEncounterLocationLevel = (leader: PlayerState): number => {
 
 const resolvePartyNormalEncounterCursor = (leader: PlayerState): number => leader.mobsKilled;
 
+type ExplorePartyRepository = FindPlayerByVkIdRepository
+  & FindPlayerByIdRepository
+  & Pick<
+    GameRepository,
+    | 'finalizeBattle'
+    | 'getActiveBattle'
+    | 'getActiveParty'
+    | 'listPlayerCraftedItems'
+    | 'recordInventoryDeltaResult'
+    | 'recordPlayerVitalsResult'
+    | 'saveBattle'
+    | 'startPartyBattle'
+  >
+  & Partial<Pick<GameRepository, 'listBestiaryDiscovery'>>;
+
 export class ExploreParty {
   public constructor(
-    private readonly repository: GameRepository,
+    private readonly repository: ExplorePartyRepository,
     private readonly worldCatalog: WorldCatalog,
     private readonly random: GameRandom,
   ) {}
@@ -275,18 +294,14 @@ export class ExploreParty {
     memberContexts: readonly PartyMemberBattleContext[],
     enemy: BattleView['enemy'],
   ): Promise<BattleView['enemy']> {
-    const repository = this.repository as GameRepository & {
-      readonly listBestiaryDiscovery?: GameRepository['listBestiaryDiscovery'];
-    };
-
-    if (!repository.listBestiaryDiscovery) {
+    if (!this.repository.listBestiaryDiscovery) {
       return enemy;
     }
 
     const snapshots = await Promise.all(memberContexts.map(async (member) => (
       buildEnemyKnowledgeSnapshot(
         enemy.code,
-        await repository.listBestiaryDiscovery!(member.player.playerId),
+        await this.repository.listBestiaryDiscovery!(member.player.playerId),
       )
     )));
     const knowledge = mergeEnemyKnowledgeSnapshots(snapshots);

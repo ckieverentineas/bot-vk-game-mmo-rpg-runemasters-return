@@ -25,10 +25,18 @@ import {
 } from '../../../shared/application/command-intent';
 import { requirePlayerByVkId } from '../../../shared/application/require-player';
 import type { GameRepository } from '../../../shared/application/ports/GameRepository';
+import type {
+  CommandIntentReplayRepository,
+  FindPlayerByVkIdRepository,
+} from '../../../shared/application/ports/repository-scopes';
 import { buildEquipIntentStateKey } from '../command-intent-state';
 
 const runeLoadoutPendingMessage = 'Рунный жест ещё в пути. Дождитесь ответа.';
 const runeLoadoutStaleMessage = 'Этот рунный жест уже выцвел. Вернитесь к свежей руне.';
+
+type EquipCurrentRuneRepository = CommandIntentReplayRepository
+  & FindPlayerByVkIdRepository
+  & Pick<GameRepository, 'equipRune'>;
 
 const mapEquipRuneReplayResult = (
   result: PlayerState | EquipRuneResultView,
@@ -44,7 +52,7 @@ const mapEquipRuneReplayResult = (
 
 export class EquipCurrentRune {
   public constructor(
-    private readonly repository: GameRepository,
+    private readonly repository: EquipCurrentRuneRepository,
     private readonly telemetry: GameTelemetry,
   ) {}
 

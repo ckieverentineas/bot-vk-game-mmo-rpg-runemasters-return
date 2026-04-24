@@ -10,14 +10,22 @@ import {
 } from '../../../shared/application/command-intent';
 import { requirePlayerByVkId } from '../../../shared/application/require-player';
 import type { GameRepository } from '../../../shared/application/ports/GameRepository';
+import type {
+  CommandIntentReplayRepository,
+  FindPlayerByVkIdRepository,
+} from '../../../shared/application/ports/repository-scopes';
 import { runeCollectionPageSize, resolveShiftedRunePageIndex } from '../../domain/rune-collection';
 import { buildMoveRuneCursorIntentStateKey } from '../command-intent-state';
 
 const runeNavigationPendingMessage = 'Рунный жест ещё в пути. Дождитесь ответа.';
 const runeNavigationStaleMessage = 'Рунная страница сменилась. Вот нынешние знаки.';
 
+type MoveRuneCursorRepository = CommandIntentReplayRepository
+  & FindPlayerByVkIdRepository
+  & Pick<GameRepository, 'saveRuneCursor'>;
+
 export class MoveRuneCursor {
-  public constructor(private readonly repository: GameRepository) {}
+  public constructor(private readonly repository: MoveRuneCursorRepository) {}
 
   public async execute(
     vkId: number,

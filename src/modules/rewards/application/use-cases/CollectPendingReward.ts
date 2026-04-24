@@ -6,6 +6,7 @@ import type {
   GameRepository,
   PendingRewardView,
 } from '../../../shared/application/ports/GameRepository';
+import type { FindPlayerByVkIdRepository } from '../../../shared/application/ports/repository-scopes';
 import type { TrophyActionCode } from '../../domain/trophy-actions';
 
 export interface CollectPendingRewardView extends CollectPendingRewardResult {
@@ -13,8 +14,13 @@ export interface CollectPendingRewardView extends CollectPendingRewardResult {
   readonly playerBeforeCollect: PlayerState;
 }
 
+type CollectPendingRewardRepository = FindPlayerByVkIdRepository & Pick<
+  GameRepository,
+  'collectPendingReward' | 'findPendingReward'
+>;
+
 export class CollectPendingReward {
-  public constructor(private readonly repository: GameRepository) {}
+  public constructor(private readonly repository: CollectPendingRewardRepository) {}
 
   public async execute(
     vkId: number,

@@ -20,6 +20,10 @@ import type { GameTelemetry } from '../../../shared/application/ports/GameTeleme
 import { requirePlayerByVkId } from '../../../shared/application/require-player';
 import type { GameRandom } from '../../../shared/application/ports/GameRandom';
 import type { GameRepository } from '../../../shared/application/ports/GameRepository';
+import type {
+  CommandIntentResultRepository,
+  FindPlayerByVkIdRepository,
+} from '../../../shared/application/ports/repository-scopes';
 import type { PlayerCraftedItemView } from '../../../workshop/application/workshop-persistence';
 import type { WorkshopEquippedItemView } from '../../../workshop/domain/workshop-catalog';
 import type { WorldCatalog } from '../../../world/application/ports/WorldCatalog';
@@ -61,6 +65,19 @@ interface ExploreLocationCommandOptions {
   readonly intentStateKey?: string;
   readonly currentStateKey?: string;
 }
+
+type ExploreLocationRepository = CommandIntentResultRepository
+  & FindPlayerByVkIdRepository
+  & Pick<
+    GameRepository,
+    | 'createBattle'
+    | 'finalizeBattle'
+    | 'getActiveBattle'
+    | 'recordInventoryDeltaResult'
+    | 'recordPlayerVitalsResult'
+    | 'saveBattle'
+  >
+  & Partial<Pick<GameRepository, 'getActiveParty' | 'listBestiaryDiscovery' | 'listPlayerCraftedItems'>>;
 
 const toWorkshopEquippedItem = (item: PlayerCraftedItemView): WorkshopEquippedItemView => ({
   id: item.id,
@@ -158,7 +175,7 @@ const buildRoamingTemplatePools = (
 
 export class ExploreLocation {
   public constructor(
-    private readonly repository: GameRepository,
+    private readonly repository: ExploreLocationRepository,
     private readonly worldCatalog: WorldCatalog,
     private readonly random: GameRandom,
     private readonly telemetry?: GameTelemetry,
@@ -284,10 +301,7 @@ export class ExploreLocation {
   }
 
   private async listWorkshopItems(playerId: number): Promise<readonly WorkshopEquippedItemView[]> {
-    const repository = this.repository as GameRepository & {
-      readonly listPlayerCraftedItems?: GameRepository['listPlayerCraftedItems'];
-    };
-    const craftedItems = await repository.listPlayerCraftedItems?.(playerId) ?? [];
+    const craftedItems = await this.repository.listPlayerCraftedItems?.(playerId) ?? [];
 
     return craftedItems.map(toWorkshopEquippedItem);
   }
@@ -328,10 +342,7 @@ export class ExploreLocation {
   }
 
   private async attachEnemyKnowledge(playerId: number, enemy: BattleView['enemy']): Promise<BattleView['enemy']> {
-    const repository = this.repository as GameRepository & {
-      readonly listBestiaryDiscovery?: GameRepository['listBestiaryDiscovery'];
-    };
-    const discovery = await repository.listBestiaryDiscovery?.(playerId);
+    const discovery = await this.repository.listBestiaryDiscovery?.(playerId);
 
     return discovery ? attachEnemyKnowledgeSnapshot(enemy, discovery) : enemy;
   }

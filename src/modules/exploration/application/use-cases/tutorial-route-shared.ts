@@ -10,9 +10,9 @@ import {
 } from '../../../shared/application/command-intent';
 import type {
   ExplorationCommandIntentKey,
-  GameRepository,
   SaveExplorationOptions,
 } from '../../../shared/application/ports/GameRepository';
+import type { CommandIntentReplayRepository } from '../../../shared/application/ports/repository-scopes';
 
 export interface TutorialRouteReplayResult {
   readonly player: PlayerState;
@@ -29,7 +29,7 @@ const tutorialRouteStaleMessage = 'Этот след уже выцвел. Вер
 const tutorialRouteBattleInProgressMessage = 'Сначала завершите текущий бой, потом меняйте путь приключения.';
 
 export const loadTutorialRouteReplayResult = async (
-  repository: GameRepository,
+  repository: CommandIntentReplayRepository,
   player: PlayerState,
   intentId?: string,
 ): Promise<TutorialRouteReplayResult | null> => {

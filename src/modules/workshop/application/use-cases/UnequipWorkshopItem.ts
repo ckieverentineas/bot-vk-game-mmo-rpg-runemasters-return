@@ -7,6 +7,10 @@ import {
   type CommandIntentSource,
 } from '../../../shared/application/command-intent';
 import type { GameRepository } from '../../../shared/application/ports/GameRepository';
+import type {
+  CommandIntentReplayRepository,
+  FindPlayerByVkIdRepository,
+} from '../../../shared/application/ports/repository-scopes';
 import { requirePlayerByVkId } from '../../../shared/application/require-player';
 import { buildUnequipWorkshopItemIntentStateKey } from '../command-intent-state';
 import type { PlayerBlueprintView, PlayerCraftedItemView } from '../workshop-persistence';
@@ -27,6 +31,11 @@ export interface UnequipWorkshopItemResultView {
 }
 
 type UnequipWorkshopReplayResult = UnequipWorkshopItemResultView | PlayerCraftedItemView;
+type WorkshopSnapshotRepository = Pick<GameRepository, 'listPlayerBlueprints' | 'listPlayerCraftedItems'>;
+type WorkshopCurrentViewRepository = FindPlayerByVkIdRepository & WorkshopSnapshotRepository;
+type UnequipWorkshopItemRepository = CommandIntentReplayRepository
+  & WorkshopCurrentViewRepository
+  & Pick<GameRepository, 'storeCommandIntentResult' | 'unequipWorkshopItem'>;
 
 const staleUnequipMessage = 'Этот жест мастерской уже выцвел. Вернитесь к свежей Мастерской.';
 
@@ -75,7 +84,7 @@ const buildUnequipResult = (
 };
 
 const loadWorkshopSnapshot = async (
-  repository: GameRepository,
+  repository: WorkshopSnapshotRepository,
   player: PlayerState,
 ): Promise<{
   readonly blueprints: readonly PlayerBlueprintView[];
@@ -90,7 +99,7 @@ const loadWorkshopSnapshot = async (
 };
 
 const loadCurrentWorkshopView = async (
-  repository: GameRepository,
+  repository: WorkshopCurrentViewRepository,
   vkId: number,
 ): Promise<WorkshopView> => {
   const player = await requirePlayerByVkId(repository, vkId);
@@ -100,7 +109,7 @@ const loadCurrentWorkshopView = async (
 };
 
 export class UnequipWorkshopItem {
-  public constructor(private readonly repository: GameRepository) {}
+  public constructor(private readonly repository: UnequipWorkshopItemRepository) {}
 
   public async execute(
     vkId: number,

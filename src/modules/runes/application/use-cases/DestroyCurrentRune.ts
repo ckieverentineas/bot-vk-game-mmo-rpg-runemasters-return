@@ -11,13 +11,21 @@ import {
 } from '../../../shared/application/command-intent';
 import { requirePlayerByVkId } from '../../../shared/application/require-player';
 import type { GameRepository } from '../../../shared/application/ports/GameRepository';
+import type {
+  CommandIntentReplayRepository,
+  FindPlayerByVkIdRepository,
+} from '../../../shared/application/ports/repository-scopes';
 import { buildDestroyIntentStateKey } from '../command-intent-state';
 
 const runeMutationPendingMessage = 'Рунный жест ещё в пути. Дождитесь ответа.';
 const runeMutationStaleMessage = 'Этот рунный жест уже выцвел. Вернитесь к свежей руне.';
 
+type DestroyCurrentRuneRepository = CommandIntentReplayRepository
+  & FindPlayerByVkIdRepository
+  & Pick<GameRepository, 'destroyRune'>;
+
 export class DestroyCurrentRune {
-  public constructor(private readonly repository: GameRepository) {}
+  public constructor(private readonly repository: DestroyCurrentRuneRepository) {}
 
   public async execute(vkId: number, intentId?: string, intentStateKey?: string, intentSource: CommandIntentSource = 'payload'): Promise<PlayerState> {
     const player = await requirePlayerByVkId(this.repository, vkId);

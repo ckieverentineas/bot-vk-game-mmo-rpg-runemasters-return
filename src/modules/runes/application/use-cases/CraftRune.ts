@@ -13,6 +13,10 @@ import {
 } from '../../../shared/application/command-intent';
 import { requirePlayerByVkId } from '../../../shared/application/require-player';
 import type { GameRepository } from '../../../shared/application/ports/GameRepository';
+import type {
+  CommandIntentReplayRepository,
+  FindPlayerByVkIdRepository,
+} from '../../../shared/application/ports/repository-scopes';
 import { buildCraftIntentStateKey } from '../command-intent-state';
 import { RuneFactory } from '../../domain/rune-factory';
 import {
@@ -47,9 +51,13 @@ const formatCraftRequirementLine = (rarity: RuneRarity): string => {
   ].join(', ');
 };
 
+type CraftRuneRepository = CommandIntentReplayRepository
+  & FindPlayerByVkIdRepository
+  & Pick<GameRepository, 'craftRune' | 'storeCommandIntentResult'>;
+
 export class CraftRune {
   public constructor(
-    private readonly repository: GameRepository,
+    private readonly repository: CraftRuneRepository,
     private readonly random: GameRandom,
   ) {}
 

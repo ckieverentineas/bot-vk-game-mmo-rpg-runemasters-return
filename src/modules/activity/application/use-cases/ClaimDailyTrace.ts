@@ -10,6 +10,7 @@ import type {
   DailyActivityRewardClaimResult,
   GameRepository,
 } from '../../../shared/application/ports/GameRepository';
+import type { CommandIntentReplayRepository } from '../../../shared/application/ports/repository-scopes';
 import type {
   DailyTraceTelemetryPayload,
   GameTelemetry,
@@ -28,6 +29,11 @@ export interface ClaimDailyTraceView {
 }
 
 const claimDailyTraceCommandKey = 'CLAIM_DAILY_TRACE' as const;
+
+type ClaimDailyTraceRepository = CommandIntentReplayRepository & Pick<
+  GameRepository,
+  'findPlayerByVkId' | 'claimDailyActivityReward'
+>;
 
 const buildDailyTraceEconomySourceId = (trace: DailyTraceView): string => (
   `${trace.activityCode}:${trace.gameDay}`
@@ -49,7 +55,7 @@ const buildDailyTraceTelemetryPayload = (
 
 export class ClaimDailyTrace {
   public constructor(
-    private readonly repository: GameRepository,
+    private readonly repository: ClaimDailyTraceRepository,
     private readonly telemetry?: GameTelemetry,
     private readonly getNow: () => Date = () => new Date(),
   ) {}

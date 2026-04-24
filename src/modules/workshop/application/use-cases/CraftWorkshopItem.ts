@@ -7,6 +7,10 @@ import {
   type CommandIntentSource,
 } from '../../../shared/application/command-intent';
 import type { GameRepository } from '../../../shared/application/ports/GameRepository';
+import type {
+  CommandIntentReplayRepository,
+  FindPlayerByVkIdRepository,
+} from '../../../shared/application/ports/repository-scopes';
 import { requirePlayerByVkId } from '../../../shared/application/require-player';
 import {
   canCraftWorkshopBlueprint,
@@ -35,6 +39,11 @@ export interface CraftWorkshopItemResultView {
 }
 
 type CraftWorkshopReplayResult = CraftWorkshopItemResultView | PlayerCraftedItemView;
+type WorkshopSnapshotRepository = Pick<GameRepository, 'listPlayerBlueprints' | 'listPlayerCraftedItems'>;
+type WorkshopCurrentViewRepository = FindPlayerByVkIdRepository & WorkshopSnapshotRepository;
+type CraftWorkshopItemRepository = CommandIntentReplayRepository
+  & WorkshopCurrentViewRepository
+  & Pick<GameRepository, 'craftWorkshopItem' | 'storeCommandIntentResult'>;
 
 const staleCraftMessage = 'Этот жест мастерской уже выцвел. Вернитесь к свежей Мастерской.';
 
@@ -107,7 +116,7 @@ const buildCraftResult = (
 };
 
 const loadWorkshopSnapshot = async (
-  repository: GameRepository,
+  repository: WorkshopSnapshotRepository,
   player: PlayerState,
 ): Promise<{
   readonly player: PlayerState;
@@ -123,7 +132,7 @@ const loadWorkshopSnapshot = async (
 };
 
 const loadCurrentWorkshopView = async (
-  repository: GameRepository,
+  repository: WorkshopCurrentViewRepository,
   vkId: number,
 ): Promise<WorkshopView> => {
   const player = await requirePlayerByVkId(repository, vkId);
@@ -133,7 +142,7 @@ const loadCurrentWorkshopView = async (
 };
 
 const replayCraftWorkshopItemResult = async (
-  repository: GameRepository,
+  repository: CommandIntentReplayRepository,
   player: PlayerState,
   blueprintCode: WorkshopBlueprintCode,
   snapshot: {
@@ -162,7 +171,7 @@ const replayCraftWorkshopItemResult = async (
 };
 
 export class CraftWorkshopItem {
-  public constructor(private readonly repository: GameRepository) {}
+  public constructor(private readonly repository: CraftWorkshopItemRepository) {}
 
   public async execute(
     vkId: number,

@@ -5,6 +5,10 @@ import type { CommandIntentSource } from '../../../shared/application/command-in
 import type { GameTelemetry } from '../../../shared/application/ports/GameTelemetry';
 import { requirePlayerByVkId } from '../../../shared/application/require-player';
 import type { GameRepository } from '../../../shared/application/ports/GameRepository';
+import type {
+  CommandIntentReplayRepository,
+  FindPlayerByVkIdRepository,
+} from '../../../shared/application/ports/repository-scopes';
 import { buildSkipTutorialIntentStateKey } from '../command-intent-state';
 import {
   assertNoActiveTutorialRouteBattle,
@@ -19,9 +23,13 @@ export interface SkipTutorialReplayResult {
   readonly replayed: true;
 }
 
+type SkipTutorialRepository = CommandIntentReplayRepository
+  & FindPlayerByVkIdRepository
+  & Pick<GameRepository, 'saveExplorationState'>;
+
 export class SkipTutorial {
   public constructor(
-    private readonly repository: GameRepository,
+    private readonly repository: SkipTutorialRepository,
     private readonly telemetry: GameTelemetry,
   ) {}
 

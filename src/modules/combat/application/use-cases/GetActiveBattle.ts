@@ -3,12 +3,18 @@ import type { BattleView } from '../../../../shared/types/game';
 import { requirePlayerByVkId } from '../../../shared/application/require-player';
 import type { GameRandom } from '../../../shared/application/ports/GameRandom';
 import type { GameRepository } from '../../../shared/application/ports/GameRepository';
+import type { FindPlayerByVkIdRepository } from '../../../shared/application/ports/repository-scopes';
 
 import { finalizeRecoveredBattleIfNeeded } from '../finalize-recovered-battle';
 
+type GetActiveBattleRepository = FindPlayerByVkIdRepository & Pick<
+  GameRepository,
+  'finalizeBattle' | 'getActiveBattle' | 'saveBattle'
+>;
+
 export class GetActiveBattle {
   public constructor(
-    private readonly repository: GameRepository,
+    private readonly repository: GetActiveBattleRepository,
     private readonly random: GameRandom,
   ) {}
 

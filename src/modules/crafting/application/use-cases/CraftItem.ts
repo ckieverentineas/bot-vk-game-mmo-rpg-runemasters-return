@@ -8,6 +8,10 @@ import {
   type CommandIntentSource,
 } from '../../../shared/application/command-intent';
 import type { GameRepository } from '../../../shared/application/ports/GameRepository';
+import type {
+  CommandIntentReplayRepository,
+  FindPlayerByVkIdRepository,
+} from '../../../shared/application/ports/repository-scopes';
 import { requirePlayerByVkId } from '../../../shared/application/require-player';
 import { alchemySkillCode, formatAlchemyConsumableEffect } from '../../../consumables/domain/alchemy-consumables';
 import { buildCraftingIntentStateKey } from '../command-intent-state';
@@ -41,6 +45,10 @@ const materialTitles: Readonly<Record<MaterialField, string>> = {
 const craftItemPendingMessage = 'Алхимия пилюли ещё в пути. Дождитесь ответа.';
 const craftItemStaleMessage = 'Эта пилюля уже выцвела. Вернитесь к свежей Мастерской.';
 
+type CraftItemRepository = CommandIntentReplayRepository
+  & FindPlayerByVkIdRepository
+  & Pick<GameRepository, 'craftPlayerConsumable' | 'storeCommandIntentResult'>;
+
 const formatCraftingCost = (cost: CraftingRecipeCost): string => {
   const parts = Object.entries(cost)
     .filter(([, amount]) => amount !== undefined && amount > 0)
@@ -68,7 +76,7 @@ const buildCraftingSummary = (
 });
 
 const replayCraftItemResult = async (
-  repository: GameRepository,
+  repository: CommandIntentReplayRepository,
   player: PlayerState,
   intentId: string | undefined,
   intentStateKey: string | undefined,
@@ -87,7 +95,7 @@ const replayCraftItemResult = async (
 };
 
 export class CraftItem {
-  public constructor(private readonly repository: GameRepository) {}
+  public constructor(private readonly repository: CraftItemRepository) {}
 
   public async execute(
     vkId: number,

@@ -1,6 +1,7 @@
 import { requirePlayerByVkId } from '../../../shared/application/require-player';
 import type { GameTelemetry } from '../../../shared/application/ports/GameTelemetry';
 import type { GameRepository } from '../../../shared/application/ports/GameRepository';
+import type { FindPlayerByVkIdRepository } from '../../../shared/application/ports/repository-scopes';
 import {
   buildQuestBookView,
   type QuestBookView,
@@ -10,9 +11,14 @@ import {
   trackQuestTelemetry,
 } from '../quest-telemetry';
 
+type GetQuestBookRepository = FindPlayerByVkIdRepository & Pick<
+  GameRepository,
+  'listClaimedQuestRewardCodes'
+>;
+
 export class GetQuestBook {
   public constructor(
-    private readonly repository: GameRepository,
+    private readonly repository: GetQuestBookRepository,
     private readonly telemetry?: GameTelemetry,
   ) {}
 

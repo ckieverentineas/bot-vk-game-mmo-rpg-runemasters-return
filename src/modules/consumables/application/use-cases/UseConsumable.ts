@@ -13,6 +13,10 @@ import {
   type CommandIntentSource,
 } from '../../../shared/application/command-intent';
 import type { GameRepository } from '../../../shared/application/ports/GameRepository';
+import type {
+  CommandIntentReplayRepository,
+  FindPlayerByVkIdRepository,
+} from '../../../shared/application/ports/repository-scopes';
 import { requirePlayerByVkId } from '../../../shared/application/require-player';
 import {
   formatAlchemyConsumableEffect,
@@ -31,6 +35,10 @@ export interface UseConsumableResultView {
 
 const useConsumablePendingMessage = 'Пилюля уже применяется. Дождитесь ответа.';
 const useConsumableStaleMessage = 'Эта пилюля уже выцвела. Вернитесь к свежей Мастерской.';
+
+type UseConsumableRepository = CommandIntentReplayRepository
+  & FindPlayerByVkIdRepository
+  & Pick<GameRepository, 'recordInventoryAndVitalsResult' | 'storeCommandIntentResult'>;
 
 const resolveRecoveredVitals = (
   player: PlayerState,
@@ -71,7 +79,7 @@ const buildUseSummary = (
 });
 
 const replayUseConsumableResult = async (
-  repository: GameRepository,
+  repository: CommandIntentReplayRepository,
   player: PlayerState,
   intentId: string | undefined,
   intentStateKey: string | undefined,
@@ -90,7 +98,7 @@ const replayUseConsumableResult = async (
 };
 
 export class UseConsumable {
-  public constructor(private readonly repository: GameRepository) {}
+  public constructor(private readonly repository: UseConsumableRepository) {}
 
   public async execute(
     vkId: number,

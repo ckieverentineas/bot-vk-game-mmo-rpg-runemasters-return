@@ -7,6 +7,10 @@ import {
   type CommandIntentSource,
 } from '../../../shared/application/command-intent';
 import type { GameRepository } from '../../../shared/application/ports/GameRepository';
+import type {
+  CommandIntentReplayRepository,
+  FindPlayerByVkIdRepository,
+} from '../../../shared/application/ports/repository-scopes';
 import { requirePlayerByVkId } from '../../../shared/application/require-player';
 import { canEquipWorkshopItem, type WorkshopItemView } from '../../domain/workshop-catalog';
 import { buildEquipWorkshopItemIntentStateKey } from '../command-intent-state';
@@ -28,6 +32,11 @@ export interface EquipWorkshopItemResultView {
 }
 
 type EquipWorkshopReplayResult = EquipWorkshopItemResultView | PlayerCraftedItemView;
+type WorkshopSnapshotRepository = Pick<GameRepository, 'listPlayerBlueprints' | 'listPlayerCraftedItems'>;
+type WorkshopCurrentViewRepository = FindPlayerByVkIdRepository & WorkshopSnapshotRepository;
+type EquipWorkshopItemRepository = CommandIntentReplayRepository
+  & WorkshopCurrentViewRepository
+  & Pick<GameRepository, 'equipWorkshopItem' | 'storeCommandIntentResult'>;
 
 const staleEquipMessage = 'Этот жест мастерской уже выцвел. Вернитесь к свежей Мастерской.';
 
@@ -85,7 +94,7 @@ const buildEquipResult = (
 };
 
 const loadWorkshopSnapshot = async (
-  repository: GameRepository,
+  repository: WorkshopSnapshotRepository,
   player: PlayerState,
 ): Promise<{
   readonly blueprints: readonly PlayerBlueprintView[];
@@ -100,7 +109,7 @@ const loadWorkshopSnapshot = async (
 };
 
 const loadCurrentWorkshopView = async (
-  repository: GameRepository,
+  repository: WorkshopCurrentViewRepository,
   vkId: number,
 ): Promise<WorkshopView> => {
   const player = await requirePlayerByVkId(repository, vkId);
@@ -110,7 +119,7 @@ const loadCurrentWorkshopView = async (
 };
 
 export class EquipWorkshopItem {
-  public constructor(private readonly repository: GameRepository) {}
+  public constructor(private readonly repository: EquipWorkshopItemRepository) {}
 
   public async execute(
     vkId: number,

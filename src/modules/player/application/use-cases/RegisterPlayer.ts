@@ -2,9 +2,11 @@ import type { PlayerState } from '../../../../shared/types/game';
 import type { GameTelemetry } from '../../../shared/application/ports/GameTelemetry';
 import type { GameRepository } from '../../../shared/application/ports/GameRepository';
 
+type RegisterPlayerRepository = Pick<GameRepository, 'createPlayer' | 'log'>;
+
 export class RegisterPlayer {
   public constructor(
-    private readonly repository: GameRepository,
+    private readonly repository: RegisterPlayerRepository,
     private readonly telemetry: GameTelemetry,
   ) {}
 

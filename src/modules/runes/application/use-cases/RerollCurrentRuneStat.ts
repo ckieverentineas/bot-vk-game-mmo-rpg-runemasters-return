@@ -12,6 +12,10 @@ import {
 } from '../../../shared/application/command-intent';
 import { requirePlayerByVkId } from '../../../shared/application/require-player';
 import type { GameRepository } from '../../../shared/application/ports/GameRepository';
+import type {
+  CommandIntentReplayRepository,
+  FindPlayerByVkIdRepository,
+} from '../../../shared/application/ports/repository-scopes';
 import { buildRerollIntentStateKey } from '../command-intent-state';
 import { RuneFactory } from '../../domain/rune-factory';
 import { canPayRuneSpend, resolveRuneRerollSpend } from '../../domain/rune-economy';
@@ -19,9 +23,13 @@ import { canPayRuneSpend, resolveRuneRerollSpend } from '../../domain/rune-econo
 const runeMutationPendingMessage = 'Рунный жест ещё в пути. Дождитесь ответа.';
 const runeMutationStaleMessage = 'Этот рунный жест уже выцвел. Вернитесь к свежей руне.';
 
+type RerollCurrentRuneStatRepository = CommandIntentReplayRepository
+  & FindPlayerByVkIdRepository
+  & Pick<GameRepository, 'rerollRuneStat'>;
+
 export class RerollCurrentRuneStat {
   public constructor(
-    private readonly repository: GameRepository,
+    private readonly repository: RerollCurrentRuneStatRepository,
     private readonly random: GameRandom,
   ) {}
 

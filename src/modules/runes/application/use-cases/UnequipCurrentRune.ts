@@ -11,14 +11,22 @@ import {
   type CommandIntentSource,
 } from '../../../shared/application/command-intent';
 import type { GameRepository } from '../../../shared/application/ports/GameRepository';
+import type {
+  CommandIntentReplayRepository,
+  FindPlayerByVkIdRepository,
+} from '../../../shared/application/ports/repository-scopes';
 import { buildUnequipIntentStateKey } from '../command-intent-state';
 
 const runeLoadoutPendingMessage = 'Рунный жест ещё в пути. Дождитесь ответа.';
 const runeLoadoutStaleMessage = 'Этот рунный жест уже выцвел. Вернитесь к свежей руне.';
 
+type UnequipCurrentRuneRepository = CommandIntentReplayRepository
+  & FindPlayerByVkIdRepository
+  & Pick<GameRepository, 'equipRune'>;
+
 export class UnequipCurrentRune {
   public constructor(
-    private readonly repository: GameRepository,
+    private readonly repository: UnequipCurrentRuneRepository,
     private readonly telemetry: GameTelemetry,
   ) {}
 

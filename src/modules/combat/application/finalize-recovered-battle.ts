@@ -15,8 +15,10 @@ interface RecoveredBattleFinalization {
   readonly recovered: boolean;
 }
 
+type RecoveredBattleRepository = Pick<GameRepository, 'finalizeBattle' | 'saveBattle'>;
+
 export const finalizeRecoveredBattleIfNeeded = async (
-  repository: GameRepository,
+  repository: RecoveredBattleRepository,
   player: PlayerState,
   battle: BattleView,
   random: GameRandom,

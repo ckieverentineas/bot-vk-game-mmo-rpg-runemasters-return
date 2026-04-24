@@ -2,6 +2,7 @@ import { AppError } from '../../../../shared/domain/AppError';
 import type { BiomeView, MobTemplateView, PlayerState } from '../../../../shared/types/game';
 import { requirePlayerByVkId } from '../../../shared/application/require-player';
 import type { BestiaryDiscoveryView, GameRepository } from '../../../shared/application/ports/GameRepository';
+import type { FindPlayerByVkIdRepository } from '../../../shared/application/ports/repository-scopes';
 import type { WorldCatalog } from '../ports/WorldCatalog';
 import {
   bestiaryKillMilestoneThresholds,
@@ -27,9 +28,16 @@ interface KillMilestoneClaimView {
   readonly newlyClaimedKillMilestones: readonly BestiaryKillMilestoneKey[];
 }
 
+type GetBestiaryRepository = FindPlayerByVkIdRepository & Pick<
+  GameRepository,
+  | 'claimBestiaryEnemyKillMilestoneReward'
+  | 'claimBestiaryLocationDiscoveryReward'
+  | 'listBestiaryDiscovery'
+>;
+
 export class GetBestiary {
   public constructor(
-    private readonly repository: GameRepository,
+    private readonly repository: GetBestiaryRepository,
     private readonly worldCatalog: WorldCatalog,
   ) {}
 

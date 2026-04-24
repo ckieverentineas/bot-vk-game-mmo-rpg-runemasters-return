@@ -3,8 +3,10 @@ import { resolveCommandIntent, type CommandIntentSource } from '../../../shared/
 
 import type { GameRepository } from '../../../shared/application/ports/GameRepository';
 
+type DeletePlayerRepository = Pick<GameRepository, 'confirmDeletePlayer'>;
+
 export class DeletePlayer {
-  public constructor(private readonly repository: GameRepository) {}
+  public constructor(private readonly repository: DeletePlayerRepository) {}
 
   public async execute(
     vkId: number,

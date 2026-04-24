@@ -7,6 +7,10 @@ import {
   type CommandIntentSource,
 } from '../../../shared/application/command-intent';
 import type { GameRepository } from '../../../shared/application/ports/GameRepository';
+import type {
+  CommandIntentReplayRepository,
+  FindPlayerByVkIdRepository,
+} from '../../../shared/application/ports/repository-scopes';
 import { requirePlayerByVkId } from '../../../shared/application/require-player';
 import {
   canCraftWorkshopBlueprint,
@@ -39,6 +43,11 @@ export interface RepairWorkshopItemResultView {
 }
 
 type RepairWorkshopReplayResult = RepairWorkshopItemResultView | PlayerCraftedItemView;
+type WorkshopSnapshotRepository = Pick<GameRepository, 'listPlayerBlueprints' | 'listPlayerCraftedItems'>;
+type WorkshopCurrentViewRepository = FindPlayerByVkIdRepository & WorkshopSnapshotRepository;
+type RepairWorkshopItemRepository = CommandIntentReplayRepository
+  & WorkshopCurrentViewRepository
+  & Pick<GameRepository, 'repairWorkshopItem' | 'storeCommandIntentResult'>;
 
 const staleRepairMessage = 'Этот жест ремонта уже выцвел. Вернитесь к свежей Мастерской.';
 
@@ -125,7 +134,7 @@ const buildRepairResult = (
 };
 
 const loadWorkshopSnapshot = async (
-  repository: GameRepository,
+  repository: WorkshopSnapshotRepository,
   player: PlayerState,
 ): Promise<{
   readonly player: PlayerState;
@@ -141,7 +150,7 @@ const loadWorkshopSnapshot = async (
 };
 
 const loadCurrentWorkshopView = async (
-  repository: GameRepository,
+  repository: WorkshopCurrentViewRepository,
   vkId: number,
 ): Promise<WorkshopView> => {
   const player = await requirePlayerByVkId(repository, vkId);
@@ -151,7 +160,7 @@ const loadCurrentWorkshopView = async (
 };
 
 const replayRepairWorkshopItemResult = async (
-  repository: GameRepository,
+  repository: CommandIntentReplayRepository,
   player: PlayerState,
   repairBlueprintCode: WorkshopBlueprintCode,
   snapshot: {
@@ -180,7 +189,7 @@ const replayRepairWorkshopItemResult = async (
 };
 
 export class RepairWorkshopItem {
-  public constructor(private readonly repository: GameRepository) {}
+  public constructor(private readonly repository: RepairWorkshopItemRepository) {}
 
   public async execute(
     vkId: number,

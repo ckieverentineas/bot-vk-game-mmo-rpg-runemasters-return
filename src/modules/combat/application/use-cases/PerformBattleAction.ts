@@ -10,6 +10,10 @@ import {
 import { requirePlayerByVkId } from '../../../shared/application/require-player';
 import type { GameRandom } from '../../../shared/application/ports/GameRandom';
 import type { GameRepository } from '../../../shared/application/ports/GameRepository';
+import type {
+  CommandIntentReplayRepository,
+  FindPlayerByVkIdRepository,
+} from '../../../shared/application/ports/repository-scopes';
 import { isRuneSkillAction } from '../../domain/battle-rune-loadouts';
 import {
   normalizeBattleActionResult,
@@ -38,9 +42,21 @@ type BattleActionCommandKey =
 const battleActionPendingMessage = 'Боевой жест ещё в пути. Дождитесь ответа.';
 const battleActionStaleMessage = 'Этот боевой жест уже выцвел. Вернитесь к свежей развилке боя.';
 
+type PerformBattleActionRepository = CommandIntentReplayRepository
+  & FindPlayerByVkIdRepository
+  & Pick<
+    GameRepository,
+    | 'findPlayerById'
+    | 'finalizeBattle'
+    | 'getActiveBattle'
+    | 'saveBattle'
+    | 'saveBattleWithInventoryDelta'
+    | 'storeCommandIntentResult'
+  >;
+
 export class PerformBattleAction {
   public constructor(
-    private readonly repository: GameRepository,
+    private readonly repository: PerformBattleActionRepository,
     private readonly random: GameRandom,
   ) {}
 

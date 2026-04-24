@@ -1,8 +1,8 @@
 import { AppError } from '../../../shared/domain/AppError';
 import type {
   GameCommandIntentKey,
-  GameRepository,
 } from './ports/GameRepository';
+import type { CommandIntentReplayRepository } from './ports/repository-scopes';
 
 export type CommandIntentSource = 'payload' | 'legacy_text' | null;
 
@@ -10,8 +10,6 @@ export interface ResolvedCommandIntent {
   readonly intentId: string;
   readonly intentStateKey: string;
 }
-
-type CommandIntentReplayRepository = Pick<GameRepository, 'getCommandIntentResult'>;
 
 interface LoadCommandIntentReplayOptions<TStoredResult, TResult> {
   readonly repository: CommandIntentReplayRepository;

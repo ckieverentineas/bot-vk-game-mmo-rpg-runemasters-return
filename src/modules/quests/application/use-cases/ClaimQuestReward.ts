@@ -10,6 +10,10 @@ import type {
   GameRepository,
   QuestRewardClaimResult,
 } from '../../../shared/application/ports/GameRepository';
+import type {
+  CommandIntentReplayRepository,
+  FindPlayerByVkIdRepository,
+} from '../../../shared/application/ports/repository-scopes';
 import {
   buildQuestBookView,
   findQuestBookEntry,
@@ -39,13 +43,17 @@ type ClaimQuestRewardInput = string | ClaimQuestRewardRequest | undefined;
 
 const claimQuestRewardCommandKey = 'CLAIM_QUEST_REWARD' as const;
 
+type ClaimQuestRewardRepository = CommandIntentReplayRepository
+  & FindPlayerByVkIdRepository
+  & Pick<GameRepository, 'claimQuestReward' | 'listClaimedQuestRewardCodes'>;
+
 const normalizeClaimQuestRewardRequest = (request: ClaimQuestRewardInput): ClaimQuestRewardRequest => (
   typeof request === 'string' ? { questCode: request } : request ?? {}
 );
 
 export class ClaimQuestReward {
   public constructor(
-    private readonly repository: GameRepository,
+    private readonly repository: ClaimQuestRewardRepository,
     private readonly telemetry?: GameTelemetry,
   ) {}
 
