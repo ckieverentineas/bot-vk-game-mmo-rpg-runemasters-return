@@ -6,8 +6,8 @@
 - Created: `2026-04-24`
 - Scope: component-oriented architecture, functional domain core, safer maintenance rails.
 - Progress policy: one task = one chat request = one verification pass = one commit.
-- Overall cleanup progress after RF-010 lands: `10/18 = 56%`.
-- Closed tasks: `RF-001`, `RF-002`, `RF-003`, `RF-004`, `RF-005`, `RF-006`, `RF-007`, `RF-008`, `RF-009`, `RF-010`.
+- Overall cleanup progress after RF-011 lands: `11/18 = 61%`.
+- Closed tasks: `RF-001`, `RF-002`, `RF-003`, `RF-004`, `RF-005`, `RF-006`, `RF-007`, `RF-008`, `RF-009`, `RF-010`, `RF-011`.
 
 ## Goal
 
@@ -32,6 +32,8 @@ The project already has a useful `DDD-lite` skeleton:
 - `src/vk` owns router, handlers, presenters and keyboards;
 - `src/content` owns authored game content and validation;
 - `src/tooling` owns release and evidence commands.
+
+After RF-011, Prisma persistence is split around extracted `command-intent`, `player`, `party` and `workshop` components, with shared inventory/error helpers beside the adapter. The root `PrismaGameRepository` still implements `GameRepository`, but it now acts more like a facade while the remaining battle/reward/rune persistence is easier to carve next.
 
 The main composition point is `src/app/composition-root.ts`: it builds one Prisma repository, one world catalog, one random source, telemetry, and all use-case classes.
 

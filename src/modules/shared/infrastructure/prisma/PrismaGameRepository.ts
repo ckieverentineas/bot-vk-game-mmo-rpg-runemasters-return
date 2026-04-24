@@ -1,8 +1,5 @@
-import { Prisma, PrismaClient, type PlayerBlueprint, type PlayerCraftedItem } from '@prisma/client';
+import { Prisma, PrismaClient } from '@prisma/client';
 
-import { randomBytes } from 'node:crypto';
-
-import { env } from '../../../../config/env';
 import { gameBalance } from '../../../../config/game-balance';
 import { AppError } from '../../../../shared/domain/AppError';
 import { parseJson, stringifyJson } from '../../../../shared/utils/json';
@@ -11,7 +8,6 @@ import type {
   BlueprintDelta,
   CreateBattleInput,
   InventoryDelta,
-  MaterialField,
   PartyView,
   PlayerSkillCode,
   PlayerSkillPointGain,
@@ -24,7 +20,6 @@ import type {
 } from '../../../../shared/types/game';
 import { buildBattleSnapshot } from '../../domain/contracts/battle-snapshot';
 import {
-  DEFAULT_UNLOCKED_RUNE_SLOT_COUNT,
   derivePostBattleVitals,
   getEquippedRune,
   getEquippedRuneIdsBySlot,
@@ -62,20 +57,8 @@ import {
   resolveRuneRerollSpend,
 } from '../../../runes/domain/rune-economy';
 import {
-  getWorkshopBlueprint,
-  canEquipWorkshopItem,
   isWorkshopBlueprintCode,
-  isWorkshopItemClass,
-  isWorkshopItemCode,
-  isWorkshopItemSlot,
-  isWorkshopItemStatus,
-  resolveWorkshopItemDecay,
   type WorkshopBlueprintCode,
-  type WorkshopBlueprintCost,
-  type WorkshopBlueprintDefinition,
-  type WorkshopEquippedItemView,
-  type WorkshopCraftItemBlueprintDefinition,
-  type WorkshopRepairToolBlueprintDefinition,
 } from '../../../workshop/domain/workshop-catalog';
 import type {
   PlayerBlueprintView,
@@ -134,235 +117,25 @@ import type {
 import {
   mapBattleRecord,
   mapPlayerRecord,
-  playerInclude,
   type PlayerRecord,
 } from './prisma-game-mappers';
+import { PrismaCommandIntentPersistence } from './prisma-command-intent-persistence';
+import { isPrismaUniqueConstraintError } from './prisma-error-utils';
+import {
+  buildInventoryAvailabilityWhere,
+  buildInventoryDeltaInput,
+} from './prisma-inventory-utils';
+import {
+  partyInclude,
+  PrismaPartyPersistence,
+} from './prisma-party-persistence';
+import { PrismaPlayerPersistence } from './prisma-player-persistence';
+import { PrismaWorkshopPersistence } from './prisma-workshop-persistence';
 
 type TransactionClient = Prisma.TransactionClient;
 type CommandIntentKey = GameCommandIntentKey;
 
 type PersistedBattleState = Pick<BattleView, 'status' | 'turnOwner' | 'player' | 'enemy' | 'party' | 'encounter' | 'log' | 'result' | 'rewards' | 'actionRevision'>;
-
-const activePartyStatuses = ['OPEN', 'IN_BATTLE'] as const;
-
-const partyInclude = {
-  members: {
-    include: {
-      player: {
-        include: {
-          user: true,
-        },
-      },
-    },
-    orderBy: {
-      joinedAt: 'asc' as const,
-    },
-  },
-} satisfies Prisma.PlayerPartyInclude;
-
-type PartyRecord = Prisma.PlayerPartyGetPayload<{ include: typeof partyInclude }>;
-
-const isPrismaUniqueConstraintError = (error: unknown): error is Prisma.PrismaClientKnownRequestError => (
-  error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002'
-);
-
-const buildInventoryDeltaInput = (delta: InventoryDelta): Record<string, { increment: number }> => {
-  const data: Record<string, { increment: number }> = {};
-
-  for (const [key, value] of Object.entries(delta)) {
-    if (value !== undefined && value !== 0) {
-      data[key] = { increment: value };
-    }
-  }
-
-  return data;
-};
-
-const buildInventoryAvailabilityWhere = (playerId: number, delta: InventoryDelta): Prisma.PlayerInventoryWhereInput => {
-  const where: Prisma.PlayerInventoryWhereInput = { playerId };
-
-  for (const [key, value] of Object.entries(delta)) {
-    if (value !== undefined && value < 0) {
-      where[key as keyof Prisma.PlayerInventoryWhereInput] = { gte: Math.abs(value) } as never;
-    }
-  }
-
-  return where;
-};
-
-const workshopMaterialFields: readonly MaterialField[] = [
-  'leather',
-  'bone',
-  'herb',
-  'essence',
-  'metal',
-  'crystal',
-];
-
-const buildWorkshopCostInventoryDelta = (cost: WorkshopBlueprintCost): InventoryDelta => (
-  workshopMaterialFields.reduce<InventoryDelta>((delta, field) => {
-    const amount = cost[field] ?? 0;
-
-    if (amount <= 0) {
-      return delta;
-    }
-
-    return {
-      ...delta,
-      [field]: -amount,
-    };
-  }, {})
-);
-
-const requireWorkshopBlueprintDefinition = (
-  blueprintCode: WorkshopBlueprintCode,
-): WorkshopBlueprintDefinition => {
-  try {
-    return getWorkshopBlueprint(blueprintCode);
-  } catch {
-    throw new AppError('workshop_blueprint_not_found', 'Этот чертеж уже не найден в мастерской.');
-  }
-};
-
-const requireWorkshopCraftBlueprint = (
-  blueprintCode: WorkshopBlueprintCode,
-): WorkshopCraftItemBlueprintDefinition => {
-  const blueprint = requireWorkshopBlueprintDefinition(blueprintCode);
-
-  if (blueprint.kind !== 'craft_item') {
-    throw new AppError('workshop_blueprint_not_craftable', 'Этот чертеж не создает предмет мастерской.');
-  }
-
-  return blueprint;
-};
-
-const requireWorkshopRepairBlueprint = (
-  blueprintCode: WorkshopBlueprintCode,
-): WorkshopRepairToolBlueprintDefinition => {
-  const blueprint = requireWorkshopBlueprintDefinition(blueprintCode);
-
-  if (blueprint.kind !== 'repair_tool') {
-    throw new AppError('workshop_blueprint_not_repair_tool', 'Этот чертеж не подходит для ремонта.');
-  }
-
-  return blueprint;
-};
-
-const assertPositiveBlueprintQuantity = (quantity: number): void => {
-  if (!Number.isInteger(quantity) || quantity <= 0) {
-    throw new AppError('invalid_blueprint_quantity', 'Количество чертежей должно быть положительным целым числом.');
-  }
-};
-
-const requireKnownWorkshopValue = <TValue extends string>(
-  value: string,
-  isKnown: (candidate: string) => candidate is TValue,
-  fieldName: string,
-): TValue => {
-  if (!isKnown(value)) {
-    throw new AppError(
-      'workshop_persistence_invalid',
-      `Р—Р°РїРёСЃСЊ РјР°СЃС‚РµСЂСЃРєРѕР№ С…СЂР°РЅРёС‚ РЅРµРёР·РІРµСЃС‚РЅРѕРµ РїРѕР»Рµ ${fieldName}.`,
-    );
-  }
-
-  return value;
-};
-
-const mapPlayerBlueprintRecord = (record: PlayerBlueprint): PlayerBlueprintView => ({
-  playerId: record.playerId,
-  blueprintCode: requireKnownWorkshopValue(record.blueprintCode, isWorkshopBlueprintCode, 'blueprintCode'),
-  quantity: record.quantity,
-  createdAt: record.createdAt.toISOString(),
-  updatedAt: record.updatedAt.toISOString(),
-});
-
-const mapPlayerCraftedItemRecord = (record: PlayerCraftedItem): PlayerCraftedItemView => ({
-  id: record.id,
-  playerId: record.playerId,
-  itemCode: requireKnownWorkshopValue(record.itemCode, isWorkshopItemCode, 'itemCode'),
-  itemClass: requireKnownWorkshopValue(record.itemClass, isWorkshopItemClass, 'itemClass'),
-  slot: requireKnownWorkshopValue(record.slot, isWorkshopItemSlot, 'slot'),
-  status: requireKnownWorkshopValue(record.status, isWorkshopItemStatus, 'status'),
-  equipped: record.equipped,
-  durability: record.durability,
-  maxDurability: record.maxDurability,
-  createdAt: record.createdAt.toISOString(),
-  updatedAt: record.updatedAt.toISOString(),
-});
-
-const spendWorkshopBlueprint = async (
-  client: TransactionClient,
-  playerId: number,
-  blueprintCode: WorkshopBlueprintCode,
-  message: string,
-): Promise<void> => {
-  const spent = await client.playerBlueprint.updateMany({
-    where: {
-      playerId,
-      blueprintCode,
-      quantity: { gte: 1 },
-    },
-    data: {
-      quantity: { decrement: 1 },
-    },
-  });
-
-  if (spent.count === 0) {
-    throw new AppError('workshop_blueprint_unavailable', message);
-  }
-};
-
-const spendWorkshopInventoryCost = async (
-  client: TransactionClient,
-  playerId: number,
-  cost: WorkshopBlueprintCost,
-  errorCode: string,
-  message: string,
-): Promise<void> => {
-  const inventoryDelta = buildWorkshopCostInventoryDelta(cost);
-  const inventorySpend = buildInventoryDeltaInput(inventoryDelta);
-
-  if (Object.keys(inventorySpend).length === 0) {
-    return;
-  }
-
-  const spent = await client.playerInventory.updateMany({
-    where: buildInventoryAvailabilityWhere(playerId, inventoryDelta),
-    data: inventorySpend as Prisma.PlayerInventoryUpdateManyMutationInput,
-  });
-
-  if (spent.count === 0) {
-    throw new AppError(errorCode, message);
-  }
-};
-
-const toWorkshopEquippedItem = (item: PlayerCraftedItem): WorkshopEquippedItemView => ({
-  id: item.id,
-  code: requireKnownWorkshopValue(item.itemCode, isWorkshopItemCode, 'itemCode'),
-  itemClass: requireKnownWorkshopValue(item.itemClass, isWorkshopItemClass, 'itemClass'),
-  slot: requireKnownWorkshopValue(item.slot, isWorkshopItemSlot, 'slot'),
-  status: requireKnownWorkshopValue(item.status, isWorkshopItemStatus, 'status'),
-  equipped: item.equipped,
-  durability: item.durability,
-  maxDurability: item.maxDurability,
-});
-
-const canRepairCraftedItemRecord = (item: PlayerCraftedItem): boolean => {
-  if (item.itemClass !== 'UL' || item.durability >= item.maxDurability) {
-    return false;
-  }
-
-  if (item.status === 'BROKEN') {
-    return item.durability === 0;
-  }
-
-  return item.status === 'ACTIVE' && item.durability > 0;
-};
-
-const canEquipCraftedItemRecord = (item: PlayerCraftedItem): boolean => (
-  canEquipWorkshopItem(toWorkshopEquippedItem(item))
-);
 
 const spendRuneDust = async (
   client: TransactionClient,
@@ -554,8 +327,6 @@ interface CurrentRuneLoadoutState {
   readonly runeIds: readonly string[];
 }
 
-const parseCommandIntentResultSnapshot = <T>(value: string): T => JSON.parse(value) as T;
-
 interface DeletePlayerReceiptSnapshot {
   readonly vkId: number;
   readonly deletedPlayerId: number;
@@ -625,36 +396,6 @@ const mapBattlePersistence = (battle: PersistedBattleState) => ({
   rewardsSnapshot: battle.rewards ? stringifyJson(battle.rewards, 'null') : null,
 });
 
-const createPartyInviteCode = (): string => randomBytes(3).toString('hex').toUpperCase();
-
-const normalizePartyInviteCode = (inviteCode: string): string => (
-  inviteCode.trim().replace(/\s+/g, '').toUpperCase()
-);
-
-const normalizePartyRole = (role: string): PartyView['members'][number]['role'] => (
-  role === 'LEADER' ? 'LEADER' : 'MEMBER'
-);
-
-const formatPartyMemberName = (vkId: number): string => `Рунный мастер #${vkId}`;
-
-const mapPartyRecord = (party: PartyRecord): PartyView => ({
-  id: party.id,
-  inviteCode: party.inviteCode,
-  leaderPlayerId: party.leaderPlayerId,
-  status: party.status as PartyView['status'],
-  activeBattleId: party.activeBattleId,
-  maxMembers: party.maxMembers,
-  members: party.members.map((member) => ({
-    playerId: member.playerId,
-    vkId: member.player.user.vkId,
-    name: formatPartyMemberName(member.player.user.vkId),
-    role: normalizePartyRole(member.role),
-    joinedAt: member.joinedAt.toISOString(),
-  })),
-  createdAt: party.createdAt.toISOString(),
-  updatedAt: party.updatedAt.toISOString(),
-});
-
 const resolvePersistedEquippedSlot = (rune: Pick<RuneDraft, 'equippedSlot' | 'isEquipped'>): number | null => (
   typeof rune.equippedSlot === 'number' && Number.isInteger(rune.equippedSlot) && rune.equippedSlot >= 0
     ? rune.equippedSlot
@@ -687,7 +428,21 @@ const mapRuneDraftPersistence = (playerId: number, rune: RuneDraft, isEquipped =
 };
 
 export class PrismaGameRepository implements GameRepository {
-  public constructor(private readonly prisma: PrismaClient) {}
+  private readonly commandIntents: PrismaCommandIntentPersistence;
+  private readonly partyPersistence: PrismaPartyPersistence;
+  private readonly playerPersistence: PrismaPlayerPersistence;
+  private readonly workshopPersistence: PrismaWorkshopPersistence;
+
+  public constructor(private readonly prisma: PrismaClient) {
+    this.commandIntents = new PrismaCommandIntentPersistence(prisma);
+    this.playerPersistence = new PrismaPlayerPersistence(prisma);
+    this.partyPersistence = new PrismaPartyPersistence(prisma, {
+      requirePlayerRecord: (...args) => this.requirePlayerRecord(...args),
+    });
+    this.workshopPersistence = new PrismaWorkshopPersistence(prisma, {
+      runWithCommandIntent: (...args) => this.runWithCommandIntent(...args),
+    });
+  }
 
   private buildCurrentRuneLoadoutState(player: PlayerState): CurrentRuneLoadoutState {
     return {
@@ -726,57 +481,7 @@ export class PrismaGameRepository implements GameRepository {
     commandKey: CommandIntentKey,
     stateKey: string,
   ): Promise<TResult | null> {
-    const existing = await tx.commandIntentRecord.findUnique({
-      where: {
-        playerId_intentId: {
-          playerId,
-          intentId,
-        },
-      },
-    });
-
-    if (existing && (existing.commandKey !== commandKey || existing.stateKey !== stateKey)) {
-      throw new AppError('stale_command_intent', 'Этот след уже выцвел. Вернитесь к свежей развилке.');
-    }
-
-    if (existing?.status === 'APPLIED') {
-      return parseCommandIntentResultSnapshot<TResult>(existing.resultSnapshot);
-    }
-
-    try {
-      await tx.commandIntentRecord.create({
-        data: {
-          playerId,
-          intentId,
-          commandKey,
-          stateKey,
-        },
-      });
-      return null;
-    } catch (error) {
-      if (!(error instanceof Prisma.PrismaClientKnownRequestError) || error.code !== 'P2002') {
-        throw error;
-      }
-
-      const retried = await tx.commandIntentRecord.findUnique({
-        where: {
-          playerId_intentId: {
-            playerId,
-            intentId,
-          },
-        },
-      });
-
-      if (retried && (retried.commandKey !== commandKey || retried.stateKey !== stateKey)) {
-        throw new AppError('stale_command_intent', 'Этот след уже выцвел. Вернитесь к свежей развилке.');
-      }
-
-      if (retried?.status === 'APPLIED') {
-        return parseCommandIntentResultSnapshot<TResult>(retried.resultSnapshot);
-      }
-
-      throw new AppError('command_retry_pending', 'Прошлый жест ещё в пути. Дождитесь ответа.');
-    }
+    return this.commandIntents.reserve(tx, playerId, intentId, commandKey, stateKey);
   }
 
   private async finalizeCommandIntent<TResult>(
@@ -785,18 +490,7 @@ export class PrismaGameRepository implements GameRepository {
     intentId: string,
     result: TResult,
   ): Promise<void> {
-    await tx.commandIntentRecord.update({
-      where: {
-        playerId_intentId: {
-          playerId,
-          intentId,
-        },
-      },
-      data: {
-        status: 'APPLIED',
-        resultSnapshot: stringifyJson(result, '{}'),
-      },
-    });
+    await this.commandIntents.finalize(tx, playerId, intentId, result);
   }
 
   private async runWithCommandIntent<TResult>(
@@ -808,22 +502,15 @@ export class PrismaGameRepository implements GameRepository {
     currentStateKey: string | undefined,
     apply: () => Promise<TResult>,
   ): Promise<TResult> {
-    if (!intentId || !stateKey) {
-      return apply();
-    }
-
-    const existing = await this.reserveCommandIntent<TResult>(tx, playerId, intentId, commandKey, stateKey);
-    if (existing) {
-      return existing;
-    }
-
-    if (currentStateKey !== undefined && currentStateKey !== stateKey) {
-      throw new AppError('stale_command_intent', 'Этот след уже выцвел. Вернитесь к свежей развилке.');
-    }
-
-    const result = await apply();
-    await this.finalizeCommandIntent<TResult>(tx, playerId, intentId, result);
-    return result;
+    return this.commandIntents.run(
+      tx,
+      playerId,
+      commandKey,
+      intentId,
+      stateKey,
+      currentStateKey,
+      apply,
+    );
   }
 
   private async logStaleBattleMutation(
@@ -1081,40 +768,15 @@ export class PrismaGameRepository implements GameRepository {
   }
 
   public async findPlayerByVkId(vkId: number): Promise<PlayerState | null> {
-    const player = await this.prisma.player.findFirst({
-      where: {
-        user: {
-          vkId,
-        },
-      },
-      include: playerInclude,
-    });
-
-    return player ? mapPlayerRecord(player) : null;
+    return this.playerPersistence.findPlayerByVkId(vkId);
   }
 
   public async findPlayerById(playerId: number): Promise<PlayerState | null> {
-    const player = await this.prisma.player.findUnique({
-      where: { id: playerId },
-      include: playerInclude,
-    });
-
-    return player ? mapPlayerRecord(player) : null;
+    return this.playerPersistence.findPlayerById(playerId);
   }
 
   public async storeCommandIntentResult<TResult>(playerId: number, intentId: string, result: TResult): Promise<void> {
-    await this.prisma.commandIntentRecord.update({
-      where: {
-        playerId_intentId: {
-          playerId,
-          intentId,
-        },
-      },
-      data: {
-        status: 'APPLIED',
-        resultSnapshot: stringifyJson(result, '{}'),
-      },
-    });
+    await this.commandIntents.storeResult(playerId, intentId, result);
   }
 
   public async recordCommandIntentResult<TResult>(
@@ -1125,15 +787,14 @@ export class PrismaGameRepository implements GameRepository {
     currentStateKey: string | undefined,
     result: TResult,
   ): Promise<TResult> {
-    return this.prisma.$transaction((tx) => this.runWithCommandIntent(
-      tx,
+    return this.commandIntents.recordResult(
       playerId,
       commandKey,
       intentId,
       intentStateKey,
       currentStateKey,
-      async () => result,
-    ));
+      result,
+    );
   }
 
   public async recordInventoryDeltaResult<TResult>(
@@ -1930,89 +1591,7 @@ export class PrismaGameRepository implements GameRepository {
   }
 
   public async createPlayer(vkId: number): Promise<{ player: PlayerState; created: boolean; recoveredFromRace: boolean }> {
-    const existing = await this.findPlayerByVkId(vkId);
-    if (existing) {
-      return {
-        player: existing,
-        created: false,
-        recoveredFromRace: false,
-      };
-    }
-
-    let created;
-    try {
-      created = await this.prisma.user.create({
-        data: {
-          vkId,
-          player: {
-            create: {
-              level: env.game.startingLevel,
-              experience: 0,
-              gold: 0,
-              radiance: 0,
-              baseHealth: 8,
-              baseAttack: 4,
-              baseDefence: 3,
-              baseMagicDefence: 1,
-              baseDexterity: 3,
-              baseIntelligence: 1,
-              progress: {
-                create: {
-                  locationLevel: gameBalance.world.introLocationLevel,
-                  currentRuneIndex: 0,
-                  unlockedRuneSlotCount: DEFAULT_UNLOCKED_RUNE_SLOT_COUNT,
-                  activeBattleId: null,
-                  currentHealth: 8,
-                  currentMana: 4,
-                  tutorialState: 'ACTIVE',
-                  victories: 0,
-                  victoryStreak: 0,
-                  defeats: 0,
-                  defeatStreak: 0,
-                  mobsKilled: 0,
-                  highestLocationLevel: gameBalance.world.introLocationLevel,
-                },
-              },
-              inventory: {
-                create: {
-                  ...gameBalance.starterInventory,
-                },
-              },
-            },
-          },
-        },
-        include: {
-          player: {
-            include: playerInclude,
-          },
-        },
-      });
-    } catch (error) {
-      if (!(error instanceof Prisma.PrismaClientKnownRequestError) || error.code !== 'P2002') {
-        throw error;
-      }
-
-      const racedPlayer = await this.findPlayerByVkId(vkId);
-      if (!racedPlayer) {
-        throw new AppError('player_create_failed', 'Не удалось создать игрока.');
-      }
-
-      return {
-        player: racedPlayer,
-        created: false,
-        recoveredFromRace: true,
-      };
-    }
-
-    if (!created.player) {
-      throw new AppError('player_create_failed', 'Не удалось создать игрока.');
-    }
-
-    return {
-      player: mapPlayerRecord(created.player),
-      created: true,
-      recoveredFromRace: false,
-    };
+    return this.playerPersistence.createPlayer(vkId);
   }
 
   public async getCommandIntentResult<TResult = PlayerState>(
@@ -2021,37 +1600,12 @@ export class PrismaGameRepository implements GameRepository {
     expectedCommandKeys?: readonly string[],
     expectedStateKey?: string,
   ): Promise<{ status: 'APPLIED' | 'PENDING'; result?: TResult } | null> {
-    const existing = await this.prisma.commandIntentRecord.findUnique({
-      where: {
-        playerId_intentId: {
-          playerId,
-          intentId,
-        },
-      },
-    });
-
-    if (!existing) {
-      return null;
-    }
-
-    if (expectedCommandKeys && !expectedCommandKeys.includes(existing.commandKey)) {
-      throw new AppError('stale_command_intent', 'Этот след уже выцвел. Вернитесь к свежей развилке.');
-    }
-
-    if (expectedStateKey !== undefined && existing.stateKey !== expectedStateKey) {
-      throw new AppError('stale_command_intent', 'Этот след уже выцвел. Вернитесь к свежей развилке.');
-    }
-
-    if (existing.status === 'APPLIED') {
-      return {
-        status: 'APPLIED',
-        result: parseCommandIntentResultSnapshot<TResult>(existing.resultSnapshot),
-      };
-    }
-
-    return {
-      status: 'PENDING',
-    };
+    return this.commandIntents.getResult<TResult>(
+      playerId,
+      intentId,
+      expectedCommandKeys,
+      expectedStateKey,
+    );
   }
 
   public async saveExplorationState(
@@ -2503,24 +2057,11 @@ export class PrismaGameRepository implements GameRepository {
   }
 
   public async listPlayerBlueprints(playerId: number): Promise<readonly PlayerBlueprintView[]> {
-    const blueprints = await this.prisma.playerBlueprint.findMany({
-      where: { playerId },
-      orderBy: { blueprintCode: 'asc' },
-    });
-
-    return blueprints.map(mapPlayerBlueprintRecord);
+    return this.workshopPersistence.listPlayerBlueprints(playerId);
   }
 
   public async listPlayerCraftedItems(playerId: number): Promise<readonly PlayerCraftedItemView[]> {
-    const items = await this.prisma.playerCraftedItem.findMany({
-      where: { playerId },
-      orderBy: [
-        { createdAt: 'asc' },
-        { id: 'asc' },
-      ],
-    });
-
-    return items.map(mapPlayerCraftedItemRecord);
+    return this.workshopPersistence.listPlayerCraftedItems(playerId);
   }
 
   public async grantPlayerBlueprint(
@@ -2529,42 +2070,7 @@ export class PrismaGameRepository implements GameRepository {
     quantity: number,
     options?: WorkshopMutationOptions,
   ): Promise<PlayerBlueprintView> {
-    return this.prisma.$transaction((tx) => this.runWithCommandIntent(
-      tx,
-      playerId,
-      'GRANT_WORKSHOP_BLUEPRINT',
-      options?.intentId,
-      options?.intentStateKey,
-      options?.currentStateKey,
-      async () => {
-        requireWorkshopBlueprintDefinition(blueprintCode);
-        assertPositiveBlueprintQuantity(quantity);
-
-        const blueprint = await tx.playerBlueprint.upsert({
-          where: {
-            playerId_blueprintCode: {
-              playerId,
-              blueprintCode,
-            },
-          },
-          update: {
-            quantity: { increment: quantity },
-          },
-          create: {
-            playerId,
-            blueprintCode,
-            quantity,
-          },
-        });
-
-        await tx.player.update({
-          where: { id: playerId },
-          data: { updatedAt: new Date() },
-        });
-
-        return mapPlayerBlueprintRecord(blueprint);
-      },
-    ));
+    return this.workshopPersistence.grantPlayerBlueprint(playerId, blueprintCode, quantity, options);
   }
 
   public async craftWorkshopItem(
@@ -2572,51 +2078,7 @@ export class PrismaGameRepository implements GameRepository {
     blueprintCode: WorkshopBlueprintCode,
     options?: WorkshopMutationOptions,
   ): Promise<PlayerCraftedItemView> {
-    return this.prisma.$transaction((tx) => this.runWithCommandIntent(
-      tx,
-      playerId,
-      'CRAFT_WORKSHOP_ITEM',
-      options?.intentId,
-      options?.intentStateKey,
-      options?.currentStateKey,
-      async () => {
-        const blueprint = requireWorkshopCraftBlueprint(blueprintCode);
-
-        await spendWorkshopBlueprint(
-          tx,
-          playerId,
-          blueprint.code,
-          'Чертеж для этого предмета уже потрачен.',
-        );
-        await spendWorkshopInventoryCost(
-          tx,
-          playerId,
-          blueprint.cost,
-          'not_enough_workshop_resources',
-          'Материалов для предмета уже не хватает.',
-        );
-
-        const item = await tx.playerCraftedItem.create({
-          data: {
-            playerId,
-            itemCode: blueprint.resultItemCode,
-            itemClass: blueprint.itemClass,
-            slot: blueprint.slot,
-            status: 'ACTIVE',
-            equipped: false,
-            durability: blueprint.maxDurability,
-            maxDurability: blueprint.maxDurability,
-          },
-        });
-
-        await tx.player.update({
-          where: { id: playerId },
-          data: { updatedAt: new Date() },
-        });
-
-        return mapPlayerCraftedItemRecord(item);
-      },
-    ));
+    return this.workshopPersistence.craftWorkshopItem(playerId, blueprintCode, options);
   }
 
   public async repairWorkshopItem(
@@ -2625,84 +2087,7 @@ export class PrismaGameRepository implements GameRepository {
     repairBlueprintCode: WorkshopBlueprintCode,
     options?: WorkshopMutationOptions,
   ): Promise<PlayerCraftedItemView> {
-    return this.prisma.$transaction((tx) => this.runWithCommandIntent(
-      tx,
-      playerId,
-      'REPAIR_WORKSHOP_ITEM',
-      options?.intentId,
-      options?.intentStateKey,
-      options?.currentStateKey,
-      async () => {
-        const repairBlueprint = requireWorkshopRepairBlueprint(repairBlueprintCode);
-
-        const item = await tx.playerCraftedItem.findFirst({
-          where: {
-            id: itemId,
-            playerId,
-          },
-        });
-
-        if (!item) {
-          throw new AppError('workshop_item_not_found', 'Предмет мастерской уже не найден.');
-        }
-
-        if (!canRepairCraftedItemRecord(item)) {
-          throw new AppError('workshop_item_not_repairable', 'Этот предмет нельзя отремонтировать.');
-        }
-
-        await spendWorkshopBlueprint(
-          tx,
-          playerId,
-          repairBlueprint.code,
-          'Ремонтный чертеж уже потрачен.',
-        );
-        await spendWorkshopInventoryCost(
-          tx,
-          playerId,
-          repairBlueprint.cost,
-          'not_enough_workshop_repair_resources',
-          'Материалов для ремонта уже не хватает.',
-        );
-
-        const repaired = await tx.playerCraftedItem.updateMany({
-          where: {
-            id: itemId,
-            playerId,
-            itemClass: 'UL',
-            status: { in: ['ACTIVE', 'BROKEN'] },
-            durability: {
-              lt: item.maxDurability,
-            },
-          },
-          data: {
-            status: 'ACTIVE',
-            durability: item.maxDurability,
-          },
-        });
-
-        if (repaired.count === 0) {
-          throw new AppError('workshop_item_not_repairable', 'Этот предмет уже нельзя отремонтировать.');
-        }
-
-        const repairedItem = await tx.playerCraftedItem.findFirst({
-          where: {
-            id: itemId,
-            playerId,
-          },
-        });
-
-        if (!repairedItem) {
-          throw new AppError('workshop_item_not_found', 'Предмет мастерской уже не найден.');
-        }
-
-        await tx.player.update({
-          where: { id: playerId },
-          data: { updatedAt: new Date() },
-        });
-
-        return mapPlayerCraftedItemRecord(repairedItem);
-      },
-    ));
+    return this.workshopPersistence.repairWorkshopItem(playerId, itemId, repairBlueprintCode, options);
   }
 
   public async equipWorkshopItem(
@@ -2710,67 +2095,7 @@ export class PrismaGameRepository implements GameRepository {
     itemId: string,
     options?: WorkshopMutationOptions,
   ): Promise<PlayerCraftedItemView> {
-    return this.prisma.$transaction((tx) => this.runWithCommandIntent(
-      tx,
-      playerId,
-      'EQUIP_WORKSHOP_ITEM',
-      options?.intentId,
-      options?.intentStateKey,
-      options?.currentStateKey,
-      async () => {
-        const item = await tx.playerCraftedItem.findFirst({
-          where: {
-            id: itemId,
-            playerId,
-          },
-        });
-
-        if (!item || !canEquipCraftedItemRecord(item)) {
-          throw new AppError('workshop_item_not_equippable', 'Этот предмет нельзя экипировать.');
-        }
-
-        await tx.playerCraftedItem.updateMany({
-          where: {
-            playerId,
-            slot: item.slot,
-            equipped: true,
-          },
-          data: { equipped: false },
-        });
-
-        const equipped = await tx.playerCraftedItem.updateMany({
-          where: {
-            id: itemId,
-            playerId,
-            status: 'ACTIVE',
-            durability: { gt: 0 },
-          },
-          data: { equipped: true },
-        });
-
-        if (equipped.count === 0) {
-          throw new AppError('workshop_item_not_equippable', 'Этот предмет уже нельзя экипировать.');
-        }
-
-        const updatedItem = await tx.playerCraftedItem.findFirst({
-          where: {
-            id: itemId,
-            playerId,
-          },
-        });
-
-        if (!updatedItem) {
-          throw new AppError('workshop_item_not_found', 'Предмет мастерской уже не найден.');
-        }
-
-        await tx.player.update({
-          where: { id: playerId },
-          data: { updatedAt: new Date() },
-        });
-
-        return mapPlayerCraftedItemRecord(updatedItem);
-      },
-    ));
+    return this.workshopPersistence.equipWorkshopItem(playerId, itemId, options);
   }
 
   public async unequipWorkshopItem(
@@ -2778,56 +2103,7 @@ export class PrismaGameRepository implements GameRepository {
     itemId: string,
     options?: WorkshopMutationOptions,
   ): Promise<PlayerCraftedItemView> {
-    return this.prisma.$transaction((tx) => this.runWithCommandIntent(
-      tx,
-      playerId,
-      'UNEQUIP_WORKSHOP_ITEM',
-      options?.intentId,
-      options?.intentStateKey,
-      options?.currentStateKey,
-      async () => {
-        const item = await tx.playerCraftedItem.findFirst({
-          where: {
-            id: itemId,
-            playerId,
-          },
-        });
-
-        if (!item) {
-          throw new AppError('workshop_item_not_found', 'Предмет мастерской уже не найден.');
-        }
-
-        const unequipped = await tx.playerCraftedItem.updateMany({
-          where: {
-            id: itemId,
-            playerId,
-          },
-          data: { equipped: false },
-        });
-
-        if (unequipped.count === 0) {
-          throw new AppError('workshop_item_not_found', 'Предмет мастерской уже не найден.');
-        }
-
-        const updatedItem = await tx.playerCraftedItem.findFirst({
-          where: {
-            id: itemId,
-            playerId,
-          },
-        });
-
-        if (!updatedItem) {
-          throw new AppError('workshop_item_not_found', 'Предмет мастерской уже не найден.');
-        }
-
-        await tx.player.update({
-          where: { id: playerId },
-          data: { updatedAt: new Date() },
-        });
-
-        return mapPlayerCraftedItemRecord(updatedItem);
-      },
-    ));
+    return this.workshopPersistence.unequipWorkshopItem(playerId, itemId, options);
   }
 
   public async adjustInventory(playerId: number, delta: InventoryDelta): Promise<PlayerState> {
@@ -2933,209 +2209,29 @@ export class PrismaGameRepository implements GameRepository {
     playerId: number,
     battle: BattleView,
   ): Promise<void> {
-    const itemIds = [...new Set((battle.player.workshopLoadout ?? []).map((item) => item.id))];
-    if (itemIds.length === 0) {
-      return;
-    }
-
-    const items = await client.playerCraftedItem.findMany({
-      where: {
-        playerId,
-        id: { in: itemIds },
-        status: 'ACTIVE',
-        durability: { gt: 0 },
-      },
-    });
-
-    for (const item of items) {
-      const decayed = resolveWorkshopItemDecay(toWorkshopEquippedItem(item));
-
-      await client.playerCraftedItem.updateMany({
-        where: {
-          id: item.id,
-          playerId,
-          status: 'ACTIVE',
-          durability: { gt: 0 },
-        },
-        data: {
-          status: decayed.status,
-          equipped: decayed.equipped,
-          durability: decayed.durability,
-        },
-      });
-    }
+    await this.workshopPersistence.decayLoadout(client, playerId, battle);
   }
 
-  private async findActivePartyRecord(
-    client: TransactionClient | PrismaClient,
-    playerId: number,
-  ): Promise<PartyRecord | null> {
-    return client.playerParty.findFirst({
-      where: {
-        status: { in: [...activePartyStatuses] },
-        members: {
-          some: { playerId },
-        },
-      },
-      include: partyInclude,
-      orderBy: { createdAt: 'desc' },
-    });
-  }
+
 
   public async getActiveParty(playerId: number): Promise<PartyView | null> {
-    const party = await this.findActivePartyRecord(this.prisma, playerId);
-    return party ? mapPartyRecord(party) : null;
+    return this.partyPersistence.getActiveParty(playerId);
   }
 
   public async createParty(playerId: number): Promise<PartyView> {
-    return this.prisma.$transaction(async (tx) => {
-      const existingParty = await this.findActivePartyRecord(tx, playerId);
-      if (existingParty) {
-        return mapPartyRecord(existingParty);
-      }
-
-      const player = await this.requirePlayerRecord(tx, playerId);
-      if (player.progress?.activeBattleId) {
-        throw new AppError('party_player_busy', 'Сначала завершите текущий бой, затем собирайте отряд.');
-      }
-
-      for (let attempt = 0; attempt < 5; attempt += 1) {
-        try {
-          const party = await tx.playerParty.create({
-            data: {
-              inviteCode: createPartyInviteCode(),
-              leaderPlayerId: playerId,
-              maxMembers: 2,
-              members: {
-                create: {
-                  playerId,
-                  role: 'LEADER',
-                },
-              },
-            },
-            include: partyInclude,
-          });
-
-          return mapPartyRecord(party);
-        } catch (error) {
-          if (!isPrismaUniqueConstraintError(error)) {
-            throw error;
-          }
-        }
-      }
-
-      throw new AppError('party_invite_code_collision', 'Не удалось создать код отряда. Попробуйте ещё раз.');
-    });
+    return this.partyPersistence.createParty(playerId);
   }
 
   public async joinPartyByInviteCode(playerId: number, inviteCode: string): Promise<PartyView> {
-    const normalizedInviteCode = normalizePartyInviteCode(inviteCode);
-    if (!normalizedInviteCode) {
-      throw new AppError('party_invite_code_invalid', 'Введите код отряда после команды.');
-    }
-
-    return this.prisma.$transaction(async (tx) => {
-      const party = await tx.playerParty.findFirst({
-        where: {
-          inviteCode: normalizedInviteCode,
-          status: 'OPEN',
-        },
-        include: partyInclude,
-      });
-
-      if (!party) {
-        throw new AppError('party_not_found', 'Отряд с таким кодом не найден или уже ушёл в бой.');
-      }
-
-      if (party.members.some((member) => member.playerId === playerId)) {
-        return mapPartyRecord(party);
-      }
-
-      const existingParty = await this.findActivePartyRecord(tx, playerId);
-      if (existingParty) {
-        throw new AppError('party_already_joined', 'Вы уже состоите в активном отряде.');
-      }
-
-      const player = await this.requirePlayerRecord(tx, playerId);
-      if (player.progress?.activeBattleId) {
-        throw new AppError('party_player_busy', 'Сначала завершите текущий бой, затем входите в отряд.');
-      }
-
-      if (party.members.length >= party.maxMembers) {
-        throw new AppError('party_full', 'В этом отряде уже два мастера.');
-      }
-
-      await tx.playerPartyMember.create({
-        data: {
-          partyId: party.id,
-          playerId,
-          role: 'MEMBER',
-        },
-      });
-
-      const updatedParty = await tx.playerParty.findUnique({
-        where: { id: party.id },
-        include: partyInclude,
-      });
-
-      if (!updatedParty) {
-        throw new AppError('party_not_found', 'Отряд уже рассеялся.');
-      }
-
-      return mapPartyRecord(updatedParty);
-    });
+    return this.partyPersistence.joinPartyByInviteCode(playerId, inviteCode);
   }
 
   public async leaveParty(playerId: number): Promise<void> {
-    await this.prisma.$transaction(async (tx) => {
-      const party = await this.findActivePartyRecord(tx, playerId);
-      if (!party) {
-        throw new AppError('party_not_found', 'Сейчас вы не состоите в активном отряде.');
-      }
-
-      if (party.leaderPlayerId === playerId) {
-        throw new AppError('party_disband_required', 'Лидер может только распустить отряд целиком.');
-      }
-
-      if (party.activeBattleId !== null || party.status === 'IN_BATTLE') {
-        throw new AppError('party_battle_active', 'Нельзя выйти из отряда посреди общего боя.');
-      }
-
-      await tx.playerPartyMember.deleteMany({
-        where: {
-          partyId: party.id,
-          playerId,
-        },
-      });
-    });
+    await this.partyPersistence.leaveParty(playerId);
   }
 
   public async disbandParty(playerId: number): Promise<void> {
-    await this.prisma.$transaction(async (tx) => {
-      const party = await this.findActivePartyRecord(tx, playerId);
-      if (!party) {
-        throw new AppError('party_not_found', 'Сейчас у вас нет активного отряда.');
-      }
-
-      if (party.leaderPlayerId !== playerId) {
-        throw new AppError('party_leader_required', 'Только лидер может распустить отряд.');
-      }
-
-      if (party.activeBattleId !== null || party.status === 'IN_BATTLE') {
-        throw new AppError('party_battle_active', 'Нельзя распустить отряд посреди общего боя.');
-      }
-
-      await tx.playerParty.updateMany({
-        where: {
-          id: party.id,
-          leaderPlayerId: playerId,
-        },
-        data: {
-          status: 'COMPLETED',
-          activeBattleId: null,
-        },
-      });
-    });
+    await this.partyPersistence.disbandParty(playerId);
   }
 
   public async startPartyBattle(
@@ -4113,29 +3209,11 @@ export class PrismaGameRepository implements GameRepository {
   }
 
   private async requirePlayer(playerId: number): Promise<PlayerState> {
-    const player = await this.prisma.player.findUnique({
-      where: { id: playerId },
-      include: playerInclude,
-    });
-
-    if (!player) {
-      throw new AppError('player_not_found', 'Игрок не найден.');
-    }
-
-    return mapPlayerRecord(player);
+    return this.playerPersistence.requirePlayer(playerId);
   }
 
   private async requirePlayerRecord(client: TransactionClient | PrismaClient, playerId: number): Promise<PlayerRecord> {
-    const player = await client.player.findUnique({
-      where: { id: playerId },
-      include: playerInclude,
-    });
-
-    if (!player) {
-      throw new AppError('player_not_found', 'Игрок не найден.');
-    }
-
-    return player;
+    return this.playerPersistence.requirePlayerRecord(client, playerId);
   }
 
   private async findPendingRewardSource(ledger: PendingRewardLedgerEntryV1): Promise<PendingRewardSourceView | null> {
