@@ -114,9 +114,16 @@ const formatTacticalProfile = (enemy: BestiaryEnemyView): string => {
     return '⚠️ след ещё не изучен';
   }
 
+  const analysisLine = enemy.victoryCount >= 5
+    ? '🔎 анализ: точный разбор простых замыслов'
+    : enemy.victoryCount > 0
+      ? '🔎 анализ: легче читать замахи в бою'
+      : '🔎 анализ откроется через победы и трофеи';
+
   return [
     `⚠️ ${enemy.tacticalProfile.habitLine}`,
     `✅ ${enemy.tacticalProfile.answerLine}`,
+    analysisLine,
   ].join('\n   ');
 };
 

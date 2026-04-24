@@ -686,6 +686,7 @@ describe('BattleEngine', () => {
           ...createBattle().player.runeLoadout!,
           archetypeCode: 'echo',
           archetypeName: 'Провидец',
+          schoolCode: 'echo',
           passiveAbilityCodes: ['echo_mind'],
           activeAbility: null,
         },
@@ -835,6 +836,7 @@ describe('BattleEngine', () => {
           ...createBattle().player.runeLoadout!,
           archetypeCode: 'echo',
           archetypeName: 'Провидец',
+          schoolCode: 'echo',
           passiveAbilityCodes: ['echo_mind'],
           activeAbility: null,
         },
@@ -904,7 +906,7 @@ describe('BattleEngine', () => {
 
     expect(resolved.turnOwner).toBe('PLAYER');
     expect(resolved.enemy.intent?.code).toBe('HEAVY_STRIKE');
-    expect(resolved.log.some((entry) => entry.includes('готовит'))).toBe(true);
+    expect(resolved.log.some((entry) => entry.includes('силовой удар'))).toBe(true);
   });
 
   it('телеграфирует тяжёлый удар раньше, чтобы выбор появился до почти мёртвого врага', () => {
@@ -991,7 +993,7 @@ describe('BattleEngine', () => {
 
     expect(resolved.turnOwner).toBe('PLAYER');
     expect(resolved.enemy.intent?.code).toBe('GUARD_BREAK');
-    expect(resolved.log.some((entry) => entry.includes('сработает хуже'))).toBe(true);
+    expect(resolved.log.some((entry) => entry.includes('приём против стойки'))).toBe(true);
   });
 
   it('телеграфирует пробивающий удар раньше, чтобы защита не была автопилотом', () => {

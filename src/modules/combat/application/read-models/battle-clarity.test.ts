@@ -73,6 +73,36 @@ const createBattle = (overrides: Partial<BattleView> = {}): BattleView => ({
   ...overrides,
 });
 
+const createIntent = (code: 'HEAVY_STRIKE' | 'GUARD_BREAK') => (
+  code === 'HEAVY_STRIKE'
+    ? {
+        code,
+        title: 'Тяжёлый удар',
+        description: 'Следующий удар будет сильнее.',
+        bonusAttack: 2,
+      } as const
+    : {
+        code,
+        title: 'Пробивающий удар',
+        description: 'Следующий удар разобьёт защиту.',
+        bonusAttack: 1,
+        shattersGuard: true,
+      } as const
+);
+
+const createReadableEnemy = (code: 'HEAVY_STRIKE' | 'GUARD_BREAK'): BattleView['enemy'] => ({
+  ...createBattle().enemy,
+  isElite: false,
+  magicDefence: 0,
+  intelligence: 1,
+  knowledge: {
+    isDiscovered: true,
+    hasTrophyStudy: true,
+    victoryCount: 1,
+  },
+  intent: createIntent(code),
+});
+
 describe('buildBattleClarityView', () => {
   it('builds a compact state line with guard and enemy risk', () => {
     const clarity = buildBattleClarityView(createBattle({
@@ -80,15 +110,7 @@ describe('buildBattleClarityView', () => {
         ...createBattle().player,
         guardPoints: 3,
       },
-      enemy: {
-        ...createBattle().enemy,
-        intent: {
-          code: 'HEAVY_STRIKE',
-          title: 'Тяжёлый удар',
-          description: 'Следующий удар будет сильнее.',
-          bonusAttack: 2,
-        },
-      },
+      enemy: createReadableEnemy('HEAVY_STRIKE'),
     }));
 
     expect(clarity.stateLine).toContain('щит 3');
@@ -96,18 +118,22 @@ describe('buildBattleClarityView', () => {
     expect(clarity.choiceLine).toContain('тяжёлый удар лучше встретить защитой');
   });
 
-  it('shows a rune window when a ready active rune can answer revealed intent', () => {
+  it('keeps a high-mental enemy intent vague without divination or study', () => {
     const clarity = buildBattleClarityView(createBattle({
       enemy: {
         ...createBattle().enemy,
-        intent: {
-          code: 'GUARD_BREAK',
-          title: 'Пробивающий удар',
-          description: 'Следующий удар разобьёт защиту.',
-          bonusAttack: 1,
-          shattersGuard: true,
-        },
+        intent: createIntent('HEAVY_STRIKE'),
       },
+    }));
+
+    expect(clarity.stateLine).toContain('замысел врага не прочитан');
+    expect(clarity.choiceLine).toContain('опасный замысел');
+    expect(clarity.choiceLine).not.toContain('тяжёлый удар');
+  });
+
+  it('shows a rune window when a ready active rune can answer revealed intent', () => {
+    const clarity = buildBattleClarityView(createBattle({
+      enemy: createReadableEnemy('GUARD_BREAK'),
     }));
 
     expect(clarity.choiceLine).toContain('атакой или готовой руной');
@@ -116,16 +142,7 @@ describe('buildBattleClarityView', () => {
 
   it('builds an ember-specific pressure hint against guard-break', () => {
     const clarity = buildBattleClarityView(createBattle({
-      enemy: {
-        ...createBattle().enemy,
-        intent: {
-          code: 'GUARD_BREAK',
-          title: 'Пробивающий удар',
-          description: 'Следующий удар разобьёт защиту.',
-          bonusAttack: 1,
-          shattersGuard: true,
-        },
-      },
+      enemy: createReadableEnemy('GUARD_BREAK'),
     }));
 
     expect(clarity.schoolHintLine).toContain('окно давления');
@@ -152,15 +169,7 @@ describe('buildBattleClarityView', () => {
           },
         },
       },
-      enemy: {
-        ...createBattle().enemy,
-        intent: {
-          code: 'HEAVY_STRIKE',
-          title: 'Тяжёлый удар',
-          description: 'Следующий удар будет сильнее.',
-          bonusAttack: 2,
-        },
-      },
+      enemy: createReadableEnemy('HEAVY_STRIKE'),
     }));
 
     expect(clarity.schoolHintLine).toContain('Твердь');
@@ -233,15 +242,7 @@ describe('buildBattleClarityView', () => {
           },
         },
       },
-      enemy: {
-        ...createBattle().enemy,
-        intent: {
-          code: 'HEAVY_STRIKE',
-          title: 'Тяжёлый удар',
-          description: 'Следующий удар будет сильнее.',
-          bonusAttack: 2,
-        },
-      },
+      enemy: createReadableEnemy('HEAVY_STRIKE'),
     }));
 
     expect(clarity.schoolHintLine).toContain('окно темпа');
@@ -258,23 +259,18 @@ describe('buildBattleClarityView', () => {
           archetypeCode: 'echo',
           archetypeName: 'Провидец',
           schoolCode: 'echo',
+          schoolMasteryRank: 1,
           passiveAbilityCodes: ['echo_mind'],
           activeAbility: null,
         },
       },
       enemy: {
         ...createBattle().enemy,
-        intent: {
-          code: 'GUARD_BREAK',
-          title: 'Guard-break',
-          description: 'Следующий удар хуже проходит через защиту.',
-          bonusAttack: 1,
-          shattersGuard: true,
-        },
+        intent: createIntent('GUARD_BREAK'),
       },
     }));
 
-    expect(clarity.schoolHintLine).toContain('Guard-break');
+    expect(clarity.schoolHintLine).toContain('Пробивающий удар');
     expect(clarity.schoolHintLine).toContain('прочитан');
   });
 });

@@ -137,6 +137,13 @@ const isBattleEnemyIntentSnapshot = (value: unknown): value is NonNullable<Battl
   && (value.shattersGuard === undefined || typeof value.shattersGuard === 'boolean')
 );
 
+const isBattleEnemyKnowledgeSnapshot = (value: unknown): value is NonNullable<BattleEnemySnapshot['knowledge']> => (
+  isJsonRecord(value)
+  && typeof value.isDiscovered === 'boolean'
+  && typeof value.hasTrophyStudy === 'boolean'
+  && isNumber(value.victoryCount)
+);
+
 const isBattleEnemySnapshot = (value: unknown): value is BattleEnemySnapshot => (
   isJsonRecord(value)
   && isString(value.code)
@@ -159,6 +166,7 @@ const isBattleEnemySnapshot = (value: unknown): value is BattleEnemySnapshot => 
   && (value.lootTable === undefined || isInventoryLoot(value.lootTable))
   && isString(value.attackText)
   && (value.intent === undefined || value.intent === null || isBattleEnemyIntentSnapshot(value.intent))
+  && (value.knowledge === undefined || isBattleEnemyKnowledgeSnapshot(value.knowledge))
   && (value.hasUsedSignatureMove === undefined || typeof value.hasUsedSignatureMove === 'boolean')
 );
 

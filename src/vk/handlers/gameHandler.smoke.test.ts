@@ -2388,8 +2388,8 @@ describe('GameHandler smoke', () => {
 
     await handler.handle(ctx as never);
 
-    expect(getReplyCalls(ctx)[0]?.message).toContain('Враг выдаёт замысел');
-    expect(getReplyCalls(ctx)[0]?.message).toContain('Тяжёлый удар');
+    expect(getReplyCalls(ctx)[0]?.message).toContain('👁️ Чтение: силовой удар');
+    expect(getReplyCalls(ctx)[0]?.message).toContain('тяжёлый удар лучше встретить защитой');
   });
 
   it('показывает телеграф пробивающего удара врага', async () => {
@@ -2414,8 +2414,8 @@ describe('GameHandler smoke', () => {
 
     await handler.handle(ctx as never);
 
-    expect(getReplyCalls(ctx)[0]?.message).toContain('Кислотный прорыв');
-    expect(getReplyCalls(ctx)[0]?.message).toContain('тратить ход на защиту');
+    expect(getReplyCalls(ctx)[0]?.message).toContain('👁️ Чтение: приём против стойки');
+    expect(getReplyCalls(ctx)[0]?.message).toContain('чистая защита рискованна');
   });
 
   it('проходит сценарий рун и алтаря без прямой правки transport-описаний', async () => {

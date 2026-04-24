@@ -1,5 +1,9 @@
 import { gameContent } from '../../content/game-content';
 import { buildBattleClarityView } from '../../modules/combat/application/read-models/battle-clarity';
+import {
+  type EnemyIntentReading,
+  isEnemyIntentReadable,
+} from '../../modules/combat/domain/enemy-intent-reading';
 import { buildBattleRuneActionReadinessView } from '../../modules/combat/application/read-models/battle-rune-action-readiness';
 import { isBattleEncounterOffered } from '../../modules/combat/domain/battle-encounter';
 import { listBattleRuneLoadouts } from '../../modules/combat/domain/battle-rune-loadouts';
@@ -217,13 +221,23 @@ const renderBattleRuneState = (battle: BattleView): string => {
   }).join('\n');
 };
 
-const renderBattleEnemyIntent = (battle: BattleView): string | null => {
-  const intent = battle.enemy.intent;
+const renderBattleEnemyIntent = (reading: EnemyIntentReading): string | null => {
+  const intent = reading.intent;
   if (!intent) {
     return null;
   }
 
-  return `⚠️ Враг выдаёт замысел: ${intent.title}. ${intent.description}`;
+  if (reading.precision === 'exact') {
+    const sourceLabel = reading.source === 'divination' ? '🔮 Прорицание' : '🧪 Анализ';
+    return `${sourceLabel}: ${intent.title}. ${intent.description}`;
+  }
+
+  if (isEnemyIntentReadable(reading)) {
+    const patternLabel = intent.code === 'HEAVY_STRIKE' ? 'силовой удар' : 'приём против стойки';
+    return `👁️ Чтение: ${patternLabel}. Точный жест скрыт.`;
+  }
+
+  return '👁️ Чтение: опасный замысел. Точный ход не прочитан.';
 };
 
 const renderBattleRuneActionLabel = (
@@ -235,10 +249,11 @@ const renderBattleRuneActionLabel = (
   return `🌀 ${slot + 1}: ${activeAbility.name}${readiness.buttonSuffix}`;
 };
 
-const renderBattleActionState = (battle: BattleView): string => {
+const renderBattleActionState = (battle: BattleView, reading: EnemyIntentReading): string => {
+  const readableIntent = isEnemyIntentReadable(reading) ? reading.intent : null;
   const defendGain = [
     resolveDefendGuardGain(battle.player),
-    resolveIntentDefendGuardBonus(battle.enemy.intent),
+    resolveIntentDefendGuardBonus(readableIntent),
     resolveStoneGuardGainBonus(battle),
     resolveStoneHoldIntentGuardBonus(battle),
     resolveStoneSealGuardBonus(battle),
@@ -442,7 +457,7 @@ export const renderBattle = (
 ): string => {
   const battleLogLines = selectBattleLogLines(battle.log);
   const clarity = buildBattleClarityView(battle);
-  const enemyIntentLine = renderBattleEnemyIntent(battle);
+  const enemyIntentLine = renderBattleEnemyIntent(clarity.enemyIntentReading);
   const isEncounterOffered = battle.status === 'ACTIVE' && isBattleEncounterOffered(battle);
   const battleStateLine = resolveBattleStateLine(battle, isEncounterOffered);
   const partyOverviewLines = renderPartyBattleOverview(battle, viewerPlayerId);
@@ -482,7 +497,7 @@ export const renderBattle = (
           ...(partyWaitLine ? [partyWaitLine] : []),
           ...(isViewerTurn ? renderHintBlock([clarity.choiceLine, clarity.schoolHintLine]) : []),
           ...(isViewerTurn ? [renderBattleRuneState(battle)] : []),
-          ...(isViewerTurn && battle.turnOwner === 'PLAYER' ? [renderBattleActionState(battle)] : []),
+          ...(isViewerTurn && battle.turnOwner === 'PLAYER' ? [renderBattleActionState(battle, clarity.enemyIntentReading)] : []),
           '',
         ]
       : []),

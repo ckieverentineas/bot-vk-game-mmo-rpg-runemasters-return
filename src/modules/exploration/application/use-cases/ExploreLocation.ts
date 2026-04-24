@@ -32,6 +32,7 @@ import {
   resolveExplorationOutcome,
   resolveExplorationSchoolCode,
 } from '../../domain/exploration-outcome';
+import { attachEnemyKnowledgeSnapshot } from '../../../world/domain/enemy-knowledge';
 import { Logger } from '../../../../utils/logger';
 
 import { buildExploreLocationIntentStateKey } from '../command-intent-state';
@@ -303,9 +304,10 @@ export class ExploreLocation {
       workshopItems,
       { applyWorkshopStatBonus: false },
     );
+    const enemy = await this.attachEnemyKnowledge(currentPlayer.playerId, outcome.enemy);
     const shouldOfferEncounterChoice = outcome.locationLevel > 0 && currentPlayer.tutorialState !== 'ACTIVE';
     const encounter = shouldOfferEncounterChoice
-      ? createBattleEncounter(playerSnapshot, outcome.enemy, outcome.turnOwner, outcome.encounterVariant)
+      ? createBattleEncounter(playerSnapshot, enemy, outcome.turnOwner, outcome.encounterVariant)
       : null;
     const battle = await this.repository.createBattle(currentPlayer.playerId, {
       status: 'ACTIVE',
@@ -316,7 +318,7 @@ export class ExploreLocation {
       enemyCode: outcome.template.code,
       turnOwner: encounter ? 'PLAYER' : outcome.turnOwner,
       player: playerSnapshot,
-      enemy: outcome.enemy,
+      enemy,
       encounter,
       log: outcome.openingLog,
       result: null,
@@ -338,6 +340,15 @@ export class ExploreLocation {
     }
 
     return battle;
+  }
+
+  private async attachEnemyKnowledge(playerId: number, enemy: BattleView['enemy']): Promise<BattleView['enemy']> {
+    const repository = this.repository as GameRepository & {
+      readonly listBestiaryDiscovery?: GameRepository['listBestiaryDiscovery'];
+    };
+    const discovery = await repository.listBestiaryDiscovery?.(playerId);
+
+    return discovery ? attachEnemyKnowledgeSnapshot(enemy, discovery) : enemy;
   }
 
   private async persistExplorationEventResult(

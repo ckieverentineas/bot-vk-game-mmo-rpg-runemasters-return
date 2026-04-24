@@ -1,4 +1,8 @@
 import type { BattleView } from '../../../shared/types/game';
+import {
+  getExactlyReadEnemyIntent,
+  getReadableEnemyIntent,
+} from './enemy-intent-reading';
 import { listBattleRuneLoadouts } from './battle-rune-loadouts';
 
 const hasPassive = (battle: BattleView, code: string): boolean => (
@@ -29,11 +33,11 @@ const hasActiveCooldownWindow = (battle: BattleView): boolean => (
   ))
 );
 
-const hasRevealedIntent = (battle: BattleView): boolean => !!battle.enemy.intent;
+const hasRevealedIntent = (battle: BattleView): boolean => getReadableEnemyIntent(battle) !== null;
 
-const isGuardBreakIntent = (battle: BattleView): boolean => battle.enemy.intent?.code === 'GUARD_BREAK';
+const isGuardBreakIntent = (battle: BattleView): boolean => getReadableEnemyIntent(battle)?.code === 'GUARD_BREAK';
 
-const isHeavyStrikeIntent = (battle: BattleView): boolean => battle.enemy.intent?.code === 'HEAVY_STRIKE';
+const isHeavyStrikeIntent = (battle: BattleView): boolean => getReadableEnemyIntent(battle)?.code === 'HEAVY_STRIKE';
 
 export const resolveEmberAttackBonus = (battle: BattleView): number => (
   countPassive(battle, 'ember_heart')
@@ -102,7 +106,7 @@ export const resolveGaleSealTempoGuardBonus = (battle: BattleView): number => (
 );
 
 export const resolveEchoIntentAttackBonus = (battle: BattleView): number => {
-  if (!hasPassive(battle, 'echo_mind') || !battle.enemy.intent) {
+  if (!hasPassive(battle, 'echo_mind') || !getExactlyReadEnemyIntent(battle)) {
     return 0;
   }
 
@@ -111,9 +115,9 @@ export const resolveEchoIntentAttackBonus = (battle: BattleView): number => {
 
 
 export const resolveEchoMasteryAttackBonus = (battle: BattleView): number => (
-  hasSchoolMastery(battle, 'echo') && battle.enemy.intent ? 1 : 0
+  hasSchoolMastery(battle, 'echo') && getExactlyReadEnemyIntent(battle) ? 1 : 0
 );
 
 export const resolveEchoSealIntentBonus = (battle: BattleView): number => (
-  hasSchoolSeal(battle, 'echo') && battle.enemy.intent ? 1 : 0
+  hasSchoolSeal(battle, 'echo') && getExactlyReadEnemyIntent(battle) ? 1 : 0
 );

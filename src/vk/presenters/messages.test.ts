@@ -1117,7 +1117,7 @@ describe('messages school-first onboarding framing', () => {
         '🗺️ Тёмный лес: на вас выходит обычный враг Синий слизень.',
         '🧭 Путевой эпизод: вы находите свежие следы.',
         '🌀 [Рунный мастер #1001] применяет «Импульс углей» против [Синий слизень]: 8 урона.',
-        '⚠️ Синий слизень готовит «Кислотный прорыв». Защита на следующий ход сработает хуже обычного.',
+        '⚠️ Синий слизень выдаёт приём против стойки. Точный жест ещё скрыт.',
         '💙 Рунный фокус: +1 маны.',
       ],
     }));
@@ -1126,7 +1126,7 @@ describe('messages school-first onboarding framing', () => {
     expect(message).toContain('• 🗺️ Тёмный лес: на вас выходит обычный враг Синий слизень.');
     expect(message).toContain('• 🧭 Путевой эпизод: вы находите свежие следы.');
     expect(message).toContain('• 🌀 [Рунный мастер #1001] применяет «Импульс углей» против [Синий слизень]: 8 урона.');
-    expect(message).toContain('• ⚠️ Синий слизень готовит «Кислотный прорыв». Защита на следующий ход сработает хуже обычного.');
+    expect(message).toContain('• ⚠️ Синий слизень выдаёт приём против стойки. Точный жест ещё скрыт.');
     expect(message).toContain('• 💙 Рунный фокус: +1 маны.');
     expect(message.indexOf('• 💙 Рунный фокус: +1 маны.')).toBeLessThan(
       message.indexOf('• 🗺️ Тёмный лес: на вас выходит обычный враг Синий слизень.'),
@@ -1142,7 +1142,7 @@ describe('messages school-first onboarding framing', () => {
         '🗺️ Тёмный лес: на вас выходит обычный враг Синий слизень.',
         '🧭 Путевой эпизод: вы находите свежие следы.',
         '⚔️ [Рунный мастер #1001] наносит 4 урона [Синий слизень].',
-        '⚠️ Синий слизень готовит «Кислотный прорыв».',
+        '⚠️ Синий слизень выдаёт приём против стойки. Точный жест ещё скрыт.',
         '💙 Рунный фокус: +1 маны.',
         '🌀 [Рунный мастер #1001] применяет «Импульс углей» против [Синий слизень]: 8 урона.',
         '🛡️ [Рунный мастер #1001] смягчает удар на 2 урона.',
@@ -1156,7 +1156,7 @@ describe('messages school-first onboarding framing', () => {
     expect(message).toContain('… ещё 2 события между нынешним мигом и началом схватки');
     expect(message).not.toContain('• 🧭 Путевой эпизод: вы находите свежие следы.');
     expect(message).not.toContain('• ⚔️ [Рунный мастер #1001] наносит 4 урона [Синий слизень].');
-    expect(message).toContain('• ⚠️ Синий слизень готовит «Кислотный прорыв».');
+    expect(message).toContain('• ⚠️ Синий слизень выдаёт приём против стойки. Точный жест ещё скрыт.');
     expect(message).toContain('• 🏆 Победа!');
     expect(message.indexOf('• 🏆 Победа!')).toBeLessThan(
       message.indexOf('• 🗺️ Тёмный лес: на вас выходит обычный враг Синий слизень.'),
@@ -1172,7 +1172,7 @@ describe('messages school-first onboarding framing', () => {
         ...createBattle().enemy,
         intent: {
           code: 'GUARD_BREAK',
-          title: 'Guard-break',
+          title: 'Пробивающий удар',
           description: 'Следующий удар хуже проходит через защиту.',
           bonusAttack: 1,
           shattersGuard: true,
@@ -1193,7 +1193,7 @@ describe('messages school-first onboarding framing', () => {
     }));
 
     expect(message).toContain('💡 Выбор: пробивающий удар ломает стойку');
-    expect(message).toContain('💡 🧠 Прорицание: «Guard-break» уже прочитан');
+    expect(message).toContain('💡 🧠 Прорицание: «Пробивающий удар» уже прочитан');
   });
 
   it('shows school-aware guard value for stone stance in battle actions', () => {

@@ -33,6 +33,10 @@ import {
   resolveExplorationSchoolCode,
 } from '../../../exploration/domain/exploration-outcome';
 import {
+  buildEnemyKnowledgeSnapshot,
+  mergeEnemyKnowledgeSnapshots,
+} from '../../../world/domain/enemy-knowledge';
+import {
   getExplorationSceneInventoryDelta,
   getExplorationSceneVitalRecovery,
   type ExplorationSceneView,
@@ -266,9 +270,10 @@ export class ExploreParty {
       throw new AppError('party_member_not_found', 'Лидер не найден в боевой группе.');
     }
 
+    const enemy = await this.attachPartyEnemyKnowledge(memberContexts, outcome.enemy);
     const shouldOfferEncounterChoice = outcome.locationLevel > 0;
     const encounter = shouldOfferEncounterChoice
-      ? createBattleEncounter(leaderSnapshot, outcome.enemy, outcome.turnOwner, outcome.encounterVariant)
+      ? createBattleEncounter(leaderSnapshot, enemy, outcome.turnOwner, outcome.encounterVariant)
       : null;
     const turnOwner = encounter ? 'PLAYER' : outcome.turnOwner;
     const battle = await this.repository.startPartyBattle(leader.playerId, party.id, {
@@ -280,7 +285,7 @@ export class ExploreParty {
       enemyCode: outcome.template.code,
       turnOwner,
       player: leaderSnapshot,
-      enemy: outcome.enemy,
+      enemy,
       party: {
         id: party.id,
         inviteCode: party.inviteCode,
@@ -307,6 +312,29 @@ export class ExploreParty {
     }
 
     return battle;
+  }
+
+  private async attachPartyEnemyKnowledge(
+    memberContexts: readonly PartyMemberBattleContext[],
+    enemy: BattleView['enemy'],
+  ): Promise<BattleView['enemy']> {
+    const repository = this.repository as GameRepository & {
+      readonly listBestiaryDiscovery?: GameRepository['listBestiaryDiscovery'];
+    };
+
+    if (!repository.listBestiaryDiscovery) {
+      return enemy;
+    }
+
+    const snapshots = await Promise.all(memberContexts.map(async (member) => (
+      buildEnemyKnowledgeSnapshot(
+        enemy.code,
+        await repository.listBestiaryDiscovery!(member.player.playerId),
+      )
+    )));
+    const knowledge = mergeEnemyKnowledgeSnapshots(snapshots);
+
+    return knowledge ? { ...enemy, knowledge } : enemy;
   }
 
   private async persistPartyExplorationEventResult(

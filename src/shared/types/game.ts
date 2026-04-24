@@ -243,6 +243,7 @@ export interface BattleEnemySnapshot {
   lootTable?: InventoryLoot;
   attackText: string;
   intent?: BattleEnemyIntentSnapshot | null;
+  knowledge?: BattleEnemyKnowledgeSnapshot;
   hasUsedSignatureMove?: boolean;
 }
 
@@ -252,6 +253,12 @@ export interface BattleEnemyIntentSnapshot {
   description: string;
   bonusAttack: number;
   shattersGuard?: boolean;
+}
+
+export interface BattleEnemyKnowledgeSnapshot {
+  readonly isDiscovered: boolean;
+  readonly hasTrophyStudy: boolean;
+  readonly victoryCount: number;
 }
 
 export type BattleEncounterKind =

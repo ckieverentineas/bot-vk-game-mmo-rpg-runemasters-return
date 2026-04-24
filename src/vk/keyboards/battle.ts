@@ -12,6 +12,11 @@ import {
   resolveBattleRuneSkillAction,
   type BattleRuneSlotIndex,
 } from '../../modules/combat/domain/battle-rune-loadouts';
+import {
+  type EnemyIntentReading,
+  isEnemyIntentReadable,
+  resolveEnemyIntentReading,
+} from '../../modules/combat/domain/enemy-intent-reading';
 import { resolveDefendGuardGain, resolveIntentDefendGuardBonus } from '../../modules/combat/domain/battle-tactics';
 import { buildExploreLocationIntentStateKey } from '../../modules/exploration/application/command-intent-state';
 import { buildBattleResultNextGoalView } from '../../modules/player/application/read-models/next-goal';
@@ -24,6 +29,7 @@ import type { KeyboardBuilder, KeyboardButtonDefinition, KeyboardLayout } from '
 const createBattleSkillButton = (
   battle: BattleView,
   slot: BattleRuneSlotIndex,
+  reading: EnemyIntentReading,
 ): KeyboardButtonDefinition | null => {
   const activeAbility = getBattleRuneLoadout(battle.player, slot)?.activeAbility ?? null;
   if (!activeAbility) {
@@ -33,7 +39,7 @@ const createBattleSkillButton = (
   const action = resolveBattleRuneSkillAction(slot);
   const stateKey = buildBattleActionIntentStateKey(battle, action);
   const readiness = buildBattleRuneActionReadinessView(battle, activeAbility);
-  const isRuneAnswerHighlighted = readiness.isReady && battle.enemy.intent !== null && battle.enemy.intent !== undefined;
+  const isRuneAnswerHighlighted = readiness.isReady && isEnemyIntentReadable(reading);
 
   return {
     label: `🌀 ${slot + 1} ${activeAbility.name}${readiness.buttonSuffix}`,
@@ -96,17 +102,19 @@ const createBattleActionLayout = (battle: BattleView, player?: PlayerState): Key
     return createBattleEncounterActionLayout(battle);
   }
 
+  const reading = resolveEnemyIntentReading(battle);
+  const readableIntent = isEnemyIntentReadable(reading) ? reading.intent : null;
   const skillButtons = ([0, 1] as const)
-    .map((slot) => createBattleSkillButton(battle, slot))
+    .map((slot) => createBattleSkillButton(battle, slot, reading))
     .filter((button): button is KeyboardButtonDefinition => button !== null);
-  const defendGuardGain = resolveDefendGuardGain(battle.player) + resolveIntentDefendGuardBonus(battle.enemy.intent);
+  const defendGuardGain = resolveDefendGuardGain(battle.player) + resolveIntentDefendGuardBonus(readableIntent);
 
   return [
     [
       {
         label: '⚔️ Атака',
         command: gameCommands.attack,
-        color: battle.enemy.intent?.code === 'HEAVY_STRIKE'
+        color: readableIntent?.code === 'HEAVY_STRIKE'
           ? Keyboard.SECONDARY_COLOR
           : Keyboard.POSITIVE_COLOR,
         intentScoped: true,
@@ -115,9 +123,9 @@ const createBattleActionLayout = (battle: BattleView, player?: PlayerState): Key
       {
         label: `🛡️ Защита (+${defendGuardGain} щит)`,
         command: gameCommands.defend,
-        color: battle.enemy.intent?.code === 'HEAVY_STRIKE'
+        color: readableIntent?.code === 'HEAVY_STRIKE'
           ? Keyboard.POSITIVE_COLOR
-          : battle.enemy.intent?.code === 'GUARD_BREAK'
+          : readableIntent?.code === 'GUARD_BREAK'
             ? Keyboard.SECONDARY_COLOR
             : Keyboard.PRIMARY_COLOR,
         intentScoped: true,

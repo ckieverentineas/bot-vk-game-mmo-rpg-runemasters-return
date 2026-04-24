@@ -2,6 +2,7 @@ import { AppError } from '../../../shared/domain/AppError';
 import type { AlchemyConsumableDefinition } from '../../consumables/domain/alchemy-consumables';
 import type {
   BattleActionType,
+  BattleEnemyIntentSnapshot,
   BattlePartyMemberSnapshot,
   BattlePlayerSnapshot,
   BattleResult,
@@ -48,6 +49,11 @@ import {
   resolveStoneSynergyGuardBonus,
   resolveStoneMasteryGuardGainBonus,
 } from './battle-rune-passives';
+import {
+  getExactlyReadEnemyIntent,
+  getReadableEnemyIntent,
+  resolveEnemyIntentReading,
+} from './enemy-intent-reading';
 
 interface GuardDamageResult {
   readonly blockedDamage: number;
@@ -108,6 +114,28 @@ const formatSkillLine = (
   targetName: string,
   outcome: string,
 ): string => `${formatBattleActor(actorName)} применяет «${skillName}» против ${formatBattleActor(targetName)}: ${outcome}.`;
+
+const resolveIntentPatternLabel = (intent: BattleEnemyIntentSnapshot): string => (
+  intent.code === 'HEAVY_STRIKE' ? 'силовой удар' : 'приём против стойки'
+);
+
+const formatEnemyIntentPreparationLine = (battle: BattleView): string => {
+  const intent = battle.enemy.intent;
+  if (!intent) {
+    return `⚠️ ${formatBattleActor(battle.enemy.name)} меняет стойку.`;
+  }
+
+  const reading = resolveEnemyIntentReading(battle);
+  if (reading.precision === 'exact') {
+    return `⚠️ ${formatBattleActor(battle.enemy.name)} раскрывает «${intent.title}». ${intent.description}`;
+  }
+
+  if (reading.precision === 'pattern') {
+    return `⚠️ ${formatBattleActor(battle.enemy.name)} выдаёт ${resolveIntentPatternLabel(intent)}. Точный жест ещё скрыт.`;
+  }
+
+  return `⚠️ ${formatBattleActor(battle.enemy.name)} собирает опасный ход. Замысел не прочитан.`;
+};
 
 const finalizeBattle = (battle: BattleView, result: BattleResult): BattleView => {
   battle.status = 'COMPLETED';
@@ -412,7 +440,7 @@ const resolveDefendOutcome = (battle: BattleView): DefendOutcome => {
   const stoneMasteryGuardGainBonus = resolveStoneMasteryGuardGainBonus(battle);
   const stoneHoldIntentGuardBonus = resolveStoneHoldIntentGuardBonus(battle);
   const stoneSealGuardBonus = resolveStoneSealGuardBonus(battle);
-  const intentGuardBonus = resolveIntentDefendGuardBonus(battle.enemy.intent);
+  const intentGuardBonus = resolveIntentDefendGuardBonus(getReadableEnemyIntent(battle));
 
   return {
     guardGain: sum([
@@ -466,7 +494,7 @@ const resolveBasicAttackOutcome = (battle: BattleView): BasicAttackOutcome => {
     echoMasteryBonus,
     echoSealBonus,
     galeGuardGain,
-    revealedIntentTitle: battle.enemy.intent?.title ?? null,
+    revealedIntentTitle: getExactlyReadEnemyIntent(battle)?.title ?? null,
   };
 };
 
@@ -591,7 +619,7 @@ export class BattleEngine {
       nextBattle.enemy.intent = createGuardBreakIntent(nextBattle.enemy);
       nextBattle.log = appendBattleLog(
         nextBattle.log,
-        `⚠️ ${formatBattleActor(nextBattle.enemy.name)} готовит «${nextBattle.enemy.intent.title}». Защита на следующий ход сработает хуже обычного.`,
+        formatEnemyIntentPreparationLine(nextBattle),
       );
       return finishEnemyPreparation(nextBattle);
     }
@@ -600,7 +628,7 @@ export class BattleEngine {
       nextBattle.enemy.intent = createHeavyStrikeIntent(nextBattle.enemy);
       nextBattle.log = appendBattleLog(
         nextBattle.log,
-        `⚠️ ${formatBattleActor(nextBattle.enemy.name)} готовит «${nextBattle.enemy.intent.title}». Следующий удар будет сильнее обычного.`,
+        formatEnemyIntentPreparationLine(nextBattle),
       );
       return finishEnemyPreparation(nextBattle);
     }
@@ -711,7 +739,7 @@ export class BattleEngine {
 
   private static performEmberPulse(nextBattle: BattleView, activeAbility: BattleRuneActionSnapshot): BattleView {
     const spellPower = nextBattle.player.attack + nextBattle.player.intelligence + 1;
-    const intentDamageBonus = resolveRuneIntentDamageBonus(nextBattle.enemy.intent);
+    const intentDamageBonus = resolveRuneIntentDamageBonus(getReadableEnemyIntent(nextBattle));
     const damage = calculatePhysicalDamage(spellPower, nextBattle.enemy.magicDefence) + intentDamageBonus;
     applyDamageToEnemy(nextBattle, damage);
     spendRuneManaAndSetCooldown(nextBattle, activeAbility);
@@ -730,7 +758,7 @@ export class BattleEngine {
     const synergyDamageBonus = resolveStoneSynergyDamageBonus(nextBattle);
     const synergyGuardBonus = resolveStoneSynergyGuardBonus(nextBattle);
     const sealGuardBonus = resolveStoneSealGuardBonus(nextBattle);
-    const intentDamageBonus = resolveRuneIntentDamageBonus(nextBattle.enemy.intent);
+    const intentDamageBonus = resolveRuneIntentDamageBonus(getReadableEnemyIntent(nextBattle));
     const damage = calculatePhysicalDamage(
       Math.max(1, Math.floor(nextBattle.player.attack * 0.6) + Math.floor(nextBattle.player.defence / 2)),
       nextBattle.enemy.defence,
@@ -767,7 +795,7 @@ export class BattleEngine {
 
   private static performGaleStep(nextBattle: BattleView, activeAbility: BattleRuneActionSnapshot): BattleView {
     const strikePower = Math.max(1, Math.floor(nextBattle.player.attack * 0.75) + Math.floor(nextBattle.player.dexterity / 2));
-    const intentDamageBonus = resolveRuneIntentDamageBonus(nextBattle.enemy.intent);
+    const intentDamageBonus = resolveRuneIntentDamageBonus(getReadableEnemyIntent(nextBattle));
     const damage = calculatePhysicalDamage(strikePower, nextBattle.enemy.defence) + intentDamageBonus;
     const tempoGuardBonus = resolveGaleTempoIntentGuardBonus(nextBattle);
     const sealTempoGuardBonus = resolveGaleSealTempoGuardBonus(nextBattle);

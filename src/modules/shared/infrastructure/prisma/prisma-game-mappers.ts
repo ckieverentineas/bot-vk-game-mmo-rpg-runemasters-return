@@ -90,6 +90,11 @@ const defaultBattleEnemySnapshot = (enemyCode: string): BattleView['enemy'] => (
   runeDropChance: 0,
   attackText: 'атакует',
   intent: null,
+  knowledge: {
+    isDiscovered: false,
+    hasTrophyStudy: false,
+    victoryCount: 0,
+  },
   hasUsedSignatureMove: false,
 });
 
