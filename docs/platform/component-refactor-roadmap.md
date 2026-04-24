@@ -6,8 +6,8 @@
 - Created: `2026-04-24`
 - Scope: component-oriented architecture, functional domain core, safer maintenance rails.
 - Progress policy: one task = one chat request = one verification pass = one commit.
-- Overall cleanup progress after RF-015 lands: `15/18 = 83%`.
-- Closed tasks: `RF-001`, `RF-002`, `RF-003`, `RF-004`, `RF-005`, `RF-006`, `RF-007`, `RF-008`, `RF-009`, `RF-010`, `RF-011`, `RF-012`, `RF-013`, `RF-014`, `RF-015`.
+- Overall cleanup progress after RF-016 lands: `16/18 = 89%`.
+- Closed tasks: `RF-001`, `RF-002`, `RF-003`, `RF-004`, `RF-005`, `RF-006`, `RF-007`, `RF-008`, `RF-009`, `RF-010`, `RF-011`, `RF-012`, `RF-013`, `RF-014`, `RF-015`, `RF-016`.
 
 ## Goal
 
@@ -42,6 +42,8 @@ After RF-013, shared typed test factories live in `src/shared/testing`: game fac
 After RF-014, VK reply composition has a shared `screenReply` boundary and the daily trace, party screen and party exploration event flows live in focused responders. `GameHandler` now routes those use-case results without manually pairing presenters and keyboards.
 
 After RF-015, `message-formatting.ts` owns shared VK copy primitives for currency balances, signed reward amounts, battle reward payloads, progress counters, Russian count phrases and next-goal CTA lines. Battle, home, profile, reward, quest and rune presenters now consume those helpers instead of rebuilding the same copy inline.
+
+After RF-016, reward assembly has clearer application boundaries: pending trophy ledger creation and applied trophy ledger creation live in `rewards/application/pending-reward-pipeline.ts`, while quest reward and daily trace economy telemetry share `reward-economy-telemetry.ts`.
 
 The main composition point is `src/app/composition-root.ts`: it builds one Prisma repository, one world catalog, one random source, telemetry, and all use-case classes.
 

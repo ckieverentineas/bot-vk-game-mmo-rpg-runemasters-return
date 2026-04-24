@@ -1,8 +1,5 @@
 import { Logger } from '../../../utils/logger';
-import type { ResourceReward } from '../../../shared/types/game';
-import { sumResourceRewardShardDelta } from '../../shared/application/resource-reward-summary';
 import type {
-  EconomyTransactionTelemetryPayload,
   GameTelemetry,
   QuestTelemetryPayload,
 } from '../../shared/application/ports/GameTelemetry';
@@ -28,21 +25,6 @@ export const buildQuestTelemetryPayload = (
   claimedCount: book.claimedCount,
 });
 
-export const buildQuestRewardEconomyTelemetryPayload = (
-  sourceId: string,
-  reward: ResourceReward,
-  playerLevel: number,
-): EconomyTransactionTelemetryPayload => ({
-  transactionType: 'reward_claim',
-  sourceType: 'QUEST_REWARD',
-  sourceId,
-  resourceDustDelta: reward.gold ?? 0,
-  resourceRadianceDelta: reward.radiance ?? 0,
-  resourceShardsDelta: sumResourceRewardShardDelta(reward),
-  runeDelta: 0,
-  playerLevel,
-});
-
 export const trackQuestTelemetry = async (
   telemetry: GameTelemetry | undefined,
   method: QuestTelemetryMethod,
@@ -52,17 +34,6 @@ export const trackQuestTelemetry = async (
   await trackTelemetrySafely(
     telemetry,
     async (safeTelemetry) => safeTelemetry[method](userId, payload),
-  );
-};
-
-export const trackEconomyTransactionTelemetry = async (
-  telemetry: GameTelemetry | undefined,
-  userId: number,
-  payload: EconomyTransactionTelemetryPayload,
-): Promise<void> => {
-  await trackTelemetrySafely(
-    telemetry,
-    async (safeTelemetry) => safeTelemetry.economyTransactionCommitted(userId, payload),
   );
 };
 

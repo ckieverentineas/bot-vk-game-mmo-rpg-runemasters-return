@@ -11,7 +11,6 @@ import type {
   PartyView,
   PlayerSkillCode,
   PlayerSkillPointGain,
-  PlayerSkillView,
   PlayerState,
   ResourceReward,
   RuneDraft,
@@ -37,20 +36,20 @@ import {
 import { applyPlayerSkillExperience as applyPlayerSkillExperienceDomain } from '../../../player/domain/player-skills';
 import { getSchoolNovicePathDefinitionForEnemy, hasRuneOfSchoolAtLeastRarity } from '../../../player/domain/school-novice-path';
 import {
-  createPendingRewardSnapshot,
   type PendingRewardAppliedResultSnapshot,
-  type PendingRewardAppliedSnapshotV1,
   type PendingRewardSkillUpSnapshot,
-  type PendingRewardTrophyActionSnapshot,
 } from '../../../rewards/domain/pending-reward-snapshot';
-import { resolveTrophyActionReward, resolveTrophyActions } from '../../../rewards/domain/trophy-actions';
 import type {
   TrophyActionCode,
-  TrophyActionDefinition,
-  TrophyActionEnemyContext,
-  TrophyActionReward,
-  TrophyActionSkillExperienceMap,
 } from '../../../rewards/domain/trophy-actions';
+import {
+  buildPendingRewardInventoryDelta,
+  buildPendingRewardSkillPointGains,
+  createAppliedPendingRewardLedger,
+  createPendingRewardLedgerForBattle,
+  findPendingRewardTrophyAction,
+  resolveBattlePlayerSchoolCode,
+} from '../../../rewards/application/pending-reward-pipeline';
 import { getSchoolDefinitionForArchetype } from '../../../runes/domain/rune-schools';
 import {
   resolveRuneCraftSpend,
@@ -67,8 +66,6 @@ import type {
 } from '../../../workshop/application/workshop-persistence';
 import { buildLoadoutSnapshotFromBattle } from '../../domain/contracts/loadout-snapshot';
 import {
-  createAppliedPendingRewardLedgerEntry,
-  createPendingRewardLedgerEntry,
   isRewardLedgerEntry,
   type AppliedPendingRewardLedgerEntryV1,
   type PendingRewardLedgerEntryV1,
@@ -201,112 +198,6 @@ const isPendingRewardLedgerEntryForView = (
 ): ledger is PendingRewardLedgerEntryV1 => (
   ledger.status === 'PENDING' && 'pendingRewardSnapshot' in ledger
 );
-
-const findPendingRewardTrophyAction = (
-  ledger: PendingRewardLedgerEntryV1,
-  actionCode: TrophyActionCode,
-): PendingRewardTrophyActionSnapshot => {
-  const action = ledger.pendingRewardSnapshot.trophyActions.find((candidate) => candidate.code === actionCode);
-
-  if (!action) {
-    throw new AppError('pending_reward_action_unavailable', 'Этот трофейный жест уже недоступен. Вернитесь к текущей добыче.');
-  }
-
-  return action;
-};
-
-const buildPendingRewardSkillPointGains = (
-  action: PendingRewardTrophyActionSnapshot,
-): readonly PlayerSkillPointGain[] => {
-  if (action.reward) {
-    return action.reward.skillPoints.map((skillPoint) => ({
-      skillCode: skillPoint.skillCode,
-      points: skillPoint.points,
-    }));
-  }
-
-  return action.skillCodes.map((skillCode) => ({
-    skillCode,
-    points: 1,
-  }));
-};
-
-const buildPendingRewardInventoryDelta = (
-  action: PendingRewardTrophyActionSnapshot,
-): InventoryDelta => (
-  action.reward ? { ...action.reward.inventoryDelta } : {}
-);
-
-const resolveBattlePlayerSchoolCode = (battle: BattleView): string | null => (
-  battle.player.runeLoadout?.schoolCode
-  ?? getSchoolDefinitionForArchetype(battle.player.runeLoadout?.archetypeCode)?.code
-  ?? null
-);
-
-const createTrophyActionSkillExperienceMap = (
-  skills: readonly PlayerSkillView[] | undefined,
-): TrophyActionSkillExperienceMap => {
-  const experienceByCode: Partial<Record<PlayerSkillCode, number>> = {};
-
-  for (const skill of skills ?? []) {
-    experienceByCode[skill.skillCode] = skill.experience;
-  }
-
-  return experienceByCode;
-};
-
-const createTrophyActionEnemyContext = (
-  battle: BattleView,
-  playerSkills?: readonly PlayerSkillView[],
-): TrophyActionEnemyContext => ({
-  kind: battle.enemy.kind,
-  code: battle.enemy.code,
-  equippedSchoolCode: resolveBattlePlayerSchoolCode(battle),
-  skillExperiences: createTrophyActionSkillExperienceMap(playerSkills),
-});
-
-const resolvePendingRewardTrophyActionRewards = (
-  battle: BattleView,
-  actions: readonly TrophyActionDefinition[],
-  playerSkills?: readonly PlayerSkillView[],
-): readonly TrophyActionReward[] => {
-  const { enemy } = battle;
-  const lootTable = enemy.lootTable;
-
-  if (!lootTable) {
-    return [];
-  }
-
-  return actions.map((action) => resolveTrophyActionReward({
-    ...createTrophyActionEnemyContext(battle, playerSkills),
-    isElite: enemy.isElite,
-    isBoss: enemy.isBoss,
-    lootTable,
-  }, action));
-};
-
-const createPendingRewardLedgerForBattle = (
-  playerId: number,
-  battle: BattleView,
-  createdAt: string,
-  playerSkills?: readonly PlayerSkillView[],
-): PendingRewardLedgerEntryV1 | null => {
-  const rewardIntent = createBattleVictoryRewardIntent(playerId, battle);
-
-  if (!rewardIntent) {
-    return null;
-  }
-
-  const trophyActions = resolveTrophyActions(createTrophyActionEnemyContext(battle, playerSkills));
-  const pendingRewardSnapshot = createPendingRewardSnapshot(
-    rewardIntent,
-    trophyActions,
-    createdAt,
-    resolvePendingRewardTrophyActionRewards(battle, trophyActions, playerSkills),
-  );
-
-  return createPendingRewardLedgerEntry(pendingRewardSnapshot);
-};
 
 const mapPendingRewardLedgerCreateData = (rewardLedger: PendingRewardLedgerEntryV1) => ({
   playerId: rewardLedger.playerId,
@@ -1345,6 +1236,7 @@ export class PrismaGameRepository implements GameRepository {
         buildPendingRewardSkillPointGains(action),
       );
       const appliedAt = new Date();
+      const appliedAtIso = appliedAt.toISOString();
       const appliedResult: PendingRewardAppliedResultSnapshot = {
         baseRewardApplied: true,
         inventoryDelta,
@@ -1352,14 +1244,12 @@ export class PrismaGameRepository implements GameRepository {
         statUps: [],
         schoolUps: [],
       };
-      const appliedSnapshot: PendingRewardAppliedSnapshotV1 = {
-        ...ledger.pendingRewardSnapshot,
-        status: 'APPLIED',
-        selectedActionCode: action.code,
+      const appliedLedger = createAppliedPendingRewardLedger({
+        ledger,
+        action,
         appliedResult,
-        updatedAt: appliedAt.toISOString(),
-      };
-      const appliedLedger = createAppliedPendingRewardLedgerEntry(appliedSnapshot, appliedAt.toISOString());
+        appliedAt: appliedAtIso,
+      });
       const claimed = await tx.rewardLedgerRecord.updateMany({
         where: {
           playerId,
@@ -1412,11 +1302,11 @@ export class PrismaGameRepository implements GameRepository {
 
       for (const battleRecord of completedVictories) {
         const battle = mapBattleRecord(battleRecord);
-        const rewardLedger = createPendingRewardLedgerForBattle(
-          battle.playerId,
+        const rewardLedger = createPendingRewardLedgerForBattle({
+          playerId: battle.playerId,
           battle,
-          battleRecord.updatedAt.toISOString(),
-        );
+          createdAt: battleRecord.updatedAt.toISOString(),
+        });
 
         if (!rewardLedger) {
           skipped += 1;
@@ -2920,12 +2810,12 @@ export class PrismaGameRepository implements GameRepository {
       }
 
       if (rewardIntent) {
-        const rewardLedger = createPendingRewardLedgerForBattle(
+        const rewardLedger = createPendingRewardLedgerForBattle({
           playerId,
           battle,
-          new Date().toISOString(),
-          currentPlayer.skills,
-        );
+          createdAt: new Date().toISOString(),
+          playerSkills: currentPlayer.skills,
+        });
 
         if (!rewardLedger) {
           throw new AppError('battle_reward_missing', 'РќРµР»СЊР·СЏ Р·Р°РІРµСЂС€РёС‚СЊ РїРѕР±РµРґРЅС‹Р№ Р±РѕР№ Р±РµР· Р·Р°С„РёРєСЃРёСЂРѕРІР°РЅРЅРѕР№ РЅР°РіСЂР°РґС‹.');
@@ -3176,12 +3066,12 @@ export class PrismaGameRepository implements GameRepository {
     }
 
     if (rewardIntent) {
-      const rewardLedger = createPendingRewardLedgerForBattle(
+      const rewardLedger = createPendingRewardLedgerForBattle({
         playerId,
         battle,
-        new Date().toISOString(),
-        currentPlayer.skills,
-      );
+        createdAt: new Date().toISOString(),
+        playerSkills: currentPlayer.skills,
+      });
 
       if (!rewardLedger) {
         throw new AppError('battle_reward_missing', 'Нельзя завершить победный бой без зафиксированной награды.');

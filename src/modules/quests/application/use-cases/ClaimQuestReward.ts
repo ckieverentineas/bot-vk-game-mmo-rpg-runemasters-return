@@ -14,6 +14,7 @@ import type {
   CommandIntentReplayRepository,
   FindPlayerByVkIdRepository,
 } from '../../../shared/application/ports/repository-scopes';
+import { trackRewardEconomyTelemetry } from '../../../rewards/application/reward-economy-telemetry';
 import {
   buildQuestBookView,
   findQuestBookEntry,
@@ -21,9 +22,7 @@ import {
   type QuestView,
 } from '../read-models/quest-book';
 import {
-  buildQuestRewardEconomyTelemetryPayload,
   buildQuestTelemetryPayload,
-  trackEconomyTransactionTelemetry,
   trackQuestTelemetry,
 } from '../quest-telemetry';
 
@@ -107,11 +106,13 @@ export class ClaimQuestReward {
     }
 
     if (claim.claimed) {
-      await trackEconomyTransactionTelemetry(
-        this.telemetry,
-        claim.player.userId,
-        buildQuestRewardEconomyTelemetryPayload(quest.code, claim.reward, claim.player.level),
-      );
+      await trackRewardEconomyTelemetry(this.telemetry, claim.player.userId, {
+        sourceType: 'QUEST_REWARD',
+        sourceId: quest.code,
+        reward: claim.reward,
+        claimed: true,
+        playerLevel: claim.player.level,
+      });
     }
 
     await this.trackQuestReward(

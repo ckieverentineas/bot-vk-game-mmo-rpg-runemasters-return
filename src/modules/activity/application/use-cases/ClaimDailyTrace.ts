@@ -1,6 +1,7 @@
 import { Logger } from '../../../../utils/logger';
-import type { PlayerState, ResourceReward } from '../../../../shared/types/game';
+import type { PlayerState } from '../../../../shared/types/game';
 import { sumResourceRewardShardDelta } from '../../../shared/application/resource-reward-summary';
+import { trackRewardEconomyTelemetry } from '../../../rewards/application/reward-economy-telemetry';
 import {
   loadCommandIntentReplay,
   resolveCommandIntent,
@@ -15,6 +16,7 @@ import type {
   DailyTraceTelemetryPayload,
   GameTelemetry,
 } from '../../../shared/application/ports/GameTelemetry';
+import { buildDailyActivitySourceId } from '../../../shared/domain/contracts/daily-activity-ledger';
 import { requirePlayerByVkId } from '../../../shared/application/require-player';
 import {
   resolveDailyTrace,
@@ -34,10 +36,6 @@ type ClaimDailyTraceRepository = CommandIntentReplayRepository & Pick<
   GameRepository,
   'findPlayerByVkId' | 'claimDailyActivityReward'
 >;
-
-const buildDailyTraceEconomySourceId = (trace: DailyTraceView): string => (
-  `${trace.activityCode}:${trace.gameDay}`
-);
 
 const buildDailyTraceTelemetryPayload = (
   player: PlayerState,
@@ -99,7 +97,13 @@ export class ClaimDailyTrace {
     );
 
     await this.trackDailyTrace(claim.player, trace, claim.claimed);
-    await this.trackEconomy(claim.player, trace, claim.reward, claim.claimed);
+    await trackRewardEconomyTelemetry(this.telemetry, claim.player.userId, {
+      sourceType: 'DAILY_TRACE',
+      sourceId: buildDailyActivitySourceId(trace.activityCode, trace.gameDay),
+      reward: claim.reward,
+      claimed: claim.claimed,
+      playerLevel: claim.player.level,
+    });
 
     return {
       player: claim.player,
@@ -134,32 +138,6 @@ export class ClaimDailyTrace {
 
     try {
       await method.call(this.telemetry, player.userId, buildDailyTraceTelemetryPayload(player, trace, claimedNow));
-    } catch (error) {
-      Logger.warn('Telemetry logging failed', error);
-    }
-  }
-
-  private async trackEconomy(
-    player: PlayerState,
-    trace: DailyTraceView,
-    reward: ResourceReward,
-    claimedNow: boolean,
-  ): Promise<void> {
-    if (!claimedNow || !this.telemetry) {
-      return;
-    }
-
-    try {
-      await this.telemetry.economyTransactionCommitted(player.userId, {
-        transactionType: 'reward_claim',
-        sourceType: 'DAILY_TRACE',
-        sourceId: buildDailyTraceEconomySourceId(trace),
-        resourceDustDelta: reward.gold ?? 0,
-        resourceRadianceDelta: reward.radiance ?? 0,
-        resourceShardsDelta: sumResourceRewardShardDelta(reward),
-        runeDelta: 0,
-        playerLevel: player.level,
-      });
     } catch (error) {
       Logger.warn('Telemetry logging failed', error);
     }
