@@ -11,6 +11,7 @@ interface PreferredSchoolEncounterOptions {
   readonly preferMiniboss?: boolean;
   readonly preferSealTarget?: boolean;
   readonly suppressChallengeEncounters?: boolean;
+  readonly normalEncounterCursor?: number;
 }
 
 const randomInt = (min: number, max: number): number => Math.floor(Math.random() * (max - min + 1)) + min;
@@ -87,6 +88,22 @@ const scaleStat = (base: number, scale: number, locationLevel: number): number =
   return Math.max(1, Math.floor(base * Math.pow(scale, growthSteps)));
 };
 
+const normalizeEncounterCursor = (cursor: number, length: number): number => (
+  ((cursor % length) + length) % length
+);
+
+const pickNormalEncounterTemplate = (
+  templates: readonly MobTemplateView[],
+  cursor: number | undefined,
+  random: EncounterRandomSource,
+): MobTemplateView => {
+  if (cursor === undefined) {
+    return random.pickOne(templates);
+  }
+
+  return templates[normalizeEncounterCursor(cursor, templates.length)]!;
+};
+
 export const pickEncounterTemplate = (
   templates: readonly MobTemplateView[],
   locationLevel: number,
@@ -143,7 +160,11 @@ export const pickEncounterTemplate = (
     return random.pickOne(elites);
   }
 
-  return random.pickOne(normals.length > 0 ? normals : templates);
+  return pickNormalEncounterTemplate(
+    normals.length > 0 ? normals : templates,
+    preferredSchool.normalEncounterCursor,
+    random,
+  );
 };
 
 export const buildEnemySnapshot = (template: MobTemplateView, locationLevel: number): BattleEnemySnapshot => {

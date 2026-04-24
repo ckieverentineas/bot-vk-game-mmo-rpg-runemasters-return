@@ -3185,6 +3185,39 @@ describe('PrismaGameRepository release hardening', () => {
     });
   });
 
+  it('uses post-battle vitals when persisting the next adaptive location level', async () => {
+    const { repository, tx } = createPrismaMock();
+    const battleView = createBattleView({
+      player: {
+        ...createBattleView().player,
+        currentHealth: 1,
+        currentMana: 1,
+      },
+    });
+    const persistedBattle = createBattleRow({
+      status: 'COMPLETED',
+      result: 'VICTORY',
+      rewardsSnapshot: JSON.stringify(battleView.rewards),
+    });
+
+    tx.battleSession.updateMany.mockResolvedValue({ count: 1 });
+    tx.player.findUnique.mockResolvedValue(createPlayerRecord());
+    tx.player.update.mockResolvedValue({});
+    tx.playerProgress.update.mockResolvedValue({});
+    tx.playerInventory.update.mockResolvedValue({});
+    tx.battleSession.findFirst.mockResolvedValue(persistedBattle);
+
+    await repository.finalizeBattle(1, battleView);
+
+    expect(tx.playerProgress.update).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
+        locationLevel: 1,
+        currentHealth: 1,
+        currentMana: 1,
+      }),
+    }));
+  });
+
   it('adds the ember hidden trophy action to ash seer pending rewards when ember is equipped', async () => {
     const { repository, tx } = createPrismaMock();
     const battleView = createBattleView({

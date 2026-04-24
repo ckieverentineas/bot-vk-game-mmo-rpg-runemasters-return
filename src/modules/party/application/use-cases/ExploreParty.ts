@@ -149,6 +149,22 @@ const resolveMemberBattleStats = (
       )
 );
 
+const partyLocationLevelSetbackAllowance = 1;
+
+const resolvePartyEncounterLocationLevel = (leader: PlayerState): number => {
+  const adaptiveLocationLevel = resolveEncounterLocationLevel(leader);
+  if (leader.defeatStreak > 0) {
+    return adaptiveLocationLevel;
+  }
+
+  return Math.max(
+    adaptiveLocationLevel,
+    leader.highestLocationLevel - partyLocationLevelSetbackAllowance,
+  );
+};
+
+const resolvePartyNormalEncounterCursor = (leader: PlayerState): number => leader.mobsKilled;
+
 export class ExploreParty {
   public constructor(
     private readonly repository: GameRepository,
@@ -188,7 +204,7 @@ export class ExploreParty {
       throw new AppError('party_member_busy', `${busyMember.player.vkId} уже занят боем.`);
     }
 
-    const locationLevel = resolveEncounterLocationLevel(leader);
+    const locationLevel = resolvePartyEncounterLocationLevel(leader);
     const currentSchoolCode = resolveExplorationSchoolCode(leader);
     const biome = this.worldCatalog.findBiomeForLocationLevel(locationLevel);
     if (!biome) {
@@ -210,6 +226,8 @@ export class ExploreParty {
       currentSchoolCode,
       locationLevel,
       workshopItems: leaderContext.workshopItems,
+      normalEncounterCursor: resolvePartyNormalEncounterCursor(leader),
+      allowWearyEnemyVariant: false,
     }, this.random);
 
     if (outcome.kind === 'event') {

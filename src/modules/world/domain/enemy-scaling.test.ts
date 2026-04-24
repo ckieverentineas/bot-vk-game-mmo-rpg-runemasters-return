@@ -173,6 +173,24 @@ describe('pickEncounterTemplate', () => {
     expect(picked.code).toBe('blue-slime');
   });
 
+  it('can rotate normal encounters with a stable cursor', () => {
+    const templates = [
+      createTemplate({ code: 'blue-slime' }),
+      createTemplate({ code: 'forest-wolf', name: 'Лесной волк', kind: 'wolf' }),
+      createTemplate({ code: 'moss-boar', name: 'Мшистый кабан', kind: 'boar' }),
+    ];
+
+    const picked = pickEncounterTemplate(templates, 4, {
+      schoolCode: null,
+      normalEncounterCursor: 4,
+    }, {
+      rollPercentage: () => false,
+      pickOne: (items) => items[0]!,
+    });
+
+    expect(picked.code).toBe('forest-wolf');
+  });
+
   it('prefers the gale school miniboss once the first sign is already equipped', () => {
     const templates = [
       createTemplate(),

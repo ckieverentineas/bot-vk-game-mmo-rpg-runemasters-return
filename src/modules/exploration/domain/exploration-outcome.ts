@@ -42,6 +42,8 @@ export interface ResolveExplorationOutcomeContext {
   readonly locationLevel: number;
   readonly currentSchoolCode: string | null;
   readonly workshopItems?: readonly WorkshopEquippedItemView[];
+  readonly normalEncounterCursor?: number;
+  readonly allowWearyEnemyVariant?: boolean;
 }
 
 export interface ExplorationRoamingTemplatePool {
@@ -254,7 +256,11 @@ const resolveEncounterVariant = (
     return createAmbushVariant(enemy);
   }
 
-  if (context.locationLevel >= wearyEnemyMinLocationLevel && random.rollPercentage(wearyEnemyChancePercent)) {
+  if (
+    context.allowWearyEnemyVariant !== false
+    && context.locationLevel >= wearyEnemyMinLocationLevel
+    && random.rollPercentage(wearyEnemyChancePercent)
+  ) {
     return createWearyEnemyVariant(enemy);
   }
 
@@ -301,6 +307,7 @@ export const resolveExplorationBattleOutcome = (
         preferMiniboss,
         preferSealTarget,
         suppressChallengeEncounters,
+        normalEncounterCursor: context.normalEncounterCursor,
       }, random);
   const playerStats = addStats(
     derivePlayerStats(context.player),

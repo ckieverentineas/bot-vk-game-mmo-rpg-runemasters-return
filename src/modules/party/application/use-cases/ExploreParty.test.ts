@@ -1,6 +1,14 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import type { BiomeView, InventoryField, MobTemplateView, PartyView, PlayerState } from '../../../../../shared/types/game';
+import type {
+  BattleView,
+  BiomeView,
+  CreateBattleInput,
+  InventoryField,
+  MobTemplateView,
+  PartyView,
+  PlayerState,
+} from '../../../../../shared/types/game';
 import type { GameRandom } from '../../../../shared/application/ports/GameRandom';
 import type { GameRepository } from '../../../../shared/application/ports/GameRepository';
 import type { WorldCatalog } from '../../../../world/application/ports/WorldCatalog';
@@ -124,18 +132,37 @@ const createMobTemplate = (overrides: Partial<MobTemplateView> = {}): MobTemplat
   ...overrides,
 });
 
-const createWorldCatalog = (): WorldCatalog => ({
-  listBiomes: vi.fn().mockReturnValue([createBiome()]),
-  findBiomeForLocationLevel: vi.fn().mockReturnValue(createBiome()),
-  listMobTemplatesForBiome: vi.fn().mockReturnValue([createMobTemplate()]),
-});
+const createWorldCatalog = (
+  options: {
+    readonly biomes?: readonly BiomeView[];
+    readonly templates?: readonly MobTemplateView[];
+  } = {},
+): WorldCatalog => {
+  const biomes = options.biomes ?? [createBiome()];
+  const templates = options.templates ?? [createMobTemplate()];
 
-const createRandom = (): GameRandom => ({
+  return {
+    listBiomes: vi.fn().mockReturnValue(biomes),
+    findBiomeForLocationLevel: vi.fn().mockReturnValue(biomes[0] ?? createBiome()),
+    listMobTemplatesForBiome: vi.fn().mockReturnValue(templates),
+  };
+};
+
+const createRandom = (overrides: Partial<GameRandom> = {}): GameRandom => ({
   nextInt: vi.fn().mockReturnValue(1),
   rollPercentage: vi.fn().mockReturnValue(true),
   pickOne: vi.fn(<T extends { readonly code?: string }>(items: readonly T[]) => (
     items.find((item) => item.code === 'abandoned-camp') ?? items[0]!
   )),
+  ...overrides,
+});
+
+const createBattleView = (leader: PlayerState, battle: CreateBattleInput): BattleView => ({
+  id: 'battle-1',
+  playerId: leader.playerId,
+  createdAt: '2026-04-12T00:00:00.000Z',
+  updatedAt: '2026-04-12T00:00:00.000Z',
+  ...battle,
 });
 
 const addInventoryDelta = (player: PlayerState, field: InventoryField, amount: number): PlayerState => ({
@@ -198,5 +225,53 @@ describe('ExploreParty', () => {
       { commandKey: 'EXPLORE_PARTY' },
       expect.any(Function),
     );
+  });
+
+  it('rotates normal party encounters and keeps random weary enemies out of party battles', async () => {
+    const leader = createPlayer({
+      mobsKilled: 1,
+      victories: 2,
+      victoryStreak: 1,
+    });
+    const ally = createPlayer({
+      userId: 2,
+      vkId: 1002,
+      playerId: 2,
+    });
+    const party = createParty();
+    const random = createRandom({
+      rollPercentage: vi.fn((chancePercent: number) => chancePercent === 18),
+      pickOne: vi.fn(<T>(items: readonly T[]) => items[0]!),
+    });
+    const repository = {
+      findPlayerByVkId: vi.fn().mockResolvedValue(leader),
+      getActiveParty: vi.fn().mockResolvedValue(party),
+      findPlayerById: vi.fn(async (playerId: number) => (playerId === leader.playerId ? leader : ally)),
+      listPlayerCraftedItems: vi.fn().mockResolvedValue([]),
+      startPartyBattle: vi.fn(async (
+        _leaderPlayerId: number,
+        _partyId: string,
+        battle: CreateBattleInput,
+      ) => createBattleView(leader, battle)),
+    } as unknown as GameRepository;
+    const worldCatalog = createWorldCatalog({
+      templates: [
+        createMobTemplate({ code: 'blue-slime', name: 'Синий слизень', kind: 'slime' }),
+        createMobTemplate({ code: 'forest-wolf', name: 'Лесной волк', kind: 'wolf' }),
+      ],
+    });
+    const useCase = new ExploreParty(repository, worldCatalog, random);
+
+    const result = await useCase.execute(leader.vkId);
+
+    expect(isExplorePartyEventResult(result)).toBe(false);
+    if (isExplorePartyEventResult(result)) {
+      throw new Error('Expected party battle result.');
+    }
+
+    expect(result.enemy.code).toBe('forest-wolf');
+    expect(result.enemy.currentHealth).toBe(result.enemy.maxHealth);
+    expect(result.encounter?.kind).not.toBe('WEARY_ENEMY');
+    expect(random.rollPercentage).not.toHaveBeenCalledWith(18);
   });
 });

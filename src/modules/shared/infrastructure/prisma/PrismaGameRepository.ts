@@ -3728,6 +3728,8 @@ export class PrismaGameRepository implements GameRepository {
         defeatStreak: nextDefeatStreak,
         mobsKilled: nextMobsKilled,
         tutorialState: nextTutorialState,
+        currentHealth: nextVitals.currentHealth,
+        currentMana: nextVitals.currentMana,
       };
 
       const nextAdventureLocationLevel = resolveAdaptiveAdventureLocationLevel(projectedPlayer);
@@ -3982,6 +3984,8 @@ export class PrismaGameRepository implements GameRepository {
       defeatStreak: nextDefeatStreak,
       mobsKilled: nextMobsKilled,
       tutorialState: nextTutorialState,
+      currentHealth: nextVitals.currentHealth,
+      currentMana: nextVitals.currentMana,
     };
 
     const nextAdventureLocationLevel = resolveAdaptiveAdventureLocationLevel(projectedPlayer);
