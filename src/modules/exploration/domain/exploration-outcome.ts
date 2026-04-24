@@ -23,6 +23,11 @@ import {
 } from '../../workshop/domain/workshop-catalog';
 import { buildEnemySnapshot, describeEncounter, pickEncounterTemplate, resolveInitialTurnOwner } from '../../world/domain/enemy-scaling';
 import {
+  buildEnemyThreatSnapshot,
+  resolveEnemyThreatDisplayName,
+  resolveEnemyThreatEncounterLine,
+} from '../../world/domain/enemy-threat-growth';
+import {
   type ExplorationSceneView,
   resolveExplorationEventLine,
   resolveRecoveryRestExplorationEvent,
@@ -265,14 +270,15 @@ const buildThreatEnemySnapshot = (
 
   return {
     ...enemy,
-    name: threat.enemyName,
+    name: resolveEnemyThreatDisplayName(threat),
     experienceReward: enemy.experienceReward + resolveThreatRewardBonus(threat),
+    threat: buildEnemyThreatSnapshot(threat),
     roaming: buildThreatRoamingSnapshot(threat),
   };
 };
 
 const resolveThreatEncounterLine = (threat: ExplorationActiveThreat): string => (
-  `⚠️ Угроза вернулась: ${threat.enemyName} пережил ${threat.survivalCount} встречи, стал сильнее и снова держит этот путь.`
+  resolveEnemyThreatEncounterLine(threat)
 );
 
 const ambushChancePercent = 12;

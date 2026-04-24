@@ -589,9 +589,11 @@ describe('ExploreLocation', () => {
 
     expect(repository.listActiveEnemyThreatsForBiome).toHaveBeenCalledWith('dark-forest');
     expect(battle.enemyCode).toBe('blue-slime');
+    expect(battle.enemy.name).toBe('Упрямый Blue Slime');
+    expect(battle.enemy.threat?.rank).toBe('NAMED');
     expect(battle.enemy.maxHealth).toBeGreaterThan(6);
     expect(battle.log).toContain(
-      '⚠️ Угроза вернулась: Blue Slime пережил 2 встречи, стал сильнее и снова держит этот путь.',
+      '⚠️ Именная угроза: Упрямый Blue Slime пережил 2 встречи и вернулся сильнее.',
     );
   });
 

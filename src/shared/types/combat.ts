@@ -90,6 +90,7 @@ export interface BattleEnemySnapshot {
   attackText: string;
   intent?: BattleEnemyIntentSnapshot | null;
   knowledge?: BattleEnemyKnowledgeSnapshot;
+  threat?: BattleEnemyThreatSnapshot;
   roaming?: BattleEnemyRoamingSnapshot;
   hasUsedSignatureMove?: boolean;
 }
@@ -106,6 +107,16 @@ export interface BattleEnemyKnowledgeSnapshot {
   readonly isDiscovered: boolean;
   readonly hasTrophyStudy: boolean;
   readonly victoryCount: number;
+}
+
+export type BattleEnemyThreatRank = 'SURVIVOR' | 'NAMED' | 'CALAMITY';
+
+export interface BattleEnemyThreatSnapshot {
+  readonly rank: BattleEnemyThreatRank;
+  readonly baseEnemyName: string;
+  readonly survivalCount: number;
+  readonly experience: number;
+  readonly levelBonus: number;
 }
 
 export type BattleEnemyRoamingDirection = 'LOWER_BIOME' | 'HIGHER_BIOME';

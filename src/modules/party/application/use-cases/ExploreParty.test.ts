@@ -356,6 +356,67 @@ describe('ExploreParty', () => {
     expect(random.rollPercentage).toHaveBeenCalledWith(18);
   });
 
+  it('can start a party battle against an active named threat in the current biome', async () => {
+    const leader = createPlayer();
+    const ally = createPlayer({
+      userId: 2,
+      vkId: 1002,
+      playerId: 2,
+    });
+    const party = createParty();
+    const random = createRandom({
+      rollPercentage: vi.fn()
+        .mockReturnValueOnce(false)
+        .mockReturnValueOnce(true)
+        .mockReturnValue(false),
+      pickOne: vi.fn(<T>(items: readonly T[]) => items[0]!),
+    });
+    const repository = {
+      findPlayerByVkId: vi.fn().mockResolvedValue(leader),
+      getActiveParty: vi.fn().mockResolvedValue(party),
+      findPlayerById: vi.fn(async (playerId: number) => (playerId === leader.playerId ? leader : ally)),
+      listPlayerCraftedItems: vi.fn().mockResolvedValue([]),
+      listActiveEnemyThreatsForBiome: vi.fn().mockResolvedValue([{
+        enemyCode: 'blue-slime',
+        enemyName: 'Синий слизень',
+        originBiomeCode: 'dark-forest',
+        originBiomeName: 'Тёмный лес',
+        currentBiomeCode: 'dark-forest',
+        survivalCount: 3,
+        experience: 24,
+        levelBonus: 3,
+        lastSeenLocationLevel: 5,
+      }]),
+      startPartyBattle: vi.fn(async (
+        _leaderPlayerId: number,
+        _partyId: string,
+        battle: CreateBattleInput,
+      ) => createBattleView(leader, battle)),
+    } as unknown as GameRepository;
+    const worldCatalog = createWorldCatalog({
+      templates: [
+        createMobTemplate({ code: 'blue-slime', name: 'Синий слизень', kind: 'slime' }),
+        createMobTemplate({ code: 'forest-wolf', name: 'Лесной волк', kind: 'wolf' }),
+      ],
+    });
+    const useCase = new ExploreParty(repository, worldCatalog, random);
+
+    const result = await useCase.execute(leader.vkId);
+
+    expect(isExplorePartyEventResult(result)).toBe(false);
+    if (isExplorePartyEventResult(result)) {
+      throw new Error('Expected party battle result.');
+    }
+
+    expect(repository.listActiveEnemyThreatsForBiome).toHaveBeenCalledWith('dark-forest');
+    expect(result.enemy.code).toBe('blue-slime');
+    expect(result.enemy.name).toBe('Упрямый Синий слизень');
+    expect(result.enemy.threat?.rank).toBe('NAMED');
+    expect(result.log).toContain(
+      '⚠️ Именная угроза: Упрямый Синий слизень пережил 3 встречи и вернулся сильнее.',
+    );
+  });
+
   it('resolves an idle active party battle when another member continues joint exploration', async () => {
     const leader = createPlayer();
     const ally = createPlayer({

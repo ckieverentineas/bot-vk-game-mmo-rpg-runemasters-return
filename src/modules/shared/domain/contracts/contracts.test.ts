@@ -363,6 +363,52 @@ describe('battle platform contracts', () => {
     });
   });
 
+  it('keeps active threat identity in the versioned battle snapshot', () => {
+    const battle = createBattle();
+    const snapshot = buildBattleSnapshot({
+      ...battle,
+      enemy: {
+        ...battle.enemy,
+        name: 'Упрямый Синий слизень',
+        threat: {
+          rank: 'NAMED',
+          baseEnemyName: 'Синий слизень',
+          survivalCount: 3,
+          experience: 24,
+          levelBonus: 3,
+        },
+      },
+    });
+
+    expect(isBattleSnapshot(snapshot)).toBe(true);
+    expect(snapshot.enemy.threat).toEqual({
+      rank: 'NAMED',
+      baseEnemyName: 'Синий слизень',
+      survivalCount: 3,
+      experience: 24,
+      levelBonus: 3,
+    });
+  });
+
+  it('rejects malformed active threat identity in the battle snapshot', () => {
+    const battle = createBattle();
+    const snapshot = buildBattleSnapshot({
+      ...battle,
+      enemy: {
+        ...battle.enemy,
+        threat: {
+          rank: 'NAMED',
+          baseEnemyName: 'Синий слизень',
+          survivalCount: -1,
+          experience: 24,
+          levelBonus: 3,
+        },
+      },
+    });
+
+    expect(isBattleSnapshot(snapshot)).toBe(false);
+  });
+
   it('rejects malformed roaming enemy origin in the battle snapshot', () => {
     const battle = createBattle();
     const snapshot = buildBattleSnapshot({

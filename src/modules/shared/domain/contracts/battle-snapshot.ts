@@ -1,5 +1,6 @@
 import type {
   BattleEnemyIntentCode,
+  BattleEnemyThreatRank,
   BattleEnemyRoamingDirection,
   BattleEncounterKind,
   BattleEnemySnapshot,
@@ -35,6 +36,7 @@ export interface BattleSnapshotV1 {
 export type BattleSnapshot = BattleSnapshotV1;
 
 const battleEnemyIntentCodes: readonly BattleEnemyIntentCode[] = ['HEAVY_STRIKE', 'GUARD_BREAK'];
+const battleEnemyThreatRanks: readonly BattleEnemyThreatRank[] = ['SURVIVOR', 'NAMED', 'CALAMITY'];
 const battleEnemyRoamingDirections: readonly BattleEnemyRoamingDirection[] = ['LOWER_BIOME', 'HIGHER_BIOME'];
 const battleEncounterKinds: readonly BattleEncounterKind[] = ['TRAIL', 'AMBUSH', 'WEARY_ENEMY', 'ELITE_TRAIL'];
 const rewardRarities: readonly RuneRarity[] = ['USUAL', 'UNUSUAL', 'RARE', 'EPIC', 'LEGENDARY', 'MYTHICAL'];
@@ -146,6 +148,16 @@ const isBattleEnemyKnowledgeSnapshot = (value: unknown): value is NonNullable<Ba
   && isNumber(value.victoryCount)
 );
 
+const isBattleEnemyThreatSnapshot = (value: unknown): value is NonNullable<BattleEnemySnapshot['threat']> => (
+  isJsonRecord(value)
+  && isString(value.rank)
+  && battleEnemyThreatRanks.includes(value.rank as BattleEnemyThreatRank)
+  && isString(value.baseEnemyName)
+  && isNumber(value.survivalCount)
+  && isNumber(value.experience)
+  && isNumber(value.levelBonus)
+);
+
 const isBattleEnemyRoamingSnapshot = (value: unknown): value is NonNullable<BattleEnemySnapshot['roaming']> => (
   isJsonRecord(value)
   && isString(value.direction)
@@ -179,6 +191,7 @@ const isBattleEnemySnapshot = (value: unknown): value is BattleEnemySnapshot => 
   && isString(value.attackText)
   && (value.intent === undefined || value.intent === null || isBattleEnemyIntentSnapshot(value.intent))
   && (value.knowledge === undefined || isBattleEnemyKnowledgeSnapshot(value.knowledge))
+  && (value.threat === undefined || isBattleEnemyThreatSnapshot(value.threat))
   && (value.roaming === undefined || isBattleEnemyRoamingSnapshot(value.roaming))
   && (value.hasUsedSignatureMove === undefined || typeof value.hasUsedSignatureMove === 'boolean')
 );

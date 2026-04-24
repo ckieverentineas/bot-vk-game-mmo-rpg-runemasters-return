@@ -48,6 +48,14 @@ const resolveThreatOrigin = (
   };
 };
 
+const resolveThreatLevelBonus = (battle: BattleView, originLevelBonus: number): number => (
+  Math.max(1, battle.enemy.threat?.levelBonus ?? originLevelBonus)
+);
+
+const resolveThreatEnemyName = (battle: BattleView): string => (
+  battle.enemy.threat?.baseEnemyName ?? battle.enemy.name
+);
+
 const resolveExperienceGain = (battle: BattleView): number => (
   Math.max(1, battle.locationLevel + (battle.enemy.roaming?.experienceBonus ?? 0))
 );
@@ -66,14 +74,14 @@ export const resolveEnemyThreatSurvival = (battle: BattleView): EnemyThreatSurvi
   return {
     battleId: battle.id,
     enemyCode: battle.enemy.code,
-    enemyName: battle.enemy.name,
+    enemyName: resolveThreatEnemyName(battle),
     originBiomeCode: origin.originBiomeCode,
     originBiomeName: origin.originBiomeName,
     currentBiomeCode: battle.biomeCode,
     lastSeenLocationLevel: battle.locationLevel,
     survivalResult: battle.result,
     experienceGain: resolveExperienceGain(battle),
-    levelBonus: origin.levelBonus,
+    levelBonus: resolveThreatLevelBonus(battle, origin.levelBonus),
   };
 };
 

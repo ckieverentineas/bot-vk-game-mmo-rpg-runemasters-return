@@ -19,7 +19,7 @@ import {
 import type { GameTelemetry } from '../../../shared/application/ports/GameTelemetry';
 import { requirePlayerByVkId } from '../../../shared/application/require-player';
 import type { GameRandom } from '../../../../shared/domain/GameRandom';
-import type { ActiveEnemyThreatView, GameRepository } from '../../../shared/application/ports/GameRepository';
+import type { GameRepository } from '../../../shared/application/ports/GameRepository';
 import type {
   CommandIntentResultRepository,
   FindPlayerByVkIdRepository,
@@ -46,6 +46,7 @@ import {
   resolveStartedExplorationBattleEnemyTurn,
 } from '../exploration-battle-start';
 import { persistExplorationSceneEffectResult } from '../exploration-event-effects';
+import { toExplorationActiveThreat } from '../active-threats';
 
 export interface ExploreLocationReplayResult {
   readonly battle: BattleView;
@@ -175,47 +176,6 @@ const buildRoamingTemplatePools = (
   ].filter((pool): pool is ExplorationRoamingTemplatePool => (
     pool.biome !== undefined && pool.templates.length > 0
   ));
-};
-
-const findMobTemplateByCode = (
-  worldCatalog: WorldCatalog,
-  biomeCode: string,
-  enemyCode: string,
-): MobTemplateView | null => (
-  worldCatalog.listMobTemplatesForBiome(biomeCode)
-    .find((template) => template.code === enemyCode) ?? null
-);
-
-const resolveThreatRoamingDirection = (
-  originBiome: BiomeView | null,
-  currentBiome: BiomeView,
-): ExplorationActiveThreat['roamingDirection'] => {
-  if (!originBiome || originBiome.code === currentBiome.code) {
-    return undefined;
-  }
-
-  return originBiome.minLevel > currentBiome.minLevel ? 'HIGHER_BIOME' : 'LOWER_BIOME';
-};
-
-const toExplorationActiveThreat = (
-  worldCatalog: WorldCatalog,
-  currentBiome: BiomeView,
-  threat: ActiveEnemyThreatView,
-): ExplorationActiveThreat | null => {
-  const template = findMobTemplateByCode(worldCatalog, threat.originBiomeCode, threat.enemyCode)
-    ?? findMobTemplateByCode(worldCatalog, threat.currentBiomeCode, threat.enemyCode);
-  if (!template) {
-    return null;
-  }
-
-  const originBiome = worldCatalog.listBiomes()
-    .find((biome) => biome.code === threat.originBiomeCode) ?? null;
-
-  return {
-    ...threat,
-    template,
-    roamingDirection: resolveThreatRoamingDirection(originBiome, currentBiome),
-  };
 };
 
 export class ExploreLocation {

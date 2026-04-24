@@ -61,6 +61,41 @@ describe('roaming threats', () => {
     }));
   });
 
+  it('keeps the base enemy name when a named active threat survives again', () => {
+    const battle = createTestBattle({
+      id: 'battle-named-slime-1',
+      status: 'COMPLETED',
+      result: 'DEFEAT',
+      locationLevel: 7,
+      biomeCode: 'dark-forest',
+      enemyCode: 'blue-slime',
+      enemy: {
+        ...createTestBattle().enemy,
+        code: 'blue-slime',
+        name: 'Упрямый Синий слизень',
+        currentHealth: 8,
+        threat: {
+          rank: 'NAMED',
+          baseEnemyName: 'Синий слизень',
+          survivalCount: 3,
+          experience: 24,
+          levelBonus: 3,
+        },
+      },
+    });
+
+    expect(resolveEnemyThreatSurvival(battle)).toEqual(expect.objectContaining({
+      battleId: 'battle-named-slime-1',
+      enemyCode: 'blue-slime',
+      enemyName: 'Синий слизень',
+      originBiomeCode: 'dark-forest',
+      currentBiomeCode: 'dark-forest',
+      survivalResult: 'DEFEAT',
+      experienceGain: 7,
+      levelBonus: 3,
+    }));
+  });
+
   it('records a higher-biome migrant that survives a player defeat', () => {
     const battle = createTestBattle({
       id: 'battle-migrant-1',

@@ -622,9 +622,9 @@ describe('resolveExplorationOutcome', () => {
         originBiomeCode: 'dark-forest',
         originBiomeName: 'Dark Forest',
         currentBiomeCode: 'dark-forest',
-        survivalCount: 3,
-        experience: 24,
-        levelBonus: 3,
+        survivalCount: 2,
+        experience: 18,
+        levelBonus: 2,
         lastSeenLocationLevel: 5,
         template: slimeTemplate,
       }],
@@ -642,7 +642,66 @@ describe('resolveExplorationOutcome', () => {
     expect(outcome.enemy.maxHealth).toBeGreaterThan(baselineEnemy.maxHealth);
     expect(outcome.enemy.experienceReward).toBeGreaterThan(baselineEnemy.experienceReward);
     expect(outcome.openingLog).toContain(
-      '⚠️ Угроза вернулась: Blue Slime пережил 3 встречи, стал сильнее и снова держит этот путь.',
+      '⚠️ Угроза вернулась: Blue Slime пережил 2 встречи, стал сильнее и снова держит этот путь.',
+    );
+  });
+
+  it('shows a named threat once a survived enemy has grown enough', () => {
+    const random = {
+      rollPercentage: vi.fn()
+        .mockReturnValueOnce(false)
+        .mockReturnValueOnce(true)
+        .mockReturnValueOnce(false),
+      pickOne: vi.fn(<T>(items: readonly T[]) => items[0]!),
+    };
+    const forest = createRoamingBiome({
+      code: 'dark-forest',
+      name: 'Тёмный лес',
+      minLevel: 1,
+      maxLevel: 15,
+    });
+    const slimeTemplate = createMobTemplate({
+      code: 'blue-slime',
+      biomeCode: 'dark-forest',
+      name: 'Синий слизень',
+      baseExperience: 6,
+    });
+
+    const outcome = resolveExplorationOutcome({
+      player: createPlayer(),
+      biome: forest,
+      templates: [slimeTemplate],
+      activeThreats: [{
+        enemyCode: 'blue-slime',
+        enemyName: 'Синий слизень',
+        originBiomeCode: 'dark-forest',
+        originBiomeName: 'Тёмный лес',
+        currentBiomeCode: 'dark-forest',
+        survivalCount: 3,
+        experience: 24,
+        levelBonus: 3,
+        lastSeenLocationLevel: 5,
+        template: slimeTemplate,
+      }],
+      locationLevel: 6,
+      currentSchoolCode: null,
+    }, random);
+
+    expect(outcome.kind).toBe('battle');
+    if (outcome.kind !== 'battle') {
+      return;
+    }
+
+    expect(outcome.enemy.name).toBe('Упрямый Синий слизень');
+    expect(outcome.enemy.threat).toEqual({
+      rank: 'NAMED',
+      baseEnemyName: 'Синий слизень',
+      survivalCount: 3,
+      experience: 24,
+      levelBonus: 3,
+    });
+    expect(outcome.openingLog).toContain(
+      '⚠️ Именная угроза: Упрямый Синий слизень пережил 3 встречи и вернулся сильнее.',
     );
   });
 });

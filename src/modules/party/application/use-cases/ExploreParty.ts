@@ -32,11 +32,13 @@ import {
 } from '../../../workshop/domain/workshop-catalog';
 import type { WorldCatalog } from '../../../world/application/ports/WorldCatalog';
 import {
+  type ExplorationActiveThreat,
   type ExplorationBattleOutcome,
   type ExplorationRoamingTemplatePool,
   resolveExplorationOutcome,
   resolveExplorationSchoolCode,
 } from '../../../exploration/domain/exploration-outcome';
+import { toExplorationActiveThreat } from '../../../exploration/application/active-threats';
 import {
   buildEnemyKnowledgeSnapshot,
   mergeEnemyKnowledgeSnapshots,
@@ -186,7 +188,7 @@ type ExplorePartyRepository = FindPlayerByVkIdRepository
     | 'saveBattle'
     | 'startPartyBattle'
   >
-  & Partial<Pick<GameRepository, 'listBestiaryDiscovery'>>;
+  & Partial<Pick<GameRepository, 'listActiveEnemyThreatsForBiome' | 'listBestiaryDiscovery'>>;
 
 export class ExploreParty {
   public constructor(
@@ -241,6 +243,7 @@ export class ExploreParty {
       player: leader,
       biome,
       templates: this.worldCatalog.listMobTemplatesForBiome(biome.code),
+      activeThreats: await this.listActiveThreatsForBiome(biome),
       roamingTemplatePools: buildRoamingTemplatePools(this.worldCatalog, biome, locationLevel, {
         suppressHigherBiomeRoaming: leader.defeatStreak > 0,
       }),
@@ -255,6 +258,18 @@ export class ExploreParty {
     }
 
     return this.startPartyBattleFromOutcome(party, memberContexts, leader, outcome);
+  }
+
+  private async listActiveThreatsForBiome(biome: BiomeView): Promise<readonly ExplorationActiveThreat[]> {
+    if (typeof this.repository.listActiveEnemyThreatsForBiome !== 'function') {
+      return [];
+    }
+
+    const threats = await this.repository.listActiveEnemyThreatsForBiome(biome.code);
+
+    return threats
+      .map((threat) => toExplorationActiveThreat(this.worldCatalog, biome, threat))
+      .filter((threat): threat is ExplorationActiveThreat => threat !== null);
   }
 
   private async resolveActivePartyBattle(player: PlayerState, party: PartyView): Promise<BattleView | null> {
