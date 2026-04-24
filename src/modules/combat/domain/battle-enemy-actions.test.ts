@@ -87,6 +87,25 @@ describe('battle enemy actions', () => {
     expect(resolved.log.length).toBeGreaterThan(1);
   });
 
+  it('adds an explicit target connector to enemy attack log lines', () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0.5);
+    const battle = createBattle({
+      player: createPlayerSnapshot({
+        name: 'Рунный мастер #1001',
+      }),
+      enemy: createEnemySnapshot({
+        name: 'Шквальная рысь',
+        attackText: 'срывается шквальным выпадом',
+      }),
+    });
+
+    const resolved = resolveEnemyActionTurn(battle);
+
+    expect(resolved.log).toContain(
+      '👾 [Шквальная рысь] срывается шквальным выпадом по цели [Рунный мастер #1001] и наносит 4 урона.',
+    );
+  });
+
   it('keeps the response window open when signature reaction succeeds', () => {
     const battle = createBattle({
       enemy: createEnemySnapshot({

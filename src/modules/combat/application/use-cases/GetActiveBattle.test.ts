@@ -113,7 +113,7 @@ describe('GetActiveBattle', () => {
         ...activeBattle.player,
         currentHealth: 7,
       },
-      log: [...activeBattle.log, '👾 [Учебный огонёк] касается искрой [Рунный мастер #1001] и наносит 1 урона.'],
+      log: [...activeBattle.log, '👾 [Учебный огонёк] касается искрой по цели [Рунный мастер #1001] и наносит 1 урона.'],
     });
     const repository = {
       findPlayerByVkId: vi.fn().mockResolvedValue(createPlayer()),

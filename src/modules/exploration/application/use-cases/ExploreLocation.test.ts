@@ -1437,7 +1437,7 @@ describe('ExploreLocation', () => {
     const activeBattle = createBattle({ turnOwner: 'ENEMY' });
     const recoveredBattle = createBattle({
       turnOwner: 'PLAYER',
-      log: [...activeBattle.log, '👾 [Учебный огонёк] касается искрой [Рунный мастер #1001] и наносит 1 урона.'],
+      log: [...activeBattle.log, '👾 [Учебный огонёк] касается искрой по цели [Рунный мастер #1001] и наносит 1 урона.'],
       player: {
         ...activeBattle.player,
         currentHealth: 7,
@@ -1466,7 +1466,7 @@ describe('ExploreLocation', () => {
         ...activeBattle.player,
         currentHealth: 7,
       },
-      log: [...activeBattle.log, '👾 [Учебный огонёк] касается искрой [Рунный мастер #1001] и наносит 1 урона.'],
+      log: [...activeBattle.log, '👾 [Учебный огонёк] касается искрой по цели [Рунный мастер #1001] и наносит 1 урона.'],
     });
     const repository = {
       findPlayerByVkId: vi.fn().mockResolvedValue(createPlayer({ activeBattleId: activeBattle.id })),

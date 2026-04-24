@@ -17,7 +17,7 @@ export const formatEnemyAttackLine = (
   attackText: string,
   targetName: string,
   damage: number | string,
-): string => `${formatBattleActor(enemyName)} ${attackText} ${formatBattleActor(targetName)} и наносит ${damage} урона.`;
+): string => `${formatBattleActor(enemyName)} ${attackText} по цели ${formatBattleActor(targetName)} и наносит ${damage} урона.`;
 
 export const formatSkillLine = (
   actorName: string,

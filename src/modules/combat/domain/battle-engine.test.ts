@@ -156,7 +156,7 @@ describe('BattleEngine', () => {
     const enemyAttackBattle = BattleEngine.resolveEnemyTurn(createBattle({ turnOwner: 'ENEMY' }));
 
     expect(playerAttackBattle.log).toContain('⚔️ [Рунный мастер #1001] наносит 5 урона [Синий слизень].');
-    expect(enemyAttackBattle.log).toContain('👾 [Синий слизень] бьёт [Рунный мастер #1001] и наносит 2 урона.');
+    expect(enemyAttackBattle.log).toContain('👾 [Синий слизень] бьёт по цели [Рунный мастер #1001] и наносит 2 урона.');
   });
 
   it('starts combat from an offered encounter and restores the original first turn', () => {
