@@ -73,8 +73,8 @@ const formatLocationOverview = (location: BestiaryLocationSummaryView): string =
 
   return [
     `${marker} ${location.biome.name} · ${formatBiomeLevels(location)}`,
-    `   Следы: ${location.discoveredEnemyCount}/${location.totalEnemyCount} · добыча: ${location.revealedDropCount}/${location.totalEnemyCount}`,
-    `   Первое открытие: ${formatReward(location.discoveryReward.reward)} · ${formatDiscoveryRewardStatus(location)}`,
+    `   🧭 ${location.discoveredEnemyCount}/${location.totalEnemyCount} · 🎁 ${location.revealedDropCount}/${location.totalEnemyCount}`,
+    `   🏁 ${formatReward(location.discoveryReward.reward)} · ${formatDiscoveryRewardStatus(location)}`,
   ].join('\n');
 };
 
@@ -98,23 +98,23 @@ const formatStats = (stats: StatBlock): string => (
 
 const formatDropLine = (enemy: BestiaryEnemyView): string => {
   if (!enemy.isDropRevealed) {
-    return 'добыча скрыта до первого разобранного трофея';
+    return '🎁 добыча скрыта';
   }
 
   return [
-    `добыча: ${formatInventoryDelta(enemy.template.lootTable)}`,
-    `шанс руны: ${enemy.template.runeDropChance}%`,
+    `🎁 ${formatInventoryDelta(enemy.template.lootTable)}`,
+    `🔮 руна ${enemy.template.runeDropChance}%`,
   ].join(' · ');
 };
 
 const formatTacticalProfile = (enemy: BestiaryEnemyView): string => {
   if (!enemy.tacticalProfile) {
-    return 'опасность: след еще не изучен';
+    return '⚠️ след ещё не изучен';
   }
 
   return [
-    `опасность: ${enemy.tacticalProfile.habitLine}`,
-    `ответ: ${enemy.tacticalProfile.answerLine}`,
+    `⚠️ ${enemy.tacticalProfile.habitLine}`,
+    `✅ ${enemy.tacticalProfile.answerLine}`,
   ].join('\n   ');
 };
 
@@ -136,19 +136,18 @@ const formatKillMilestoneLine = (enemy: BestiaryEnemyView): string => {
   ));
 
   return milestones.length > 0
-    ? `награды убийств: ${milestones.join('; ')}`
-    : 'награды убийств: пока нет';
+    ? `🏁 ${milestones.join('; ')}`
+    : '🏁 наград пока нет';
 };
 
 const formatEnemyLine = (enemy: BestiaryEnemyView, index: number): string => {
   if (!enemy.isDiscovered) {
-    return `${index + 1}. ??? - след не встречен`;
+    return `${index + 1}. ??? · след не встречен`;
   }
 
   return [
     `${index + 1}. ${enemy.template.name} · ${formatEnemyRole(enemy)} · ${formatEnemyKind(enemy.template.kind)}`,
-    `   Побед: ${enemy.victoryCount}`,
-    `   база: ${formatStats(enemy.template.baseStats)}`,
+    `   🏆 ${enemy.victoryCount} · 📊 ${formatStats(enemy.template.baseStats)}`,
     `   ${formatTacticalProfile(enemy)}`,
     `   ${formatDropLine(enemy)}`,
     `   ${formatKillMilestoneLine(enemy)}`,
@@ -162,13 +161,13 @@ export const renderBestiaryOverview = (bestiary: BestiaryOverviewView): string =
     index === 0 ? [location] : ['', location]
   )),
   '',
-  `Страница ${bestiary.pageNumber} из ${bestiary.totalPages} · локаций: ${bestiary.totalLocations}`,
+  `📄 ${bestiary.pageNumber}/${bestiary.totalPages} · локаций: ${bestiary.totalLocations}`,
 ].join('\n');
 
 export const renderBestiaryLocationDetail = (detail: BestiaryLocationDetailView): string => [
   `📖 Бестиарий / ${detail.location.biome.name}`,
-  `${formatBiomeLevels(detail.location)} · первое открытие: ${formatReward(detail.location.discoveryReward.reward)} · ${formatDiscoveryRewardStatus(detail.location)}`,
-  `Следы: ${detail.location.discoveredEnemyCount}/${detail.location.totalEnemyCount} · добыча: ${detail.location.revealedDropCount}/${detail.location.totalEnemyCount}`,
+  `${formatBiomeLevels(detail.location)} · 🏁 ${formatReward(detail.location.discoveryReward.reward)} · ${formatDiscoveryRewardStatus(detail.location)}`,
+  `🧭 ${detail.location.discoveredEnemyCount}/${detail.location.totalEnemyCount} · 🎁 ${detail.location.revealedDropCount}/${detail.location.totalEnemyCount}`,
   '',
   ...detail.enemies.map(formatEnemyLine).flatMap((enemy, index) => (
     index === 0 ? [enemy] : ['', enemy]

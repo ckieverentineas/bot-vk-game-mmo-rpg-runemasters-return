@@ -6,6 +6,8 @@ import {
 import type { PlayerState } from '../../shared/types/game';
 import { renderNextGoalSummary } from './message-formatting';
 
+const trimBattleAbsentPrefix = (line: string): string => line.replace(/^Боя нет:\s*/u, '');
+
 export const renderExplorationEvent = (event: ExplorationSceneView, player: PlayerState): string => {
   const effectLine = getExplorationSceneEffectLine(event);
 
@@ -13,13 +15,12 @@ export const renderExplorationEvent = (event: ExplorationSceneView, player: Play
     '🧭 Исследование',
     '',
     event.title,
-    ...(event.kindLabel ? [`Знак: ${event.kindLabel}`] : []),
+    ...(event.kindLabel ? [`🏷️ ${event.kindLabel}`] : []),
     ...(event.directorLine ? [event.directorLine] : []),
     event.description,
     '',
-    event.outcomeLine,
-    ...(effectLine ? [effectLine] : []),
-    event.nextStepLine,
+    `✅ ${trimBattleAbsentPrefix(event.outcomeLine)}`,
+    ...(effectLine ? [`🎁 ${effectLine}`] : []),
     '',
     ...renderNextGoalSummary(buildPlayerNextGoalView(player), '👉 Продолжить'),
   ].join('\n');

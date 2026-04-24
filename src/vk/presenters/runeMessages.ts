@@ -103,16 +103,16 @@ const formatRuneStatDetails = (stats: StatBlock): string[] => {
     .map((key) => `${runeStatSummaryLabels[key]} +${stats[key]}`);
 
   return lines.length > 0
-    ? ['Бонусы:', ...lines]
-    : ['Бонусы: нет'];
+    ? ['📊 Бонусы:', ...lines]
+    : ['📊 Бонусы: нет'];
 };
 
 const formatRuneAbilityDetails = (runeContent: ReturnType<typeof describeRuneContent>): string[] => [
   ...(runeContent.activeAbilities.length > 0
-    ? ['Активный навык:', ...runeContent.activeAbilities.map(formatActiveAbilityDetails)]
+    ? ['⚡ Активно:', ...runeContent.activeAbilities.map(formatActiveAbilityDetails)]
     : []),
   ...(runeContent.passiveAbilities.length > 0
-    ? ['Пассивные эффекты:', ...runeContent.passiveAbilities.map(formatPassiveAbilityDetails)]
+    ? ['🛡️ Пассивно:', ...runeContent.passiveAbilities.map(formatPassiveAbilityDetails)]
     : []),
 ];
 
@@ -132,9 +132,9 @@ const formatRune = (rune: RuneView | null): string => {
       }
       return '🎯 Выбрана';
     })(),
-    `Руна: ${formatRuneDisplayName(rune)}`,
-    `Редкость: ${gameBalance.runes.profiles[rune.rarity].title}${school ? ` · ${school.name}` : ''}`,
-    ...(school ? [`Стиль: ${school.playPatternLine}`] : []),
+    `🔮 ${formatRuneDisplayName(rune)}`,
+    `⭐ ${gameBalance.runes.profiles[rune.rarity].title}${school ? ` · ${school.name}` : ''}`,
+    ...(school ? [`🜂 ${school.playPatternLine}`] : []),
     ...formatRuneStatDetails({
       health: rune.health,
       attack: rune.attack,
@@ -188,7 +188,7 @@ const renderEquippedRuneSlots = (player: PlayerState): string => {
     return `${slot + 1}. ${rune ? formatRuneDisplayName(rune) : 'пусто'}`;
   });
 
-  return `Надето: ${slotLines.join(' · ')}`;
+  return `✅ Надето: ${slotLines.join(' · ')}`;
 };
 
 const countEquippedRunes = (player: PlayerState): number => (
@@ -213,8 +213,8 @@ const renderRuneHandoff = (player: PlayerState): readonly string[] => {
 
   return [
     '',
-    `🎯 След: ${withSentencePeriod(nextGoal.objectiveText)}`,
-    ...(focusedRune ? [`В фокусе: «${formatRuneDisplayName(focusedRune)}».`] : []),
+    `🎯 ${withSentencePeriod(nextGoal.objectiveText)}`,
+    ...(focusedRune ? [`👁️ Фокус: «${formatRuneDisplayName(focusedRune)}».`] : []),
   ];
 };
 
@@ -223,10 +223,10 @@ const renderRuneEconomyLines = (selectedRune?: RuneView | null): readonly string
   const unusualCraftSpend = resolveRuneCraftSpend('UNUSUAL');
 
   return [
-    `Алтарь: создание от ${gameBalance.runes.craftCost} осколков и ${usualCraftSpend.gold} пыли.`,
-    `Необычная руна: ${unusualCraftSpend.gold} пыли и 1 эссенция.`,
+    `🕯 Создание: ${gameBalance.runes.craftCost} оск. · ${usualCraftSpend.gold} пыли.`,
+    `🟢 Необычная: ${unusualCraftSpend.gold} пыли · 1 эссенция.`,
     ...(selectedRune
-      ? [`Перековка выбранной: ${gameBalance.runes.rerollShardCost} осколок и ${resolveRuneRerollSpend(selectedRune.rarity).gold} пыли.`]
+      ? [`♻️ Перековка: ${gameBalance.runes.rerollShardCost} оск. · ${resolveRuneRerollSpend(selectedRune.rarity).gold} пыли.`]
       : []),
   ];
 };
@@ -241,17 +241,16 @@ export const renderRuneScreen = (
     return [
       '🔮 Руны',
       '',
-      'У вас пока нет рун.',
-      'Первая боевая руна откроет школу рун и задаст ваш ранний стиль боя.',
+      'Пока пусто.',
+      'Первая боевая руна откроет школу.',
       renderStarterSchoolLine(),
       ...renderRuneEconomyLines(),
-      'Новая редкость позже расширит сборку, а сейчас важнее открыть первую школу рун.',
-      'Победы и алтарь помогут собрать первую руну.',
+      '⚔️ Победы и алтарь помогут собрать первую.',
     ].join('\n');
   }
 
   return [
-    '🔮 Руны:',
+    '🔮 Руны',
     renderEquippedRuneCounter(player),
     ...renderAcquisitionSummary(acquisitionSummary),
     ...renderRuneHandoff(player),
@@ -292,11 +291,11 @@ const renderEmptyAltar = (
     '🕯 Алтарь рун',
     '',
     ...renderAcquisitionSummary(acquisitionSummary),
-    'У вас пока нет рун.',
-    'Первая боевая руна откроет школу рун и задаст ваш ранний стиль боя.',
+    'Пока пусто.',
+    'Первая боевая руна откроет школу.',
     renderStarterSchoolLine(),
     ...renderRuneEconomyLines(),
-    'Победы и алтарь помогут собрать первую руну.',
+    '⚔️ Победы и алтарь помогут собрать первую.',
   ].join('\n')
 );
 

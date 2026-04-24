@@ -756,9 +756,9 @@ describe('GameHandler smoke', () => {
     const replies = getReplyCalls(ctx);
 
     expect(services.registerPlayer.execute).toHaveBeenCalledWith(1001);
-    expect(replies[0]?.message).toContain('Добро пожаловать');
-    expect(replies[0]?.message).toContain('Учебный бой');
-    expect(replies[0]?.message).toContain('школа рун');
+    expect(replies[0]?.message).toContain('🎮 Runemasters Return');
+    expect(replies[0]?.message).toContain('Учебный огонёк');
+    expect(replies[0]?.message).toContain('Маршрут: удар -> первая руна -> школа -> стиль боя.');
   });
 
   it('показывает return recap для уже существующего игрока по команде start', async () => {
@@ -816,7 +816,7 @@ describe('GameHandler smoke', () => {
     const message = getReplyCalls(ctx)[0]?.message ?? '';
     expect(services.getQuestBook.execute).toHaveBeenCalledWith(1001);
     expect(message).toContain('📜 Книга путей');
-    expect(message).toContain('В книге: 1 запись ждёт награду');
+    expect(message).toContain('📌 🎁 1');
     expect(message).toContain('Пробуждение Пустого мастера');
   });
 
@@ -831,7 +831,7 @@ describe('GameHandler smoke', () => {
     expect(services.getBestiary.execute).toHaveBeenCalledWith(1001, 1);
     expect(message).toContain('📖 Бестиарий');
     expect(message).toContain('Порог Инициации');
-    expect(message).toContain('Первое открытие');
+    expect(message).toContain('🏁 +1 сияния');
     expect(message).not.toContain('Учебный огонёк');
   });
 
@@ -856,7 +856,7 @@ describe('GameHandler smoke', () => {
     const message = getReplyCalls(ctx)[0]?.message ?? '';
     expect(services.getBestiary.executeLocation).toHaveBeenCalledWith(1001, 'initium');
     expect(message).toContain('Учебный огонёк');
-    expect(message).toContain('Побед: 1');
+    expect(message).toContain('🏆 1');
   });
 
   it('показывает отдельный экран мастерства школы', async () => {
@@ -891,7 +891,7 @@ describe('GameHandler smoke', () => {
     const message = getReplyCalls(ctx)[0]?.message ?? '';
     expect(services.getPlayerProfile.execute).toHaveBeenCalledWith(1001);
     expect(message).toContain('📜 Мастерство');
-    expect(message).toContain('Пламя · текущая');
+    expect(message).toContain('Пламя · в фокусе');
     expect(message).toContain('Разогрев дожима');
   });
 
@@ -1186,7 +1186,7 @@ describe('GameHandler smoke', () => {
     expect(keyboardClear.isInline).toBe(false);
     expect(keyboardClear.rows).toEqual([]);
     expect(replies[1]?.message).toContain('🏁 Трофеи победы');
-    expect(replies[1]?.message).toContain('👉 Следом: Откройте «🔮 Руны», наденьте первый знак школы');
+    expect(replies[1]?.message).toContain('👉 Откройте «🔮 Руны», наденьте первый знак школы');
     expect(services.telemetry.postSessionNextGoalShown).toHaveBeenCalledWith(1, expect.objectContaining({
       battleOutcome: 'VICTORY',
       suggestedGoalType: 'equip_school_sign',
@@ -1208,7 +1208,7 @@ describe('GameHandler smoke', () => {
     expect(services.enterTutorialMode.execute).toHaveBeenCalledWith(1001, 'intent-location-1', 'state-location-1', 'payload');
     expect(services.exploreLocation.execute).toHaveBeenCalledWith(1001, undefined, undefined, 'payload');
     expect(getReplyCalls(locationContext)[0]?.message).toContain('Учебный круг');
-    expect(getReplyCalls(locationContext)[0]?.message).toContain('первую руну');
+    expect(getReplyCalls(locationContext)[0]?.message).toContain('Награда: первая руна');
     expect(getReplyCalls(exploreContext)[0]?.message).toContain('⚔️ Бой');
     expect(getReplyCalls(exploreContext)[0]?.message).toContain('Ответ мастера:');
   });
@@ -1268,8 +1268,8 @@ describe('GameHandler smoke', () => {
     const replies = getReplyCalls(ctx);
     expect(replies[0]?.message).toContain('🧭 Исследование');
     expect(replies[0]?.message).toContain('Тихая передышка');
-    expect(replies[0]?.message).toContain('Знак: передышка');
-    expect(replies[0]?.message).toContain('Боя нет');
+    expect(replies[0]?.message).toContain('🏷️ передышка');
+    expect(replies[0]?.message).toContain('экспедиция получает паузу');
     expect(replies[0]?.message).not.toContain('Ответ мастера:');
     expect(JSON.stringify(replies[0]?.keyboard)).toContain('Исследовать');
   });
@@ -1293,8 +1293,8 @@ describe('GameHandler smoke', () => {
     await handler.handle(ctx as never);
 
     const replies = getReplyCalls(ctx);
-    expect(replies[0]?.message).toContain('Учебный круг оставлен позади');
-    expect(replies[0]?.message).toContain('Дороги открыты');
+    expect(replies[0]?.message).toContain('📘 Обучение пропущено.');
+    expect(replies[0]?.message).toContain('Дальше: обычное исследование.');
     expect(JSON.stringify(replies[0]?.keyboard)).toContain('Исследовать');
     expect(JSON.stringify(replies[0]?.keyboard)).not.toContain('Учебный бой');
   });
@@ -1454,7 +1454,7 @@ describe('GameHandler smoke', () => {
     expect(keyboardClear.rows).toEqual([]);
     expect(replies[1]?.message).toContain('🏁 Трофеи победы');
     expect(replies[1]?.message).toContain('Лесной волк повержен');
-    expect(replies[1]?.message).toContain('✨ Перемена: Открыт новый слот рун.');
+    expect(replies[1]?.message).toContain('✨ Открыт новый слот рун.');
     expect(replies[1]?.message).toContain('🔪 Свежевать');
   });
 
@@ -1494,7 +1494,7 @@ describe('GameHandler smoke', () => {
     expect(services.collectPendingReward.execute).toHaveBeenCalledWith(1001, 'skin_beast', 'battle-victory:battle-1');
     expect(services.getParty.execute).toHaveBeenCalledWith(1001);
     expect(getReplyCalls(ctx)[0]?.message).toContain('🔪 Свежевать');
-    expect(getReplyCalls(ctx)[0]?.message).toContain('В сумке: +2 кожи · +1 кость.');
+    expect(getReplyCalls(ctx)[0]?.message).toContain('🎒 +2 кожи · +1 кость.');
     expect(getReplyCalls(ctx)[0]?.message).toContain('Свежевание: Новичок свежевания · появились первые успехи');
     expect(getReplyCalls(ctx)[0]?.message).not.toContain('Свежевание: 0 → 1');
 
@@ -1559,8 +1559,8 @@ describe('GameHandler smoke', () => {
 
     await handler.handle(ctx as never);
 
-    expect(getReplyCalls(ctx)[0]?.message).toContain('✨ Перемена: Открыт новый слот рун.');
-    expect(getReplyCalls(ctx)[0]?.message).toContain('👉 Следом: Откройте «🔮 Руны» и выберите, какой слот занять новой руной.');
+    expect(getReplyCalls(ctx)[0]?.message).toContain('✨ Открыт новый слот рун.');
+    expect(getReplyCalls(ctx)[0]?.message).toContain('👉 Откройте «🔮 Руны» и выберите, какой слот занять новой руной.');
   });
 
   it('логирует первое school reveal после battle result с school trial completion', async () => {
@@ -1902,7 +1902,7 @@ describe('GameHandler smoke', () => {
     expect(services.deletePlayer.execute).toHaveBeenCalledWith(1001, 'intent-delete-2', 'stale-delete-state', 'payload');
     const replies = getReplyCalls(ctx);
     expect(replies[0]?.message).toContain('Старое подтверждение больше не действует');
-    expect(replies[0]?.message).toContain('👤 Летопись');
+    expect(replies[0]?.message).toContain('👤 Профиль');
   });
 
   it('пробрасывает intentId для крафта руны через transport payload', async () => {
@@ -2054,8 +2054,8 @@ describe('GameHandler smoke', () => {
 
     await handler.handle(ctx as never);
 
-    expect(getReplyCalls(ctx)[0]?.message).toContain('✨ Перемена: Новая руна: Искра Бури.');
-    expect(getReplyCalls(ctx)[0]?.message).toContain('👉 Следом: Откройте «🔮 Руны» и примерьте её в сборке.');
+    expect(getReplyCalls(ctx)[0]?.message).toContain('✨ Новая руна: Искра Бури.');
+    expect(getReplyCalls(ctx)[0]?.message).toContain('👉 Откройте «🔮 Руны» и примерьте её в сборке.');
   });
 
   it('пробрасывает intentId для перековки руны через transport payload', async () => {
@@ -2178,8 +2178,8 @@ describe('GameHandler smoke', () => {
 
     await handler.handle(ctx as never);
 
-    expect(getReplyCalls(ctx)[0]?.message).toContain('✨ Перемена: Стиль Пламени закреплён.');
-    expect(getReplyCalls(ctx)[0]?.message).toContain('👉 Следом: Следующий бой: держите давление');
+    expect(getReplyCalls(ctx)[0]?.message).toContain('✨ Стиль Пламени закреплён.');
+    expect(getReplyCalls(ctx)[0]?.message).toContain('👉 Следующий бой: держите давление');
     expect(JSON.stringify(getReplyCalls(ctx)[0]?.keyboard)).not.toContain('Проверить школу');
     expect(JSON.stringify(getReplyCalls(ctx)[0]?.keyboard)).toContain('К списку рун');
   });
@@ -2389,10 +2389,10 @@ describe('GameHandler smoke', () => {
     expect(getReplyCalls(runeContext)[0]?.message).toContain('1. 🔥 Эпическая руна Пламени');
     expect(getReplyCalls(runeContext)[0]?.message).toContain('Страница 1 из 1');
     expect(getReplyCalls(runeContext)[0]?.message).not.toContain('Список рун');
-    expect(getReplyCalls(runeContext)[0]?.message).not.toContain('Редкость: Эпическая руна · Пламя');
+    expect(getReplyCalls(runeContext)[0]?.message).not.toContain('⭐ Эпическая руна · Пламя');
     expect(getReplyCalls(altarContext)[0]?.message).toContain('🕯 Алтарь рун');
-    expect(getReplyCalls(altarContext)[0]?.message).toContain('Редкость: Эпическая руна · Пламя');
-    expect(getReplyCalls(altarContext)[0]?.message).toContain('Стиль: Играй так: дави уроном');
+    expect(getReplyCalls(altarContext)[0]?.message).toContain('⭐ Эпическая руна · Пламя');
+    expect(getReplyCalls(altarContext)[0]?.message).toContain('🜂 Играй так: дави уроном');
     expect(getReplyCalls(altarContext)[0]?.message).toContain('Импульс углей');
   });
 
@@ -2405,7 +2405,7 @@ describe('GameHandler smoke', () => {
 
     expect(services.selectRunePageSlot.execute).toHaveBeenCalledWith(1001, 0, 'intent-rune-slot-1', 'state-rune-slot-1', 'payload');
     expect(getReplyCalls(ctx)[0]?.message).toContain('🔮 Руна');
-    expect(getReplyCalls(ctx)[0]?.message).toContain('Редкость: Эпическая руна · Пламя');
+    expect(getReplyCalls(ctx)[0]?.message).toContain('⭐ Эпическая руна · Пламя');
   });
 
   it('перелистывает страницу рун через transport payload', async () => {
@@ -2548,7 +2548,7 @@ describe('GameHandler smoke', () => {
     const replies = getReplyCalls(ctx);
     expect(replies[0]?.message).toContain('Рунный жест ещё в пути');
     expect(replies[0]?.message).toContain('🕯 Алтарь рун');
-    expect(replies[0]?.message).toContain('Редкость: Эпическая руна · Пламя');
+    expect(replies[0]?.message).toContain('⭐ Эпическая руна · Пламя');
   });
 
   it('восстанавливает рунный контекст после stale экипировки', async () => {
@@ -2885,7 +2885,7 @@ describe('GameHandler smoke', () => {
     await handler.handle(ctx as never);
 
     expect(services.disbandParty.execute).toHaveBeenCalledWith(1001);
-    expect(getReplyCalls(ctx)[0]?.message).toContain('Сейчас вы идёте один.');
+    expect(getReplyCalls(ctx)[0]?.message).toContain('👤 Сейчас соло.');
   });
 
   it('позволяет участнику выйти из отряда без расформирования лидера', async () => {
@@ -2899,6 +2899,6 @@ describe('GameHandler smoke', () => {
     await handler.handle(ctx as never);
 
     expect(services.leaveParty.execute).toHaveBeenCalledWith(1002);
-    expect(getReplyCalls(ctx)[0]?.message).toContain('Сейчас вы идёте один.');
+    expect(getReplyCalls(ctx)[0]?.message).toContain('👤 Сейчас соло.');
   });
 });

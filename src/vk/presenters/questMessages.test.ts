@@ -118,9 +118,9 @@ describe('renderQuestBook', () => {
   it('renders a compact chapter page with reward markers', () => {
     const message = renderQuestBook(createBook());
 
-    expect(message).toContain('Страница 1 из 1 · записи 1-3 из 3.');
-    expect(message).toContain('Ближайший след: 🚪 Имя на границе — 0/1 · Выйти из Учебного круга на первую дорогу.');
-    expect(message).toContain('Готовые награды: 1 запись ждёт.');
+    expect(message).toContain('📄 1/1 · записи 1-3 из 3.');
+    expect(message).toContain('🧭 🚪 Имя на границе: 0/1 · Выйти из Учебного круга на первую дорогу.');
+    expect(message).toContain('🎁 Готово: 1 запись ждёт.');
     expect(message).toContain('🎁 Готовые награды · 1');
     expect(message).toContain('1. 🌑 Пробуждение Пустого мастера · Первый круг');
     expect(message).toContain('🎁 Награда не собрана: +5 пыли · +1 обычный осколок');
@@ -149,7 +149,7 @@ describe('renderQuestBook', () => {
     const message = renderQuestBook(book, 3);
 
     expect(page.quests).toHaveLength(5);
-    expect(message).toContain('Страница 3 из');
+    expect(message).toContain('📄 3/');
     expect(message).toContain('🌒 Следы дальше · 5');
     expect(message).toContain('Пять отметин дороги');
     expect(message).toContain('2/5');
@@ -210,9 +210,9 @@ describe('renderQuestBook', () => {
 
     const message = renderQuestBook(book);
 
-    expect(message).toContain('Страница 1 из 1 · записи 1-4 из 4.');
-    expect(message).toContain('Ближайший след: все открытые следы закрыты.');
-    expect(message).toContain('Готовых наград сейчас нет.');
+    expect(message).toContain('📄 1/1 · записи 1-4 из 4.');
+    expect(message).toContain('🧭 След: всё закрыто.');
+    expect(message).toContain('🎁 Готово: 0.');
     expect(message).toContain('✅ Архив · 4');
     expect(message).not.toContain('✅ Закрыто');
     expect(message).toContain('1. 🌑 Пробуждение Пустого мастера');

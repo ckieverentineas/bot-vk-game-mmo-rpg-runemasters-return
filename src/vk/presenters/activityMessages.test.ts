@@ -58,18 +58,16 @@ describe('renderDailyTrace', () => {
     const message = renderDailyTrace(createView());
 
     expect(message).toContain('След дня');
-    expect(message).toContain('Найдено:');
-    expect(message).toContain('без серии');
-    expect(message).toContain('без штрафа за пропуск');
+    expect(message).toContain('🎁 +6 пыли · +1 обычный осколок · +1 кожа.');
+    expect(message).toContain('Без серии и долга.');
     expect(message).toContain('След:');
   });
 
   it('keeps already-claimed copy compact and non-punitive', () => {
     const message = renderDailyTrace(createView({ claimedNow: false }));
 
-    expect(message).toContain('уже найден');
-    expect(message).toContain('Серии нет');
-    expect(message).toContain('штрафов за пропуск нет');
-    expect(message).not.toContain('Найдено:');
+    expect(message).toContain('Уже найдено: Заметка на старой карте.');
+    expect(message).toContain('Без серии и штрафов.');
+    expect(message).not.toContain('🎁 +6 пыли');
   });
 });

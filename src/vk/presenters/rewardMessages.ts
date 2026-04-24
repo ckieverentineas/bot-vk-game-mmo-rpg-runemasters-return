@@ -30,7 +30,7 @@ const formatTrophyActionPreview = (
   action: PendingRewardView['snapshot']['trophyActions'][number],
 ): string => {
   const rewardLine = action.reward ? formatInventoryDelta(action.reward.inventoryDelta) : 'добыча без предпросмотра';
-  return `${action.label} — ${rewardLine}; мастерство: ${formatPlayerSkillTitles(action.skillCodes)}.`;
+  return `${action.label} — ${rewardLine} · ${formatPlayerSkillTitles(action.skillCodes)}`;
 };
 
 export const renderPendingReward = (
@@ -38,21 +38,17 @@ export const renderPendingReward = (
   acquisitionSummary?: AcquisitionSummaryView | null,
 ): string => {
   const sourceLine = pendingReward.source
-    ? [
-        `${pendingReward.source.enemyName} повержен.`,
-        'На поле остался трофей: можно забрать всё как есть или обработать добычу.',
-      ].join(' ')
-    : 'Победа уже зафиксирована. Трофей ждёт: можно забрать всё как есть или обработать добычу.';
+    ? `✅ ${pendingReward.source.enemyName} повержен.`
+    : '✅ Победа зафиксирована.';
 
   return [
     '🏁 Трофеи победы',
     '',
     sourceLine,
-    `Уже ваше: ${formatBaseRewardLine(pendingReward)}.`,
+    `🎁 Уже ваше: ${formatBaseRewardLine(pendingReward)}.`,
     ...renderAcquisitionSummary(acquisitionSummary),
-    'Трофей поддастся только одному подходу; повторный жест не принесёт второй добычи.',
     '',
-    'Подход к трофею:',
+    '🧰 Выберите 1 действие:',
     ...listPlayerFacingTrophyActions(pendingReward.snapshot.trophyActions).map(formatTrophyActionPreview),
   ].join('\n');
 };
@@ -69,9 +65,9 @@ export const renderCollectedPendingReward = (result: CollectPendingRewardView): 
   return [
     selectedAction?.label ?? '🎒 Добыча собрана',
     '',
-    sourceLine,
-    `В сумке: ${formatInventoryDelta(result.appliedResult.inventoryDelta)}.`,
-    ...(skillLines.length > 0 ? ['', 'Ремесло:', ...skillLines] : []),
+    `✅ ${sourceLine}`,
+    `🎒 ${formatInventoryDelta(result.appliedResult.inventoryDelta)}.`,
+    ...(skillLines.length > 0 ? ['', '🧰 Ремесло', ...skillLines] : []),
     '',
     ...renderNextGoalSummary(buildPlayerNextGoalView(result.player), '👉 Дальше'),
   ].join('\n');

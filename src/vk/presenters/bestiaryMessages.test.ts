@@ -102,8 +102,8 @@ describe('bestiary messages', () => {
 
     expect(message).toContain('📖 Бестиарий');
     expect(message).toContain('Темный лес · ур. 1-15');
-    expect(message).toContain('Следы: 2/3 · добыча: 1/3');
-    expect(message).toContain('Первое открытие: +2 сияния · получено сейчас');
+    expect(message).toContain('🧭 2/3 · 🎁 1/3');
+    expect(message).toContain('🏁 +2 сияния · получено сейчас');
     expect(message).not.toContain('Лесной волк');
   });
 
@@ -141,10 +141,10 @@ describe('bestiary messages', () => {
 
     expect(message).toContain('📖 Бестиарий / Темный лес');
     expect(message).toContain('Лесной волк · обычный · зверь');
-    expect(message).toContain('Побед: 5');
-    expect(message).toContain('добыча: +2 кожи · +1 кость · шанс руны: 22%');
+    expect(message).toContain('🏆 5');
+    expect(message).toContain('🎁 +2 кожи · +1 кость · 🔮 руна 22%');
     expect(message).toContain('5 побед: +1 сияния · получено сейчас');
-    expect(message).toContain('2. ??? - след не встречен');
+    expect(message).toContain('2. ??? · след не встречен');
     expect(message).not.toContain('Секретный след');
   });
 });

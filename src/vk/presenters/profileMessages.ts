@@ -8,13 +8,13 @@ import type { PlayerState, StatBlock } from '../../shared/types/game';
 import { formatPlayerSkillProgressLine } from './player-skill-formatting';
 
 const formatStatBlock = (stats: StatBlock): string => [
-  `❤️ Здоровье: ${stats.health}`,
-  `⚔️ Атака: ${stats.attack}`,
-  `🛡️ Физ. защита: ${stats.defence}`,
-  `🔮 Маг. защита: ${stats.magicDefence}`,
-  `💨 Ловкость: ${stats.dexterity}`,
-  `🧠 Интеллект: ${stats.intelligence}`,
-].join('\n');
+  `❤️ ${stats.health}`,
+  `⚔️ ${stats.attack}`,
+  `🛡️ ${stats.defence}`,
+  `🔮 ${stats.magicDefence}`,
+  `💨 ${stats.dexterity}`,
+  `🧠 ${stats.intelligence}`,
+].join(' · ');
 
 const renderPlayerSkillsBlock = (player: PlayerState): readonly string[] => {
   const skills = [...(player.skills ?? [])].sort((left, right) => (
@@ -22,11 +22,11 @@ const renderPlayerSkillsBlock = (player: PlayerState): readonly string[] => {
   ));
 
   if (skills.length === 0) {
-    return ['Навыки: пока нет опыта обработки трофеев.'];
+    return ['🧰 Навыки: пока пусто'];
   }
 
   return [
-    'Навыки:',
+    '🧰 Навыки',
     ...skills.map(formatPlayerSkillProgressLine),
   ];
 };
@@ -37,39 +37,31 @@ export const renderProfile = (player: PlayerState): string => {
   const nextLevelXp = gameBalance.progression.experienceForNextLevel(player.level);
 
   return [
-    '👤 Летопись рунного мастера',
+    '👤 Профиль',
     '',
-    `⭐ Уровень: ${player.level}`,
-    `📊 Опыт: ${player.experience}/${nextLevelXp}`,
-    `💰 Руная пыль: ${player.gold}`,
-    `✨ Сияние: ${player.radiance}`,
-    `💓 Состояние: ${vitals.currentHealth}/${vitals.maxHealth} HP · ${vitals.currentMana}/${vitals.maxMana} маны`,
-    `🏆 Победы / Поражения: ${player.victories}/${player.defeats}`,
-    `🧩 Слоты рун: ${getUnlockedRuneSlotCount(player)} открыто`,
-    'Путь школы: подробности в «📜 Мастерство».',
+    `⭐ Ур. ${player.level} · 📊 ${player.experience}/${nextLevelXp}`,
+    `💰 ${player.gold} пыли · ✨ ${player.radiance} сияния`,
+    `❤️ ${vitals.currentHealth}/${vitals.maxHealth} HP · 🔷 ${vitals.currentMana}/${vitals.maxMana} маны`,
+    `🏆 ${player.victories} побед · 💥 ${player.defeats} поражений`,
+    `🧩 Слоты рун: ${getUnlockedRuneSlotCount(player)}`,
+    '📜 Школы: в «Мастерстве»',
     '',
     ...renderPlayerSkillsBlock(player),
     '',
-    formatStatBlock(stats),
+    `📊 Черты: ${formatStatBlock(stats)}`,
   ].join('\n');
 };
 
 export const renderInventory = (player: PlayerState): string => [
   '🎒 Инвентарь',
   '',
-  `Сияние: ${player.radiance}`,
-  `Рунная пыль: ${player.gold}`,
+  `✨ ${player.radiance} сияния · 💰 ${player.gold} пыли`,
   '',
-  `Обычные осколки: ${player.inventory.usualShards}`,
-  `Необычные осколки: ${player.inventory.unusualShards}`,
-  `Редкие осколки: ${player.inventory.rareShards}`,
-  `Эпические осколки: ${player.inventory.epicShards}`,
-  `Легендарные осколки: ${player.inventory.legendaryShards}`,
-  `Мифические осколки: ${player.inventory.mythicalShards}`,
+  `🧩 Осколки: обычн. ${player.inventory.usualShards} · необычн. ${player.inventory.unusualShards} · редк. ${player.inventory.rareShards}`,
+  `💎 Выше: эпик ${player.inventory.epicShards} · легенд. ${player.inventory.legendaryShards} · миф. ${player.inventory.mythicalShards}`,
   '',
-  `Кожа: ${player.inventory.leather}, Кость: ${player.inventory.bone}, Трава: ${player.inventory.herb}`,
-  `Эссенция: ${player.inventory.essence}, Металл: ${player.inventory.metal}, Кристалл: ${player.inventory.crystal}`,
+  `🧵 Материалы: кожа ${player.inventory.leather} · кость ${player.inventory.bone} · трава ${player.inventory.herb}`,
+  `⚙️ Редкое: эссенция ${player.inventory.essence} · металл ${player.inventory.metal} · кристалл ${player.inventory.crystal}`,
   '',
-  `Пилюли: восстановление ${player.inventory.healingPills ?? 0}, фокус ${player.inventory.focusPills ?? 0}`,
-  `Стойкость ${player.inventory.guardPills ?? 0}, ясность ${player.inventory.clarityPills ?? 0}`,
+  `🧪 Пилюли: HP ${player.inventory.healingPills ?? 0} · фокус ${player.inventory.focusPills ?? 0} · щит ${player.inventory.guardPills ?? 0} · ясность ${player.inventory.clarityPills ?? 0}`,
 ].join('\n');

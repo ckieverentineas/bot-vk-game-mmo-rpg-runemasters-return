@@ -14,7 +14,7 @@ const schoolIconByCode: Readonly<Record<string, string>> = {
 };
 
 const statusLabelByStatus: Readonly<Record<SchoolMasteryOverviewStatus, string>> = {
-  current: 'текущая',
+  current: 'в фокусе',
   opened: 'открыта',
   closed: 'закрыта',
 };
@@ -29,7 +29,7 @@ const formatSchoolHeader = (school: SchoolMasterySchoolOverview): string => {
   const icon = schoolIconByCode[school.schoolCode] ?? '📜';
   const status = statusLabelByStatus[school.status];
 
-  return `${icon} ${school.name} · ${status} · ранг ${school.rank} · ${school.experience} опыта`;
+  return `${icon} ${school.name} · ${status} · ранг ${school.rank} · ${school.experience} XP`;
 };
 
 const formatMilestoneLine = (milestone: SchoolMasteryMilestoneOverview): string => {
@@ -47,8 +47,7 @@ export const renderSchoolMastery = (player: PlayerState): string => {
 
   return [
     '📜 Мастерство',
-    '',
-    'Школы растут от побед с надетой руной. Здесь видно, что уже открыто, что ближе всего и что пока закрыто.',
+    '⚔️ Растёт от побед с надетой руной.',
     '',
     ...overview.schools.flatMap((school, index): readonly string[] => [
       ...formatSchoolBlock(school),

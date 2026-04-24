@@ -81,7 +81,7 @@ describe('renderParty', () => {
   it('marks the viewer and ally in the party roster', () => {
     const message = renderParty(createPlayer(), createParty());
 
-    expect(message).toContain('Рунный мастер #1001 · вы · лидер');
-    expect(message).toContain('Рунный мастер #1002 · союзник');
+    expect(message).toContain('👤 Рунный мастер #1001 · вы · 👑 лидер');
+    expect(message).toContain('👤 Рунный мастер #1002 · союзник');
   });
 });

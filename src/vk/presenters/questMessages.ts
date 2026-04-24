@@ -113,21 +113,9 @@ const formatCountPhrase = (count: number, forms: RussianPluralForms): string => 
 );
 
 const renderQuestBookSummary = (book: QuestBookView): string => [
-  formatCountPhrase(book.readyToClaimCount, [
-    'запись ждёт награду',
-    'записи ждут награду',
-    'записей ждут награду',
-  ]),
-  formatCountPhrase(book.inProgressCount, [
-    'след ещё тянется',
-    'следа ещё тянутся',
-    'следов ещё тянутся',
-  ]),
-  formatCountPhrase(book.claimedCount, [
-    'запись уже закрыта',
-    'записи уже закрыты',
-    'записей уже закрыто',
-  ]),
+  `🎁 ${book.readyToClaimCount}`,
+  `🌒 ${book.inProgressCount}`,
+  `✅ ${book.claimedCount}`,
 ].join(' · ');
 
 const resolveQuestChapter = (quest: QuestView): QuestChapterCopy => (
@@ -301,20 +289,20 @@ const renderQuestBookPageSections = (page: QuestBookPageView): readonly string[]
 const renderNearestGoalSummary = (book: QuestBookView): string => {
   const nearestGoal = findNearestQuestGoal(book.quests);
   if (!nearestGoal) {
-    return 'Ближайший след: все открытые следы закрыты.';
+    return '🧭 След: всё закрыто.';
   }
 
-  return `Ближайший след: ${nearestGoal.icon} ${nearestGoal.title} — ${trimTrailingSentencePunctuation(renderProgressLine(nearestGoal))}.`;
+  return `🧭 ${nearestGoal.icon} ${nearestGoal.title}: ${trimTrailingSentencePunctuation(renderProgressLine(nearestGoal))}.`;
 };
 
 const renderReadyRewardSummary = (book: QuestBookView): string => (
   book.readyToClaimCount > 0
-    ? `Готовые награды: ${formatCountPhrase(book.readyToClaimCount, [
+    ? `🎁 Готово: ${formatCountPhrase(book.readyToClaimCount, [
       'запись ждёт',
       'записи ждут',
       'записей ждут',
     ])}.`
-    : 'Готовых наград сейчас нет.'
+    : '🎁 Готово: 0.'
 );
 
 export const renderQuestBook = (book: QuestBookView, pageNumber = 1): string => {
@@ -325,11 +313,10 @@ export const renderQuestBook = (book: QuestBookView, pageNumber = 1): string => 
 
   return [
     '📜 Книга путей',
-    'Руны помнят путь: ближайший след держит направление, готовые награды ждут отдельно, старое уходит в архив.',
-    `В книге: ${renderQuestBookSummary(book)}.`,
+    `📌 ${renderQuestBookSummary(book)}`,
     renderNearestGoalSummary(book),
     renderReadyRewardSummary(book),
-    `Страница ${page.pageNumber} из ${page.totalPages} · ${pageRange}.`,
+    `📄 ${page.pageNumber}/${page.totalPages} · ${pageRange}.`,
     ...renderQuestBookPageSections(page),
   ].join('\n\n');
 };
@@ -343,8 +330,8 @@ export const renderQuestClaimResult = (result: ClaimQuestRewardView): string => 
   return [
     header,
     '',
-    `${result.quest.title} больше не просто событие. Теперь это часть твоей летописи.`,
-    rewardLine,
+    `✅ ${result.quest.title}`,
+    `🎁 ${rewardLine}`,
     '',
     renderQuestBook(result.book),
   ].join('\n');

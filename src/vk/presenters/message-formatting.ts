@@ -118,9 +118,9 @@ export const renderAcquisitionSummary = (
 
   return [
     '',
-    `✨ Перемена: ${withSentencePeriod(summary.title)}`,
+    `✨ ${withSentencePeriod(summary.title)}`,
     `🜂 ${withSentencePeriod(summary.changeLine)}`,
-    ...(summary.nextStepLine ? [`👉 Следом: ${withSentencePeriod(summary.nextStepLine)}`] : []),
+    ...(summary.nextStepLine ? [`👉 ${withSentencePeriod(summary.nextStepLine)}`] : []),
   ];
 };
 
@@ -129,13 +129,13 @@ export const renderNextGoalSummary = (
   actionPrefix = '👉 Сделать шаг',
 ): string[] => [
   `🎯 След: ${withSentencePeriod(nextGoal.objectiveText)}`,
-  ...(nextGoal.whyText ? [`🜂 Зачем идти: ${withSentencePeriod(nextGoal.whyText)}`] : []),
+  ...(nextGoal.whyText ? [`🜂 ${withSentencePeriod(nextGoal.whyText)}`] : []),
   `${actionPrefix}: «${nextGoal.primaryActionLabel}».`,
 ];
 
 export const renderStarterSchoolLine = (): string => {
   const schoolNames = listSchoolDefinitions().map(({ name }) => name);
   return schoolNames.length > 0
-    ? `Стартовые школы: ${schoolNames.join(', ')}.`
-    : 'Стартовые школы уже ждут первую боевую руну.';
+    ? `🏫 Школы: ${schoolNames.join(', ')}.`
+    : '🏫 Школы ждут первую руну.';
 };

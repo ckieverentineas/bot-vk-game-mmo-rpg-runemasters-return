@@ -6,7 +6,7 @@ const renderPartyMemberPerspective = (
 ): string => (member.playerId === viewerPlayerId ? 'вы' : 'союзник');
 
 const renderPartyMemberRole = (member: PartyView['members'][number]): string | null => (
-  member.role === 'LEADER' ? 'лидер' : null
+  member.role === 'LEADER' ? '👑 лидер' : null
 );
 
 const renderPartyMemberLine = (
@@ -19,7 +19,7 @@ const renderPartyMemberLine = (
     renderPartyMemberRole(member),
   ].filter((part): part is string => part !== null);
 
-  return `• ${parts.join(' · ')}`;
+  return `👤 ${parts.join(' · ')}`;
 };
 
 export const renderParty = (player: PlayerState, party: PartyView | null): string => {
@@ -27,8 +27,8 @@ export const renderParty = (player: PlayerState, party: PartyView | null): strin
     return [
       '🤝 Отряд',
       '',
-      'Сейчас вы идёте один.',
-      'Создайте отряд, чтобы получить код для второго мастера.',
+      '👤 Сейчас соло.',
+      '➕ Создайте отряд: получите код для союзника.',
     ].join('\n');
   }
 
@@ -39,18 +39,18 @@ export const renderParty = (player: PlayerState, party: PartyView | null): strin
   return [
     '🤝 Отряд',
     '',
-    `Код входа: ${party.inviteCode}`,
-    `Состав: ${party.members.length}/${party.maxMembers}`,
+    `🔑 Код: ${party.inviteCode}`,
+    `👥 Состав: ${party.members.length}/${party.maxMembers}`,
     ...party.members.map((member) => renderPartyMemberLine(player.playerId, member)),
     '',
     partyBattleActive
-      ? 'Отряд уже в общем бою. Дождитесь завершения схватки.'
+      ? '⚔️ Уже в бою.'
       : isReady
       ? isLeader
-        ? 'Отряд готов. Исследование доступно только вместе, пока вы не распустите отряд.'
-        : 'Отряд готов. Лидер может начать исследование. Пока вы в отряде, соло-исследование недоступно.'
+        ? '✅ Готово: можно исследовать вместе.'
+        : '✅ Готово: лидер начинает выход.'
       : isLeader
-        ? `Ждём второго мастера. Пусть отправит боту: отряд ${party.inviteCode}. Пока отряд активен, соло-исследование недоступно.`
-        : 'Ждите лидера или выйдите из отряда. Пока отряд активен, соло-исследование недоступно.',
+        ? `⏳ Ждём союзника: отряд ${party.inviteCode}.`
+        : '⏳ Ждите лидера или выйдите.',
   ].join('\n');
 };

@@ -73,7 +73,7 @@ const formatBlueprintEntry = (entry: WorkshopBlueprintEntryView): string => {
     ? `${resolveWorkshopItemSlotTitle(blueprint.slot)} · ${resolveWorkshopItemClassTitle(blueprint.itemClass)} · прочность ${blueprint.maxDurability}`
     : `${resolveWorkshopItemClassTitle(blueprint.itemClass)} · ремонт`;
 
-  return `- ${title}: ${ownedLine} · ${resultLine} · ${formatWorkshopCost(blueprint.cost)} · ${craftState}.`;
+  return `• ${title}: ${ownedLine} · ${resultLine} · ${formatWorkshopCost(blueprint.cost)} · ${craftState}.`;
 };
 
 const formatRepairToolEntry = (entry: WorkshopRepairToolEntryView): string => {
@@ -84,7 +84,7 @@ const formatRepairToolEntry = (entry: WorkshopRepairToolEntryView): string => {
       ? formatMissingCost(entry.missingCost)
       : 'чертежа нет';
 
-  return `- ${title}: чертежей x${entry.ownedQuantity} · ${formatWorkshopCost(entry.blueprint.cost)} · ${status}.`;
+  return `• ${title}: x${entry.ownedQuantity} · ${formatWorkshopCost(entry.blueprint.cost)} · ${status}.`;
 };
 
 const formatCraftedItemEntry = (entry: WorkshopCraftedItemEntryView): string => {
@@ -100,7 +100,7 @@ const formatCraftedItemEntry = (entry: WorkshopCraftedItemEntryView): string => 
         : 'ремонт недоступен';
 
   return [
-    `- ${title} #${item.id.slice(0, 8)}`,
+    `• ${title} #${item.id.slice(0, 8)}`,
     resolveWorkshopItemSlotTitle(item.slot),
     resolveWorkshopItemClassTitle(item.itemClass),
     resolveWorkshopItemStatusTitle(item.status),
@@ -119,9 +119,9 @@ const renderWorkshopSummary = (summary: WorkshopScreenSummary | null | undefined
 
   return [
     '',
-    `✨ Перемена: ${withSentencePeriod(summary.title)}`,
+    `✨ ${withSentencePeriod(summary.title)}`,
     `🜂 ${withSentencePeriod(summary.changeLine)}`,
-    ...(nextStepLine ? [`👉 Следом: ${withSentencePeriod(nextStepLine)}`] : []),
+    ...(nextStepLine ? [`👉 ${withSentencePeriod(nextStepLine)}`] : []),
   ];
 };
 
@@ -129,39 +129,39 @@ const renderWorkshopBlueprints = (view: WorkshopView): readonly string[] => {
   const craftBlueprints = view.blueprints.filter((entry) => entry.blueprint.kind === 'craft_item');
 
   return [
-    'Чертежи предметов:',
+    '📐 Чертежи',
     ...(craftBlueprints.length > 0
       ? craftBlueprints.map(formatBlueprintEntry)
-      : ['- Пока нет известных чертежей предметов.']),
+      : ['• Пока пусто.']),
   ];
 };
 
 const renderWorkshopRepair = (view: WorkshopView): readonly string[] => [
-  'Ремонт UL:',
+  '🔧 Ремонт UL',
   ...(view.repairTools.length > 0
     ? view.repairTools.map(formatRepairToolEntry)
-    : ['- Ремонтных чертежей пока нет.']),
+    : ['• Пока пусто.']),
 ];
 
 const renderCraftedItems = (view: WorkshopView): readonly string[] => [
-  'Созданные предметы:',
+  '🎽 Предметы',
   ...(view.craftedItems.length > 0
     ? view.craftedItems.map(formatCraftedItemEntry)
-    : ['- В мастерской пока нет созданных предметов.']),
+    : ['• Пока пусто.']),
 ];
 
 const renderPillCrafting = (view: WorkshopView): readonly string[] => [
-  'Алхимия пилюль:',
+  '🧪 Алхимия',
   ...listCraftingRecipes().map((recipe) => {
     const cost = resolveCraftingRecipeCost(recipe);
-    return `- ${recipe.title}: ${formatWorkshopCost(cost)} -> ${formatCraftingRecipeOutput(view.player, recipe)}.`;
+    return `• ${recipe.title}: ${formatWorkshopCost(cost)} -> ${formatCraftingRecipeOutput(view.player, recipe)}.`;
   }),
 ];
 
 const renderConsumableStock = (view: WorkshopView): readonly string[] => [
-  'Запас пилюль:',
+  '💊 Запас',
   ...listAlchemyConsumables().map((consumable) => (
-    `- ${consumable.title}: x${getAlchemyConsumableCount(view.player.inventory, consumable)} · ${consumable.description}`
+    `• ${consumable.title}: x${getAlchemyConsumableCount(view.player.inventory, consumable)} · ${consumable.description}`
   )),
 ];
 
@@ -172,8 +172,7 @@ export const renderWorkshop = (
   '🛠 Мастерская',
   ...renderWorkshopSummary(summary),
   '',
-  'Здесь лежат одноразовые чертежи, предметы с прочностью и алхимия пилюль из добычи.',
-  'L предметы не ремонтируются. UL можно восстановить редкими ремонтными чертежами.',
+  '📌 Чертежи одноразовые · L не чинится · UL чинится инструментом.',
   '',
   ...renderWorkshopBlueprints(view),
   '',
