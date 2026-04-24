@@ -1,7 +1,7 @@
 import { gameBalance } from '../../../../config/game-balance';
 import { AppError } from '../../../../shared/domain/AppError';
 import type { InventoryField, PlayerState, RuneRarity } from '../../../../shared/types/game';
-import type { GameRandom } from '../../../shared/application/ports/GameRandom';
+import type { GameRandom } from '../../../../shared/domain/GameRandom';
 import { buildCraftAcquisitionSummary, type AcquisitionSummaryView } from '../../../player/application/read-models/acquisition-summary';
 import { resolveCurrentProgressionLocationLevel } from '../../../player/domain/player-stats';
 

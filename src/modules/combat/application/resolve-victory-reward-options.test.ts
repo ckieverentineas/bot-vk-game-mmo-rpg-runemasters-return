@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import type { BattleView, PlayerState } from '../../../../shared/types/game';
-import type { GameRandom } from '../../../shared/application/ports/GameRandom';
+import type { GameRandom } from '../../../shared/domain/GameRandom';
 import { resolveVictoryRewardOptions } from './resolve-victory-reward-options';
 
 const createRandom = (): GameRandom => ({

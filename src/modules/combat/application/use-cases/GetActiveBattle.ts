@@ -1,7 +1,7 @@
 import { AppError } from '../../../../shared/domain/AppError';
 import type { BattleView } from '../../../../shared/types/game';
 import { requirePlayerByVkId } from '../../../shared/application/require-player';
-import type { GameRandom } from '../../../shared/application/ports/GameRandom';
+import type { GameRandom } from '../../../../shared/domain/GameRandom';
 import type { GameRepository } from '../../../shared/application/ports/GameRepository';
 import type { FindPlayerByVkIdRepository } from '../../../shared/application/ports/repository-scopes';
 

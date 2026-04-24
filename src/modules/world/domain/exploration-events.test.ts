@@ -56,7 +56,7 @@ describe('resolveExplorationEventLine', () => {
     expect(line).toContain('Путевой эпизод');
   });
 
-  it('can pick a school-aware event when the player has an equipped school', () => {
+  it('can pick a school-specific event when the player has an equipped school', () => {
     const line = resolveExplorationEventLine({
       biome: createBiome(),
       currentSchoolCode: 'echo',

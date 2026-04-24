@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { AppError } from '../../../../shared/domain/AppError';
 import type { BattleView, PlayerState } from '../../../../../shared/types/game';
-import type { GameRandom } from '../../../../shared/application/ports/GameRandom';
+import type { GameRandom } from '../../../../shared/domain/GameRandom';
 import type { GameRepository } from '../../../../shared/application/ports/GameRepository';
 import { buildBattleActionIntentStateKey } from '../command-intent-state';
 import { PerformBattleAction } from './PerformBattleAction';

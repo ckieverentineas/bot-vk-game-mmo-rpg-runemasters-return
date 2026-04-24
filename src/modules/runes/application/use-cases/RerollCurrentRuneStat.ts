@@ -2,7 +2,7 @@ import { gameBalance } from '../../../../config/game-balance';
 import { AppError } from '../../../../shared/domain/AppError';
 import type { PlayerState, StatKey } from '../../../../shared/types/game';
 import { getSelectedRune, resolveCurrentProgressionLocationLevel } from '../../../player/domain/player-stats';
-import type { GameRandom } from '../../../shared/application/ports/GameRandom';
+import type { GameRandom } from '../../../../shared/domain/GameRandom';
 
 import {
   assertFreshCommandIntent,

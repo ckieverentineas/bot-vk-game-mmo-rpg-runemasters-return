@@ -1,5 +1,5 @@
 import type { BattleView, PlayerState } from '../../../shared/types/game';
-import type { GameRandom } from '../../shared/application/ports/GameRandom';
+import type { GameRandom } from '../../../shared/domain/GameRandom';
 import { buildBattleAcquisitionSummary, type AcquisitionSummaryView } from '../../player/application/read-models/acquisition-summary';
 
 import type { GameRepository, SaveBattleOptions } from '../../shared/application/ports/GameRepository';

@@ -20,6 +20,8 @@
 
 Практическое правило масштабирования: функциональное ядро внутри модулей, компонентно-ориентированная композиция на краях. Чистые функции форматируют, считают и принимают решения; сценарные компоненты (`keyboards/*`, `presenters/*`, use-case классы) собирают эти функции в экран, команду или переход. Публичные barrels сохраняют совместимость импортов, чтобы новые модули добавлялись малыми срезами без массовых переломов.
 
+Граница зависимостей закреплена тестом [`src/tooling/architecture/dependency-boundaries.test.ts`](src/tooling/architecture/dependency-boundaries.test.ts): module `domain` не тянет `application`, `infrastructure` и VK; module `application` не тянет `infrastructure`, app composition и VK; VK transport не ходит напрямую в infrastructure/database. Случайные решения проходят через доменный порт [`src/shared/domain/GameRandom.ts`](src/shared/domain/GameRandom.ts), а `SystemGameRandom` остаётся infrastructure-реализацией, которую подключает composition root.
+
 ## Актуальная структура
 
 ```text
@@ -132,7 +134,7 @@ src/
 
 В текущем rune UX это позволяет держать один и тот же action set для unified rune hub: page navigation, быстрый выбор 5 рун на странице, выбор конкретной руны, автоэкипировку в свободный слот, unequip, craft, reroll и destroy без размножения handler-веток.
 
-Presenter-слой следует тому же правилу: `src/vk/presenters/messages.ts` остаётся public barrel / совместимым входом, а сценарные сообщения живут в компонентах `rewardMessages.ts`, `runeMessages.ts`, `battleMessages.ts`, `homeMessages.ts`, `profileMessages.ts` и `explorationMessages.ts`. Общие чистые formatter'ы живут в `message-formatting.ts` и `player-progress-formatting.ts`, чтобы copy, next-step строки и прогресс школы не дублировались между экранами.
+Presenter-слой следует тому же правилу: `src/vk/presenters/messages.ts` остаётся public barrel / совместимым входом, а сценарные сообщения живут в компонентах `rewardMessages.ts`, `questMessages.ts`, `bestiaryMessages.ts`, `runeMessages.ts`, `battleMessages.ts`, `homeMessages.ts`, `profileMessages.ts`, `masteryMessages.ts` и `explorationMessages.ts`. Общие чистые formatter'ы живут в `message-formatting.ts`, `player-skill-formatting.ts` и локальных presenter helpers, чтобы copy, next-step строки и прогресс школы не дублировались между экранами.
 
 Handler-слой тоже режется по ролям: `gameCommandRoutes.ts` остаётся агрегатором маршрутов, `routes/*CommandRoutes.ts` описывают core/tutorial/battle/rune/reward команды, а `gameCommandRecovery.ts` держит восстановление stale/retry/battle/rune контекстов. `responders/*ReplyFlow.ts` собирают player-facing ответ из presenter'а и keyboard'а для home/profile/location, rune, reward и battle/exploration сценариев. `gameHandlerTelemetry.ts` собирает transport-level telemetry payload'ы поверх canonical read-model'ов. `GameHandler` остаётся точкой оркестрации вокруг VK context, use-case'ов, responders и telemetry-компонента.
 
@@ -220,7 +222,7 @@ Handler-слой тоже режется по ролям: `gameCommandRoutes.ts`
 
 `ExploreLocation` больше не обязан всегда создавать `BattleSession`: после выбора биома и school context он спрашивает `resolveExplorationOutcome()` из `src/modules/exploration/domain/exploration-outcome.ts` и получает либо standalone scene, либо готовый battle plan.
 
-`src/vk/handlers/GameHandler` различает результат только по типу и рендерит сцену через `renderExplorationEvent()`. Transport не решает, будет ли бой, отдых, находка маршрута или school-aware подсказка.
+`src/vk/handlers/GameHandler` различает результат только по типу и рендерит сцену через `renderExplorationEvent()`. Transport не решает, будет ли бой, отдых, находка маршрута или школьная подсказка.
 
 Standalone-сцены сохраняются через `recordCommandIntentResult()` поверх command-intent rail, поэтому повтор того же `исследовать` intent возвращает тот же outcome. В текущем v1 эти сцены не выдают силу и не меняют экономику: это pacing/readability слой без FOMO.
 
@@ -233,14 +235,14 @@ Standalone-сцены сохраняются через `recordCommandIntentResu
 `src/modules/world/domain/game-master-director.ts` добавляет чистый PvE framing для важных encounters:
 
 - tutorial cue для первого учебного боя;
-- school-aware cue для elite/boss проверок;
+- школьный cue для elite/boss проверок;
 - общий build-check cue для boss-встреч без привязки к школе.
 
 Этот слой не хранит состояние, не выдаёт награды, не зависит от календаря и не является live-ops системой. Его задача — усилить читаемость сцены и тактического вопроса, не создавая FOMO.
 
 ### 7.6. Attrition boundary
 
-Долговременные HP/мана между боями пока не являются runtime-контрактом. Включать их как прямую запись в `PlayerState` нельзя без отдельного recovery/rest use-case, UI-состояния до входа в бой, balance pass по early PvE и exploit review. Текущий бой остаётся snapshot-сессией, где здоровье и мана рассчитываются из derived stats при создании encounter, а внутрибоевая регенерация маны остаётся локальным правилом этого snapshot'а.
+Долговременные HP/мана между боями уже являются runtime-контрактом через `PlayerProgress`: следующий battle snapshot стартует из persisted vitals, defeat сохраняет безопасный floor, а standalone rest scene восстанавливает состояние через application/repository boundary. Бой по-прежнему остаётся snapshot-сессией: внутрибоевая мана, guard, cooldown и временные эффекты живут в battle snapshot, а не в VK/UI состоянии.
 
 Следующий progression slice также меняет акцент growth-системы:
 

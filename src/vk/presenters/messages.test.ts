@@ -528,7 +528,7 @@ describe('messages school-first onboarding framing', () => {
     });
   });
 
-  it('adds a school-aware next goal after victory with a rune drop', () => {
+  it('adds a school-specific next goal after victory with a rune drop', () => {
     const message = renderBattle(createBattle({
       rewards: {
         ...createBattle().rewards!,
@@ -1117,7 +1117,7 @@ describe('messages school-first onboarding framing', () => {
     expect(message).toContain('💡 🧠 Прорицание: «Пробивающий удар» уже прочитан');
   });
 
-  it('shows school-aware guard value for stone stance in battle actions', () => {
+  it('shows school-specific guard value for stone stance in battle actions', () => {
     const message = renderBattle(createBattle({
       status: 'ACTIVE',
       result: null,

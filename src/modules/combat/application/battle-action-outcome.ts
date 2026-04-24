@@ -1,7 +1,7 @@
 import { AppError } from '../../../shared/domain/AppError';
 import type { BattleView, PlayerState } from '../../../shared/types/game';
 import { buildBattleAcquisitionSummary } from '../../player/application/read-models/acquisition-summary';
-import type { GameRandom } from '../../shared/application/ports/GameRandom';
+import type { GameRandom } from '../../../shared/domain/GameRandom';
 import type { GameRepository, SaveBattleOptions } from '../../shared/application/ports/GameRepository';
 import { RewardEngine } from '../domain/reward-engine';
 import { wrapBattleActionResult, type BattleActionResultView } from './battle-action-result';

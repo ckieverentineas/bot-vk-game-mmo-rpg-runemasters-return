@@ -15,7 +15,7 @@ import type { QuestCode } from '../../modules/quests/domain/quest-definitions';
 import { buildEquipIntentStateKey, buildSelectRunePageSlotIntentStateKey } from '../../modules/runes/application/command-intent-state';
 import type { RunePageSlot } from '../../modules/runes/domain/rune-collection';
 import { PrismaGameRepository } from '../../modules/shared/infrastructure/prisma/PrismaGameRepository';
-import type { GameRandom } from '../../modules/shared/application/ports/GameRandom';
+import type { GameRandom } from '../../shared/domain/GameRandom';
 import type { PendingRewardView } from '../../modules/shared/application/ports/GameRepository';
 import { derivePlayerStats, resolveAutoEquipRuneSlot, resolveMaxMana } from '../../modules/player/domain/player-stats';
 import type { BattleView, PlayerState, RuneRarity } from '../../shared/types/game';

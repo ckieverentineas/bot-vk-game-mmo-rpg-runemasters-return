@@ -1,8 +1,7 @@
 import { gameBalance } from '../../../config/game-balance';
 import type { BattleView, PlayerState } from '../../../shared/types/game';
 import { getSchoolDefinitionForArchetype } from '../../runes/domain/rune-schools';
-import type { GameRandom } from '../../shared/application/ports/GameRandom';
-import { systemGameRandom } from '../../shared/infrastructure/random/SystemGameRandom';
+import type { GameRandom } from '../../../shared/domain/GameRandom';
 import { RuneFactory } from '../../runes/domain/rune-factory';
 import {
   getSchoolNovicePathDefinitionForEnemy,
@@ -13,7 +12,7 @@ import type { VictoryRewardOptions } from '../domain/reward-engine';
 export const resolveVictoryRewardOptions = (
   player: Pick<PlayerState, 'tutorialState' | 'runes'>,
   battle: BattleView,
-  random: GameRandom = systemGameRandom,
+  random: GameRandom,
 ): VictoryRewardOptions => {
   if (
     player.tutorialState === 'ACTIVE'

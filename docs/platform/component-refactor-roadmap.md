@@ -2,12 +2,12 @@
 
 ## Status
 
-- Status: `active cleanup roadmap`
+- Status: `completed cleanup roadmap`
 - Created: `2026-04-24`
 - Scope: component-oriented architecture, functional domain core, safer maintenance rails.
 - Progress policy: one task = one chat request = one verification pass = one commit.
-- Overall cleanup progress after RF-017 lands: `17/18 = 94%`.
-- Closed tasks: `RF-001`, `RF-002`, `RF-003`, `RF-004`, `RF-005`, `RF-006`, `RF-007`, `RF-008`, `RF-009`, `RF-010`, `RF-011`, `RF-012`, `RF-013`, `RF-014`, `RF-015`, `RF-016`, `RF-017`.
+- Overall cleanup progress after RF-018 lands: `18/18 = 100%`.
+- Closed tasks: `RF-001`, `RF-002`, `RF-003`, `RF-004`, `RF-005`, `RF-006`, `RF-007`, `RF-008`, `RF-009`, `RF-010`, `RF-011`, `RF-012`, `RF-013`, `RF-014`, `RF-015`, `RF-016`, `RF-017`, `RF-018`.
 
 ## Goal
 
@@ -46,6 +46,8 @@ After RF-015, `message-formatting.ts` owns shared VK copy primitives for currenc
 After RF-016, reward assembly has clearer application boundaries: pending trophy ledger creation and applied trophy ledger creation live in `rewards/application/pending-reward-pipeline.ts`, while quest reward and daily trace economy telemetry share `reward-economy-telemetry.ts`.
 
 After RF-017, proven-unused exported helpers were removed from crafting, quests, rune ability lookup, school progression helpers and reward contracts. Historical review docs that can conflict with current four-school runtime scope now say which current docs/tests supersede them.
+
+After RF-018, dependency direction is executable: `GameRandom` is a shared domain contract, `SystemGameRandom` is infrastructure-only, and `src/tooling/architecture/dependency-boundaries.test.ts` guards module domain/application/VK layer boundaries.
 
 The main composition point is `src/app/composition-root.ts`: it builds one Prisma repository, one world catalog, one random source, telemetry, and all use-case classes.
 

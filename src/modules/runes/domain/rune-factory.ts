@@ -1,14 +1,21 @@
 import { gameBalance } from '../../../config/game-balance';
 import { emptyStats } from '../../player/domain/player-stats';
 import type { RuneDraft, RuneRarity, RuneView, StatKey } from '../../../shared/types/game';
-import type { GameRandom } from '../../shared/application/ports/GameRandom';
-import { systemGameRandom } from '../../shared/infrastructure/random/SystemGameRandom';
+import type { GameRandom } from '../../../shared/domain/GameRandom';
 
 import { applyRuneArchetype, getRuneArchetype, listRuneArchetypes } from './rune-abilities';
 import { getRuneSchoolPresentation } from './rune-schools';
 
 const defaultStatPool: readonly StatKey[] = ['health', 'attack', 'defence', 'magicDefence', 'dexterity', 'intelligence'];
 const naturalRarityOrder: readonly RuneRarity[] = ['USUAL', 'UNUSUAL', 'RARE', 'EPIC', 'LEGENDARY', 'MYTHICAL'];
+
+const requireGameRandom = (random: GameRandom | undefined): GameRandom => {
+  if (!random) {
+    throw new Error('GameRandom is required to create or reroll a rune.');
+  }
+
+  return random;
+};
 
 const createArchetypeStatPool = (archetypeCode: string): readonly StatKey[] => {
   const archetype = getRuneArchetype(archetypeCode);
@@ -25,11 +32,12 @@ export class RuneFactory {
     locationLevel: number,
     forcedRarity?: RuneRarity,
     forcedArchetypeCode?: string,
-    random: GameRandom = systemGameRandom,
+    random?: GameRandom,
   ): RuneDraft {
-    const rarity = forcedRarity ?? this.rollRarity(this.resolveNaturalRarityCap(locationLevel), random);
+    const gameRandom = requireGameRandom(random);
+    const rarity = forcedRarity ?? this.rollRarity(this.resolveNaturalRarityCap(locationLevel), gameRandom);
     const profile = gameBalance.runes.profiles[rarity];
-    const archetype = forcedArchetypeCode ? getRuneArchetype(forcedArchetypeCode) : random.pickOne(listRuneArchetypes());
+    const archetype = forcedArchetypeCode ? getRuneArchetype(forcedArchetypeCode) : gameRandom.pickOne(listRuneArchetypes());
     const school = getRuneSchoolPresentation(archetype.code);
     const statPool = createArchetypeStatPool(archetype.code);
     const rune = applyRuneArchetype({
@@ -43,8 +51,8 @@ export class RuneFactory {
     const lineCount = profile.lines + bonusLines;
 
     for (let index = 0; index < lineCount; index += 1) {
-      const statKey = random.pickOne(statPool);
-      rune[statKey] += this.rollStatValue(rarity, locationLevel, random);
+      const statKey = gameRandom.pickOne(statPool);
+      rune[statKey] += this.rollStatValue(rarity, locationLevel, gameRandom);
     }
 
     return rune;
@@ -54,8 +62,9 @@ export class RuneFactory {
     rune: RuneDraft | RuneView,
     statKey: StatKey,
     locationLevel: number,
-    random: GameRandom = systemGameRandom,
+    random?: GameRandom,
   ): RuneDraft {
+    const gameRandom = requireGameRandom(random);
     const nextRune: RuneDraft = {
       runeCode: rune.runeCode,
       archetypeCode: rune.archetypeCode,
@@ -72,7 +81,7 @@ export class RuneFactory {
       intelligence: rune.intelligence,
     };
 
-    nextRune[statKey] = this.rollStatValue(rune.rarity, locationLevel, random);
+    nextRune[statKey] = this.rollStatValue(rune.rarity, locationLevel, gameRandom);
     return nextRune;
   }
 

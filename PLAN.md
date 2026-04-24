@@ -75,11 +75,12 @@
 
 - Дробить проект малыми вертикальными срезами, сохраняя публичные импорты там, где это снижает риск.
 - Функциональное ядро, компонентная оболочка: чистые formatter/resolver функции внутри модулей, сценарные компоненты вокруг них, public barrel для совместимости импортов.
-- Presenter-декомпозиция VK-экранов разнесена по сценариям: `rewardMessages.ts`, `questMessages.ts`, `bestiaryMessages.ts`, `runeMessages.ts`, `battleMessages.ts`, `homeMessages.ts`, `profileMessages.ts` и `explorationMessages.ts` держат свои flow, а `message-formatting.ts`, `player-progress-formatting.ts` и `player-skill-formatting.ts` — общие чистые formatter'ы.
+- Presenter-декомпозиция VK-экранов разнесена по сценариям: `rewardMessages.ts`, `questMessages.ts`, `bestiaryMessages.ts`, `runeMessages.ts`, `battleMessages.ts`, `homeMessages.ts`, `profileMessages.ts`, `masteryMessages.ts` и `explorationMessages.ts` держат свои flow, а `message-formatting.ts` и `player-skill-formatting.ts` — общие чистые formatter'ы.
 - Handler-декомпозиция продолжена: `gameCommandRoutes.ts` стал агрегатором, `routes/*CommandRoutes.ts` держат core/tutorial/battle/rune/reward/quest/bestiary маршруты, а `gameCommandRecovery.ts` — recoverable stale/retry/battle/rune контексты.
 - Responder-декомпозиция продолжена: `responders/homeReplyFlow.ts`, `runeReplyFlow.ts`, `questReplyFlow.ts`, `bestiaryReplyFlow.ts`, `rewardReplyFlow.ts` и `battleReplyFlow.ts` держат рендер/клавиатуры home/profile/location экранов, рун, книги путей, бестиария, pending trophy rewards, battle result и exploration result, а `GameHandler` делегирует им reply-flow.
 - `gameHandlerTelemetry.ts` держит transport-level telemetry payloads для return recap, school presentation, rune hub follow-up и post-session next-goal событий, оставляя `GameHandler` тонким orchestrator'ом поверх use-case и responder слоёв.
 - `prisma-game-mappers.ts` держит чистые Prisma → runtime мапперы для player/battle records; `PrismaGameRepository` оставляет у себя транзакции, replay receipts, reward ledger и CAS-обновления.
+- `src/tooling/architecture/dependency-boundaries.test.ts` держит executable rail для слоёв: domain не импортирует application/infrastructure/VK, application не импортирует infrastructure/VK, а transport не ходит напрямую в database/infrastructure.
 - Следующий безопасный кандидат: выносить reward/battle persistence helpers малыми срезами, без механического распила транзакционных replay/concurrency rails.
 - `PrismaGameRepository` не распиливать механически: сначала выделять чистые мапперы, snapshot hydration и reward/battle persistence helpers с тестами на replay/concurrency.
 

@@ -3,7 +3,7 @@ import type {
   BattleView,
   PlayerSkillPointGain,
 } from '../../../shared/types/game';
-import type { GameRandom } from '../../shared/application/ports/GameRandom';
+import type { GameRandom } from '../../../shared/domain/GameRandom';
 import { BattleEngine } from '../domain/battle-engine';
 import { resolveBattleActionSkillGains } from '../domain/battle-action-skill-growth';
 

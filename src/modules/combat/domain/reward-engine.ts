@@ -1,6 +1,5 @@
 import type { BattleView, RuneDraft, RuneRarity } from '../../../shared/types/game';
-import type { GameRandom } from '../../shared/application/ports/GameRandom';
-import { systemGameRandom } from '../../shared/infrastructure/random/SystemGameRandom';
+import type { GameRandom } from '../../../shared/domain/GameRandom';
 import { RuneFactory } from '../../runes/domain/rune-factory';
 import { appendBattleLog, cloneBattle } from './battle-utils';
 
@@ -25,11 +24,33 @@ export interface VictoryRewardOptions {
   readonly forcedRune?: RuneDraft | null;
 }
 
+const resolveDroppedRune = (
+  battle: BattleView,
+  options: VictoryRewardOptions,
+  random: GameRandom | undefined,
+): RuneDraft | null => {
+  if (options.forcedRune) {
+    return options.forcedRune;
+  }
+
+  if (battle.enemy.runeDropChance <= 0) {
+    return null;
+  }
+
+  if (!random) {
+    throw new Error('GameRandom is required to roll a victory rune drop.');
+  }
+
+  return random.rollPercentage(battle.enemy.runeDropChance)
+    ? RuneFactory.create(battle.locationLevel, undefined, undefined, random)
+    : null;
+};
+
 export class RewardEngine {
   public static applyVictoryRewards(
     battle: BattleView,
     options: VictoryRewardOptions = {},
-    random: GameRandom = systemGameRandom,
+    random?: GameRandom,
   ): { battle: BattleView; droppedRune: RuneDraft | null } {
     const nextBattle = cloneBattle(battle);
     if (nextBattle.rewards === null) {
@@ -48,11 +69,7 @@ export class RewardEngine {
       shardRewards.RARE = 1 + Math.floor(nextBattle.locationLevel / 40);
     }
 
-    const droppedRune = options.forcedRune ?? (
-      random.rollPercentage(nextBattle.enemy.runeDropChance)
-        ? RuneFactory.create(nextBattle.locationLevel, undefined, undefined, random)
-        : null
-    );
+    const droppedRune = resolveDroppedRune(nextBattle, options, random);
 
     nextBattle.rewards = {
       ...nextBattle.rewards,

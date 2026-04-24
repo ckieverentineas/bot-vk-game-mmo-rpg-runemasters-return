@@ -1,5 +1,5 @@
 import type { BattleView } from '../../../shared/types/game';
-import type { GameRandom } from '../../shared/application/ports/GameRandom';
+import type { GameRandom } from '../../../shared/domain/GameRandom';
 import { resolveEnemyTurnWithSignatureReaction } from './resolve-enemy-turn';
 
 export const resolveEnemyResponseIfNeeded = (

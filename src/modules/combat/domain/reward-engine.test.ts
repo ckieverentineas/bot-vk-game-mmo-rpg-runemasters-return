@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import type { GameRandom } from '../../shared/application/ports/GameRandom';
+import type { GameRandom } from '../../../shared/domain/GameRandom';
 import type { BattleView, RuneDraft } from '../../../shared/types/game';
 import { RewardEngine } from './reward-engine';
 
@@ -28,7 +28,7 @@ const createDeterministicRandom = (values: number[]): GameRandom => {
   };
 };
 
-const createBattle = (): BattleView => ({
+const createBattle = (overrides: Partial<BattleView> = {}): BattleView => ({
   id: 'battle-1',
   playerId: 1,
   status: 'COMPLETED',
@@ -83,6 +83,7 @@ const createBattle = (): BattleView => ({
   },
   createdAt: '2026-04-12T00:00:00.000Z',
   updatedAt: '2026-04-12T00:00:00.000Z',
+  ...overrides,
 });
 
 const tutorialRune: RuneDraft = {

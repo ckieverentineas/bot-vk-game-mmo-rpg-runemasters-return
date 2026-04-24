@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import type { GameRandom } from '../../shared/application/ports/GameRandom';
+import type { GameRandom } from '../../../shared/domain/GameRandom';
 import { RuneFactory } from './rune-factory';
 
 const createDeterministicRandom = (values: number[]): GameRandom => {
@@ -29,19 +29,19 @@ const createDeterministicRandom = (values: number[]): GameRandom => {
 
 describe('RuneFactory rarity rails', () => {
   it('не выдаёт редкости выше unusual на стартовых уровнях без forced rarity', () => {
-    const generated = Array.from({ length: 50 }, () => RuneFactory.create(0));
+    const generated = Array.from({ length: 50 }, () => RuneFactory.create(0, undefined, undefined, createDeterministicRandom([0])));
 
     expect(generated.every((rune) => rune.rarity === 'USUAL' || rune.rarity === 'UNUSUAL')).toBe(true);
   });
 
   it('сохраняет forced rarity для крафта', () => {
-    const rune = RuneFactory.create(0, 'EPIC');
+    const rune = RuneFactory.create(0, 'EPIC', undefined, createDeterministicRandom([0]));
 
     expect(rune.rarity).toBe('EPIC');
   });
 
   it('позволяет зафиксировать архетип для обучающей награды', () => {
-    const rune = RuneFactory.create(1, 'UNUSUAL', 'ember');
+    const rune = RuneFactory.create(1, 'UNUSUAL', 'ember', createDeterministicRandom([0]));
 
     expect(rune.archetypeCode).toBe('ember');
     expect(rune.name).toBe('Необычная руна Пламени');

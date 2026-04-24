@@ -18,7 +18,7 @@ import {
 } from '../../../shared/application/command-intent';
 import type { GameTelemetry } from '../../../shared/application/ports/GameTelemetry';
 import { requirePlayerByVkId } from '../../../shared/application/require-player';
-import type { GameRandom } from '../../../shared/application/ports/GameRandom';
+import type { GameRandom } from '../../../../shared/domain/GameRandom';
 import type { GameRepository } from '../../../shared/application/ports/GameRepository';
 import type {
   CommandIntentResultRepository,

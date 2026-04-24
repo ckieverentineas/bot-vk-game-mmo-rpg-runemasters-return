@@ -1,5 +1,5 @@
 import type { BattleView } from '../../../shared/types/game';
-import type { GameRandom } from '../../shared/application/ports/GameRandom';
+import type { GameRandom } from '../../../shared/domain/GameRandom';
 import { isBattleEncounterOffered } from '../domain/battle-encounter';
 import { BattleEngine } from '../domain/battle-engine';
 import {

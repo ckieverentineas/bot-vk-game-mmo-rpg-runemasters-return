@@ -23,6 +23,7 @@
 - RF-015 VK copy cleanup: повторяемое форматирование ресурсов, боевых наград, счётчиков прогресса, русских числовых форм и CTA-строк собрано в `message-formatting.ts`, а battle/home/profile/reward/quest/rune presenters используют эти named helpers;
 - RF-016 reward cleanup: pending trophy ledger, applied trophy result и reward economy telemetry вынесены в `rewards/application`, а Prisma, quest reward и daily trace используют общие границы вместо локальной сборки наградных payload'ов;
 - RF-017 dead-code cleanup: удалены подтверждённо неиспользуемые exported helpers в crafting, quest, rune, school mastery/novice path и reward contracts, а старые review-доки с устаревшим scope помечены историческими с явными актуальными заменами;
+- RF-018 final architecture pass: `GameRandom` перенесён в shared domain contract, infrastructure-random убран из domain defaults, добавлен architecture dependency test для domain/application/VK boundaries, а roadmap закрыт на `100%`;
 - RF-009 command-intent cleanup: replay/pending/stale проверки вынесены в общий guard-helper и подключены к бою, исследованию, рунам, мастерской, алхимии, следу дня и наградам книги путей;
 - RF-008 exploration cleanup: standalone exploration events получили общий effect-persistence helper для ресурсных находок, восстановления HP/маны и no-effect сцен в solo/party flows;
 - RF-007 exploration cleanup: solo и party exploration теперь используют общий battle-start builder для snapshot'ов, encounter choice, `CreateBattleInput` и стартового хода врага;
@@ -31,7 +32,7 @@
 - чтение замыслов врага стало механикой: точное знание даёт Прорицание с учётом ранга школы и ментальной защиты цели, а бестиарий/изученные трофеи постепенно улучшают анализ без бесплатного раскрытия всем игрокам;
 - бестиарий получил кнопочный переход от локации к конкретному мобу: список следов постраничный, карточка моба открывается отдельной кнопкой, а сбор наград локации и вех убийств стал явной динамической кнопкой вместо скрытого автосбора;
 - мастерская получила UX-проход: верхний блок `📌 Сейчас` показывает готовые действия и материалы, а чертежи, снаряжение, ремонт и алхимия помечают состояние `✅` / `🧩` / `🔒` без длинных описаний;
-- player-facing тексты очищены от внутренних терминов: исследования, советы мастеров, боевые подсказки, ближайшие цели, recap наград, след дня и описания навыков больше не говорят `school-aware`, `guard-break`, `intent`, `payoff` и языком служебной сборки;
+- player-facing тексты очищены от внутренних терминов: исследования, советы мастеров, боевые подсказки, ближайшие цели, recap наград, след дня и описания навыков больше не говорят языком служебной сборки;
 - подсказки в VK-экранах вынесены в отдельные `💡`-блоки: next-goal why, recap изменений, чтение боя, школьные советы, исследования, алтарь и мастерская больше не смешивают пояснения с основными фактами и действиями;
 - VK-интерфейсы приведены к единому компактному стилю: стоянка, профиль, инвентарь, руны, награды, отряд, исследования, книга путей, бестиарий, мастерская и мастерство используют emoji-маяки, короткие факты и ближайшее действие без длинных пояснений;
 
@@ -70,7 +71,7 @@
 - action-based trophy progression углублён без новых таблиц: добавлены threshold-действия для `gathering.reagent_gathering` и `gathering.essence_extraction`, а также trophy actions для существующих enemy kind `knight`, `goblin`, `troll`, `lich`, `demon`, `dragon`;
 - trophy skill thresholds v1 добавляет второй мини-порог качества без новых таблиц: на `20` опыта свежевание и сбор слизи получают player-facing “мастерский” action label и маленький +1 payoff к профильному материалу в pending reward preview/result;
 - bootstrap recovery [`RecoverPendingRewardsOnStart`](src/modules/rewards/application/use-cases/RecoverPendingRewardsOnStart.ts) восстанавливает отсутствующие pending reward ledger-записи для уже завершённых победных боёв до регистрации VK handlers;
-- единый school-aware next-goal read-model в [`src/modules/player/application/read-models/next-goal.ts`](src/modules/player/application/read-models/next-goal.ts), чтобы `main menu`, `return recap`, `rune hub` и `battle result` опирались на одну и ту же ближайшую school-веху;
+- единый школьный next-goal read-model в [`src/modules/player/application/read-models/next-goal.ts`](src/modules/player/application/read-models/next-goal.ts), чтобы `main menu`, `return recap`, `rune hub` и `battle result` опирались на одну и ту же ближайшую school-веху;
 - read-model [`src/modules/player/application/read-models/acquisition-summary.ts`](src/modules/player/application/read-models/acquisition-summary.ts) для короткого player-facing recap'а “что изменилось?” после новой руны, новой редкости или unlock'а сборки;
 - school bible v1 в `docs/product/school-bible-v1.md`: product lock по идентичности четырёх школ, allowed/forbidden overlap и безопасным направлениям school hidden trophy pools;
 - два ранних school-specific elite encounter hooks в `dark-forest`: `Пепельная ведунья` для pressure/detonation path Пламени и `Камнерогий таран` для guard/counter path Тверди;
@@ -98,7 +99,7 @@
 - VK UX после первого знака школы теперь ведёт игрока обычным CTA `⚔️ Исследовать`, чтобы школьная проверка не выглядела отдельным обязательным режимом и могла проходить через общий exploration resolver;
 - player-state hydration теперь проходит через compatibility-safe helper с current / legacy / future fixtures и repository hydration tests, чтобы persisted player state безопаснее переживал missing/unknown fields и rollback-сценарии;
 - `content:validate` теперь содержит hard completeness gate для shipped school packages, чтобы 4 стартовые школы не уходили в релиз с тихим drift между identity, encounter hooks и reward/chase wiring;
-- active battle теперь показывает compact combat clarity block с текущим состоянием боя и school-aware tactical hint, чтобы игроку было проще читать следующий meaningful ход без перегруза интерфейса;
+- active battle теперь показывает compact combat clarity block с текущим состоянием боя и школьной tactical hint, чтобы игроку было проще читать следующий meaningful ход без перегруза интерфейса;
 - в бою появилась медленная регенерация маны при возврате хода игроку: рунные действия реже запираются насовсем, но ресурс всё ещё ограничен максимальной маной battle snapshot'а;
 - `ExploreLocation` теперь может вернуть standalone exploration scene вместо боя: domain resolver выбирает outcome шага исследования, а VK handler только рендерит готовый результат без transport-owned игровых правил;
 - standalone exploration scenes получили player-facing типы (`передышка`, `находка`, `школьный след`, `опасный знак`, `Мастер испытаний`) и более широкий пул non-combat PvE-сцен без скрытых таймеров, FOMO или срочных экономических крючков;
@@ -688,7 +689,7 @@
 
 ### Added
 
-- RNG port [`GameRandom`](src/modules/shared/application/ports/GameRandom.ts) и infrastructure implementation [`SystemGameRandom`](src/modules/shared/infrastructure/random/SystemGameRandom.ts);
+- RNG contract [`GameRandom`](src/shared/domain/GameRandom.ts) и infrastructure implementation [`SystemGameRandom`](src/modules/shared/infrastructure/random/SystemGameRandom.ts);
 - policy doc [`docs/platform/rng-authority-rules.md`](docs/platform/rng-authority-rules.md) для craft / reroll / victory drop authority.
 
 ### Changed

@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import type { BattleView, BiomeView, MobTemplateView, PlayerState } from '../../../../../shared/types/game';
 import type { GameTelemetry } from '../../../../shared/application/ports/GameTelemetry';
-import type { GameRandom } from '../../../../shared/application/ports/GameRandom';
+import type { GameRandom } from '../../../../shared/domain/GameRandom';
 import type { GameRepository } from '../../../../shared/application/ports/GameRepository';
 import type { PlayerCraftedItemView } from '../../../../workshop/application/workshop-persistence';
 import type { WorldCatalog } from '../../../../world/application/ports/WorldCatalog';

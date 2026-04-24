@@ -9,7 +9,7 @@ import type {
   TurnOwner,
 } from '../../../shared/types/game';
 import { AppError } from '../../../shared/domain/AppError';
-import type { GameRandom } from '../../shared/application/ports/GameRandom';
+import type { GameRandom } from '../../../shared/domain/GameRandom';
 import type { GameRepository, SaveBattleOptions } from '../../shared/application/ports/GameRepository';
 import { createBattleEncounter, isBattleEncounterOffered } from '../../combat/domain/battle-encounter';
 import { buildBattlePlayerSnapshot } from '../../combat/domain/build-battle-player-snapshot';
