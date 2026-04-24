@@ -19,8 +19,6 @@ import type { PlayerCraftedItemView } from '../../../workshop/application/worksh
 import type { WorkshopEquippedItemView } from '../../../workshop/domain/workshop-catalog';
 import type { WorldCatalog } from '../../../world/application/ports/WorldCatalog';
 import {
-  getExplorationSceneInventoryDelta,
-  getExplorationSceneVitalRecovery,
   type ExplorationSceneView,
 } from '../../../world/domain/exploration-events';
 import {
@@ -37,7 +35,7 @@ import {
   buildSoloExplorationBattleStart,
   resolveStartedExplorationBattleEnemyTurn,
 } from '../exploration-battle-start';
-import { resolveRecoveredPlayerVitals } from '../exploration-event-effects';
+import { persistExplorationSceneEffectResult } from '../exploration-event-effects';
 
 export interface ExploreLocationReplayResult {
   readonly battle: BattleView;
@@ -339,31 +337,18 @@ export class ExploreLocation {
     result: ExploreLocationEventResult,
     commandOptions: ExploreLocationCommandOptions,
   ): Promise<ExploreLocationEventResult> {
-    const inventoryDelta = getExplorationSceneInventoryDelta(result.event);
-    const vitalRecovery = getExplorationSceneVitalRecovery(result.event);
-
-    if (inventoryDelta) {
-      return this.repository.recordInventoryDeltaResult(
-        player.playerId,
-        inventoryDelta,
-        commandOptions,
-        (updatedPlayer) => ({
-          ...result,
-          player: updatedPlayer,
-        }),
-      );
-    }
-
-    if (vitalRecovery) {
-      return this.repository.recordPlayerVitalsResult(
-        player.playerId,
-        resolveRecoveredPlayerVitals(player, vitalRecovery),
-        commandOptions,
-        (updatedPlayer) => ({
-          ...result,
-          player: updatedPlayer,
-        }),
-      );
+    const effectResult = await persistExplorationSceneEffectResult({
+      repository: this.repository,
+      player,
+      event: result.event,
+      options: commandOptions,
+      buildResult: (updatedPlayer) => ({
+        ...result,
+        player: updatedPlayer,
+      }),
+    });
+    if (effectResult) {
+      return effectResult;
     }
 
     return this.repository.recordCommandIntentResult(

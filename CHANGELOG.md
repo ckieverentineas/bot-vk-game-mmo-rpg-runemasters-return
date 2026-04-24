@@ -15,6 +15,7 @@
 ### Added
 
 - добавлена cleanup-карта проекта: компонентный refactor roadmap фиксирует горячие зоны, правила безопасной декомпозиции и очередь RF-001..RF-018 с процентами прогресса;
+- RF-008 exploration cleanup: standalone exploration events получили общий effect-persistence helper для ресурсных находок, восстановления HP/маны и no-effect сцен в solo/party flows;
 - RF-007 exploration cleanup: solo и party exploration теперь используют общий battle-start builder для snapshot'ов, encounter choice, `CreateBattleInput` и стартового хода врага;
 - RF-006 combat cleanup: `PerformBattleAction` разнесён на application-сервисы результата, расходников, party auto-attack, ответа врага, actor-подготовки и финализации исхода боя;
 - навыки врагов на просадке получили проверку реакции: шанс удержать окно ответа зависит от ловкости и интеллекта игрока против врага, а при провале слизь и другие signature-враги сразу разыгрывают опасный ход;

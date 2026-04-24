@@ -12,7 +12,7 @@ import {
   resolveStartedExplorationBattleEnemyTurn,
   type PartyExplorationBattleMemberContext,
 } from '../../../exploration/application/exploration-battle-start';
-import { resolveRecoveredPlayerVitals } from '../../../exploration/application/exploration-event-effects';
+import { persistExplorationSceneEffectResult } from '../../../exploration/application/exploration-event-effects';
 import {
   addStats,
   derivePlayerStats,
@@ -38,8 +38,6 @@ import {
   mergeEnemyKnowledgeSnapshots,
 } from '../../../world/domain/enemy-knowledge';
 import {
-  getExplorationSceneInventoryDelta,
-  getExplorationSceneVitalRecovery,
   type ExplorationSceneView,
 } from '../../../world/domain/exploration-events';
 
@@ -319,27 +317,13 @@ export class ExploreParty {
     player: PlayerState,
     event: ExplorationSceneView,
   ): Promise<PlayerState> {
-    const inventoryDelta = getExplorationSceneInventoryDelta(event);
-    if (inventoryDelta) {
-      return this.repository.recordInventoryDeltaResult(
-        player.playerId,
-        inventoryDelta,
-        { commandKey: 'EXPLORE_PARTY' },
-        (updatedPlayer) => updatedPlayer,
-      );
-    }
-
-    const vitalRecovery = getExplorationSceneVitalRecovery(event);
-    if (vitalRecovery) {
-      return this.repository.recordPlayerVitalsResult(
-        player.playerId,
-        resolveRecoveredPlayerVitals(player, vitalRecovery),
-        { commandKey: 'EXPLORE_PARTY' },
-        (updatedPlayer) => updatedPlayer,
-      );
-    }
-
-    return player;
+    return await persistExplorationSceneEffectResult({
+      repository: this.repository,
+      player,
+      event,
+      options: { commandKey: 'EXPLORE_PARTY' },
+      buildResult: (updatedPlayer) => updatedPlayer,
+    }) ?? player;
   }
 
   private async loadPartyMemberContexts(party: PartyView): Promise<readonly PartyMemberBattleContext[]> {
