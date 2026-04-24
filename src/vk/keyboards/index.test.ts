@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import type { BattleView, PlayerState } from '../../shared/types/game';
+import type { BattleView, PartyView, PlayerState } from '../../shared/types/game';
 import {
   createBattleKeyboard,
   createBattleResultKeyboard,
@@ -8,6 +8,7 @@ import {
   createDeleteConfirmationKeyboard,
   createMainMenuKeyboard,
   createPendingRewardKeyboard,
+  createPartyKeyboard,
   createProfileKeyboard,
   createRuneDetailKeyboard,
   createRuneKeyboard,
@@ -221,6 +222,7 @@ const serializeKeyboard = (
     | ReturnType<typeof createDeleteConfirmationKeyboard>
     | ReturnType<typeof createMainMenuKeyboard>
     | ReturnType<typeof createPendingRewardKeyboard>
+    | ReturnType<typeof createPartyKeyboard>
     | ReturnType<typeof createProfileKeyboard>
     | ReturnType<typeof createRuneDetailKeyboard>
     | ReturnType<typeof createRuneKeyboard>
@@ -236,6 +238,7 @@ const collectPayloads = (
     | ReturnType<typeof createDeleteConfirmationKeyboard>
     | ReturnType<typeof createMainMenuKeyboard>
     | ReturnType<typeof createPendingRewardKeyboard>
+    | ReturnType<typeof createPartyKeyboard>
     | ReturnType<typeof createProfileKeyboard>
     | ReturnType<typeof createRuneDetailKeyboard>
     | ReturnType<typeof createRuneKeyboard>
@@ -255,6 +258,7 @@ const collectLabels = (
     | ReturnType<typeof createAltarKeyboard>
     | ReturnType<typeof createMainMenuKeyboard>
     | ReturnType<typeof createPendingRewardKeyboard>
+    | ReturnType<typeof createPartyKeyboard>
     | ReturnType<typeof createRuneDetailKeyboard>
     | ReturnType<typeof createRuneKeyboard>
     | ReturnType<typeof createSchoolMasteryKeyboard>,
@@ -265,6 +269,40 @@ const collectLabels = (
 };
 
 describe('profile keyboard', () => {
+  it('lets party members return to an active joint battle from the party screen', () => {
+    const party: PartyView = {
+      id: 'party-1',
+      inviteCode: 'ABC123',
+      leaderPlayerId: 1,
+      status: 'IN_BATTLE',
+      activeBattleId: 'battle-1',
+      maxMembers: 2,
+      members: [
+        {
+          playerId: 1,
+          vkId: 1001,
+          name: 'Рунный мастер #1001',
+          role: 'LEADER',
+          joinedAt: '2026-04-12T00:00:00.000Z',
+        },
+        {
+          playerId: 2,
+          vkId: 1002,
+          name: 'Рунный мастер #1002',
+          role: 'MEMBER',
+          joinedAt: '2026-04-12T00:01:00.000Z',
+        },
+      ],
+      createdAt: '2026-04-12T00:00:00.000Z',
+      updatedAt: '2026-04-12T00:01:00.000Z',
+    };
+
+    const payloads = collectPayloads(createPartyKeyboard(party, 2));
+
+    expect(payloads).toContainEqual({ command: gameCommands.exploreParty });
+    expect(payloads).not.toContainEqual({ command: gameCommands.leaveParty });
+  });
+
   it('turns pending reward actions into ledger-scoped trophy buttons', () => {
     const keyboard = createPendingRewardKeyboard(createPendingReward());
     const labels = collectLabels(keyboard);

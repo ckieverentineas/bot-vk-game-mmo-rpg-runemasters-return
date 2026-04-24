@@ -165,6 +165,87 @@ const createBattleView = (leader: PlayerState, battle: CreateBattleInput): Battl
   ...battle,
 });
 
+const createActivePartyBattle = (
+  leader: PlayerState,
+  ally: PlayerState,
+  overrides: Partial<BattleView> = {},
+): BattleView => {
+  const leaderSnapshot = {
+    playerId: leader.playerId,
+    name: 'Рунный мастер #1001',
+    attack: 4,
+    defence: 3,
+    magicDefence: 1,
+    dexterity: 2,
+    intelligence: 1,
+    maxHealth: 8,
+    currentHealth: 8,
+    maxMana: 4,
+    currentMana: 4,
+    runeLoadout: null,
+    guardPoints: 0,
+  };
+  const allySnapshot = {
+    ...leaderSnapshot,
+    playerId: ally.playerId,
+    name: 'Рунный мастер #1002',
+  };
+
+  return {
+    id: 'battle-1',
+    playerId: leader.playerId,
+    status: 'ACTIVE',
+    battleType: 'PARTY_PVE',
+    actionRevision: 0,
+    locationLevel: 2,
+    biomeCode: 'dark-forest',
+    enemyCode: 'forest-wolf',
+    turnOwner: 'PLAYER',
+    player: leaderSnapshot,
+    enemy: {
+      code: 'forest-wolf',
+      name: 'Лесной волк',
+      kind: 'wolf',
+      isElite: false,
+      isBoss: false,
+      attack: 3,
+      defence: 1,
+      magicDefence: 0,
+      dexterity: 2,
+      intelligence: 0,
+      maxHealth: 40,
+      currentHealth: 40,
+      maxMana: 0,
+      currentMana: 0,
+      experienceReward: 6,
+      goldReward: 2,
+      runeDropChance: 0,
+      attackText: 'кусает',
+      intent: null,
+      hasUsedSignatureMove: false,
+    },
+    party: {
+      id: 'party-1',
+      inviteCode: 'ABC123',
+      leaderPlayerId: leader.playerId,
+      currentTurnPlayerId: leader.playerId,
+      enemyTargetPlayerId: null,
+      actedPlayerIds: [],
+      members: [
+        { playerId: leader.playerId, vkId: leader.vkId, name: leaderSnapshot.name, snapshot: leaderSnapshot },
+        { playerId: ally.playerId, vkId: ally.vkId, name: allySnapshot.name, snapshot: allySnapshot },
+      ],
+    },
+    encounter: null,
+    log: ['⚔️ Бой начался.'],
+    result: null,
+    rewards: null,
+    createdAt: '2026-04-12T00:00:00.000Z',
+    updatedAt: new Date(Date.now() - 31_000).toISOString(),
+    ...overrides,
+  };
+};
+
 const addInventoryDelta = (player: PlayerState, field: InventoryField, amount: number): PlayerState => ({
   ...player,
   inventory: {
@@ -273,5 +354,58 @@ describe('ExploreParty', () => {
     expect(result.enemy.currentHealth).toBeLessThan(result.enemy.maxHealth);
     expect(result.encounter?.kind).toBe('WEARY_ENEMY');
     expect(random.rollPercentage).toHaveBeenCalledWith(18);
+  });
+
+  it('resolves an idle active party battle when another member continues joint exploration', async () => {
+    const leader = createPlayer();
+    const ally = createPlayer({
+      userId: 2,
+      vkId: 1002,
+      playerId: 2,
+    });
+    const party = {
+      ...createParty(),
+      status: 'IN_BATTLE' as const,
+      activeBattleId: 'battle-1',
+    };
+    const activeBattle = createActivePartyBattle(leader, ally);
+    const repository = {
+      findPlayerByVkId: vi.fn().mockResolvedValue(ally),
+      getActiveParty: vi.fn().mockResolvedValue(party),
+      getActiveBattle: vi.fn().mockResolvedValue(activeBattle),
+      findPlayerById: vi.fn(async (playerId: number) => (playerId === leader.playerId ? leader : ally)),
+      saveBattle: vi.fn(async (battle: BattleView) => battle),
+      finalizeBattle: vi.fn(),
+      listPlayerCraftedItems: vi.fn(),
+      startPartyBattle: vi.fn(),
+    } as unknown as GameRepository;
+    const useCase = new ExploreParty(repository, createWorldCatalog(), createRandom());
+
+    const result = await useCase.execute(ally.vkId);
+
+    expect(isExplorePartyEventResult(result)).toBe(false);
+    if (isExplorePartyEventResult(result)) {
+      throw new Error('Expected active party battle result.');
+    }
+
+    expect(result.party?.currentTurnPlayerId).toBe(ally.playerId);
+    expect(result.party?.actedPlayerIds).toEqual([leader.playerId]);
+    expect(result.log).toEqual(expect.arrayContaining([
+      expect.stringContaining('автоатака'),
+    ]));
+    expect(repository.saveBattle).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: activeBattle.id,
+        party: expect.objectContaining({
+          currentTurnPlayerId: ally.playerId,
+          actedPlayerIds: [leader.playerId],
+        }),
+      }),
+      expect.objectContaining({
+        commandKey: 'BATTLE_ATTACK',
+        actingPlayerId: leader.playerId,
+      }),
+    );
+    expect(repository.startPartyBattle).not.toHaveBeenCalled();
   });
 });

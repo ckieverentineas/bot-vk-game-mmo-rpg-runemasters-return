@@ -12,6 +12,15 @@ export const createPartyKeyboard = (party: PartyView | null, viewerPlayerId: num
 
   const layout: KeyboardLayout = party
     ? [
+        ...(partyBattleActive
+          ? [[
+              {
+                label: '⚔️ К бою',
+                command: gameCommands.exploreParty,
+                color: Keyboard.POSITIVE_COLOR,
+              },
+            ]]
+          : []),
         ...(!partyBattleActive && isLeader && isReady
           ? [[
               {

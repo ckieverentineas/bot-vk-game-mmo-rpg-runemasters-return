@@ -44,6 +44,7 @@ import {
 import {
   type ExplorationSceneView,
 } from '../../../world/domain/exploration-events';
+import { resolveIdlePartyAutoAttack } from '../../../combat/application/idle-party-auto-attack';
 
 interface PartyMemberBattleContext {
   readonly player: PlayerState;
@@ -201,15 +202,13 @@ export class ExploreParty {
       throw new AppError('party_not_found', 'Сначала создайте отряд и пригласите второго мастера.');
     }
 
-    if (party.leaderPlayerId !== leader.playerId) {
-      throw new AppError('party_leader_required', 'Отрядный выход начинает лидер отряда.');
+    const activePartyBattle = await this.resolveActivePartyBattle(leader, party);
+    if (activePartyBattle) {
+      return activePartyBattle;
     }
 
-    if (party.activeBattleId) {
-      const activeBattle = await this.repository.getActiveBattle(leader.playerId);
-      if (activeBattle) {
-        return activeBattle;
-      }
+    if (party.leaderPlayerId !== leader.playerId) {
+      throw new AppError('party_leader_required', 'Отрядный выход начинает лидер отряда.');
     }
 
     if (party.members.length < party.maxMembers) {
@@ -256,6 +255,26 @@ export class ExploreParty {
     }
 
     return this.startPartyBattleFromOutcome(party, memberContexts, leader, outcome);
+  }
+
+  private async resolveActivePartyBattle(player: PlayerState, party: PartyView): Promise<BattleView | null> {
+    if (!party.activeBattleId) {
+      return null;
+    }
+
+    const activeBattle = await this.repository.getActiveBattle(player.playerId);
+    if (!activeBattle) {
+      return null;
+    }
+
+    const autoAttackResult = await resolveIdlePartyAutoAttack(
+      this.repository,
+      this.random,
+      activeBattle,
+      player,
+    );
+
+    return autoAttackResult?.battle ?? activeBattle;
   }
 
   private async startPartyBattleFromOutcome(
