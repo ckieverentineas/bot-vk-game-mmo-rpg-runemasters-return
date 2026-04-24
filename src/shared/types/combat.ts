@@ -90,6 +90,7 @@ export interface BattleEnemySnapshot {
   attackText: string;
   intent?: BattleEnemyIntentSnapshot | null;
   knowledge?: BattleEnemyKnowledgeSnapshot;
+  roaming?: BattleEnemyRoamingSnapshot;
   hasUsedSignatureMove?: boolean;
 }
 
@@ -105,6 +106,16 @@ export interface BattleEnemyKnowledgeSnapshot {
   readonly isDiscovered: boolean;
   readonly hasTrophyStudy: boolean;
   readonly victoryCount: number;
+}
+
+export type BattleEnemyRoamingDirection = 'LOWER_BIOME' | 'HIGHER_BIOME';
+
+export interface BattleEnemyRoamingSnapshot {
+  readonly direction: BattleEnemyRoamingDirection;
+  readonly originBiomeCode: string;
+  readonly originBiomeName: string;
+  readonly levelBonus: number;
+  readonly experienceBonus: number;
 }
 
 export type BattleEncounterKind =

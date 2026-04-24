@@ -337,6 +337,51 @@ describe('battle platform contracts', () => {
     expect(snapshot.rewards?.gold).toBe(2);
   });
 
+  it('keeps roaming enemy origin in the versioned battle snapshot', () => {
+    const battle = createBattle();
+    const snapshot = buildBattleSnapshot({
+      ...battle,
+      enemy: {
+        ...battle.enemy,
+        roaming: {
+          direction: 'HIGHER_BIOME',
+          originBiomeCode: 'forgotten-caves',
+          originBiomeName: 'Забытые пещеры',
+          levelBonus: 2,
+          experienceBonus: 4,
+        },
+      },
+    });
+
+    expect(isBattleSnapshot(snapshot)).toBe(true);
+    expect(snapshot.enemy.roaming).toEqual({
+      direction: 'HIGHER_BIOME',
+      originBiomeCode: 'forgotten-caves',
+      originBiomeName: 'Забытые пещеры',
+      levelBonus: 2,
+      experienceBonus: 4,
+    });
+  });
+
+  it('rejects malformed roaming enemy origin in the battle snapshot', () => {
+    const battle = createBattle();
+    const snapshot = buildBattleSnapshot({
+      ...battle,
+      enemy: {
+        ...battle.enemy,
+        roaming: {
+          direction: 'HIGHER_BIOME',
+          originBiomeCode: 'forgotten-caves',
+          originBiomeName: 'Забытые пещеры',
+          levelBonus: -1,
+          experienceBonus: 4,
+        },
+      },
+    });
+
+    expect(isBattleSnapshot(snapshot)).toBe(false);
+  });
+
   it('keeps encounter and flee state in the versioned battle snapshot', () => {
     const snapshot = buildBattleSnapshot({
       ...createBattle(),

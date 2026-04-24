@@ -1,5 +1,6 @@
 import type {
   BattleEnemyIntentCode,
+  BattleEnemyRoamingDirection,
   BattleEncounterKind,
   BattleEnemySnapshot,
   BattleEncounterView,
@@ -34,6 +35,7 @@ export interface BattleSnapshotV1 {
 export type BattleSnapshot = BattleSnapshotV1;
 
 const battleEnemyIntentCodes: readonly BattleEnemyIntentCode[] = ['HEAVY_STRIKE', 'GUARD_BREAK'];
+const battleEnemyRoamingDirections: readonly BattleEnemyRoamingDirection[] = ['LOWER_BIOME', 'HIGHER_BIOME'];
 const battleEncounterKinds: readonly BattleEncounterKind[] = ['TRAIL', 'AMBUSH', 'WEARY_ENEMY', 'ELITE_TRAIL'];
 const rewardRarities: readonly RuneRarity[] = ['USUAL', 'UNUSUAL', 'RARE', 'EPIC', 'LEGENDARY', 'MYTHICAL'];
 const materialFields: readonly MaterialField[] = ['leather', 'bone', 'herb', 'essence', 'metal', 'crystal'];
@@ -144,6 +146,16 @@ const isBattleEnemyKnowledgeSnapshot = (value: unknown): value is NonNullable<Ba
   && isNumber(value.victoryCount)
 );
 
+const isBattleEnemyRoamingSnapshot = (value: unknown): value is NonNullable<BattleEnemySnapshot['roaming']> => (
+  isJsonRecord(value)
+  && isString(value.direction)
+  && battleEnemyRoamingDirections.includes(value.direction as BattleEnemyRoamingDirection)
+  && isString(value.originBiomeCode)
+  && isString(value.originBiomeName)
+  && isNumber(value.levelBonus)
+  && isNumber(value.experienceBonus)
+);
+
 const isBattleEnemySnapshot = (value: unknown): value is BattleEnemySnapshot => (
   isJsonRecord(value)
   && isString(value.code)
@@ -167,6 +179,7 @@ const isBattleEnemySnapshot = (value: unknown): value is BattleEnemySnapshot => 
   && isString(value.attackText)
   && (value.intent === undefined || value.intent === null || isBattleEnemyIntentSnapshot(value.intent))
   && (value.knowledge === undefined || isBattleEnemyKnowledgeSnapshot(value.knowledge))
+  && (value.roaming === undefined || isBattleEnemyRoamingSnapshot(value.roaming))
   && (value.hasUsedSignatureMove === undefined || typeof value.hasUsedSignatureMove === 'boolean')
 );
 

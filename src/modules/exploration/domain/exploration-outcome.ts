@@ -1,6 +1,7 @@
 import type {
   BattleEncounterKind,
   BattleEnemySnapshot,
+  BattleEnemyRoamingSnapshot,
   BiomeView,
   MobTemplateView,
   PlayerState,
@@ -115,7 +116,7 @@ const shouldPreferSchoolSealTarget = (
 };
 
 const buildOpeningLog = (
-  context: ResolveExplorationOutcomeContext & { readonly roamingOriginBiome?: BiomeView | null },
+  context: ResolveExplorationOutcomeContext,
   enemy: BattleEnemySnapshot,
   random: ExplorationOutcomeRandom,
 ): string[] => {
@@ -134,11 +135,24 @@ const buildOpeningLog = (
 
   return [
     gameMasterLine ? `${encounterLine} ${gameMasterLine}` : encounterLine,
-    ...(context.roamingOriginBiome
-      ? [`🧭 Бродячий след: ${enemy.name} пришёл из места «${context.roamingOriginBiome.name}».`]
+    ...(enemy.roaming
+      ? [resolveRoamingEncounterLine(enemy)]
       : []),
     ...(explorationEventLine ? [explorationEventLine] : []),
   ];
+};
+
+const resolveRoamingEncounterLine = (enemy: BattleEnemySnapshot): string => {
+  const roaming = enemy.roaming;
+  if (!roaming) {
+    return '';
+  }
+
+  if (roaming.direction === 'HIGHER_BIOME') {
+    return `⚠️ Чужой след: ${enemy.name} спустился из места «${roaming.originBiomeName}», набрал опыт дороги и опаснее обычной встречи.`;
+  }
+
+  return `🧭 Бродячий след: ${enemy.name} пришёл из места «${roaming.originBiomeName}».`;
 };
 
 const pickRoamingPool = (
@@ -152,6 +166,53 @@ const pickRoamingPool = (
   )) ?? null
 );
 
+const resolveRoamingLevelBonus = (roamingPool: ExplorationRoamingTemplatePool | null): number => (
+  roamingPool?.direction === 'HIGHER_BIOME'
+    ? higherBiomeRoamingLevelBonus
+    : 0
+);
+
+const resolveRoamingExperienceBonus = (
+  locationLevel: number,
+  roamingPool: ExplorationRoamingTemplatePool | null,
+): number => (
+  roamingPool?.direction === 'HIGHER_BIOME'
+    ? Math.max(2, Math.ceil(locationLevel * 0.5))
+    : 0
+);
+
+const buildRoamingSnapshot = (
+  roamingPool: ExplorationRoamingTemplatePool,
+  levelBonus: number,
+  experienceBonus: number,
+): BattleEnemyRoamingSnapshot => ({
+  direction: roamingPool.direction,
+  originBiomeCode: roamingPool.biome.code,
+  originBiomeName: roamingPool.biome.name,
+  levelBonus,
+  experienceBonus,
+});
+
+const buildRoamingEnemySnapshot = (
+  template: MobTemplateView,
+  context: ResolveExplorationOutcomeContext,
+  roamingPool: ExplorationRoamingTemplatePool | null,
+): BattleEnemySnapshot => {
+  const levelBonus = resolveRoamingLevelBonus(roamingPool);
+  const experienceBonus = resolveRoamingExperienceBonus(context.locationLevel, roamingPool);
+  const enemy = buildEnemySnapshot(template, context.locationLevel + levelBonus);
+
+  if (!roamingPool) {
+    return enemy;
+  }
+
+  return {
+    ...enemy,
+    experienceReward: enemy.experienceReward + experienceBonus,
+    roaming: buildRoamingSnapshot(roamingPool, levelBonus, experienceBonus),
+  };
+};
+
 const ambushChancePercent = 12;
 const wearyEnemyChancePercent = 18;
 const trailChancePercent = 25;
@@ -160,6 +221,7 @@ const ambushMinVictories = 3;
 const wearyEnemyMinLocationLevel = 2;
 const wearyEnemyHealthMultiplier = 0.75;
 const recoveryEnemyHealthMultiplier = 0.6;
+const higherBiomeRoamingLevelBonus = 2;
 
 const calculateTemplateThreat = (template: MobTemplateView): number => (
   template.baseStats.health
@@ -308,11 +370,8 @@ export const resolveExplorationBattleOutcome = (
     derivePlayerStats(context.player),
     resolveWorkshopEquipmentStatBonus(context.workshopItems ?? []),
   );
-  const enemy = buildEnemySnapshot(template, context.locationLevel);
-  const openingLog = buildOpeningLog({
-    ...context,
-    roamingOriginBiome: roamingPool?.biome ?? null,
-  }, enemy, random);
+  const enemy = buildRoamingEnemySnapshot(template, context, roamingPool);
+  const openingLog = buildOpeningLog(context, enemy, random);
   const encounterVariant = resolveEncounterVariant(context, enemy, random, recovery);
 
   return {

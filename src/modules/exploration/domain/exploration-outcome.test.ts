@@ -10,6 +10,7 @@ import {
 } from '../../../shared/testing/game-factories';
 import type { BiomeView, MobTemplateView, PlayerState } from '../../../shared/types/game';
 import type { WorkshopEquippedItemView } from '../../workshop/domain/workshop-catalog';
+import { buildEnemySnapshot } from '../../world/domain/enemy-scaling';
 import { resolveExplorationOutcome, resolveExplorationSchoolCode } from './exploration-outcome';
 
 const createPlayer = (overrides: Partial<PlayerState> = {}): PlayerState => createTestPlayer({
@@ -502,6 +503,84 @@ describe('resolveExplorationOutcome', () => {
 
     expect(outcome.kind).toBe('battle');
     expect(outcome.kind === 'battle' ? outcome.enemy.code : null).toBe('cave-goblin');
+  });
+
+  it('marks a higher-biome roaming enemy as a growing migrant threat', () => {
+    const random = {
+      rollPercentage: vi.fn()
+        .mockReturnValueOnce(false)
+        .mockReturnValueOnce(false)
+        .mockReturnValueOnce(true)
+        .mockReturnValueOnce(false),
+      pickOne: vi.fn(<T>(items: readonly T[]) => items[0]!),
+    };
+    const forest = createRoamingBiome({
+      code: 'dark-forest',
+      name: 'Тёмный лес',
+      minLevel: 1,
+      maxLevel: 15,
+    });
+    const caves = createRoamingBiome({
+      code: 'forgotten-caves',
+      name: 'Забытые пещеры',
+      minLevel: 16,
+      maxLevel: 35,
+    });
+    const higherTemplate = createMobTemplate({
+      code: 'cave-stalker',
+      biomeCode: 'forgotten-caves',
+      name: 'Пещерный следопыт',
+      baseExperience: 10,
+      scales: createTestStatBlock({
+        health: 1.5,
+        attack: 1.4,
+        defence: 1.2,
+        magicDefence: 1,
+        dexterity: 1,
+        intelligence: 1,
+      }),
+    });
+
+    const outcome = resolveExplorationOutcome({
+      player: createPlayer(),
+      biome: forest,
+      templates: [createMobTemplate({ code: 'forest-wolf', biomeCode: 'dark-forest' })],
+      roamingTemplatePools: [
+        {
+          biome: createRoamingBiome({ code: 'initium', name: 'Порог инициации', minLevel: 0, maxLevel: 0 }),
+          templates: [createMobTemplate({ code: 'training-wisp', biomeCode: 'initium' })],
+          chancePercent: 12,
+          direction: 'LOWER_BIOME',
+        },
+        {
+          biome: caves,
+          templates: [higherTemplate],
+          chancePercent: 3,
+          direction: 'HIGHER_BIOME',
+        },
+      ],
+      locationLevel: 8,
+      currentSchoolCode: null,
+    }, random);
+
+    expect(outcome.kind).toBe('battle');
+    if (outcome.kind !== 'battle') {
+      return;
+    }
+
+    const baselineEnemy = buildEnemySnapshot(higherTemplate, 8);
+    expect(outcome.enemy.roaming).toEqual({
+      direction: 'HIGHER_BIOME',
+      originBiomeCode: 'forgotten-caves',
+      originBiomeName: 'Забытые пещеры',
+      levelBonus: 2,
+      experienceBonus: 4,
+    });
+    expect(outcome.enemy.maxHealth).toBeGreaterThan(baselineEnemy.maxHealth);
+    expect(outcome.enemy.experienceReward).toBeGreaterThan(baselineEnemy.experienceReward);
+    expect(outcome.openingLog).toContain(
+      '⚠️ Чужой след: Пещерный следопыт спустился из места «Забытые пещеры», набрал опыт дороги и опаснее обычной встречи.',
+    );
   });
 });
 
