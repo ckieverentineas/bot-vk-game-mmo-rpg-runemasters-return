@@ -227,7 +227,7 @@ describe('ExploreParty', () => {
     );
   });
 
-  it('rotates normal party encounters and keeps random weary enemies out of party battles', async () => {
+  it('rotates normal party encounters without suppressing weary variants', async () => {
     const leader = createPlayer({
       mobsKilled: 1,
       victories: 2,
@@ -270,8 +270,8 @@ describe('ExploreParty', () => {
     }
 
     expect(result.enemy.code).toBe('forest-wolf');
-    expect(result.enemy.currentHealth).toBe(result.enemy.maxHealth);
-    expect(result.encounter?.kind).not.toBe('WEARY_ENEMY');
-    expect(random.rollPercentage).not.toHaveBeenCalledWith(18);
+    expect(result.enemy.currentHealth).toBeLessThan(result.enemy.maxHealth);
+    expect(result.encounter?.kind).toBe('WEARY_ENEMY');
+    expect(random.rollPercentage).toHaveBeenCalledWith(18);
   });
 });

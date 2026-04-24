@@ -167,6 +167,7 @@ describe('BattleEngine', () => {
         initialTurnOwner: 'ENEMY',
         canFlee: true,
         fleeChancePercent: 52,
+        effectLine: 'Враг начинает с 75% HP, отступить чуть проще: +5%.',
       },
     });
 
@@ -175,7 +176,7 @@ describe('BattleEngine', () => {
     expect(resolved.encounter?.status).toBe('ENGAGED');
     expect(resolved.turnOwner).toBe('ENEMY');
     expect(resolved.status).toBe('ACTIVE');
-    expect(resolved.log).toHaveLength(battle.log.length + 1);
+    expect(resolved.log).toContain('🧭 Условие встречи: Враг начинает с 75% HP, отступить чуть проще: +5%.');
   });
 
   it('can finish an offered encounter as a neutral flee result before combat starts', () => {

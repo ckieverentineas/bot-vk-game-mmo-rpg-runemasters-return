@@ -227,7 +227,6 @@ export class ExploreParty {
       locationLevel,
       workshopItems: leaderContext.workshopItems,
       normalEncounterCursor: resolvePartyNormalEncounterCursor(leader),
-      allowWearyEnemyVariant: false,
     }, this.random);
 
     if (outcome.kind === 'event') {

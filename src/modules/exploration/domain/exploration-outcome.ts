@@ -43,7 +43,6 @@ export interface ResolveExplorationOutcomeContext {
   readonly currentSchoolCode: string | null;
   readonly workshopItems?: readonly WorkshopEquippedItemView[];
   readonly normalEncounterCursor?: number;
-  readonly allowWearyEnemyVariant?: boolean;
 }
 
 export interface ExplorationRoamingTemplatePool {
@@ -256,11 +255,7 @@ const resolveEncounterVariant = (
     return createAmbushVariant(enemy);
   }
 
-  if (
-    context.allowWearyEnemyVariant !== false
-    && context.locationLevel >= wearyEnemyMinLocationLevel
-    && random.rollPercentage(wearyEnemyChancePercent)
-  ) {
+  if (context.locationLevel >= wearyEnemyMinLocationLevel && random.rollPercentage(wearyEnemyChancePercent)) {
     return createWearyEnemyVariant(enemy);
   }
 

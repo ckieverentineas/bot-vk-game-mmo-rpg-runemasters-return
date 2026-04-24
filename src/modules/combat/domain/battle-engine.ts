@@ -656,6 +656,7 @@ export class BattleEngine {
     this.assertEncounterOffered(nextBattle);
 
     const initialTurnOwner = nextBattle.encounter?.initialTurnOwner ?? 'PLAYER';
+    const encounterEffectLine = nextBattle.encounter?.effectLine ?? null;
     nextBattle.encounter = {
       ...nextBattle.encounter!,
       status: 'ENGAGED',
@@ -664,6 +665,10 @@ export class BattleEngine {
     nextBattle.log = appendBattleLog(
       nextBattle.log,
       `⚔️ ${formatBattleActor(nextBattle.player.name)} принимает встречу с ${formatBattleActor(nextBattle.enemy.name)}: бой начинается.`,
+      ...messageWhen(
+        encounterEffectLine !== null,
+        `🧭 Условие встречи: ${encounterEffectLine ?? ''}`,
+      ),
     );
 
     return nextBattle;
