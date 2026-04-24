@@ -2,27 +2,12 @@ import { AppError } from '../../../shared/domain/AppError';
 import type { AlchemyConsumableDefinition } from '../../consumables/domain/alchemy-consumables';
 import type {
   BattleActionType,
-  BattleEnemyIntentSnapshot,
   BattleView,
 } from '../../../shared/types/game';
 import { isBattleEncounterOffered } from './battle-encounter';
-import { appendBattleLog, calculatePhysicalDamage, cloneBattle } from './battle-utils';
-import {
-  createGuardBreakIntent,
-  createHeavyStrikeIntent,
-  shouldEnemyPrepareGuardBreak,
-  shouldEnemyPrepareHeavyStrike,
-} from './battle-tactics';
-import { resolveEnemyIntentReading } from './enemy-intent-reading';
-import {
-  finishEnemyAction,
-  finishEnemyPreparation,
-  preparePartyEnemyTarget,
-} from './battle-turn-flow';
-import { consumeGuardAgainstDamage, getGuardPoints } from './battle-damage';
+import { appendBattleLog, cloneBattle } from './battle-utils';
 import {
   formatBattleActor,
-  formatEnemyAttackLine,
   messageWhen,
 } from './battle-log-lines';
 import {
@@ -31,74 +16,14 @@ import {
   performRuneSkill,
   useBattleConsumable,
 } from './battle-player-actions';
+import {
+  resolveEnemyActionTurn,
+  type EnemyTurnOptions,
+} from './battle-enemy-actions';
 
 interface PlayerActionOptions {
   readonly fleeSucceeded?: boolean;
 }
-
-interface EnemyTurnOptions {
-  readonly signatureReactionSucceeded?: boolean;
-  readonly signatureReactionChancePercent?: number;
-}
-
-const resolveIntentPatternLabel = (intent: BattleEnemyIntentSnapshot): string => (
-  intent.code === 'HEAVY_STRIKE' ? 'силовой удар' : 'приём против стойки'
-);
-
-const formatEnemyIntentPreparationLine = (battle: BattleView): string => {
-  const intent = battle.enemy.intent;
-  if (!intent) {
-    return `⚠️ ${formatBattleActor(battle.enemy.name)} меняет стойку.`;
-  }
-
-  const reading = resolveEnemyIntentReading(battle);
-  if (reading.precision === 'exact') {
-    return `⚠️ ${formatBattleActor(battle.enemy.name)} раскрывает «${intent.title}». ${intent.description}`;
-  }
-
-  if (reading.precision === 'pattern') {
-    return `⚠️ ${formatBattleActor(battle.enemy.name)} выдаёт ${resolveIntentPatternLabel(intent)}. Точный жест ещё скрыт.`;
-  }
-
-  return `⚠️ ${formatBattleActor(battle.enemy.name)} собирает опасный ход. Замысел не прочитан.`;
-};
-
-const formatSignatureReactionLine = (
-  reactionSucceeded: boolean,
-  chancePercent: number | undefined,
-): string => {
-  const chanceSuffix = chancePercent === undefined ? '' : ` (${chancePercent}%)`;
-
-  return reactionSucceeded
-    ? `⚡ Реакция${chanceSuffix}: вы успеваете удержать окно ответа.`
-    : `⚡ Реакция${chanceSuffix}: враг срывает навык первым.`;
-};
-
-const resolveEnemyAttack = (
-  battle: BattleView,
-  attack: number,
-  attackText: string,
-  options: { shattersGuard?: boolean } = {},
-): void => {
-  const shatteredGuard = options.shattersGuard ? getGuardPoints(battle.player) : 0;
-  if (options.shattersGuard && shatteredGuard > 0) {
-    battle.player.guardPoints = 0;
-  }
-
-  const rawDamage = calculatePhysicalDamage(attack, battle.player.defence);
-  const { blockedDamage, dealtDamage } = consumeGuardAgainstDamage(battle.player, rawDamage);
-
-  battle.log = appendBattleLog(
-    battle.log,
-    ...(shatteredGuard > 0 ? [`💥 ${formatBattleActor(battle.enemy.name)} разбивает защиту ${formatBattleActor(battle.player.name)} на ${shatteredGuard}.`] : []),
-    ...(blockedDamage > 0 ? [`🛡️ ${formatBattleActor(battle.player.name)} смягчает удар на ${blockedDamage} урона.`] : []),
-    dealtDamage > 0
-      ? attackText.replace('{damage}', `${dealtDamage}`)
-      : `🛡️ ${formatBattleActor(battle.player.name)} принимает весь удар защитой.`,
-  );
-
-  battle.player.currentHealth = Math.max(0, battle.player.currentHealth - dealtDamage);
-};
 
 export class BattleEngine {
   public static performPlayerAction(
@@ -161,76 +86,7 @@ export class BattleEngine {
     const nextBattle = cloneBattle(battle);
     this.assertActive(nextBattle);
 
-    if (nextBattle.turnOwner !== 'ENEMY' || isBattleEncounterOffered(nextBattle)) {
-      return nextBattle;
-    }
-
-    if (nextBattle.enemy.intent?.code === 'HEAVY_STRIKE') {
-      return this.resolveHeavyStrike(nextBattle);
-    }
-
-    if (nextBattle.enemy.intent?.code === 'GUARD_BREAK') {
-      return this.resolveGuardBreak(nextBattle);
-    }
-
-    if (shouldEnemyPrepareGuardBreak(nextBattle.enemy)) {
-      return this.prepareEnemySignatureIntent(nextBattle, createGuardBreakIntent(nextBattle.enemy), options);
-    }
-
-    if (shouldEnemyPrepareHeavyStrike(nextBattle.enemy)) {
-      return this.prepareEnemySignatureIntent(nextBattle, createHeavyStrikeIntent(nextBattle.enemy), options);
-    }
-
-    preparePartyEnemyTarget(nextBattle);
-    if (nextBattle.status === 'COMPLETED') {
-      return nextBattle;
-    }
-
-    resolveEnemyAttack(
-      nextBattle,
-      nextBattle.enemy.attack,
-      `👾 ${formatEnemyAttackLine(nextBattle.enemy.name, nextBattle.enemy.attackText, nextBattle.player.name, '{damage}')}`,
-    );
-    return finishEnemyAction(nextBattle);
-  }
-
-  private static prepareEnemySignatureIntent(
-    nextBattle: BattleView,
-    intent: BattleEnemyIntentSnapshot,
-    options: EnemyTurnOptions,
-  ): BattleView {
-    nextBattle.enemy.intent = intent;
-    nextBattle.log = appendBattleLog(
-      nextBattle.log,
-      formatEnemyIntentPreparationLine(nextBattle),
-    );
-
-    if (options.signatureReactionSucceeded === undefined) {
-      return finishEnemyPreparation(nextBattle);
-    }
-
-    nextBattle.log = appendBattleLog(
-      nextBattle.log,
-      formatSignatureReactionLine(options.signatureReactionSucceeded, options.signatureReactionChancePercent),
-    );
-
-    if (options.signatureReactionSucceeded) {
-      return finishEnemyPreparation(nextBattle);
-    }
-
-    return this.resolvePreparedEnemyIntent(nextBattle);
-  }
-
-  private static resolvePreparedEnemyIntent(nextBattle: BattleView): BattleView {
-    if (nextBattle.enemy.intent?.code === 'HEAVY_STRIKE') {
-      return this.resolveHeavyStrike(nextBattle);
-    }
-
-    if (nextBattle.enemy.intent?.code === 'GUARD_BREAK') {
-      return this.resolveGuardBreak(nextBattle);
-    }
-
-    return finishEnemyPreparation(nextBattle);
+    return resolveEnemyActionTurn(nextBattle, options);
   }
 
   private static engageEncounter(battle: BattleView): BattleView {
@@ -290,51 +146,6 @@ export class BattleEngine {
     );
 
     return nextBattle;
-  }
-
-  private static resolveHeavyStrike(nextBattle: BattleView): BattleView {
-    const intent = nextBattle.enemy.intent;
-    if (!intent) {
-      return nextBattle;
-    }
-
-    nextBattle.enemy.intent = null;
-    nextBattle.enemy.hasUsedSignatureMove = true;
-    preparePartyEnemyTarget(nextBattle);
-    if (nextBattle.status === 'COMPLETED') {
-      return nextBattle;
-    }
-
-    resolveEnemyAttack(
-      nextBattle,
-      nextBattle.enemy.attack + intent.bonusAttack,
-      `💥 ${formatBattleActor(nextBattle.enemy.name)} проводит «${intent.title}» против ${formatBattleActor(nextBattle.player.name)} и наносит {damage} урона.`,
-    );
-
-    return finishEnemyAction(nextBattle);
-  }
-
-  private static resolveGuardBreak(nextBattle: BattleView): BattleView {
-    const intent = nextBattle.enemy.intent;
-    if (!intent) {
-      return nextBattle;
-    }
-
-    nextBattle.enemy.intent = null;
-    nextBattle.enemy.hasUsedSignatureMove = true;
-    preparePartyEnemyTarget(nextBattle);
-    if (nextBattle.status === 'COMPLETED') {
-      return nextBattle;
-    }
-
-    resolveEnemyAttack(
-      nextBattle,
-      nextBattle.enemy.attack + intent.bonusAttack,
-      `🧪 ${formatBattleActor(nextBattle.enemy.name)} проводит «${intent.title}» против ${formatBattleActor(nextBattle.player.name)} и наносит {damage} урона.`,
-      { shattersGuard: intent.shattersGuard },
-    );
-
-    return finishEnemyAction(nextBattle);
   }
 
   private static assertPlayerTurn(battle: BattleView): void {
