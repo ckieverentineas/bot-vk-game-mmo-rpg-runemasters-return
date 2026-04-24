@@ -39,11 +39,26 @@ export interface ResolveExplorationOutcomeContext {
   readonly player: PlayerState;
   readonly biome: BiomeView;
   readonly templates: readonly MobTemplateView[];
+  readonly activeThreats?: readonly ExplorationActiveThreat[];
   readonly roamingTemplatePools?: readonly ExplorationRoamingTemplatePool[];
   readonly locationLevel: number;
   readonly currentSchoolCode: string | null;
   readonly workshopItems?: readonly WorkshopEquippedItemView[];
   readonly normalEncounterCursor?: number;
+}
+
+export interface ExplorationActiveThreat {
+  readonly enemyCode: string;
+  readonly enemyName: string;
+  readonly originBiomeCode: string;
+  readonly originBiomeName: string;
+  readonly currentBiomeCode: string;
+  readonly survivalCount: number;
+  readonly experience: number;
+  readonly levelBonus: number;
+  readonly lastSeenLocationLevel: number;
+  readonly template: MobTemplateView;
+  readonly roamingDirection?: BattleEnemyRoamingSnapshot['direction'];
 }
 
 export interface ExplorationRoamingTemplatePool {
@@ -166,6 +181,15 @@ const pickRoamingPool = (
   )) ?? null
 );
 
+const pickActiveThreat = (
+  threats: readonly ExplorationActiveThreat[],
+  random: ExplorationOutcomeRandom,
+): ExplorationActiveThreat | null => (
+  threats.length > 0 && random.rollPercentage(activeThreatChancePercent)
+    ? random.pickOne(threats)
+    : null
+);
+
 const resolveRoamingLevelBonus = (roamingPool: ExplorationRoamingTemplatePool | null): number => (
   roamingPool?.direction === 'HIGHER_BIOME'
     ? higherBiomeRoamingLevelBonus
@@ -213,9 +237,48 @@ const buildRoamingEnemySnapshot = (
   };
 };
 
+const resolveThreatRewardBonus = (threat: ExplorationActiveThreat): number => (
+  Math.max(threat.levelBonus, Math.floor(threat.experience / 4))
+);
+
+const buildThreatRoamingSnapshot = (
+  threat: ExplorationActiveThreat,
+): BattleEnemyRoamingSnapshot | undefined => {
+  if (threat.originBiomeCode === threat.currentBiomeCode || !threat.roamingDirection) {
+    return undefined;
+  }
+
+  return {
+    direction: threat.roamingDirection,
+    originBiomeCode: threat.originBiomeCode,
+    originBiomeName: threat.originBiomeName,
+    levelBonus: threat.levelBonus,
+    experienceBonus: resolveThreatRewardBonus(threat),
+  };
+};
+
+const buildThreatEnemySnapshot = (
+  threat: ExplorationActiveThreat,
+  context: ResolveExplorationOutcomeContext,
+): BattleEnemySnapshot => {
+  const enemy = buildEnemySnapshot(threat.template, context.locationLevel + threat.levelBonus);
+
+  return {
+    ...enemy,
+    name: threat.enemyName,
+    experienceReward: enemy.experienceReward + resolveThreatRewardBonus(threat),
+    roaming: buildThreatRoamingSnapshot(threat),
+  };
+};
+
+const resolveThreatEncounterLine = (threat: ExplorationActiveThreat): string => (
+  `⚠️ Угроза вернулась: ${threat.enemyName} пережил ${threat.survivalCount} встречи, стал сильнее и снова держит этот путь.`
+);
+
 const ambushChancePercent = 12;
 const wearyEnemyChancePercent = 18;
 const trailChancePercent = 25;
+const activeThreatChancePercent = 20;
 const ambushMinLocationLevel = 4;
 const ambushMinVictories = 3;
 const wearyEnemyMinLocationLevel = 2;
@@ -352,11 +415,16 @@ export const resolveExplorationBattleOutcome = (
     && !suppressChallengeEncounters;
   const preferSealTarget = shouldPreferSchoolSealTarget(context.player, context.currentSchoolCode)
     && !suppressChallengeEncounters;
-  const roamingPool = preferMiniboss || preferSealTarget || recovery
+  const activeThreat = preferMiniboss || preferSealTarget || recovery
+    ? null
+    : pickActiveThreat(context.activeThreats ?? [], random);
+  const roamingPool = preferMiniboss || preferSealTarget || recovery || activeThreat
     ? null
     : pickRoamingPool(context.roamingTemplatePools ?? [], random);
   const template = recovery
     ? pickRecoveryEncounterTemplate(context.templates)
+    : activeThreat
+    ? activeThreat.template
     : roamingPool
     ? random.pickOne(roamingPool.templates)
     : pickEncounterTemplate(context.templates, context.locationLevel, {
@@ -370,8 +438,13 @@ export const resolveExplorationBattleOutcome = (
     derivePlayerStats(context.player),
     resolveWorkshopEquipmentStatBonus(context.workshopItems ?? []),
   );
-  const enemy = buildRoamingEnemySnapshot(template, context, roamingPool);
-  const openingLog = buildOpeningLog(context, enemy, random);
+  const enemy = activeThreat
+    ? buildThreatEnemySnapshot(activeThreat, context)
+    : buildRoamingEnemySnapshot(template, context, roamingPool);
+  const openingLog = [
+    ...buildOpeningLog(context, enemy, random),
+    ...(activeThreat ? [resolveThreatEncounterLine(activeThreat)] : []),
+  ];
   const encounterVariant = resolveEncounterVariant(context, enemy, random, recovery);
 
   return {

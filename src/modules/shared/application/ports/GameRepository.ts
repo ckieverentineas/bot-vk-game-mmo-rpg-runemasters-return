@@ -221,6 +221,18 @@ export interface RecoverPendingRewardsResult {
   readonly skipped: number;
 }
 
+export interface ActiveEnemyThreatView {
+  readonly enemyCode: string;
+  readonly enemyName: string;
+  readonly originBiomeCode: string;
+  readonly originBiomeName: string;
+  readonly currentBiomeCode: string;
+  readonly survivalCount: number;
+  readonly experience: number;
+  readonly levelBonus: number;
+  readonly lastSeenLocationLevel: number;
+}
+
 export interface CommandIntentReplayResult<TResult = PlayerState> {
   readonly status: 'APPLIED' | 'PENDING';
   readonly result?: TResult;
@@ -306,6 +318,7 @@ export interface GameRepository {
   findPendingReward(playerId: number): Promise<PendingRewardView | null>;
   collectPendingReward(playerId: number, ledgerKey: string, actionCode: TrophyActionCode): Promise<CollectPendingRewardResult>;
   recoverPendingRewardsOnStart(): Promise<RecoverPendingRewardsResult>;
+  listActiveEnemyThreatsForBiome(biomeCode: string): Promise<readonly ActiveEnemyThreatView[]>;
   saveExplorationState(
     playerId: number,
     state: Pick<PlayerState, 'locationLevel' | 'highestLocationLevel' | 'victoryStreak' | 'defeatStreak' | 'tutorialState'>,

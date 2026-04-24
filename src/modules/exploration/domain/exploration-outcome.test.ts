@@ -582,6 +582,69 @@ describe('resolveExplorationOutcome', () => {
       '⚠️ Чужой след: Пещерный следопыт спустился из места «Забытые пещеры», набрал опыт дороги и опаснее обычной встречи.',
     );
   });
+
+  it('can bring back an active survived enemy threat with its stored growth', () => {
+    const random = {
+      rollPercentage: vi.fn()
+        .mockReturnValueOnce(false)
+        .mockReturnValueOnce(true)
+        .mockReturnValueOnce(false),
+      pickOne: vi.fn(<T>(items: readonly T[]) => items[0]!),
+    };
+    const forest = createRoamingBiome({
+      code: 'dark-forest',
+      name: 'Dark Forest',
+      minLevel: 1,
+      maxLevel: 15,
+    });
+    const slimeTemplate = createMobTemplate({
+      code: 'blue-slime',
+      biomeCode: 'dark-forest',
+      name: 'Blue Slime',
+      baseExperience: 6,
+      scales: createTestStatBlock({
+        health: 1.4,
+        attack: 1.2,
+        defence: 1,
+        magicDefence: 1,
+        dexterity: 1,
+        intelligence: 1,
+      }),
+    });
+
+    const outcome = resolveExplorationOutcome({
+      player: createPlayer(),
+      biome: forest,
+      templates: [createMobTemplate({ code: 'forest-wolf', biomeCode: 'dark-forest' })],
+      activeThreats: [{
+        enemyCode: 'blue-slime',
+        enemyName: 'Blue Slime',
+        originBiomeCode: 'dark-forest',
+        originBiomeName: 'Dark Forest',
+        currentBiomeCode: 'dark-forest',
+        survivalCount: 3,
+        experience: 24,
+        levelBonus: 3,
+        lastSeenLocationLevel: 5,
+        template: slimeTemplate,
+      }],
+      locationLevel: 6,
+      currentSchoolCode: null,
+    }, random);
+
+    expect(outcome.kind).toBe('battle');
+    if (outcome.kind !== 'battle') {
+      return;
+    }
+
+    const baselineEnemy = buildEnemySnapshot(slimeTemplate, 6);
+    expect(outcome.enemy.code).toBe('blue-slime');
+    expect(outcome.enemy.maxHealth).toBeGreaterThan(baselineEnemy.maxHealth);
+    expect(outcome.enemy.experienceReward).toBeGreaterThan(baselineEnemy.experienceReward);
+    expect(outcome.openingLog).toContain(
+      '⚠️ Угроза вернулась: Blue Slime пережил 3 встречи, стал сильнее и снова держит этот путь.',
+    );
+  });
 });
 
 describe('resolveExplorationSchoolCode', () => {

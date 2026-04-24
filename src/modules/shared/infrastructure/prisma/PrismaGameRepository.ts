@@ -91,6 +91,7 @@ import {
   resolveEnemyThreatSurvival,
 } from '../../../world/domain/roaming-threats';
 import type {
+  ActiveEnemyThreatView,
   BestiaryEnemyKillMilestoneRewardClaimResult,
   ClaimQuestRewardOptions,
   ClaimDailyActivityRewardOptions,
@@ -435,6 +436,32 @@ export class PrismaGameRepository implements GameRepository {
           expectedRevision: battle.actionRevision,
           actualRevision,
         }, '{}'),
+      },
+    });
+  }
+
+  public async listActiveEnemyThreatsForBiome(biomeCode: string): Promise<readonly ActiveEnemyThreatView[]> {
+    return this.prisma.roamingThreat.findMany({
+      where: {
+        currentBiomeCode: biomeCode,
+        status: 'ACTIVE',
+      },
+      orderBy: [
+        { levelBonus: 'desc' },
+        { survivalCount: 'desc' },
+        { experience: 'desc' },
+      ],
+      take: 5,
+      select: {
+        enemyCode: true,
+        enemyName: true,
+        originBiomeCode: true,
+        originBiomeName: true,
+        currentBiomeCode: true,
+        survivalCount: true,
+        experience: true,
+        levelBonus: true,
+        lastSeenLocationLevel: true,
       },
     });
   }

@@ -524,6 +524,77 @@ describe('ExploreLocation', () => {
     expect(battle.log).toContain('🧭 Бродячий след: Лесной волк пришёл из места «Тёмный лес».');
   });
 
+  it('can start a battle against an active survived enemy threat in the current biome', async () => {
+    const player = createPlayer({ tutorialState: 'SKIPPED', locationLevel: 6, level: 6 });
+    const darkForest = createBiome({
+      id: 2,
+      code: 'dark-forest',
+      name: 'Dark Forest',
+      minLevel: 1,
+      maxLevel: 15,
+    });
+    const repository = {
+      findPlayerByVkId: vi.fn().mockResolvedValue(player),
+      getCommandIntentResult: vi.fn().mockResolvedValue(null),
+      getActiveBattle: vi.fn().mockResolvedValue(null),
+      listActiveEnemyThreatsForBiome: vi.fn().mockResolvedValue([{
+        enemyCode: 'blue-slime',
+        enemyName: 'Blue Slime',
+        originBiomeCode: 'dark-forest',
+        originBiomeName: 'Dark Forest',
+        currentBiomeCode: 'dark-forest',
+        survivalCount: 2,
+        experience: 18,
+        levelBonus: 3,
+        lastSeenLocationLevel: 5,
+      }]),
+      createBattle: vi.fn().mockImplementation(async (_playerId: number, battle: Omit<BattleView, 'id' | 'playerId' | 'createdAt' | 'updatedAt'>) => ({
+        id: 'battle-active-threat',
+        playerId: player.playerId,
+        createdAt: '2026-04-12T00:00:00.000Z',
+        updatedAt: '2026-04-12T00:00:00.000Z',
+        ...battle,
+      })),
+    } as unknown as GameRepository;
+    const random: GameRandom = {
+      nextInt: vi.fn().mockReturnValue(1),
+      rollPercentage: vi.fn()
+        .mockReturnValueOnce(false)
+        .mockReturnValueOnce(true)
+        .mockReturnValueOnce(false),
+      pickOne: vi.fn(<T>(items: readonly T[]) => items[0]!),
+    };
+    const worldCatalog = createWorldCatalog({
+      listBiomes: vi.fn().mockReturnValue([darkForest]),
+      findBiomeForLocationLevel: vi.fn().mockReturnValue(darkForest),
+      listMobTemplatesForBiome: vi.fn().mockReturnValue([
+        createMobTemplate({
+          code: 'blue-slime',
+          biomeCode: 'dark-forest',
+          name: 'Blue Slime',
+          scales: {
+            health: 1.4,
+            attack: 1.2,
+            defence: 1,
+            magicDefence: 1,
+            dexterity: 1,
+            intelligence: 1,
+          },
+        }),
+      ]),
+    });
+    const useCase = new ExploreLocation(repository, worldCatalog, random);
+
+    const battle = await useCase.execute(player.vkId, 'intent-explore-threat-1', buildExploreLocationIntentStateKey(player), 'payload') as BattleView;
+
+    expect(repository.listActiveEnemyThreatsForBiome).toHaveBeenCalledWith('dark-forest');
+    expect(battle.enemyCode).toBe('blue-slime');
+    expect(battle.enemy.maxHealth).toBeGreaterThan(6);
+    expect(battle.log).toContain(
+      '⚠️ Угроза вернулась: Blue Slime пережил 2 встречи, стал сильнее и снова держит этот путь.',
+    );
+  });
+
   it('does not pull a higher-biome roaming mob during the first-hour guardrail window', async () => {
     const player = createPlayer({ tutorialState: 'SKIPPED', locationLevel: 8, level: 8 });
     const darkForest = createBiome({

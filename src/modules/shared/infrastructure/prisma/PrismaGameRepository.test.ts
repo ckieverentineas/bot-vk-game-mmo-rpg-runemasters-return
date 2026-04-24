@@ -634,6 +634,7 @@ const createPrismaMock = () => {
       updateMany: vi.fn(),
     },
     roamingThreat: {
+      findMany: vi.fn(),
       upsert: vi.fn(),
       updateMany: vi.fn(),
     },
@@ -695,6 +696,62 @@ const createPrismaMock = () => {
 };
 
 describe('PrismaGameRepository release hardening', () => {
+  it('lists active enemy threats for a biome ordered by danger', async () => {
+    const { repository, tx } = createPrismaMock();
+
+    tx.roamingThreat.findMany.mockResolvedValue([
+      {
+        enemyCode: 'blue-slime',
+        enemyName: 'Blue Slime',
+        originBiomeCode: 'dark-forest',
+        originBiomeName: 'Dark Forest',
+        currentBiomeCode: 'dark-forest',
+        survivalCount: 3,
+        experience: 24,
+        levelBonus: 4,
+        lastSeenLocationLevel: 6,
+      },
+    ]);
+
+    await expect(repository.listActiveEnemyThreatsForBiome('dark-forest')).resolves.toEqual([
+      {
+        enemyCode: 'blue-slime',
+        enemyName: 'Blue Slime',
+        originBiomeCode: 'dark-forest',
+        originBiomeName: 'Dark Forest',
+        currentBiomeCode: 'dark-forest',
+        survivalCount: 3,
+        experience: 24,
+        levelBonus: 4,
+        lastSeenLocationLevel: 6,
+      },
+    ]);
+
+    expect(tx.roamingThreat.findMany).toHaveBeenCalledWith({
+      where: {
+        currentBiomeCode: 'dark-forest',
+        status: 'ACTIVE',
+      },
+      orderBy: [
+        { levelBonus: 'desc' },
+        { survivalCount: 'desc' },
+        { experience: 'desc' },
+      ],
+      take: 5,
+      select: {
+        enemyCode: true,
+        enemyName: true,
+        originBiomeCode: true,
+        originBiomeName: true,
+        currentBiomeCode: true,
+        survivalCount: true,
+        experience: true,
+        levelBonus: true,
+        lastSeenLocationLevel: true,
+      },
+    });
+  });
+
   it('lists player workshop blueprints as a focused read model', async () => {
     const { repository, tx } = createPrismaMock();
 

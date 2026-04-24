@@ -19,7 +19,7 @@ import {
 import type { GameTelemetry } from '../../../shared/application/ports/GameTelemetry';
 import { requirePlayerByVkId } from '../../../shared/application/require-player';
 import type { GameRandom } from '../../../../shared/domain/GameRandom';
-import type { GameRepository } from '../../../shared/application/ports/GameRepository';
+import type { ActiveEnemyThreatView, GameRepository } from '../../../shared/application/ports/GameRepository';
 import type {
   CommandIntentResultRepository,
   FindPlayerByVkIdRepository,
@@ -31,6 +31,7 @@ import {
   type ExplorationSceneView,
 } from '../../../world/domain/exploration-events';
 import {
+  type ExplorationActiveThreat,
   type ExplorationBattleOutcome,
   type ExplorationRoamingTemplatePool,
   resolveExplorationOutcome,
@@ -77,7 +78,10 @@ type ExploreLocationRepository = CommandIntentResultRepository
     | 'recordPlayerVitalsResult'
     | 'saveBattle'
   >
-  & Partial<Pick<GameRepository, 'getActiveParty' | 'listBestiaryDiscovery' | 'listPlayerCraftedItems'>>;
+  & Partial<Pick<
+    GameRepository,
+    'getActiveParty' | 'listActiveEnemyThreatsForBiome' | 'listBestiaryDiscovery' | 'listPlayerCraftedItems'
+  >>;
 
 const toWorkshopEquippedItem = (item: PlayerCraftedItemView): WorkshopEquippedItemView => ({
   id: item.id,
@@ -171,6 +175,47 @@ const buildRoamingTemplatePools = (
   ].filter((pool): pool is ExplorationRoamingTemplatePool => (
     pool.biome !== undefined && pool.templates.length > 0
   ));
+};
+
+const findMobTemplateByCode = (
+  worldCatalog: WorldCatalog,
+  biomeCode: string,
+  enemyCode: string,
+): MobTemplateView | null => (
+  worldCatalog.listMobTemplatesForBiome(biomeCode)
+    .find((template) => template.code === enemyCode) ?? null
+);
+
+const resolveThreatRoamingDirection = (
+  originBiome: BiomeView | null,
+  currentBiome: BiomeView,
+): ExplorationActiveThreat['roamingDirection'] => {
+  if (!originBiome || originBiome.code === currentBiome.code) {
+    return undefined;
+  }
+
+  return originBiome.minLevel > currentBiome.minLevel ? 'HIGHER_BIOME' : 'LOWER_BIOME';
+};
+
+const toExplorationActiveThreat = (
+  worldCatalog: WorldCatalog,
+  currentBiome: BiomeView,
+  threat: ActiveEnemyThreatView,
+): ExplorationActiveThreat | null => {
+  const template = findMobTemplateByCode(worldCatalog, threat.originBiomeCode, threat.enemyCode)
+    ?? findMobTemplateByCode(worldCatalog, threat.currentBiomeCode, threat.enemyCode);
+  if (!template) {
+    return null;
+  }
+
+  const originBiome = worldCatalog.listBiomes()
+    .find((biome) => biome.code === threat.originBiomeCode) ?? null;
+
+  return {
+    ...threat,
+    template,
+    roamingDirection: resolveThreatRoamingDirection(originBiome, currentBiome),
+  };
 };
 
 export class ExploreLocation {
@@ -276,10 +321,14 @@ export class ExploreLocation {
       throw new AppError('biome_not_found', 'Для текущего уровня локации не найден биом.');
     }
 
+    const activeThreats = currentPlayer.tutorialState === 'ACTIVE'
+      ? []
+      : await this.listActiveThreatsForBiome(biome);
     const outcome = resolveExplorationOutcome({
       player: currentPlayer,
       biome,
       templates: this.worldCatalog.listMobTemplatesForBiome(biome.code),
+      activeThreats,
       roamingTemplatePools: currentPlayer.tutorialState === 'ACTIVE'
         ? []
         : buildRoamingTemplatePools(this.worldCatalog, biome, locationLevel, {
@@ -298,6 +347,18 @@ export class ExploreLocation {
     }
 
     return this.startBattleFromOutcome(vkId, currentPlayer, outcome, commandOptions, workshopItems);
+  }
+
+  private async listActiveThreatsForBiome(biome: BiomeView): Promise<readonly ExplorationActiveThreat[]> {
+    if (typeof this.repository.listActiveEnemyThreatsForBiome !== 'function') {
+      return [];
+    }
+
+    const threats = await this.repository.listActiveEnemyThreatsForBiome(biome.code);
+
+    return threats
+      .map((threat) => toExplorationActiveThreat(this.worldCatalog, biome, threat))
+      .filter((threat): threat is ExplorationActiveThreat => threat !== null);
   }
 
   private async listWorkshopItems(playerId: number): Promise<readonly WorkshopEquippedItemView[]> {
