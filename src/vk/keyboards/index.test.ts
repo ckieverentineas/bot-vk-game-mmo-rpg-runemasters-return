@@ -602,10 +602,10 @@ describe('profile keyboard', () => {
     expect(payloads.find((payload) => payload.command === gameCommands.craftVitalCharm)?.stateKey)
       .toEqual(expect.any(String));
     expect(labels).toEqual(expect.arrayContaining([
-      '❤️ Сварить',
-      '🧠 Ясность',
-      '🛡️ Стойкость',
-      '💠 Фокус',
+      '✅ ❤️ Сварить',
+      '🧩 🧠 Ясность',
+      '🧩 🛡️ Стойкость',
+      '✅ 💠 Фокус',
     ]));
   });
 

@@ -15,9 +15,11 @@ import {
   renderRuneScreen,
   renderSchoolMastery,
   renderWelcome,
+  renderWorkshop,
 } from './messages';
 import type { PendingRewardView } from '../../modules/shared/application/ports/GameRepository';
 import type { CollectPendingRewardView } from '../../modules/rewards/application/use-cases/CollectPendingReward';
+import { getWorkshopBlueprint } from '../../modules/workshop/domain/workshop-catalog';
 
 const createPlayer = (overrides: Partial<PlayerState> = {}): PlayerState => ({
   userId: 1,
@@ -514,6 +516,75 @@ describe('messages school-first onboarding framing', () => {
     const message = renderProfile(createPlayer());
 
     expect(message).toContain('🧰 Навыки: пока пусто');
+  });
+
+  it('renders the workshop as a compact action dashboard', () => {
+    const player = createPlayer({
+      inventory: {
+        ...createPlayer().inventory,
+        leather: 4,
+        bone: 2,
+        metal: 1,
+        healingPills: 1,
+      },
+    });
+    const message = renderWorkshop({
+      player,
+      blueprints: [
+        {
+          blueprint: getWorkshopBlueprint('hunter_cleaver'),
+          ownedQuantity: 1,
+          canCraft: true,
+          missingCost: {},
+        },
+        {
+          blueprint: getWorkshopBlueprint('tracker_jacket'),
+          ownedQuantity: 1,
+          canCraft: false,
+          missingCost: { leather: 1 },
+        },
+        {
+          blueprint: getWorkshopBlueprint('skinning_kit'),
+          ownedQuantity: 0,
+          canCraft: false,
+          missingCost: { leather: 2, bone: 2 },
+        },
+      ],
+      repairTools: [],
+      craftedItems: [
+        {
+          item: {
+            id: 'crafted-weapon-1',
+            playerId: 1,
+            itemCode: 'hunter_cleaver',
+            itemClass: 'L',
+            slot: 'weapon',
+            status: 'ACTIVE',
+            equipped: false,
+            durability: 14,
+            maxDurability: 14,
+            createdAt: '2026-04-12T00:00:00.000Z',
+            updatedAt: '2026-04-12T00:00:00.000Z',
+          },
+          equippable: true,
+          repairable: false,
+          availableRepairTools: [],
+        },
+      ],
+    });
+
+    expect(message).toContain('📌 Сейчас');
+    expect(message).toContain('• ⚒ Создать: Охотничий тесак.');
+    expect(message).toContain('• 🎽 Надеть: Охотничий тесак.');
+    expect(message).toContain('• 🧪 Сварить: восстановления, стойкости.');
+    expect(message).toContain('• 💊 Выпить: восстановления x1.');
+    expect(message).toContain('• ✅ готово · Охотничий тесак');
+    expect(message).toContain('• 🧩 не хватает: кожа 1 · Куртка следопыта');
+    expect(message).toContain('• 🔒 нужен чертеж · Набор свежевателя');
+    expect(message).toContain('🎽 Снаряжение');
+    expect(message).toContain('можно надеть');
+    expect(message).toContain('❤️ Пилюля восстановления x1: +6 HP.');
+    expect(message).not.toContain('Закрывает раны');
   });
 
   it('keeps active tutorial recap focused on the first training battle', () => {

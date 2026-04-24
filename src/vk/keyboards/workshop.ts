@@ -58,6 +58,8 @@ const truncateLabel = (text: string, maxLength: number): string => (
   text.length <= maxLength ? text : `${text.slice(0, Math.max(0, maxLength - 1))}…`
 );
 
+const resolveButtonIcon = (label: string): string => label.split(' ')[0] ?? '💊';
+
 const createBlueprintStateEntries = (view: WorkshopView) => (
   view.blueprints.map((entry) => ({
     blueprintCode: entry.blueprint.code,
@@ -80,7 +82,10 @@ const createWorkshopCraftRows = (view: WorkshopView): KeyboardLayout => {
     .filter(isCraftItemBlueprintEntry)
     .filter((entry) => entry.ownedQuantity > 0)
     .map((entry) => ({
-      label: truncateLabel(`⚒ ${resolveWorkshopBlueprintTitle(entry.blueprint.code)} x${entry.ownedQuantity}`, 40),
+      label: truncateLabel(
+        `${entry.canCraft ? '⚒' : '🧩'} ${resolveWorkshopBlueprintTitle(entry.blueprint.code)} x${entry.ownedQuantity}`,
+        40,
+      ),
       command: createWorkshopCraftCommand(entry.blueprint.code),
       color: entry.canCraft ? Keyboard.POSITIVE_COLOR : Keyboard.SECONDARY_COLOR,
       intentScoped: true,
@@ -96,7 +101,7 @@ const createWorkshopCraftRows = (view: WorkshopView): KeyboardLayout => {
 };
 
 const createEquipmentButtonLabel = (entry: WorkshopCraftedItemEntryView): string => {
-  const action = entry.item.equipped ? 'Снять' : 'Надеть';
+  const action = entry.item.equipped ? '↩ Снять' : '🎽 Надеть';
   return truncateLabel(`${action} ${resolveWorkshopItemTitle(entry.item.itemCode)}`, 40);
 };
 
@@ -129,7 +134,7 @@ const createRepairButtonLabel = (
   entry: WorkshopCraftedItemEntryView,
   repairBlueprint: WorkshopRepairToolBlueprintDefinition,
 ): string => (
-  truncateLabel(`🔧 ${resolveWorkshopItemTitle(entry.item.itemCode)} ${repairBlueprint.itemClass}`, 40)
+  truncateLabel(`🔧 Починить ${resolveWorkshopItemTitle(entry.item.itemCode)} ${repairBlueprint.itemClass}`, 40)
 );
 
 const createWorkshopRepairRows = (view: WorkshopView): KeyboardLayout => {
@@ -155,13 +160,17 @@ const createWorkshopRepairRows = (view: WorkshopView): KeyboardLayout => {
 };
 
 const createPillCraftingRows = (view: WorkshopView): KeyboardLayout => {
-  const buttons = listCraftingRecipes().map((recipe) => ({
-    label: recipe.buttonLabel,
-    command: resolveCraftingRecipeCodeCommand(recipe.code),
-    color: canPayCraftingRecipe(view.player, recipe) ? Keyboard.POSITIVE_COLOR : Keyboard.SECONDARY_COLOR,
-    intentScoped: true,
-    stateKey: buildCraftingIntentStateKey(view.player, recipe.code),
-  }));
+  const buttons = listCraftingRecipes().map((recipe) => {
+    const canCraft = canPayCraftingRecipe(view.player, recipe);
+
+    return {
+      label: truncateLabel(`${canCraft ? '✅' : '🧩'} ${recipe.buttonLabel}`, 40),
+      command: resolveCraftingRecipeCodeCommand(recipe.code),
+      color: canCraft ? Keyboard.POSITIVE_COLOR : Keyboard.SECONDARY_COLOR,
+      intentScoped: true,
+      stateKey: buildCraftingIntentStateKey(view.player, recipe.code),
+    };
+  });
 
   return chunkRows(buttons, rowSize);
 };
@@ -174,7 +183,10 @@ const createUseConsumableRows = (view: WorkshopView): KeyboardLayout => {
     }))
     .filter((entry) => entry.count > 0)
     .map(({ consumable, count }) => ({
-      label: truncateLabel(`${consumable.buttonLabel} x${count}`, 40),
+      label: truncateLabel(
+        `${resolveButtonIcon(consumable.buttonLabel)} ${consumable.title.replace(/^Пилюля\s+/u, '')} x${count}`,
+        40,
+      ),
       command: resolveUseConsumableCodeCommand(consumable.code),
       color: Keyboard.PRIMARY_COLOR,
       intentScoped: true,
