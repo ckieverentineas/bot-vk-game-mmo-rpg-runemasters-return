@@ -86,7 +86,10 @@ import {
   createBestiaryLocationDiscoveryLedgerEntry,
 } from '../../domain/contracts/bestiary-location-discovery-ledger';
 import { createBattleVictoryRewardIntent } from '../../domain/contracts/reward-intent';
-import { resolveRoamingThreatSurvival } from '../../../world/domain/roaming-threats';
+import {
+  resolveEnemyThreatDefeat,
+  resolveEnemyThreatSurvival,
+} from '../../../world/domain/roaming-threats';
 import type {
   BestiaryEnemyKillMilestoneRewardClaimResult,
   ClaimQuestRewardOptions,
@@ -436,11 +439,11 @@ export class PrismaGameRepository implements GameRepository {
     });
   }
 
-  private async recordRoamingThreatSurvival(
+  private async recordEnemyThreatSurvival(
     client: TransactionClient,
     battle: BattleView,
   ): Promise<void> {
-    const threat = resolveRoamingThreatSurvival(battle);
+    const threat = resolveEnemyThreatSurvival(battle);
     if (!threat) {
       return;
     }
@@ -478,6 +481,30 @@ export class PrismaGameRepository implements GameRepository {
         experience: threat.experienceGain,
         levelBonus: threat.levelBonus,
         status: 'ACTIVE',
+      },
+    });
+  }
+
+  private async markEnemyThreatDefeated(
+    client: TransactionClient,
+    battle: BattleView,
+  ): Promise<void> {
+    const threat = resolveEnemyThreatDefeat(battle);
+    if (!threat) {
+      return;
+    }
+
+    await client.roamingThreat.updateMany({
+      where: {
+        enemyCode: threat.enemyCode,
+        originBiomeCode: threat.originBiomeCode,
+        currentBiomeCode: threat.currentBiomeCode,
+        status: 'ACTIVE',
+      },
+      data: {
+        lastSeenBattleId: threat.battleId,
+        lastSeenLocationLevel: threat.lastSeenLocationLevel,
+        status: 'DEFEATED',
       },
     });
   }
@@ -2663,7 +2690,8 @@ export class PrismaGameRepository implements GameRepository {
           }
         }
 
-        await this.recordRoamingThreatSurvival(tx, battle);
+        await this.recordEnemyThreatSurvival(tx, battle);
+        await this.markEnemyThreatDefeated(tx, battle);
 
         await tx.playerParty.updateMany({
           where: {
@@ -2913,7 +2941,8 @@ export class PrismaGameRepository implements GameRepository {
         });
       }
 
-      await this.recordRoamingThreatSurvival(tx, battle);
+      await this.recordEnemyThreatSurvival(tx, battle);
+      await this.markEnemyThreatDefeated(tx, battle);
       await this.decayWorkshopLoadout(tx, playerId, battle);
       await this.persistPlayerSkillGains(tx, playerId, options?.playerSkillGains);
 

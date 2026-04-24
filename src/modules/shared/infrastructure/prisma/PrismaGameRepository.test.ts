@@ -635,6 +635,7 @@ const createPrismaMock = () => {
     },
     roamingThreat: {
       upsert: vi.fn(),
+      updateMany: vi.fn(),
     },
     commandIntentRecord: {
       create: vi.fn(),
@@ -3322,6 +3323,116 @@ describe('PrismaGameRepository release hardening', () => {
         experience: 12,
         levelBonus: 2,
         status: 'ACTIVE',
+      },
+    });
+  });
+
+  it('records an ordinary new enemy when the player flees from it', async () => {
+    const { repository, tx } = createPrismaMock();
+    const battleView = createBattleView({
+      result: 'FLED',
+      rewards: null,
+      locationLevel: 6,
+      biomeCode: 'dark-forest',
+      enemyCode: 'blue-slime',
+      enemy: {
+        ...createBattleView().enemy,
+        code: 'blue-slime',
+        name: 'Blue Slime',
+        currentHealth: 4,
+      },
+    });
+    const persistedBattle = createBattleRow({
+      status: 'COMPLETED',
+      result: 'FLED',
+      rewardsSnapshot: null,
+    });
+
+    tx.battleSession.updateMany.mockResolvedValue({ count: 1 });
+    tx.player.findUnique.mockResolvedValue(createPlayerRecord());
+    tx.player.update.mockResolvedValue({});
+    tx.playerProgress.update.mockResolvedValue({});
+    tx.battleSession.findFirst.mockResolvedValue(persistedBattle);
+
+    await repository.finalizeBattle(1, battleView);
+
+    expect(tx.roamingThreat.upsert).toHaveBeenCalledWith({
+      where: {
+        enemyCode_originBiomeCode_currentBiomeCode: {
+          enemyCode: 'blue-slime',
+          originBiomeCode: 'dark-forest',
+          currentBiomeCode: 'dark-forest',
+        },
+      },
+      update: {
+        enemyName: 'Blue Slime',
+        originBiomeName: 'dark-forest',
+        lastSeenBattleId: 'battle-1',
+        lastSeenLocationLevel: 6,
+        lastSurvivalResult: 'FLED',
+        survivalCount: { increment: 1 },
+        experience: { increment: 6 },
+        levelBonus: { increment: 1 },
+        status: 'ACTIVE',
+      },
+      create: {
+        enemyCode: 'blue-slime',
+        enemyName: 'Blue Slime',
+        originBiomeCode: 'dark-forest',
+        originBiomeName: 'dark-forest',
+        currentBiomeCode: 'dark-forest',
+        firstSeenBattleId: 'battle-1',
+        lastSeenBattleId: 'battle-1',
+        lastSeenLocationLevel: 6,
+        lastSurvivalResult: 'FLED',
+        survivalCount: 1,
+        experience: 6,
+        levelBonus: 1,
+        status: 'ACTIVE',
+      },
+    });
+  });
+
+  it('marks an active ordinary threat as defeated when the player kills that enemy', async () => {
+    const { repository, tx } = createPrismaMock();
+    const battleView = createBattleView({
+      result: 'VICTORY',
+      locationLevel: 6,
+      biomeCode: 'dark-forest',
+      enemyCode: 'blue-slime',
+      enemy: {
+        ...createBattleView().enemy,
+        code: 'blue-slime',
+        name: 'Blue Slime',
+        currentHealth: 0,
+      },
+    });
+    const persistedBattle = createBattleRow({
+      status: 'COMPLETED',
+      result: 'VICTORY',
+      rewardsSnapshot: JSON.stringify(battleView.rewards),
+    });
+
+    tx.battleSession.updateMany.mockResolvedValue({ count: 1 });
+    tx.player.findUnique.mockResolvedValue(createPlayerRecord());
+    tx.player.update.mockResolvedValue({});
+    tx.playerProgress.update.mockResolvedValue({});
+    tx.playerInventory.update.mockResolvedValue({});
+    tx.battleSession.findFirst.mockResolvedValue(persistedBattle);
+
+    await repository.finalizeBattle(1, battleView);
+
+    expect(tx.roamingThreat.updateMany).toHaveBeenCalledWith({
+      where: {
+        enemyCode: 'blue-slime',
+        originBiomeCode: 'dark-forest',
+        currentBiomeCode: 'dark-forest',
+        status: 'ACTIVE',
+      },
+      data: {
+        lastSeenBattleId: 'battle-1',
+        lastSeenLocationLevel: 6,
+        status: 'DEFEATED',
       },
     });
   });

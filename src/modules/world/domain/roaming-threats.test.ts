@@ -1,9 +1,66 @@
 import { describe, expect, it } from 'vitest';
 
 import { createTestBattle } from '../../../shared/testing/game-factories';
-import { resolveRoamingThreatSurvival } from './roaming-threats';
+import { resolveEnemyThreatSurvival } from './roaming-threats';
 
 describe('roaming threats', () => {
+  it('records an ordinary local enemy that survives a player defeat', () => {
+    const battle = createTestBattle({
+      id: 'battle-slime-1',
+      status: 'COMPLETED',
+      result: 'DEFEAT',
+      locationLevel: 5,
+      biomeCode: 'dark-forest',
+      enemyCode: 'blue-slime',
+      enemy: {
+        ...createTestBattle().enemy,
+        code: 'blue-slime',
+        name: 'Blue Slime',
+        currentHealth: 3,
+      },
+    });
+
+    expect(resolveEnemyThreatSurvival(battle)).toEqual({
+      battleId: 'battle-slime-1',
+      enemyCode: 'blue-slime',
+      enemyName: 'Blue Slime',
+      originBiomeCode: 'dark-forest',
+      originBiomeName: 'dark-forest',
+      currentBiomeCode: 'dark-forest',
+      lastSeenLocationLevel: 5,
+      survivalResult: 'DEFEAT',
+      experienceGain: 5,
+      levelBonus: 1,
+    });
+  });
+
+  it('records an ordinary new enemy when the player flees from it', () => {
+    const battle = createTestBattle({
+      id: 'battle-slime-fled-1',
+      status: 'COMPLETED',
+      result: 'FLED',
+      locationLevel: 6,
+      biomeCode: 'dark-forest',
+      enemyCode: 'blue-slime',
+      enemy: {
+        ...createTestBattle().enemy,
+        code: 'blue-slime',
+        name: 'Blue Slime',
+        currentHealth: 5,
+      },
+    });
+
+    expect(resolveEnemyThreatSurvival(battle)).toEqual(expect.objectContaining({
+      battleId: 'battle-slime-fled-1',
+      enemyCode: 'blue-slime',
+      originBiomeCode: 'dark-forest',
+      currentBiomeCode: 'dark-forest',
+      survivalResult: 'FLED',
+      experienceGain: 6,
+      levelBonus: 1,
+    }));
+  });
+
   it('records a higher-biome migrant that survives a player defeat', () => {
     const battle = createTestBattle({
       id: 'battle-migrant-1',
@@ -15,25 +72,25 @@ describe('roaming threats', () => {
       enemy: {
         ...createTestBattle().enemy,
         code: 'cave-stalker',
-        name: 'Пещерный следопыт',
+        name: 'Cave Stalker',
         currentHealth: 7,
         experienceReward: 20,
         roaming: {
           direction: 'HIGHER_BIOME',
           originBiomeCode: 'forgotten-caves',
-          originBiomeName: 'Забытые пещеры',
+          originBiomeName: 'Forgotten Caves',
           levelBonus: 2,
           experienceBonus: 4,
         },
       },
     });
 
-    expect(resolveRoamingThreatSurvival(battle)).toEqual({
+    expect(resolveEnemyThreatSurvival(battle)).toEqual({
       battleId: 'battle-migrant-1',
       enemyCode: 'cave-stalker',
-      enemyName: 'Пещерный следопыт',
+      enemyName: 'Cave Stalker',
       originBiomeCode: 'forgotten-caves',
-      originBiomeName: 'Забытые пещеры',
+      originBiomeName: 'Forgotten Caves',
       currentBiomeCode: 'dark-forest',
       lastSeenLocationLevel: 8,
       survivalResult: 'DEFEAT',
@@ -42,8 +99,43 @@ describe('roaming threats', () => {
     });
   });
 
-  it('does not record defeated or lower-biome roaming enemies as server threats', () => {
-    const defeatedHigherMigrant = createTestBattle({
+  it('records a lower-biome roaming enemy that survives the encounter', () => {
+    const battle = createTestBattle({
+      id: 'battle-old-wolf-1',
+      status: 'COMPLETED',
+      result: 'FLED',
+      locationLevel: 18,
+      biomeCode: 'forgotten-caves',
+      enemyCode: 'forest-wolf',
+      enemy: {
+        ...createTestBattle().enemy,
+        code: 'forest-wolf',
+        name: 'Forest Wolf',
+        currentHealth: 5,
+        roaming: {
+          direction: 'LOWER_BIOME',
+          originBiomeCode: 'dark-forest',
+          originBiomeName: 'Dark Forest',
+          levelBonus: 0,
+          experienceBonus: 0,
+        },
+      },
+    });
+
+    expect(resolveEnemyThreatSurvival(battle)).toEqual(expect.objectContaining({
+      battleId: 'battle-old-wolf-1',
+      enemyCode: 'forest-wolf',
+      originBiomeCode: 'dark-forest',
+      originBiomeName: 'Dark Forest',
+      currentBiomeCode: 'forgotten-caves',
+      survivalResult: 'FLED',
+      experienceGain: 18,
+      levelBonus: 1,
+    }));
+  });
+
+  it('does not record defeated enemies as surviving server threats', () => {
+    const battle = createTestBattle({
       status: 'COMPLETED',
       result: 'VICTORY',
       enemy: {
@@ -52,29 +144,13 @@ describe('roaming threats', () => {
         roaming: {
           direction: 'HIGHER_BIOME',
           originBiomeCode: 'forgotten-caves',
-          originBiomeName: 'Забытые пещеры',
+          originBiomeName: 'Forgotten Caves',
           levelBonus: 2,
           experienceBonus: 4,
         },
       },
     });
-    const lowerMigrant = createTestBattle({
-      status: 'COMPLETED',
-      result: 'DEFEAT',
-      enemy: {
-        ...createTestBattle().enemy,
-        currentHealth: 5,
-        roaming: {
-          direction: 'LOWER_BIOME',
-          originBiomeCode: 'dark-forest',
-          originBiomeName: 'Тёмный лес',
-          levelBonus: 0,
-          experienceBonus: 0,
-        },
-      },
-    });
 
-    expect(resolveRoamingThreatSurvival(defeatedHigherMigrant)).toBeNull();
-    expect(resolveRoamingThreatSurvival(lowerMigrant)).toBeNull();
+    expect(resolveEnemyThreatSurvival(battle)).toBeNull();
   });
 });
