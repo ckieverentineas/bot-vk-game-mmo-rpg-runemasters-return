@@ -6,7 +6,6 @@ import type { AcquisitionSummaryView } from '../../../modules/player/application
 import type { PendingRewardView } from '../../../modules/shared/application/ports/GameRepository';
 import type { PlayerState } from '../../../shared/types/game';
 import {
-  createKeyboardClear,
   createMainMenuKeyboard,
   createPartyKeyboard,
   createPendingRewardKeyboard,
@@ -19,14 +18,11 @@ import {
 
 type RewardReplyServices = Pick<AppServices, 'collectPendingReward' | 'getPendingReward' | 'getParty'>;
 
-const vkInvisibleKeyboardClearMessage = '\u2063';
-
 export const replyWithPendingRewardCard = async (
   ctx: Context,
   pendingReward: PendingRewardView,
   acquisitionSummary?: AcquisitionSummaryView | null,
 ): Promise<void> => {
-  await ctx.reply(vkInvisibleKeyboardClearMessage, { keyboard: createKeyboardClear() });
   await ctx.reply(
     renderPendingReward(pendingReward, acquisitionSummary),
     { keyboard: createPendingRewardKeyboard(pendingReward) },

@@ -766,12 +766,10 @@ describe('GameHandler smoke', () => {
     await handler.handle(ctx as never);
 
     const replies = getReplyCalls(ctx);
-    const keyboardClear = serializeKeyboard(replies[0]?.keyboard);
 
-    expect(keyboardClear.isInline).toBe(false);
-    expect(keyboardClear.rows).toEqual([]);
-    expect(replies[1]?.message).toContain('🏁 Трофеи победы');
-    expect(replies[1]?.message).toContain('Лесной волк повержен');
+    expect(replies).toHaveLength(1);
+    expect(replies[0]?.message).toContain('🏁 Трофеи победы');
+    expect(replies[0]?.message).toContain('Лесной волк повержен');
     expect(services.telemetry.returnRecapShown).not.toHaveBeenCalled();
   });
 
@@ -1176,12 +1174,10 @@ describe('GameHandler smoke', () => {
     await handler.handle(ctx as never);
 
     const replies = getReplyCalls(ctx);
-    const keyboardClear = serializeKeyboard(replies[0]?.keyboard);
 
-    expect(keyboardClear.isInline).toBe(false);
-    expect(keyboardClear.rows).toEqual([]);
-    expect(replies[1]?.message).toContain('🏁 Трофеи победы');
-    expect(replies[1]?.message).toContain('💡 Откройте «🔮 Руны», наденьте первый знак школы');
+    expect(replies).toHaveLength(1);
+    expect(replies[0]?.message).toContain('🏁 Трофеи победы');
+    expect(replies[0]?.message).toContain('💡 Откройте «🔮 Руны», наденьте первый знак школы');
     expect(services.telemetry.postSessionNextGoalShown).toHaveBeenCalledWith(1, expect.objectContaining({
       battleOutcome: 'VICTORY',
       suggestedGoalType: 'equip_school_sign',
@@ -1231,11 +1227,9 @@ describe('GameHandler smoke', () => {
     await handler.handle(ctx as never);
 
     const replies = getReplyCalls(ctx);
-    const keyboardClear = serializeKeyboard(replies[0]?.keyboard);
 
-    expect(keyboardClear.isInline).toBe(false);
-    expect(keyboardClear.rows).toEqual([]);
-    expect(replies[1]?.message).toContain('🏁 Трофеи победы');
+    expect(replies).toHaveLength(1);
+    expect(replies[0]?.message).toContain('🏁 Трофеи победы');
     expect(services.exploreLocation.execute).not.toHaveBeenCalled();
   });
 
@@ -1443,14 +1437,12 @@ describe('GameHandler smoke', () => {
 
     expect(services.getPendingReward.execute).toHaveBeenCalledWith(1001);
     const replies = getReplyCalls(ctx);
-    const keyboardClear = serializeKeyboard(replies[0]?.keyboard);
 
-    expect(keyboardClear.isInline).toBe(false);
-    expect(keyboardClear.rows).toEqual([]);
-    expect(replies[1]?.message).toContain('🏁 Трофеи победы');
-    expect(replies[1]?.message).toContain('Лесной волк повержен');
-    expect(replies[1]?.message).toContain('✨ Открыт новый слот рун.');
-    expect(replies[1]?.message).toContain('🔪 Свежевать');
+    expect(replies).toHaveLength(1);
+    expect(replies[0]?.message).toContain('🏁 Трофеи победы');
+    expect(replies[0]?.message).toContain('Лесной волк повержен');
+    expect(replies[0]?.message).toContain('✨ Открыт новый слот рун.');
+    expect(replies[0]?.message).toContain('🔪 Свежевать');
   });
 
   it('обрабатывает выбранное действие трофея', async () => {
