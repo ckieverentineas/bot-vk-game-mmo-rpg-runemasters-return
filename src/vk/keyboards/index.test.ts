@@ -271,8 +271,16 @@ describe('profile keyboard', () => {
     const payloads = collectPayloads(keyboard);
 
     expect(labels).toContain('🔪 Свежевать');
+    expect(labels).toEqual(expect.arrayContaining([
+      '🔮 Руны',
+      '⚔️ Исследовать',
+      '🤝 Пати',
+    ]));
     expect(labels).not.toContain('🎒 Забрать добычу');
     expect(payloads.find((payload) => payload.command === gameCommands.skinBeastReward)?.stateKey).toBe('battle-victory:battle-1');
+    expect(payloads).toContainEqual({ command: gameCommands.runeCollection });
+    expect(payloads).toContainEqual({ command: gameCommands.explore });
+    expect(payloads).toContainEqual({ command: gameCommands.party });
     expect(payloads.find((payload) => payload.command === gameCommands.collectAllReward)).toBeUndefined();
     expect(serializeKeyboard(keyboard).isInline).toBe(true);
     expect(serializeKeyboard(createMainMenuKeyboard(createPlayer())).isInline).toBe(false);
@@ -676,6 +684,36 @@ describe('profile keyboard', () => {
     expect(jointExplore?.intentId).toBeUndefined();
     expect(jointExplore?.stateKey).toBeUndefined();
     expect(payloads.find((payload) => payload.command === gameCommands.explore)).toBeUndefined();
+  });
+
+  it('keeps victory result navigation obvious for loot, runes, exploration and party', () => {
+    const player = createPlayer();
+    const keyboard = createBattleResultKeyboard(createBattle({
+      status: 'COMPLETED',
+      result: 'VICTORY',
+      rewards: {
+        experience: 6,
+        gold: 2,
+        shards: { USUAL: 1 },
+        droppedRune: null,
+      },
+    }), player);
+    const labels = collectLabels(keyboard);
+    const payloads = collectPayloads(keyboard);
+
+    expect(labels).toEqual(expect.arrayContaining([
+      '🎒 Добыча',
+      '🔮 Руны',
+      '⚔️ Исследовать',
+      '🤝 Пати',
+    ]));
+    expect(payloads).toEqual(expect.arrayContaining([
+      expect.objectContaining({ command: gameCommands.pendingReward }),
+      expect.objectContaining({ command: gameCommands.runeCollection }),
+      expect.objectContaining({ command: gameCommands.party }),
+    ]));
+    expect(payloads.find((payload) => payload.command === gameCommands.explore)?.stateKey)
+      .toEqual(expect.any(String));
   });
 
   it('allows removing slot 1 even when slot 2 is filled', () => {

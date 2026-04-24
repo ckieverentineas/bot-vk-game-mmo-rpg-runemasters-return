@@ -314,6 +314,68 @@ describe('PerformBattleAction', () => {
     expect(repository.finalizeBattle).not.toHaveBeenCalled();
   });
 
+  it('records idle party auto-attack replay through the requester command intent', async () => {
+    const waitingPlayer = createPlayer({ vkId: 1002, playerId: 2 });
+    const firstMember = createBattle().player;
+    const secondMember = {
+      ...createBattle().player,
+      playerId: 2,
+      name: 'Р СѓРЅРЅС‹Р№ РјР°СЃС‚РµСЂ #1002',
+    };
+    const activeBattle = createBattle({
+      updatedAt: new Date(Date.now() - 31_000).toISOString(),
+      battleType: 'PARTY_PVE',
+      enemy: {
+        ...createBattle().enemy,
+        maxHealth: 40,
+        currentHealth: 40,
+      },
+      party: {
+        id: 'party-1',
+        inviteCode: 'ABC123',
+        leaderPlayerId: 1,
+        currentTurnPlayerId: 1,
+        enemyTargetPlayerId: null,
+        actedPlayerIds: [],
+        members: [
+          { playerId: 1, vkId: 1001, name: firstMember.name, snapshot: firstMember },
+          { playerId: 2, vkId: 1002, name: secondMember.name, snapshot: secondMember },
+        ],
+      },
+    });
+    const repository = {
+      findPlayerByVkId: vi.fn().mockResolvedValue(waitingPlayer),
+      findPlayerById: vi.fn().mockResolvedValue(createPlayer()),
+      getCommandIntentResult: vi.fn().mockResolvedValue(null),
+      storeCommandIntentResult: vi.fn().mockRejectedValue(new Error('storeCommandIntentResult should not be used')),
+      recordCommandIntentResult: vi.fn(async (
+        _playerId: number,
+        _commandKey: string,
+        _intentId: string | undefined,
+        _intentStateKey: string | undefined,
+        _currentStateKey: string | undefined,
+        result: unknown,
+      ) => result),
+      getActiveBattle: vi.fn().mockResolvedValue(activeBattle),
+      saveBattle: vi.fn(async (battle: BattleView) => battle),
+      finalizeBattle: vi.fn(),
+    } as unknown as GameRepository;
+    const useCase = new PerformBattleAction(repository, createRandom());
+    const stateKey = buildBattleActionIntentStateKey(activeBattle, 'ATTACK');
+
+    const result = await useCase.execute(waitingPlayer.vkId, 'ATTACK', 'intent-auto-1', stateKey, 'payload');
+
+    expect(repository.recordCommandIntentResult).toHaveBeenCalledWith(
+      waitingPlayer.playerId,
+      'BATTLE_ATTACK',
+      'intent-auto-1',
+      stateKey,
+      stateKey,
+      result,
+    );
+    expect(repository.storeCommandIntentResult).not.toHaveBeenCalled();
+  });
+
   it('passes guarded battle options to saveBattle for payload actions', async () => {
     const player = createPlayer();
     const activeBattle = createBattle({

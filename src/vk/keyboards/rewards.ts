@@ -4,6 +4,7 @@ import type { PendingRewardView } from '../../modules/shared/application/ports/G
 import { gameCommands, resolveTrophyActionCodeCommand } from '../commands/catalog';
 import { listPlayerFacingTrophyActions } from '../trophy-action-presentation';
 import { buildKeyboard } from './builder';
+import { createPostVictoryNavigationRows } from './post-victory-navigation';
 import type { KeyboardBuilder, KeyboardLayout } from './types';
 
 const createPendingRewardLayout = (pendingReward: PendingRewardView): KeyboardLayout => {
@@ -17,6 +18,7 @@ const createPendingRewardLayout = (pendingReward: PendingRewardView): KeyboardLa
 
   return [
     ...actionRows,
+    ...createPostVictoryNavigationRows({ includeLootButton: false }),
     [
       { label: '◀ Главное меню', command: gameCommands.backToMenu, color: Keyboard.SECONDARY_COLOR },
     ],

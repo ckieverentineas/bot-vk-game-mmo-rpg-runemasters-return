@@ -56,6 +56,8 @@ export interface LocalPlaytestTranscriptEntry {
   readonly command: string;
   readonly payload: LocalPlaytestPayload | null;
   readonly reply: string;
+  readonly keyboardCommands?: readonly string[];
+  readonly keyboardLabels?: readonly string[];
 }
 
 export interface LocalPlaytestLogEntry {
@@ -70,6 +72,11 @@ export interface LocalPlaytestSummaryInput {
   readonly activeBattle: BattleView | null;
   readonly pendingRewardOpen?: boolean;
   readonly questRewardReplaySafe?: boolean | null;
+  readonly r0StabilityRequired?: boolean;
+  readonly partyVictoryChecked?: boolean;
+  readonly partyIdleAutoAttackChecked?: boolean;
+  readonly partyReturnToExplorationChecked?: boolean;
+  readonly r1EarlyGameRequired?: boolean;
   readonly transcript: readonly LocalPlaytestTranscriptEntry[];
   readonly logs: readonly LocalPlaytestLogEntry[];
 }
@@ -109,6 +116,14 @@ export interface LocalPlaytestSummary {
   readonly questRewardReplaySafe: boolean | null;
   readonly returnRecapShownCount: number;
   readonly returnRecapNextStepTypes: readonly string[];
+  readonly r0StabilityRequired: boolean;
+  readonly partyVictoryChecked: boolean;
+  readonly partyIdleAutoAttackChecked: boolean;
+  readonly partyReturnToExplorationChecked: boolean;
+  readonly r1EarlyGameRequired: boolean;
+  readonly guidedNextStepHintReplyCount: number;
+  readonly pendingRewardHintReplyCount: number;
+  readonly postVictoryNavigationReplyCount: number;
 }
 
 export interface LocalPlaytestBattleCommand {
@@ -193,6 +208,10 @@ const suspiciousReplyMarkers = [
   'Команда не распознана',
   'Неизвестная команда',
   'Внутренняя ошибка',
+  'payload',
+  'stateKey',
+  'intentId',
+  '[object Object]',
 ] as const;
 
 const isSuspiciousReply = (reply: string): boolean => (
@@ -210,6 +229,48 @@ const isQuestBookReply = (reply: string): boolean => (
 const isQuestRewardClaimReply = (reply: string): boolean => (
   reply.includes('📜 Запись закрыта') || reply.includes('📜 Запись уже закрыта')
 );
+
+const trophyActionCommands = new Set<string>([
+  gameCommands.collectAllReward,
+  gameCommands.skinBeastReward,
+  gameCommands.carefulSkinningReward,
+  gameCommands.gatherSlimeReward,
+  gameCommands.extractEssenceReward,
+  gameCommands.drawEmberSignReward,
+  gameCommands.refineSlimeCoreReward,
+  gameCommands.stabilizeEssenceReward,
+  gameCommands.salvageArmorReward,
+  gameCommands.stripGoblinGearReward,
+  gameCommands.crackTrollGrowthsReward,
+  gameCommands.unmakePhylacteryReward,
+  gameCommands.bindAbyssIchorReward,
+  gameCommands.harvestDragonScaleReward,
+]);
+
+const hasGuidedNextStepHint = (reply: string): boolean => (
+  reply.includes('💡 След:') && (
+    reply.includes('💡 Дальше:')
+    || reply.includes('💡 Сделать шаг:')
+    || reply.includes('💡 Продолжить:')
+    || reply.includes('💡 Начать:')
+  )
+);
+
+const hasPendingRewardHint = (reply: string): boolean => (
+  reply.includes('💡 Выберите действие с добычей.')
+);
+
+const hasPostVictoryNavigation = (entry: LocalPlaytestTranscriptEntry): boolean => {
+  const commands = new Set(entry.keyboardCommands ?? []);
+  const hasLootAction = commands.has(gameCommands.pendingReward)
+    || [...commands].some((command) => trophyActionCommands.has(command));
+  const hasExploreAction = commands.has(gameCommands.explore) || commands.has(gameCommands.exploreParty);
+
+  return hasLootAction
+    && commands.has(gameCommands.runeCollection)
+    && hasExploreAction
+    && commands.has(gameCommands.party);
+};
 
 const countLogsByAction = (logs: readonly LocalPlaytestLogEntry[]): Record<string, number> => (
   logs.reduce<Record<string, number>>((counts, log) => {
@@ -373,6 +434,14 @@ export const buildLocalPlaytestSummary = (input: LocalPlaytestSummaryInput): Loc
     questRewardReplaySafe: input.questRewardReplaySafe ?? null,
     returnRecapShownCount: returnRecapEvidence.shownCount,
     returnRecapNextStepTypes: returnRecapEvidence.nextStepTypes,
+    r0StabilityRequired: input.r0StabilityRequired ?? false,
+    partyVictoryChecked: input.partyVictoryChecked ?? false,
+    partyIdleAutoAttackChecked: input.partyIdleAutoAttackChecked ?? false,
+    partyReturnToExplorationChecked: input.partyReturnToExplorationChecked ?? false,
+    r1EarlyGameRequired: input.r1EarlyGameRequired ?? false,
+    guidedNextStepHintReplyCount: input.transcript.filter((entry) => hasGuidedNextStepHint(entry.reply)).length,
+    pendingRewardHintReplyCount: input.transcript.filter((entry) => hasPendingRewardHint(entry.reply)).length,
+    postVictoryNavigationReplyCount: input.transcript.filter(hasPostVictoryNavigation).length,
   };
 };
 
@@ -449,6 +518,30 @@ export const listLocalPlaytestFailures = (summary: LocalPlaytestSummary): readon
     if (summary.schoolRareSealEvidenceCounts[schoolCode] < 1) {
       failures.push(`${summary.scenarioName}: expected ${schoolCode} school rare seal evidence`);
     }
+  }
+
+  if (summary.r0StabilityRequired && !summary.partyVictoryChecked) {
+    failures.push(`${summary.scenarioName}: expected party battle victory coverage`);
+  }
+
+  if (summary.r0StabilityRequired && !summary.partyIdleAutoAttackChecked) {
+    failures.push(`${summary.scenarioName}: expected party idle auto-attack coverage`);
+  }
+
+  if (summary.r0StabilityRequired && !summary.partyReturnToExplorationChecked) {
+    failures.push(`${summary.scenarioName}: expected party return-to-exploration coverage`);
+  }
+
+  if (summary.r1EarlyGameRequired && summary.guidedNextStepHintReplyCount < 1) {
+    failures.push(`${summary.scenarioName}: expected R1 guided next-step hint block`);
+  }
+
+  if (summary.r1EarlyGameRequired && summary.pendingRewardHintReplyCount < 1) {
+    failures.push(`${summary.scenarioName}: expected R1 pending reward hint block`);
+  }
+
+  if (summary.r1EarlyGameRequired && summary.postVictoryNavigationReplyCount < 1) {
+    failures.push(`${summary.scenarioName}: expected R1 post-victory navigation buttons`);
   }
 
   return failures;

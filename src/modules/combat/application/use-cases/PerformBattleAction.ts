@@ -49,6 +49,7 @@ type PerformBattleActionRepository = CommandIntentReplayRepository
     | 'findPlayerById'
     | 'finalizeBattle'
     | 'getActiveBattle'
+    | 'recordCommandIntentResult'
     | 'saveBattle'
     | 'saveBattleWithInventoryDelta'
     | 'storeCommandIntentResult'
@@ -174,7 +175,17 @@ export class PerformBattleAction {
       player,
     );
     if (autoAttackResult) {
-      await persistBattleActionReplay(this.repository, player.playerId, intent?.intentId, autoAttackResult);
+      if (intent?.intentId) {
+        await this.repository.recordCommandIntentResult(
+          player.playerId,
+          commandKey,
+          intent.intentId,
+          intent.intentStateKey,
+          intentSource === 'legacy_text' ? undefined : currentStateKey,
+          autoAttackResult,
+        );
+      }
+
       return autoAttackResult;
     }
 

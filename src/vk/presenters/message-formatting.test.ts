@@ -6,7 +6,9 @@ import {
   formatCurrencyBalance,
   formatProgressCounter,
   renderPrimaryActionLine,
+  renderNextGoalSummary,
 } from './message-formatting';
+import type { NextGoalView } from '../../modules/player/application/read-models/next-goal';
 
 describe('message-formatting', () => {
   it('formats shared resource, reward, progress and CTA copy', () => {
@@ -31,5 +33,27 @@ describe('message-formatting', () => {
     expect(formatCountPhrase(1, forms)).toBe('1 запись ждёт');
     expect(formatCountPhrase(2, forms)).toBe('2 записи ждут');
     expect(formatCountPhrase(5, forms)).toBe('5 записей ждут');
+  });
+
+  it('renders next-step guidance as a separate hint block', () => {
+    const nextGoal: NextGoalView = {
+      goalType: 'push_higher_threat',
+      primaryAction: 'explore',
+      primaryActionLabel: '⚔️ Исследовать',
+      objectiveText: 'исследуйте маршрут дальше',
+      whyText: 'Следующая полезная руна может ждать рядом.',
+      schoolCode: null,
+      schoolName: null,
+      milestoneTitle: null,
+      milestoneProgressText: null,
+      milestoneBenefitText: null,
+    };
+
+    expect(renderNextGoalSummary(nextGoal, '👉 Дальше')).toEqual([
+      '',
+      '💡 След: исследуйте маршрут дальше.',
+      '💡 Дальше: «⚔️ Исследовать».',
+      '💡 Следующая полезная руна может ждать рядом.',
+    ]);
   });
 });

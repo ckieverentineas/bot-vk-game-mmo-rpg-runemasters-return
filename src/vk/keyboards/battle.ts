@@ -24,6 +24,7 @@ import type { BattleView, PlayerState } from '../../shared/types/game';
 import { gameCommands, resolveUseConsumableCodeCommand } from '../commands/catalog';
 import { buildKeyboard } from './builder';
 import { resolveSchoolContinuationLabel } from './goal-labels';
+import { createPostVictoryNavigationRows } from './post-victory-navigation';
 import type { KeyboardBuilder, KeyboardButtonDefinition, KeyboardLayout } from './types';
 
 const createBattleSkillButton = (
@@ -146,6 +147,23 @@ const createBattleResultLayout = (battle: BattleView, player?: PlayerState): Key
     ? buildExploreLocationIntentStateKey(player)
     : undefined;
   const nextGoal = player ? buildBattleResultNextGoalView(battle, player) : null;
+
+  if (battle.result === 'VICTORY') {
+    return [
+      ...createPostVictoryNavigationRows({
+        includeLootButton: true,
+        exploreLabel: isPartyVictory ? '⚔️ Исследовать вместе' : '⚔️ Исследовать',
+        exploreCommand: isPartyVictory ? gameCommands.exploreParty : gameCommands.explore,
+        exploreIntentScoped: !isPartyVictory && Boolean(player),
+        exploreStateKey,
+      }),
+      [
+        { label: '👤 Летопись', command: gameCommands.profile, color: Keyboard.PRIMARY_COLOR },
+        { label: '◀ Главное меню', command: gameCommands.backToMenu, color: Keyboard.SECONDARY_COLOR },
+      ],
+    ];
+  }
+
   const exploreLabel = isPartyVictory
     ? '⚔️ Исследовать вместе'
     : battle.result === 'DEFEAT'

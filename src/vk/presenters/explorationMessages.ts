@@ -24,7 +24,6 @@ export const renderExplorationEvent = (event: ExplorationSceneView, player: Play
     `✅ ${trimBattleAbsentPrefix(event.outcomeLine)}`,
     ...(effectLine ? [`🎁 ${effectLine}`] : []),
     ...renderHintBlock([event.directorLine]),
-    '',
     ...renderNextGoalSummary(buildPlayerNextGoalView(player), '👉 Продолжить'),
   ].join('\n');
 };

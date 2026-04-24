@@ -127,6 +127,11 @@ export const renderPrimaryActionLine = (
   `${actionPrefix}: «${actionLabel}».`
 );
 
+const trimActionPrefixIcon = (actionPrefix: string): string => {
+  const trimmedPrefix = actionPrefix.trim().replace(/^[^А-Яа-яA-Za-z0-9]+/u, '').trim();
+  return trimmedPrefix.length > 0 ? trimmedPrefix : 'Дальше';
+};
+
 const trimHintPrefix = (text: string): string => (
   text
     .trim()
@@ -251,19 +256,18 @@ export const renderAcquisitionSummary = (
   return [
     '',
     `✨ ${withSentencePeriod(summary.title)}`,
-    ...(summary.nextStepLine ? [`👉 ${withSentencePeriod(summary.nextStepLine)}`] : []),
-    ...renderHintBlock([summary.changeLine]),
+    ...renderHintBlock([summary.nextStepLine, summary.changeLine]),
   ];
 };
 
 export const renderNextGoalSummary = (
   nextGoal: NextGoalView,
   actionPrefix = '👉 Сделать шаг',
-): string[] => [
-  renderGoalLine(nextGoal.objectiveText),
-  renderPrimaryActionLine(nextGoal.primaryActionLabel, actionPrefix),
-  ...renderHintBlock([nextGoal.whyText]),
-];
+): string[] => renderHintBlock([
+  `След: ${withSentencePeriod(nextGoal.objectiveText)}`,
+  `${trimActionPrefixIcon(actionPrefix)}: «${nextGoal.primaryActionLabel}»`,
+  nextGoal.whyText,
+]);
 
 export const renderStarterSchoolLine = (): string => {
   const schoolNames = listSchoolDefinitions().map(({ name }) => name);

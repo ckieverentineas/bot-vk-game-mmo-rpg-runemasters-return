@@ -60,6 +60,27 @@ const createLog = (action: string, details?: Readonly<Record<string, unknown>>) 
   details,
 });
 
+const createCompleteSchoolEvidenceLogs = () => [
+  { action: 'player_registered' },
+  ...(['ember', 'stone', 'gale', 'echo'] as const).flatMap((schoolCode) => [
+    createLog('school_novice_elite_encounter_started', { schoolCode }),
+    createLog('reward_claim_applied', {
+      isSchoolNoviceAligned: true,
+      novicePathSchoolCode: schoolCode,
+      noviceTargetRewardRarity: 'UNUSUAL',
+    }),
+    createLog('school_novice_follow_up_action_taken', {
+      schoolCode,
+      actionType: 'open_runes',
+    }),
+    createLog('reward_claim_applied', {
+      battleSchoolCode: schoolCode,
+      rewardRuneRarity: 'RARE',
+    }),
+  ]),
+  createLog('return_recap_shown', { nextStepType: 'equip_school_sign' }),
+];
+
 describe('local playtest harness', () => {
   it('creates legacy text contexts with stable message metadata', async () => {
     const context = createLocalPlaytestContext({
@@ -195,6 +216,75 @@ describe('local playtest harness', () => {
       player: createPlayer(),
       activeBattle: null,
       pendingRewardOpen: false,
+      r1EarlyGameRequired: true,
+      transcript: [
+        {
+          label: 'pending-reward',
+          command: gameCommands.attack,
+          payload: null,
+          reply: '🏁 Трофеи победы\n\n💡 Выберите действие с добычей.',
+          keyboardCommands: [
+            gameCommands.skinBeastReward,
+            gameCommands.runeCollection,
+            gameCommands.explore,
+            gameCommands.party,
+          ],
+        },
+        {
+          label: 'collect-skin-beast',
+          command: gameCommands.skinBeastReward,
+          payload: null,
+          reply: 'Трофей разобран: Training Wisp.\nВ сумке: +1 эссенция.\n\n💡 След: исследуйте маршрут дальше.\n💡 Дальше: «⚔️ Исследовать».',
+        },
+        { label: 'quest-book', command: gameCommands.questBook, payload: null, reply: '📜 Книга путей\n\nПробуждение Пустого мастера · 🎁 Награда ждёт' },
+        { label: 'quest-claim-awakening', command: gameCommands.claimQuestReward, payload: null, reply: '📜 Запись закрыта\n\nВ сумке: +1 обычный осколок.' },
+        { label: 'quest-claim-awakening-replay', command: gameCommands.claimQuestReward, payload: null, reply: '📜 Запись уже закрыта\n\nНовая добыча не добавлялась.' },
+        { label: 'profile', command: gameCommands.profile, payload: null, reply: 'profile' },
+      ],
+      logs: createCompleteSchoolEvidenceLogs(),
+      questRewardReplaySafe: true,
+      r0StabilityRequired: true,
+      partyVictoryChecked: true,
+      partyIdleAutoAttackChecked: true,
+      partyReturnToExplorationChecked: true,
+    });
+
+    expect(listLocalPlaytestFailures(summary)).toEqual([]);
+  });
+
+  it('reports missing R1 early-game guidance coverage', () => {
+    const summary = buildLocalPlaytestSummary({
+      scenarioName: 'payload',
+      vkId: 1001,
+      player: createPlayer(),
+      activeBattle: null,
+      pendingRewardOpen: false,
+      r1EarlyGameRequired: true,
+      transcript: [
+        { label: 'collect-skin-beast', command: gameCommands.skinBeastReward, payload: null, reply: 'Трофей разобран: Training Wisp.\nВ сумке: +1 эссенция.' },
+        { label: 'quest-book', command: gameCommands.questBook, payload: null, reply: '📜 Книга путей\n\nПробуждение Пустого мастера · 🎁 Награда ждёт' },
+        { label: 'quest-claim-awakening', command: gameCommands.claimQuestReward, payload: null, reply: '📜 Запись закрыта\n\nВ сумке: +1 обычный осколок.' },
+        { label: 'quest-claim-awakening-replay', command: gameCommands.claimQuestReward, payload: null, reply: '📜 Запись уже закрыта\n\nНовая добыча не добавлялась.' },
+      ],
+      logs: createCompleteSchoolEvidenceLogs(),
+      questRewardReplaySafe: true,
+    });
+
+    expect(listLocalPlaytestFailures(summary)).toEqual([
+      'payload: expected R1 guided next-step hint block',
+      'payload: expected R1 pending reward hint block',
+      'payload: expected R1 post-victory navigation buttons',
+    ]);
+  });
+
+  it("reports missing R0 party stability coverage when required", () => {
+    const summary = buildLocalPlaytestSummary({
+      scenarioName: "payload",
+      vkId: 101,
+      player: createPlayer(),
+      activeBattle: null,
+      pendingRewardOpen: false,
+      r0StabilityRequired: true,
       transcript: [
         { label: 'collect-skin-beast', command: gameCommands.skinBeastReward, payload: null, reply: 'Трофей разобран: Training Wisp.\nВ сумке: +1 эссенция.' },
         { label: 'quest-book', command: gameCommands.questBook, payload: null, reply: '📜 Книга путей\n\nПробуждение Пустого мастера · 🎁 Награда ждёт' },
@@ -265,7 +355,11 @@ describe('local playtest harness', () => {
       questRewardReplaySafe: true,
     });
 
-    expect(listLocalPlaytestFailures(summary)).toEqual([]);
+    expect(listLocalPlaytestFailures(summary)).toEqual([
+      "payload: expected party battle victory coverage",
+      "payload: expected party idle auto-attack coverage",
+      "payload: expected party return-to-exploration coverage",
+    ]);
   });
 
   it('reports an unfinished trophy reward after a victory', () => {

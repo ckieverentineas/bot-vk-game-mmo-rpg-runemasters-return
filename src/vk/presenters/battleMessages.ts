@@ -23,10 +23,9 @@ import {
   formatBattleReward,
   formatRuneDisplayName,
   renderAcquisitionSummary,
-  renderGoalLine,
   renderHintBlock,
   renderHintLine,
-  renderPrimaryActionLine,
+  renderNextGoalSummary,
 } from './message-formatting';
 
 const meterEmptySegment = '⬛';
@@ -315,10 +314,7 @@ const renderBattleNextGoal = (battle: BattleView, player?: PlayerState): string[
     return [];
   }
 
-  return [
-    renderGoalLine(nextGoal.objectiveText),
-    renderPrimaryActionLine(nextGoal.primaryActionLabel, '👉 Дальше'),
-  ];
+  return renderNextGoalSummary(nextGoal, '👉 Дальше');
 };
 
 type BattleLogPresentationLine =
@@ -467,9 +463,7 @@ export const renderBattle = (
   const partyWaitLine = renderPartyBattleWaitLine(battle, viewerPlayerId);
   const rewardLines = renderBattleRewardLines(battle);
   const defeatFlowLines = renderBattleDefeatFlowLines(battle, player);
-  const postSessionLines = battle.status === 'COMPLETED'
-    ? ['', ...renderBattleNextGoal(battle, player)]
-    : [];
+  const postSessionLines = battle.status === 'COMPLETED' ? renderBattleNextGoal(battle, player) : [];
 
   return [
     ...(partyOverviewLines.length > 0

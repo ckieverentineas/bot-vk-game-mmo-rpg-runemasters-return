@@ -1152,7 +1152,7 @@ describe('GameHandler smoke', () => {
     expect(keyboardClear.isInline).toBe(false);
     expect(keyboardClear.rows).toEqual([]);
     expect(replies[1]?.message).toContain('🏁 Трофеи победы');
-    expect(replies[1]?.message).toContain('👉 Откройте «🔮 Руны», наденьте первый знак школы');
+    expect(replies[1]?.message).toContain('💡 Откройте «🔮 Руны», наденьте первый знак школы');
     expect(services.telemetry.postSessionNextGoalShown).toHaveBeenCalledWith(1, expect.objectContaining({
       battleOutcome: 'VICTORY',
       suggestedGoalType: 'equip_school_sign',
@@ -1373,7 +1373,7 @@ describe('GameHandler smoke', () => {
 
     expect(services.performBattleAction.execute).toHaveBeenCalledWith(1001, 'ATTACK', 'intent-battle-1', 'state-battle-1', 'payload');
     expect(getReplyCalls(ctx)[0]?.message).toContain('🏁 Победа');
-    expect(getReplyCalls(ctx)[0]?.message).toContain('🎯 След: разыщите Пепельную ведунью');
+    expect(getReplyCalls(ctx)[0]?.message).toContain('💡 След: разыщите Пепельную ведунью');
   });
 
   it('после победы показывает карточку несобранной добычи', async () => {
@@ -1526,7 +1526,7 @@ describe('GameHandler smoke', () => {
     await handler.handle(ctx as never);
 
     expect(getReplyCalls(ctx)[0]?.message).toContain('✨ Открыт новый слот рун.');
-    expect(getReplyCalls(ctx)[0]?.message).toContain('👉 Откройте «🔮 Руны» и выберите, какой слот занять новой руной.');
+    expect(getReplyCalls(ctx)[0]?.message).toContain('💡 Откройте «🔮 Руны» и выберите, какой слот занять новой руной.');
   });
 
   it('логирует первое school reveal после battle result с school trial completion', async () => {
@@ -2021,7 +2021,7 @@ describe('GameHandler smoke', () => {
     await handler.handle(ctx as never);
 
     expect(getReplyCalls(ctx)[0]?.message).toContain('✨ Новая руна: Искра Бури.');
-    expect(getReplyCalls(ctx)[0]?.message).toContain('👉 Откройте «🔮 Руны» и примерьте её в сборке.');
+    expect(getReplyCalls(ctx)[0]?.message).toContain('💡 Откройте «🔮 Руны» и примерьте её в сборке.');
   });
 
   it('пробрасывает intentId для перековки руны через transport payload', async () => {
@@ -2145,7 +2145,7 @@ describe('GameHandler smoke', () => {
     await handler.handle(ctx as never);
 
     expect(getReplyCalls(ctx)[0]?.message).toContain('✨ Стиль Пламени закреплён.');
-    expect(getReplyCalls(ctx)[0]?.message).toContain('👉 Следующий бой: держите давление');
+    expect(getReplyCalls(ctx)[0]?.message).toContain('💡 Следующий бой: держите давление');
     expect(JSON.stringify(getReplyCalls(ctx)[0]?.keyboard)).not.toContain('Проверить школу');
     expect(JSON.stringify(getReplyCalls(ctx)[0]?.keyboard)).toContain('К списку рун');
   });

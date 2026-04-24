@@ -7,6 +7,7 @@ import {
   formatBattleReward,
   formatInventoryDelta,
   renderAcquisitionSummary,
+  renderHintBlock,
   renderNextGoalSummary,
 } from './message-formatting';
 import {
@@ -39,8 +40,7 @@ export const renderPendingReward = (
     sourceLine,
     `🎁 Уже ваше: ${formatBaseRewardLine(pendingReward)}.`,
     ...renderAcquisitionSummary(acquisitionSummary),
-    '',
-    '🧰 Выберите 1 действие:',
+    ...renderHintBlock(['Выберите действие с добычей']),
     ...listPlayerFacingTrophyActions(pendingReward.snapshot.trophyActions).map(formatTrophyActionPreview),
   ].join('\n');
 };
@@ -60,7 +60,6 @@ export const renderCollectedPendingReward = (result: CollectPendingRewardView): 
     `✅ ${sourceLine}`,
     `🎒 ${formatInventoryDelta(result.appliedResult.inventoryDelta)}.`,
     ...(skillLines.length > 0 ? ['', '🧰 Ремесло', ...skillLines] : []),
-    '',
     ...renderNextGoalSummary(buildPlayerNextGoalView(result.player), '👉 Дальше'),
   ].join('\n');
 };

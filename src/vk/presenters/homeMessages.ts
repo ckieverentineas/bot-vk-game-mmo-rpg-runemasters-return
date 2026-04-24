@@ -105,7 +105,6 @@ export const renderWelcome = (player: PlayerState, created: boolean): string => 
       renderSchoolFirstLoopLine(),
       renderSchoolFirstRarityLine(),
     ]),
-    '',
     ...renderNextGoalSummary(nextGoal, '▶ Начать'),
   ].join('\n');
 };
