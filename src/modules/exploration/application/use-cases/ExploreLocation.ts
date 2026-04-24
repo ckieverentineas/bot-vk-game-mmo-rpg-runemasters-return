@@ -1,7 +1,7 @@
 import { AppError } from '../../../../shared/domain/AppError';
 import type { BattleView, BiomeView, MobTemplateView, PlayerState } from '../../../../shared/types/game';
 import { finalizeRecoveredBattleIfNeeded } from '../../../combat/application/finalize-recovered-battle';
-import { BattleEngine } from '../../../combat/domain/battle-engine';
+import { resolveEnemyTurnWithSignatureReaction } from '../../../combat/application/resolve-enemy-turn';
 import { createBattleEncounter, isBattleEncounterOffered } from '../../../combat/domain/battle-encounter';
 import { buildBattlePlayerSnapshot } from '../../../combat/domain/build-battle-player-snapshot';
 import { buildPlayerNextGoalView } from '../../../player/application/read-models/next-goal';
@@ -330,7 +330,7 @@ export class ExploreLocation {
     await this.trackSchoolNoviceFollowUpBattleStart(currentPlayer, battle);
 
     if (!isBattleEncounterOffered(battle) && battle.turnOwner === 'ENEMY') {
-      const resolved = BattleEngine.resolveEnemyTurn(battle);
+      const resolved = resolveEnemyTurnWithSignatureReaction(battle, this.random);
       if (resolved.status === 'COMPLETED') {
         const finalized = await this.repository.finalizeBattle(currentPlayer.playerId, resolved, commandOptions);
         return finalized.battle;

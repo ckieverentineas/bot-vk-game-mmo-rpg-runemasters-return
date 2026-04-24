@@ -996,6 +996,59 @@ describe('BattleEngine', () => {
     expect(resolved.log.some((entry) => entry.includes('приём против стойки'))).toBe(true);
   });
 
+  it('оставляет игроку окно ответа, если реакция на навык просадки успешна', () => {
+    const battle = createBattle({
+      turnOwner: 'ENEMY',
+      enemy: {
+        ...createBattle().enemy,
+        kind: 'slime',
+        name: 'Синий слизень',
+        currentHealth: 6,
+        maxHealth: 12,
+      },
+    });
+
+    const resolved = BattleEngine.resolveEnemyTurn(battle, {
+      signatureReactionChancePercent: 58,
+      signatureReactionSucceeded: true,
+    });
+
+    expect(resolved.turnOwner).toBe('PLAYER');
+    expect(resolved.enemy.intent?.code).toBe('GUARD_BREAK');
+    expect(resolved.enemy.hasUsedSignatureMove).toBe(false);
+    expect(resolved.player.currentHealth).toBe(8);
+    expect(resolved.log.some((entry) => entry.includes('Реакция (58%)'))).toBe(true);
+  });
+
+  it('разыгрывает навык просадки сразу, если реакция провалена', () => {
+    const battle = createBattle({
+      turnOwner: 'ENEMY',
+      player: {
+        ...createBattle().player,
+        guardPoints: 3,
+      },
+      enemy: {
+        ...createBattle().enemy,
+        kind: 'slime',
+        name: 'Синий слизень',
+        currentHealth: 6,
+        maxHealth: 12,
+      },
+    });
+
+    const resolved = BattleEngine.resolveEnemyTurn(battle, {
+      signatureReactionChancePercent: 42,
+      signatureReactionSucceeded: false,
+    });
+
+    expect(resolved.turnOwner).toBe('PLAYER');
+    expect(resolved.enemy.intent).toBeNull();
+    expect(resolved.enemy.hasUsedSignatureMove).toBe(true);
+    expect(resolved.player.currentHealth).toBeLessThan(8);
+    expect(resolved.log.some((entry) => entry.includes('враг срывает навык первым'))).toBe(true);
+    expect(resolved.log.some((entry) => entry.includes('Кислотный прорыв'))).toBe(true);
+  });
+
   it('телеграфирует пробивающий удар раньше, чтобы защита не была автопилотом', () => {
     const battle = createBattle({
       turnOwner: 'ENEMY',

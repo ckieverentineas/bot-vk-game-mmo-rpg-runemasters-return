@@ -3,9 +3,9 @@ import type { GameRandom } from '../../shared/application/ports/GameRandom';
 import { buildBattleAcquisitionSummary, type AcquisitionSummaryView } from '../../player/application/read-models/acquisition-summary';
 
 import type { GameRepository, SaveBattleOptions } from '../../shared/application/ports/GameRepository';
-import { BattleEngine } from '../domain/battle-engine';
 import { recoverInvalidActiveBattle } from '../domain/recover-active-battle';
 import { RewardEngine } from '../domain/reward-engine';
+import { resolveEnemyTurnWithSignatureReaction } from './resolve-enemy-turn';
 import { resolveVictoryRewardOptions } from './resolve-victory-reward-options';
 
 interface RecoveredBattleFinalization {
@@ -26,7 +26,7 @@ export const finalizeRecoveredBattleIfNeeded = async (
 
   if (!recoveredBattle) {
     if (battle.status === 'ACTIVE' && battle.turnOwner === 'ENEMY') {
-      const resolvedBattle = BattleEngine.resolveEnemyTurn(battle);
+      const resolvedBattle = resolveEnemyTurnWithSignatureReaction(battle, random);
 
       if (resolvedBattle.status === 'COMPLETED') {
         const finalized = await repository.finalizeBattle(player.playerId, resolvedBattle, options);

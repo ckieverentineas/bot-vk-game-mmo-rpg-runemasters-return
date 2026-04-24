@@ -362,6 +362,38 @@ describe('PerformBattleAction', () => {
     expect(repository.finalizeBattle).not.toHaveBeenCalled();
   });
 
+  it('rolls reaction when an enemy signature move triggers after health drops', async () => {
+    const player = createPlayer();
+    const activeBattle = createBattle({
+      enemy: {
+        ...createBattle().enemy,
+        kind: 'slime',
+        maxHealth: 10,
+        currentHealth: 10,
+      },
+    });
+    const random = createRandom();
+    const repository = {
+      findPlayerByVkId: vi.fn().mockResolvedValue(player),
+      getCommandIntentResult: vi.fn().mockResolvedValue(null),
+      storeCommandIntentResult: vi.fn().mockResolvedValue(undefined),
+      getActiveBattle: vi.fn().mockResolvedValue(activeBattle),
+      finalizeBattle: vi.fn(),
+      saveBattle: vi.fn(async (battle: BattleView) => battle),
+    } as unknown as GameRepository;
+    const useCase = new PerformBattleAction(repository, random);
+    const stateKey = buildBattleActionIntentStateKey(activeBattle, 'ATTACK');
+
+    const result = await useCase.execute(player.vkId, 'ATTACK', 'intent-signature-reaction', stateKey, 'payload');
+
+    expect(random.rollPercentage).toHaveBeenCalledWith(58);
+    expect(result.battle.enemy.intent).toBeNull();
+    expect(result.battle.enemy.hasUsedSignatureMove).toBe(true);
+    expect(result.battle.log.some((entry) => entry.includes('враг срывает навык первым'))).toBe(true);
+    expect(repository.saveBattle).toHaveBeenCalled();
+    expect(repository.finalizeBattle).not.toHaveBeenCalled();
+  });
+
   it('uses a healing pill in battle without giving up the player turn', async () => {
     const player = createPlayer({
       inventory: {

@@ -16,6 +16,7 @@ import { resolveBattleActionSkillGains } from '../../domain/battle-action-skill-
 import { isRuneSkillAction } from '../../domain/battle-rune-loadouts';
 import { appendBattleLog } from '../../domain/battle-utils';
 import { buildBattleActionIntentStateKey } from '../command-intent-state';
+import { resolveEnemyTurnWithSignatureReaction } from '../resolve-enemy-turn';
 
 import { finalizeRecoveredBattleIfNeeded } from '../finalize-recovered-battle';
 import { RewardEngine } from '../../domain/reward-engine';
@@ -187,7 +188,7 @@ export class PerformBattleAction {
     let battle = battleAfterPlayerAction;
 
     if (battle.status === 'ACTIVE') {
-      battle = BattleEngine.resolveEnemyTurn(battle);
+      battle = resolveEnemyTurnWithSignatureReaction(battle, this.random);
     }
 
     if (battle.status === 'COMPLETED') {
@@ -251,7 +252,7 @@ export class PerformBattleAction {
     let nextBattle = battleAfterPlayerAction;
 
     if (nextBattle.status === 'ACTIVE') {
-      nextBattle = BattleEngine.resolveEnemyTurn(nextBattle);
+      nextBattle = resolveEnemyTurnWithSignatureReaction(nextBattle, this.random);
     }
 
     if (nextBattle.status === 'COMPLETED') {

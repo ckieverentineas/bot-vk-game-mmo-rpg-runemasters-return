@@ -87,6 +87,11 @@ interface PlayerActionOptions {
   readonly fleeSucceeded?: boolean;
 }
 
+interface EnemyTurnOptions {
+  readonly signatureReactionSucceeded?: boolean;
+  readonly signatureReactionChancePercent?: number;
+}
+
 const sum = (values: readonly number[]): number => values.reduce((total, value) => total + value, 0);
 
 const messageWhen = (condition: boolean, message: string): readonly string[] => (
@@ -135,6 +140,17 @@ const formatEnemyIntentPreparationLine = (battle: BattleView): string => {
   }
 
   return `⚠️ ${formatBattleActor(battle.enemy.name)} собирает опасный ход. Замысел не прочитан.`;
+};
+
+const formatSignatureReactionLine = (
+  reactionSucceeded: boolean,
+  chancePercent: number | undefined,
+): string => {
+  const chanceSuffix = chancePercent === undefined ? '' : ` (${chancePercent}%)`;
+
+  return reactionSucceeded
+    ? `⚡ Реакция${chanceSuffix}: вы успеваете удержать окно ответа.`
+    : `⚡ Реакция${chanceSuffix}: враг срывает навык первым.`;
 };
 
 const finalizeBattle = (battle: BattleView, result: BattleResult): BattleView => {
@@ -599,7 +615,7 @@ export class BattleEngine {
     return nextBattle;
   }
 
-  public static resolveEnemyTurn(battle: BattleView): BattleView {
+  public static resolveEnemyTurn(battle: BattleView, options: EnemyTurnOptions = {}): BattleView {
     const nextBattle = cloneBattle(battle);
     this.assertActive(nextBattle);
 
@@ -616,21 +632,11 @@ export class BattleEngine {
     }
 
     if (shouldEnemyPrepareGuardBreak(nextBattle.enemy)) {
-      nextBattle.enemy.intent = createGuardBreakIntent(nextBattle.enemy);
-      nextBattle.log = appendBattleLog(
-        nextBattle.log,
-        formatEnemyIntentPreparationLine(nextBattle),
-      );
-      return finishEnemyPreparation(nextBattle);
+      return this.prepareEnemySignatureIntent(nextBattle, createGuardBreakIntent(nextBattle.enemy), options);
     }
 
     if (shouldEnemyPrepareHeavyStrike(nextBattle.enemy)) {
-      nextBattle.enemy.intent = createHeavyStrikeIntent(nextBattle.enemy);
-      nextBattle.log = appendBattleLog(
-        nextBattle.log,
-        formatEnemyIntentPreparationLine(nextBattle),
-      );
-      return finishEnemyPreparation(nextBattle);
+      return this.prepareEnemySignatureIntent(nextBattle, createHeavyStrikeIntent(nextBattle.enemy), options);
     }
 
     preparePartyEnemyTarget(nextBattle);
@@ -644,6 +650,45 @@ export class BattleEngine {
       `👾 ${formatEnemyAttackLine(nextBattle.enemy.name, nextBattle.enemy.attackText, nextBattle.player.name, '{damage}')}`,
     );
     return finishEnemyAction(nextBattle);
+  }
+
+  private static prepareEnemySignatureIntent(
+    nextBattle: BattleView,
+    intent: BattleEnemyIntentSnapshot,
+    options: EnemyTurnOptions,
+  ): BattleView {
+    nextBattle.enemy.intent = intent;
+    nextBattle.log = appendBattleLog(
+      nextBattle.log,
+      formatEnemyIntentPreparationLine(nextBattle),
+    );
+
+    if (options.signatureReactionSucceeded === undefined) {
+      return finishEnemyPreparation(nextBattle);
+    }
+
+    nextBattle.log = appendBattleLog(
+      nextBattle.log,
+      formatSignatureReactionLine(options.signatureReactionSucceeded, options.signatureReactionChancePercent),
+    );
+
+    if (options.signatureReactionSucceeded) {
+      return finishEnemyPreparation(nextBattle);
+    }
+
+    return this.resolvePreparedEnemyIntent(nextBattle);
+  }
+
+  private static resolvePreparedEnemyIntent(nextBattle: BattleView): BattleView {
+    if (nextBattle.enemy.intent?.code === 'HEAVY_STRIKE') {
+      return this.resolveHeavyStrike(nextBattle);
+    }
+
+    if (nextBattle.enemy.intent?.code === 'GUARD_BREAK') {
+      return this.resolveGuardBreak(nextBattle);
+    }
+
+    return finishEnemyPreparation(nextBattle);
   }
 
   private static performAttack(nextBattle: BattleView): BattleView {

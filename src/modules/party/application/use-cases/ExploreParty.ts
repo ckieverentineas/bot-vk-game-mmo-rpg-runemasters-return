@@ -8,7 +8,7 @@ import type {
   PlayerState,
   StatBlock,
 } from '../../../../shared/types/game';
-import { BattleEngine } from '../../../combat/domain/battle-engine';
+import { resolveEnemyTurnWithSignatureReaction } from '../../../combat/application/resolve-enemy-turn';
 import { createBattleEncounter, isBattleEncounterOffered } from '../../../combat/domain/battle-encounter';
 import { buildBattlePlayerSnapshot } from '../../../combat/domain/build-battle-player-snapshot';
 import { resolveRecoveredPlayerVitals } from '../../../exploration/application/exploration-event-effects';
@@ -302,7 +302,7 @@ export class ExploreParty {
     });
 
     if (!isBattleEncounterOffered(battle) && battle.turnOwner === 'ENEMY') {
-      const resolved = BattleEngine.resolveEnemyTurn(battle);
+      const resolved = resolveEnemyTurnWithSignatureReaction(battle, this.random);
       if (resolved.status === 'COMPLETED') {
         const finalized = await this.repository.finalizeBattle(leader.playerId, resolved);
         return finalized.battle;
