@@ -1,9 +1,6 @@
 import { AppError } from '../../../../shared/domain/AppError';
 import type { BattleView, BiomeView, MobTemplateView, PlayerState } from '../../../../shared/types/game';
 import { finalizeRecoveredBattleIfNeeded } from '../../../combat/application/finalize-recovered-battle';
-import { resolveEnemyTurnWithSignatureReaction } from '../../../combat/application/resolve-enemy-turn';
-import { createBattleEncounter, isBattleEncounterOffered } from '../../../combat/domain/battle-encounter';
-import { buildBattlePlayerSnapshot } from '../../../combat/domain/build-battle-player-snapshot';
 import { buildPlayerNextGoalView } from '../../../player/application/read-models/next-goal';
 import { buildPlayerSchoolRecognitionView } from '../../../player/application/read-models/school-recognition';
 import {
@@ -36,6 +33,10 @@ import { attachEnemyKnowledgeSnapshot } from '../../../world/domain/enemy-knowle
 import { Logger } from '../../../../utils/logger';
 
 import { buildExploreLocationIntentStateKey } from '../command-intent-state';
+import {
+  buildSoloExplorationBattleStart,
+  resolveStartedExplorationBattleEnemyTurn,
+} from '../exploration-battle-start';
 import { resolveRecoveredPlayerVitals } from '../exploration-event-effects';
 
 export interface ExploreLocationReplayResult {
@@ -296,50 +297,32 @@ export class ExploreLocation {
     commandOptions: ExploreLocationCommandOptions,
     workshopItems: readonly WorkshopEquippedItemView[],
   ): Promise<BattleView> {
-    const playerSnapshot = buildBattlePlayerSnapshot(
-      currentPlayer.playerId,
-      vkId,
-      outcome.playerStats,
-      currentPlayer,
-      workshopItems,
-      { applyWorkshopStatBonus: false },
-    );
     const enemy = await this.attachEnemyKnowledge(currentPlayer.playerId, outcome.enemy);
-    const shouldOfferEncounterChoice = outcome.locationLevel > 0 && currentPlayer.tutorialState !== 'ACTIVE';
-    const encounter = shouldOfferEncounterChoice
-      ? createBattleEncounter(playerSnapshot, enemy, outcome.turnOwner, outcome.encounterVariant)
-      : null;
-    const battle = await this.repository.createBattle(currentPlayer.playerId, {
-      status: 'ACTIVE',
-      battleType: 'PVE',
-      actionRevision: 0,
-      locationLevel: outcome.locationLevel,
-      biomeCode: outcome.biome.code,
-      enemyCode: outcome.template.code,
-      turnOwner: encounter ? 'PLAYER' : outcome.turnOwner,
-      player: playerSnapshot,
+    const { input } = buildSoloExplorationBattleStart({
+      player: currentPlayer,
+      playerVkId: vkId,
+      outcome,
       enemy,
-      encounter,
-      log: outcome.openingLog,
-      result: null,
-      rewards: null,
-    }, encounter || outcome.turnOwner === 'PLAYER' ? commandOptions : undefined);
+      workshopItems,
+      offerEncounterChoice: outcome.locationLevel > 0 && currentPlayer.tutorialState !== 'ACTIVE',
+    });
+    const battle = await this.repository.createBattle(
+      currentPlayer.playerId,
+      input,
+      input.encounter || outcome.turnOwner === 'PLAYER' ? commandOptions : undefined,
+    );
 
     await this.trackTutorialPathChosen(currentPlayer, battle);
     await this.trackSchoolNoviceEliteEncounterStarted(currentPlayer, battle, outcome.currentSchoolCode);
     await this.trackSchoolNoviceFollowUpBattleStart(currentPlayer, battle);
 
-    if (!isBattleEncounterOffered(battle) && battle.turnOwner === 'ENEMY') {
-      const resolved = resolveEnemyTurnWithSignatureReaction(battle, this.random);
-      if (resolved.status === 'COMPLETED') {
-        const finalized = await this.repository.finalizeBattle(currentPlayer.playerId, resolved, commandOptions);
-        return finalized.battle;
-      }
-
-      return this.repository.saveBattle(resolved, commandOptions);
-    }
-
-    return battle;
+    return resolveStartedExplorationBattleEnemyTurn({
+      repository: this.repository,
+      random: this.random,
+      battle,
+      playerId: currentPlayer.playerId,
+      options: commandOptions,
+    });
   }
 
   private async attachEnemyKnowledge(playerId: number, enemy: BattleView['enemy']): Promise<BattleView['enemy']> {

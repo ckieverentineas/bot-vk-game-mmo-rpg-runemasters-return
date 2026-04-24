@@ -1,6 +1,5 @@
 import { AppError } from '../../../../shared/domain/AppError';
 import type {
-  BattlePartyMemberSnapshot,
   BattleView,
   BiomeView,
   MobTemplateView,
@@ -8,9 +7,11 @@ import type {
   PlayerState,
   StatBlock,
 } from '../../../../shared/types/game';
-import { resolveEnemyTurnWithSignatureReaction } from '../../../combat/application/resolve-enemy-turn';
-import { createBattleEncounter, isBattleEncounterOffered } from '../../../combat/domain/battle-encounter';
-import { buildBattlePlayerSnapshot } from '../../../combat/domain/build-battle-player-snapshot';
+import {
+  buildPartyExplorationBattleStart,
+  resolveStartedExplorationBattleEnemyTurn,
+  type PartyExplorationBattleMemberContext,
+} from '../../../exploration/application/exploration-battle-start';
 import { resolveRecoveredPlayerVitals } from '../../../exploration/application/exploration-event-effects';
 import {
   addStats,
@@ -246,72 +247,30 @@ export class ExploreParty {
     leader: PlayerState,
     outcome: ExplorationBattleOutcome,
   ): Promise<BattleView> {
-    const partyMembers = memberContexts.map((member) => {
-      const stats = resolveMemberBattleStats(member, leader.playerId, outcome.playerStats);
-      const snapshot = buildBattlePlayerSnapshot(
-        member.player.playerId,
-        member.player.vkId,
-        stats,
-        member.player,
-        member.workshopItems,
-        { applyWorkshopStatBonus: false },
-      );
-
-      return {
-        playerId: member.player.playerId,
-        vkId: member.player.vkId,
-        name: snapshot.name,
-        snapshot,
-      } satisfies BattlePartyMemberSnapshot;
-    });
-
-    const leaderSnapshot = partyMembers.find((member) => member.playerId === leader.playerId)?.snapshot;
-    if (!leaderSnapshot) {
-      throw new AppError('party_member_not_found', 'Лидер не найден в боевой группе.');
-    }
+    const members = memberContexts.map((member) => ({
+      player: member.player,
+      stats: resolveMemberBattleStats(member, leader.playerId, outcome.playerStats),
+      workshopItems: member.workshopItems,
+    } satisfies PartyExplorationBattleMemberContext));
 
     const enemy = await this.attachPartyEnemyKnowledge(memberContexts, outcome.enemy);
-    const shouldOfferEncounterChoice = outcome.locationLevel > 0;
-    const encounter = shouldOfferEncounterChoice
-      ? createBattleEncounter(leaderSnapshot, enemy, outcome.turnOwner, outcome.encounterVariant)
-      : null;
-    const turnOwner = encounter ? 'PLAYER' : outcome.turnOwner;
-    const battle = await this.repository.startPartyBattle(leader.playerId, party.id, {
-      status: 'ACTIVE',
-      battleType: 'PARTY_PVE',
-      actionRevision: 0,
-      locationLevel: outcome.locationLevel,
-      biomeCode: outcome.biome.code,
-      enemyCode: outcome.template.code,
-      turnOwner,
-      player: leaderSnapshot,
+    const { input } = buildPartyExplorationBattleStart({
+      party,
+      leader,
+      outcome,
       enemy,
-      party: {
-        id: party.id,
-        inviteCode: party.inviteCode,
-        leaderPlayerId: leader.playerId,
-        currentTurnPlayerId: turnOwner === 'PLAYER' ? leader.playerId : null,
-        enemyTargetPlayerId: null,
-        actedPlayerIds: [],
-        members: partyMembers,
-      },
-      encounter,
-      log: outcome.openingLog,
-      result: null,
-      rewards: null,
+      members,
+      offerEncounterChoice: outcome.locationLevel > 0,
     });
+    const battle = await this.repository.startPartyBattle(leader.playerId, party.id, input);
 
-    if (!isBattleEncounterOffered(battle) && battle.turnOwner === 'ENEMY') {
-      const resolved = resolveEnemyTurnWithSignatureReaction(battle, this.random);
-      if (resolved.status === 'COMPLETED') {
-        const finalized = await this.repository.finalizeBattle(leader.playerId, resolved);
-        return finalized.battle;
-      }
-
-      return this.repository.saveBattle(resolved, { actingPlayerId: leader.playerId });
-    }
-
-    return battle;
+    return resolveStartedExplorationBattleEnemyTurn({
+      repository: this.repository,
+      random: this.random,
+      battle,
+      playerId: leader.playerId,
+      saveOptions: { actingPlayerId: leader.playerId },
+    });
   }
 
   private async attachPartyEnemyKnowledge(
