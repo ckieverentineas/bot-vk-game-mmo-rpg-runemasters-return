@@ -4,12 +4,20 @@ import type { PlayerState, StatKey } from '../../../../shared/types/game';
 import { getSelectedRune, resolveCurrentProgressionLocationLevel } from '../../../player/domain/player-stats';
 import type { GameRandom } from '../../../shared/application/ports/GameRandom';
 
-import { resolveCommandIntent, type CommandIntentSource } from '../../../shared/application/command-intent';
+import {
+  assertFreshCommandIntent,
+  loadCommandIntentReplay,
+  resolveCommandIntent,
+  type CommandIntentSource,
+} from '../../../shared/application/command-intent';
 import { requirePlayerByVkId } from '../../../shared/application/require-player';
 import type { GameRepository } from '../../../shared/application/ports/GameRepository';
 import { buildRerollIntentStateKey } from '../command-intent-state';
 import { RuneFactory } from '../../domain/rune-factory';
 import { canPayRuneSpend, resolveRuneRerollSpend } from '../../domain/rune-economy';
+
+const runeMutationPendingMessage = 'Рунный жест ещё в пути. Дождитесь ответа.';
+const runeMutationStaleMessage = 'Этот рунный жест уже выцвел. Вернитесь к свежей руне.';
 
 export class RerollCurrentRuneStat {
   public constructor(
@@ -20,15 +28,14 @@ export class RerollCurrentRuneStat {
   public async execute(vkId: number, stat: StatKey, intentId?: string, intentStateKey?: string, intentSource: CommandIntentSource = 'payload'): Promise<PlayerState> {
     const player = await requirePlayerByVkId(this.repository, vkId);
 
-    if (intentSource === 'legacy_text' && intentId) {
-      const replay = await this.repository.getCommandIntentResult(player.playerId, intentId);
-      if (replay?.status === 'APPLIED' && replay.result) {
-        return replay.result;
-      }
-
-      if (replay?.status === 'PENDING') {
-        throw new AppError('command_retry_pending', 'Рунный жест ещё в пути. Дождитесь ответа.');
-      }
+    const legacyReplay = await loadCommandIntentReplay<PlayerState>({
+      repository: this.repository,
+      playerId: player.playerId,
+      intentId: intentSource === 'legacy_text' ? intentId : undefined,
+      pendingMessage: runeMutationPendingMessage,
+    });
+    if (legacyReplay) {
+      return legacyReplay;
     }
 
     const rune = getSelectedRune(player);
@@ -52,9 +59,12 @@ export class RerollCurrentRuneStat {
     const currentStateKey = buildRerollIntentStateKey(player, stat, rune);
     const progressionLocationLevel = resolveCurrentProgressionLocationLevel(player);
     const intent = resolveCommandIntent(intentId, intentStateKey, intentSource, false);
-    if (intentSource !== 'legacy_text' && intent && intent.intentStateKey !== currentStateKey) {
-      throw new AppError('stale_command_intent', 'Этот рунный жест уже выцвел. Вернитесь к свежей руне.');
-    }
+    assertFreshCommandIntent({
+      intent,
+      intentSource,
+      currentStateKey,
+      staleMessage: runeMutationStaleMessage,
+    });
 
     const nextRune = RuneFactory.rerollStat(rune, stat, progressionLocationLevel, this.random);
     return this.repository.rerollRuneStat(player.playerId, rune.id, rune.rarity, {

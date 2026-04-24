@@ -10,7 +10,12 @@ import {
 import {
   resolveEncounterLocationLevel,
 } from '../../../player/domain/player-stats';
-import { resolveCommandIntent, type CommandIntentSource } from '../../../shared/application/command-intent';
+import {
+  assertFreshCommandIntent,
+  loadCommandIntentReplay,
+  resolveCommandIntent,
+  type CommandIntentSource,
+} from '../../../shared/application/command-intent';
 import type { GameTelemetry } from '../../../shared/application/ports/GameTelemetry';
 import { requirePlayerByVkId } from '../../../shared/application/require-player';
 import type { GameRandom } from '../../../shared/application/ports/GameRandom';
@@ -87,6 +92,8 @@ const markExploreLocationReplay = (result: ExploreLocationResult): ExploreLocati
 const lowerBiomeRoamingChancePercent = 10;
 const higherBiomeRoamingChancePercent = 2;
 const higherBiomeRoamingMinLocationLevel = 10;
+const exploreLocationPendingMessage = 'Прошлый жест ещё в пути. Дождитесь ответа.';
+const exploreLocationStaleMessage = 'След приключения сместился. Вот нынешний путь.';
 
 const resolveHigherBiomeRoamingChancePercent = (locationLevel: number): number => (
   locationLevel >= higherBiomeRoamingMinLocationLevel
@@ -169,35 +176,29 @@ export class ExploreLocation {
       ? null
       : resolveCommandIntent(intentId, intentStateKey, intentSource, intentSource === null);
 
-    if (scopedIntent?.intentId) {
-      const replay = await this.repository.getCommandIntentResult<ExploreLocationResult>(
-        player.playerId,
-        scopedIntent.intentId,
-        [commandKey],
-        scopedIntent.intentStateKey,
-      );
-      if (replay?.status === 'APPLIED' && replay.result) {
-        return markExploreLocationReplay(replay.result);
-      }
-
-      if (replay?.status === 'PENDING') {
-        throw new AppError('command_retry_pending', 'Прошлый жест ещё в пути. Дождитесь ответа.');
-      }
+    const scopedReplay = await loadCommandIntentReplay<ExploreLocationResult>({
+      repository: this.repository,
+      playerId: player.playerId,
+      intentId: scopedIntent?.intentId,
+      expectedCommandKeys: [commandKey],
+      expectedStateKey: scopedIntent?.intentStateKey,
+      pendingMessage: exploreLocationPendingMessage,
+      mapResult: markExploreLocationReplay,
+    });
+    if (scopedReplay) {
+      return scopedReplay;
     }
 
-    if (intentSource === 'legacy_text' && intentId) {
-      const replay = await this.repository.getCommandIntentResult<ExploreLocationResult>(
-        player.playerId,
-        intentId,
-        [commandKey],
-      );
-      if (replay?.status === 'APPLIED' && replay.result) {
-        return markExploreLocationReplay(replay.result);
-      }
-
-      if (replay?.status === 'PENDING') {
-        throw new AppError('command_retry_pending', 'Прошлый жест ещё в пути. Дождитесь ответа.');
-      }
+    const legacyReplay = await loadCommandIntentReplay<ExploreLocationResult>({
+      repository: this.repository,
+      playerId: player.playerId,
+      intentId: intentSource === 'legacy_text' ? intentId : undefined,
+      expectedCommandKeys: [commandKey],
+      pendingMessage: exploreLocationPendingMessage,
+      mapResult: markExploreLocationReplay,
+    });
+    if (legacyReplay) {
+      return legacyReplay;
     }
 
     const intent = intentSource === 'legacy_text'
@@ -234,9 +235,12 @@ export class ExploreLocation {
       ? { intentId: resolveCommandIntent(intentId, undefined, intentSource, false)?.intentId as string, intentStateKey: currentStateKey }
       : scopedIntent;
 
-    if (intentSource !== 'legacy_text' && scopedCreateIntent && scopedCreateIntent.intentStateKey !== currentStateKey) {
-      throw new AppError('stale_command_intent', 'След приключения сместился. Вот нынешний путь.');
-    }
+    assertFreshCommandIntent({
+      intent: scopedCreateIntent,
+      intentSource,
+      currentStateKey,
+      staleMessage: exploreLocationStaleMessage,
+    });
 
     const commandOptions = {
       commandKey,

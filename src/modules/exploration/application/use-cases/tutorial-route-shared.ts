@@ -2,6 +2,8 @@ import { AppError } from '../../../../shared/domain/AppError';
 import type { PlayerState } from '../../../../shared/types/game';
 import { resolveAdaptiveAdventureLocationLevel } from '../../../player/domain/player-stats';
 import {
+  assertFreshCommandIntent,
+  loadCommandIntentReplay,
   resolveCommandIntent,
   type CommandIntentSource,
   type ResolvedCommandIntent,
@@ -31,24 +33,16 @@ export const loadTutorialRouteReplayResult = async (
   player: PlayerState,
   intentId?: string,
 ): Promise<TutorialRouteReplayResult | null> => {
-  if (!intentId) {
-    return null;
-  }
-
-  const replay = await repository.getCommandIntentResult(player.playerId, intentId);
-
-  if (replay?.status === 'APPLIED' && replay.result) {
-    return {
-      player: replay.result,
+  return loadCommandIntentReplay<TutorialRouteReplayResult, PlayerState>({
+    repository,
+    playerId: player.playerId,
+    intentId,
+    pendingMessage: tutorialRoutePendingMessage,
+    mapResult: (result) => ({
+      player: result,
       replayed: true,
-    };
-  }
-
-  if (replay?.status === 'PENDING') {
-    throw new AppError('command_retry_pending', tutorialRoutePendingMessage);
-  }
-
-  return null;
+    }),
+  });
 };
 
 export const assertNoActiveTutorialRouteBattle = (player: PlayerState): void => {
@@ -65,9 +59,12 @@ export const resolveTutorialRouteSaveIntent = (
 ): ResolvedCommandIntent | null => {
   const intent = resolveCommandIntent(intentId, intentStateKey, intentSource, intentSource === null);
 
-  if (intentSource !== 'legacy_text' && intent && intent.intentStateKey !== currentStateKey) {
-    throw new AppError('stale_command_intent', tutorialRouteStaleMessage);
-  }
+  assertFreshCommandIntent({
+    intent,
+    intentSource,
+    currentStateKey,
+    staleMessage: tutorialRouteStaleMessage,
+  });
 
   return intent;
 };

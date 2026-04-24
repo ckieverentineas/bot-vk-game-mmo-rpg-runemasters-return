@@ -5,7 +5,12 @@ import type { GameRandom } from '../../../shared/application/ports/GameRandom';
 import { buildCraftAcquisitionSummary, type AcquisitionSummaryView } from '../../../player/application/read-models/acquisition-summary';
 import { resolveCurrentProgressionLocationLevel } from '../../../player/domain/player-stats';
 
-import { resolveCommandIntent, type CommandIntentSource } from '../../../shared/application/command-intent';
+import {
+  assertFreshCommandIntent,
+  loadCommandIntentReplay,
+  resolveCommandIntent,
+  type CommandIntentSource,
+} from '../../../shared/application/command-intent';
 import { requirePlayerByVkId } from '../../../shared/application/require-player';
 import type { GameRepository } from '../../../shared/application/ports/GameRepository';
 import { buildCraftIntentStateKey } from '../command-intent-state';
@@ -26,6 +31,8 @@ const craftMaterialTitles: Readonly<Partial<Record<InventoryField, string>>> = {
   crystal: 'кристалл',
   metal: 'металл',
 };
+const craftRunePendingMessage = 'Алтарный жест ещё в пути. Дождитесь ответа.';
+const craftRuneStaleMessage = 'Этот алтарный жест уже выцвел. Вернитесь к свежей развилке.';
 
 const formatCraftRequirementLine = (rarity: RuneRarity): string => {
   const spend = resolveRuneCraftSpend(rarity);
@@ -57,20 +64,19 @@ export class CraftRune {
     const progressionLocationLevel = resolveCurrentProgressionLocationLevel(player);
     const intent = resolveCommandIntent(intentId, intentStateKey, intentSource, false);
 
-    if (intent?.intentId) {
-      const replay = await this.repository.getCommandIntentResult<CraftRuneResultView | PlayerState>(
-        player.playerId,
-        intent.intentId,
-        ['CRAFT_RUNE'],
-        intent.intentStateKey,
-      );
-      if (replay?.status === 'APPLIED' && replay.result) {
-        return 'player' in replay.result ? replay.result : { player: replay.result, acquisitionSummary: null };
-      }
-
-      if (replay?.status === 'PENDING') {
-        throw new AppError('command_retry_pending', 'Алтарный жест ещё в пути. Дождитесь ответа.');
-      }
+    const replay = await loadCommandIntentReplay<CraftRuneResultView, CraftRuneResultView | PlayerState>({
+      repository: this.repository,
+      playerId: player.playerId,
+      intentId: intent?.intentId,
+      expectedCommandKeys: ['CRAFT_RUNE'],
+      expectedStateKey: intent?.intentStateKey,
+      pendingMessage: craftRunePendingMessage,
+      mapResult: (result) => (
+        'player' in result ? result : { player: result, acquisitionSummary: null }
+      ),
+    });
+    if (replay) {
+      return replay;
     }
 
     const shardReadyRarity = resolveHighestShardReadyRuneRarity(player);
@@ -86,9 +92,12 @@ export class CraftRune {
       );
     }
 
-    if (intentSource !== 'legacy_text' && intent && intent.intentStateKey !== currentStateKey) {
-      throw new AppError('stale_command_intent', 'Этот алтарный жест уже выцвел. Вернитесь к свежей развилке.');
-    }
+    assertFreshCommandIntent({
+      intent,
+      intentSource,
+      currentStateKey,
+      staleMessage: craftRuneStaleMessage,
+    });
 
     const craftedPlayer = await this.repository.craftRune(
       player.playerId,

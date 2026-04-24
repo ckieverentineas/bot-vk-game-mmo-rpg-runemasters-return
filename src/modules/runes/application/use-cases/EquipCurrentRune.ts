@@ -17,10 +17,30 @@ import {
 } from '../../../player/domain/player-stats';
 import { getSchoolDefinitionForArchetype } from '../../../runes/domain/rune-schools';
 
-import { resolveCommandIntent, type CommandIntentSource } from '../../../shared/application/command-intent';
+import {
+  assertFreshCommandIntent,
+  loadCommandIntentReplay,
+  resolveCommandIntent,
+  type CommandIntentSource,
+} from '../../../shared/application/command-intent';
 import { requirePlayerByVkId } from '../../../shared/application/require-player';
 import type { GameRepository } from '../../../shared/application/ports/GameRepository';
 import { buildEquipIntentStateKey } from '../command-intent-state';
+
+const runeLoadoutPendingMessage = 'Рунный жест ещё в пути. Дождитесь ответа.';
+const runeLoadoutStaleMessage = 'Этот рунный жест уже выцвел. Вернитесь к свежей руне.';
+
+const mapEquipRuneReplayResult = (
+  result: PlayerState | EquipRuneResultView,
+): EquipRuneResultView => (
+  'player' in result
+    ? { ...result, replayed: true }
+    : {
+        player: result,
+        acquisitionSummary: null,
+        replayed: true,
+      }
+);
 
 export class EquipCurrentRune {
   public constructor(
@@ -37,21 +57,15 @@ export class EquipCurrentRune {
   ): Promise<PlayerState | EquipRuneResultView> {
     const player = await requirePlayerByVkId(this.repository, vkId);
 
-    if (intentSource === 'legacy_text' && intentId) {
-      const replay = await this.repository.getCommandIntentResult<PlayerState | EquipRuneResultView>(player.playerId, intentId);
-      if (replay?.status === 'APPLIED' && replay.result) {
-        return 'player' in replay.result
-          ? { ...replay.result, replayed: true }
-          : {
-            player: replay.result,
-            acquisitionSummary: null,
-            replayed: true,
-          };
-      }
-
-      if (replay?.status === 'PENDING') {
-        throw new AppError('command_retry_pending', 'Рунный жест ещё в пути. Дождитесь ответа.');
-      }
+    const legacyReplay = await loadCommandIntentReplay<EquipRuneResultView, PlayerState | EquipRuneResultView>({
+      repository: this.repository,
+      playerId: player.playerId,
+      intentId: intentSource === 'legacy_text' ? intentId : undefined,
+      pendingMessage: runeLoadoutPendingMessage,
+      mapResult: mapEquipRuneReplayResult,
+    });
+    if (legacyReplay) {
+      return legacyReplay;
     }
 
     const unlockedSlotCount = getUnlockedRuneSlotCount(player);
@@ -68,31 +82,25 @@ export class EquipCurrentRune {
     const currentStateKey = buildEquipIntentStateKey(player, resolvedTargetSlot);
     const intent = resolveCommandIntent(intentId, intentStateKey, intentSource, intentSource === null);
 
-    if (intent?.intentId) {
-      const replay = await this.repository.getCommandIntentResult<PlayerState | EquipRuneResultView>(
-        player.playerId,
-        intent.intentId,
-        ['EQUIP_RUNE'],
-        intent.intentStateKey,
-      );
-      if (replay?.status === 'APPLIED' && replay.result) {
-        return 'player' in replay.result
-          ? { ...replay.result, replayed: true }
-          : {
-            player: replay.result,
-            acquisitionSummary: null,
-            replayed: true,
-          };
-      }
-
-      if (replay?.status === 'PENDING') {
-        throw new AppError('command_retry_pending', 'Рунный жест ещё в пути. Дождитесь ответа.');
-      }
+    const replay = await loadCommandIntentReplay<EquipRuneResultView, PlayerState | EquipRuneResultView>({
+      repository: this.repository,
+      playerId: player.playerId,
+      intentId: intent?.intentId,
+      expectedCommandKeys: ['EQUIP_RUNE'],
+      expectedStateKey: intent?.intentStateKey,
+      pendingMessage: runeLoadoutPendingMessage,
+      mapResult: mapEquipRuneReplayResult,
+    });
+    if (replay) {
+      return replay;
     }
 
-    if (intentSource !== 'legacy_text' && intent && intent.intentStateKey !== currentStateKey) {
-      throw new AppError('stale_command_intent', 'Этот рунный жест уже выцвел. Вернитесь к свежей руне.');
-    }
+    assertFreshCommandIntent({
+      intent,
+      intentSource,
+      currentStateKey,
+      staleMessage: runeLoadoutStaleMessage,
+    });
 
     const previousRune = getEquippedRune(player, resolvedTargetSlot);
     const recognitionBefore = buildPlayerSchoolRecognitionView(player);

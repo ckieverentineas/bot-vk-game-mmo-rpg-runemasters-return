@@ -1,7 +1,12 @@
 import { AppError } from '../../../../shared/domain/AppError';
 import type { BattleActionType, BattleView } from '../../../../shared/types/game';
 import { isAlchemyConsumableBattleAction } from '../../../consumables/domain/alchemy-consumables';
-import { resolveCommandIntent, type CommandIntentSource } from '../../../shared/application/command-intent';
+import {
+  assertFreshCommandIntent,
+  loadCommandIntentReplay,
+  resolveCommandIntent,
+  type CommandIntentSource,
+} from '../../../shared/application/command-intent';
 import { requirePlayerByVkId } from '../../../shared/application/require-player';
 import type { GameRandom } from '../../../shared/application/ports/GameRandom';
 import type { GameRepository } from '../../../shared/application/ports/GameRepository';
@@ -29,6 +34,9 @@ type BattleActionCommandKey =
   | 'BATTLE_DEFEND'
   | 'BATTLE_RUNE_SKILL'
   | 'BATTLE_USE_CONSUMABLE';
+
+const battleActionPendingMessage = 'Боевой жест ещё в пути. Дождитесь ответа.';
+const battleActionStaleMessage = 'Этот боевой жест уже выцвел. Вернитесь к свежей развилке боя.';
 
 export class PerformBattleAction {
   public constructor(
@@ -71,35 +79,35 @@ export class PerformBattleAction {
       ? null
       : resolveCommandIntent(intentId, intentStateKey, intentSource, intentSource === null);
 
-    if (scopedIntent?.intentId) {
-      const replay = await this.repository.getCommandIntentResult<BattleActionResultView | BattleView>(
-        player.playerId,
-        scopedIntent.intentId,
-        [commandKey],
-        scopedIntent.intentStateKey,
-      );
-      if (replay?.status === 'APPLIED' && replay.result) {
-        return normalizeBattleActionResult(replay.result, true);
-      }
-
-      if (replay?.status === 'PENDING') {
-        throw new AppError('command_retry_pending', 'Боевой жест ещё в пути. Дождитесь ответа.');
-      }
+    const scopedReplay = await loadCommandIntentReplay<
+      BattleActionResultView,
+      BattleActionResultView | BattleView
+    >({
+      repository: this.repository,
+      playerId: player.playerId,
+      intentId: scopedIntent?.intentId,
+      expectedCommandKeys: [commandKey],
+      expectedStateKey: scopedIntent?.intentStateKey,
+      pendingMessage: battleActionPendingMessage,
+      mapResult: (result) => normalizeBattleActionResult(result, true),
+    });
+    if (scopedReplay) {
+      return scopedReplay;
     }
 
-    if (intentSource === 'legacy_text' && intentId) {
-      const replay = await this.repository.getCommandIntentResult<BattleActionResultView | BattleView>(
-        player.playerId,
-        intentId,
-        [commandKey],
-      );
-      if (replay?.status === 'APPLIED' && replay.result) {
-        return normalizeBattleActionResult(replay.result, true);
-      }
-
-      if (replay?.status === 'PENDING') {
-        throw new AppError('command_retry_pending', 'Боевой жест ещё в пути. Дождитесь ответа.');
-      }
+    const legacyReplay = await loadCommandIntentReplay<
+      BattleActionResultView,
+      BattleActionResultView | BattleView
+    >({
+      repository: this.repository,
+      playerId: player.playerId,
+      intentId: intentSource === 'legacy_text' ? intentId : undefined,
+      expectedCommandKeys: [commandKey],
+      pendingMessage: battleActionPendingMessage,
+      mapResult: (result) => normalizeBattleActionResult(result, true),
+    });
+    if (legacyReplay) {
+      return legacyReplay;
     }
 
     const activeBattle = await this.repository.getActiveBattle(player.playerId);
@@ -112,9 +120,12 @@ export class PerformBattleAction {
       ? { intentId: resolveCommandIntent(intentId, undefined, intentSource, false)?.intentId as string, intentStateKey: currentStateKey }
       : scopedIntent;
 
-    if (intent && intent.intentStateKey !== currentStateKey) {
-      throw new AppError('stale_command_intent', 'Этот боевой жест уже выцвел. Вернитесь к свежей развилке боя.');
-    }
+    assertFreshCommandIntent({
+      intent,
+      intentSource,
+      currentStateKey,
+      staleMessage: battleActionStaleMessage,
+    });
 
     const commandOptions = {
       commandKey,

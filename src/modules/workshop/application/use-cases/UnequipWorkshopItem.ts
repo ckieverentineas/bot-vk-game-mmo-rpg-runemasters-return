@@ -1,6 +1,11 @@
 import { AppError } from '../../../../shared/domain/AppError';
 import type { PlayerState } from '../../../../shared/types/game';
-import { resolveCommandIntent, type CommandIntentSource } from '../../../shared/application/command-intent';
+import {
+  assertFreshCommandIntent,
+  loadCommandIntentReplay,
+  resolveCommandIntent,
+  type CommandIntentSource,
+} from '../../../shared/application/command-intent';
 import type { GameRepository } from '../../../shared/application/ports/GameRepository';
 import { requirePlayerByVkId } from '../../../shared/application/require-player';
 import { buildUnequipWorkshopItemIntentStateKey } from '../command-intent-state';
@@ -28,20 +33,6 @@ const staleUnequipMessage = 'Этот жест мастерской уже вы�
 const isUnequipWorkshopItemResult = (
   result: UnequipWorkshopReplayResult,
 ): result is UnequipWorkshopItemResultView => 'unequippedItem' in result && 'view' in result;
-
-const assertFreshIntent = (
-  intentStateKey: string,
-  currentStateKey: string,
-  intentSource: CommandIntentSource,
-): void => {
-  if (intentSource === 'legacy_text') {
-    return;
-  }
-
-  if (intentStateKey !== currentStateKey) {
-    throw new AppError('stale_command_intent', staleUnequipMessage);
-  }
-};
 
 const assertPlayerCanChangeEquipment = (player: Pick<PlayerState, 'activeBattleId'>): void => {
   if (player.activeBattleId) {
@@ -119,34 +110,34 @@ export class UnequipWorkshopItem {
     intentSource: CommandIntentSource = 'payload',
   ): Promise<UnequipWorkshopItemResultView> {
     const player = await requirePlayerByVkId(this.repository, vkId);
-    const intent = resolveCommandIntent(intentId, stateKey, intentSource, false);
-
-    if (!intent) {
-      throw new AppError('stale_command_intent', staleUnequipMessage);
-    }
+    const resolvedIntent = resolveCommandIntent(intentId, stateKey, intentSource, false);
 
     const snapshot = await loadWorkshopSnapshot(this.repository, player);
     const currentStateKey = buildUnequipWorkshopItemIntentStateKey(player, itemId, snapshot.craftedItems);
-    const replay = await this.repository.getCommandIntentResult<UnequipWorkshopReplayResult>(
-      player.playerId,
-      intent.intentId,
-      ['UNEQUIP_WORKSHOP_ITEM'],
-      intent.intentStateKey,
-    );
-
-    if (replay?.status === 'PENDING') {
-      throw new AppError('command_retry_pending', 'Мастерская еще меняет экипировку. Дождитесь ответа.');
+    const replay = await loadCommandIntentReplay<UnequipWorkshopItemResultView, UnequipWorkshopReplayResult>({
+      repository: this.repository,
+      playerId: player.playerId,
+      intentId: resolvedIntent?.intentId,
+      expectedCommandKeys: ['UNEQUIP_WORKSHOP_ITEM'],
+      expectedStateKey: resolvedIntent?.intentStateKey,
+      pendingMessage: 'Мастерская еще меняет экипировку. Дождитесь ответа.',
+      mapResult: (result) => (
+        isUnequipWorkshopItemResult(result)
+          ? result
+          : buildUnequipResult(buildWorkshopView(player, snapshot.blueprints, snapshot.craftedItems), result)
+      ),
+    });
+    if (replay) {
+      return replay;
     }
 
-    if (replay?.status === 'APPLIED' && replay.result) {
-      if (isUnequipWorkshopItemResult(replay.result)) {
-        return replay.result;
-      }
-
-      return buildUnequipResult(buildWorkshopView(player, snapshot.blueprints, snapshot.craftedItems), replay.result);
-    }
-
-    assertFreshIntent(intent.intentStateKey, currentStateKey, intentSource);
+    const intent = assertFreshCommandIntent({
+      intent: resolvedIntent,
+      intentSource,
+      currentStateKey,
+      staleMessage: staleUnequipMessage,
+      requireIntent: true,
+    });
     assertPlayerCanChangeEquipment(player);
     requireOwnedItem(snapshot.craftedItems, itemId);
 

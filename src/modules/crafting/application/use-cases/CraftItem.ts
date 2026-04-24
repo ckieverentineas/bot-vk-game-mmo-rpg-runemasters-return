@@ -1,7 +1,12 @@
 import { AppError } from '../../../../shared/domain/AppError';
 import type { InventoryDelta, MaterialField, PlayerSkillPointGain, PlayerState } from '../../../../shared/types/game';
 import type { AcquisitionSummaryView } from '../../../player/application/read-models/acquisition-summary';
-import { resolveCommandIntent, type CommandIntentSource } from '../../../shared/application/command-intent';
+import {
+  assertFreshCommandIntent,
+  loadCommandIntentReplay,
+  resolveCommandIntent,
+  type CommandIntentSource,
+} from '../../../shared/application/command-intent';
 import type { GameRepository } from '../../../shared/application/ports/GameRepository';
 import { requirePlayerByVkId } from '../../../shared/application/require-player';
 import { alchemySkillCode, formatAlchemyConsumableEffect } from '../../../consumables/domain/alchemy-consumables';
@@ -33,6 +38,8 @@ const materialTitles: Readonly<Record<MaterialField, string>> = {
   metal: 'металл',
   crystal: 'кристалл',
 };
+const craftItemPendingMessage = 'Алхимия пилюли ещё в пути. Дождитесь ответа.';
+const craftItemStaleMessage = 'Эта пилюля уже выцвела. Вернитесь к свежей Мастерской.';
 
 const formatCraftingCost = (cost: CraftingRecipeCost): string => {
   const parts = Object.entries(cost)
@@ -66,28 +73,17 @@ const replayCraftItemResult = async (
   intentId: string | undefined,
   intentStateKey: string | undefined,
 ): Promise<CraftItemResultView | null> => {
-  if (!intentId) {
-    return null;
-  }
-
-  const replay = await repository.getCommandIntentResult<CraftItemResultView | PlayerState>(
-    player.playerId,
+  return loadCommandIntentReplay<CraftItemResultView, CraftItemResultView | PlayerState>({
+    repository,
+    playerId: player.playerId,
     intentId,
-    ['CRAFT_ITEM'],
-    intentStateKey,
-  );
-
-  if (replay?.status === 'APPLIED' && replay.result) {
-    return 'player' in replay.result
-      ? replay.result
-      : { player: replay.result, acquisitionSummary: null };
-  }
-
-  if (replay?.status === 'PENDING') {
-    throw new AppError('command_retry_pending', 'Алхимия пилюли ещё в пути. Дождитесь ответа.');
-  }
-
-  return null;
+    expectedCommandKeys: ['CRAFT_ITEM'],
+    expectedStateKey: intentStateKey,
+    pendingMessage: craftItemPendingMessage,
+    mapResult: (result) => (
+      'player' in result ? result : { player: result, acquisitionSummary: null }
+    ),
+  });
 };
 
 export class CraftItem {
@@ -116,9 +112,12 @@ export class CraftItem {
       );
     }
 
-    if (intentSource !== 'legacy_text' && intent && intent.intentStateKey !== currentStateKey) {
-      throw new AppError('stale_command_intent', 'Эта пилюля уже выцвела. Вернитесь к свежей Мастерской.');
-    }
+    assertFreshCommandIntent({
+      intent,
+      intentSource,
+      currentStateKey,
+      staleMessage: craftItemStaleMessage,
+    });
 
     const cost = resolveCraftingRecipeCost(recipe);
     const output = resolveCraftingRecipeOutput(player, recipe);

@@ -1,6 +1,11 @@
 import { AppError } from '../../../../shared/domain/AppError';
 import type { PlayerState } from '../../../../shared/types/game';
-import { resolveCommandIntent, type CommandIntentSource } from '../../../shared/application/command-intent';
+import {
+  assertFreshCommandIntent,
+  loadCommandIntentReplay,
+  resolveCommandIntent,
+  type CommandIntentSource,
+} from '../../../shared/application/command-intent';
 import type { GameRepository } from '../../../shared/application/ports/GameRepository';
 import { requirePlayerByVkId } from '../../../shared/application/require-player';
 import {
@@ -52,20 +57,6 @@ const requireCraftBlueprint = (blueprintCode: WorkshopBlueprintCode): WorkshopCr
   }
 
   return blueprint;
-};
-
-const assertFreshIntent = (
-  intentStateKey: string,
-  currentStateKey: string,
-  intentSource: CommandIntentSource,
-): void => {
-  if (intentSource === 'legacy_text') {
-    return;
-  }
-
-  if (intentStateKey !== currentStateKey) {
-    throw new AppError('stale_command_intent', staleCraftMessage);
-  }
 };
 
 const assertBlueprintAvailable = (
@@ -152,27 +143,22 @@ const replayCraftWorkshopItemResult = async (
   intentId: string,
   intentStateKey: string,
 ): Promise<CraftWorkshopItemResultView | null> => {
-  const replay = await repository.getCommandIntentResult<CraftWorkshopReplayResult>(
-    player.playerId,
+  return loadCommandIntentReplay<CraftWorkshopItemResultView, CraftWorkshopReplayResult>({
+    repository,
+    playerId: player.playerId,
     intentId,
-    ['CRAFT_WORKSHOP_ITEM'],
-    intentStateKey,
-  );
+    expectedCommandKeys: ['CRAFT_WORKSHOP_ITEM'],
+    expectedStateKey: intentStateKey,
+    pendingMessage: 'Мастерская еще создает предмет. Дождитесь ответа.',
+    mapResult: (result) => {
+      if (isCraftWorkshopItemResult(result)) {
+        return result;
+      }
 
-  if (replay?.status === 'PENDING') {
-    throw new AppError('command_retry_pending', 'Мастерская еще создает предмет. Дождитесь ответа.');
-  }
-
-  if (replay?.status !== 'APPLIED' || !replay.result) {
-    return null;
-  }
-
-  if (isCraftWorkshopItemResult(replay.result)) {
-    return replay.result;
-  }
-
-  const view = buildWorkshopView(player, snapshot.blueprints, snapshot.craftedItems);
-  return buildCraftResult(view, blueprintCode, replay.result);
+      const view = buildWorkshopView(player, snapshot.blueprints, snapshot.craftedItems);
+      return buildCraftResult(view, blueprintCode, result);
+    },
+  });
 };
 
 export class CraftWorkshopItem {
@@ -186,9 +172,8 @@ export class CraftWorkshopItem {
     intentSource: CommandIntentSource = 'payload',
   ): Promise<CraftWorkshopItemResultView> {
     const player = await requirePlayerByVkId(this.repository, vkId);
-    const intent = resolveCommandIntent(intentId, stateKey, intentSource, false);
-
-    if (!intent) {
+    const resolvedIntent = resolveCommandIntent(intentId, stateKey, intentSource, false);
+    if (!resolvedIntent) {
       throw new AppError('stale_command_intent', staleCraftMessage);
     }
 
@@ -204,14 +189,20 @@ export class CraftWorkshopItem {
       player,
       blueprintCode,
       snapshot,
-      intent.intentId,
-      intent.intentStateKey,
+      resolvedIntent.intentId,
+      resolvedIntent.intentStateKey,
     );
     if (replay) {
       return replay;
     }
 
-    assertFreshIntent(intent.intentStateKey, currentStateKey, intentSource);
+    const intent = assertFreshCommandIntent({
+      intent: resolvedIntent,
+      intentSource,
+      currentStateKey,
+      staleMessage: staleCraftMessage,
+      requireIntent: true,
+    });
     const blueprint = requireCraftBlueprint(blueprintCode);
     assertBlueprintAvailable(snapshot.blueprints, blueprint.code);
     assertCraftMaterialsAvailable(player, blueprint);

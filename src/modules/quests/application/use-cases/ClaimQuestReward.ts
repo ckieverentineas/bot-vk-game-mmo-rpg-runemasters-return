@@ -1,6 +1,10 @@
 import { AppError } from '../../../../shared/domain/AppError';
 import type { GameTelemetry } from '../../../shared/application/ports/GameTelemetry';
-import { resolveCommandIntent, type CommandIntentSource } from '../../../shared/application/command-intent';
+import {
+  loadCommandIntentReplay,
+  resolveCommandIntent,
+  type CommandIntentSource,
+} from '../../../shared/application/command-intent';
 import { requirePlayerByVkId } from '../../../shared/application/require-player';
 import type {
   GameRepository,
@@ -128,21 +132,14 @@ export class ClaimQuestReward {
     playerId: number,
     intentId: string,
   ): Promise<ClaimQuestRewardView | null> {
-    const replay = await this.repository.getCommandIntentResult<QuestRewardClaimResult>(
+    return loadCommandIntentReplay<ClaimQuestRewardView, QuestRewardClaimResult>({
+      repository: this.repository,
       playerId,
       intentId,
-      [claimQuestRewardCommandKey],
-    );
-
-    if (replay?.status === 'APPLIED' && replay.result) {
-      return this.buildViewFromClaimResult(replay.result);
-    }
-
-    if (replay?.status === 'PENDING') {
-      throw new AppError('command_retry_pending', 'Прошлый жест к книге ещё в пути. Дождитесь ответа.');
-    }
-
-    return null;
+      expectedCommandKeys: [claimQuestRewardCommandKey],
+      pendingMessage: 'Прошлый жест к книге ещё в пути. Дождитесь ответа.',
+      mapResult: (result) => this.buildViewFromClaimResult(result),
+    });
   }
 
   private async buildViewFromClaimResult(claim: QuestRewardClaimResult): Promise<ClaimQuestRewardView> {

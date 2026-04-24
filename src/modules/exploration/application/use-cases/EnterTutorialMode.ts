@@ -2,10 +2,18 @@ import { AppError } from '../../../../shared/domain/AppError';
 import { gameBalance } from '../../../../config/game-balance';
 import type { PlayerState } from '../../../../shared/types/game';
 
-import { resolveCommandIntent, type CommandIntentSource } from '../../../shared/application/command-intent';
+import {
+  assertFreshCommandIntent,
+  loadCommandIntentReplay,
+  resolveCommandIntent,
+  type CommandIntentSource,
+} from '../../../shared/application/command-intent';
 import { requirePlayerByVkId } from '../../../shared/application/require-player';
 import type { GameRepository } from '../../../shared/application/ports/GameRepository';
 import { buildEnterTutorialModeIntentStateKey } from '../command-intent-state';
+
+const enterTutorialModePendingMessage = 'Прошлый жест ещё в пути. Дождитесь ответа.';
+const enterTutorialModeStaleMessage = 'Учебная тропа сменилась. Вот нынешний путь героя.';
 
 export class EnterTutorialMode {
   public constructor(private readonly repository: GameRepository) {}
@@ -29,52 +37,48 @@ export class EnterTutorialMode {
 
     const currentStateKey = buildEnterTutorialModeIntentStateKey(player);
 
-    if (scopedIntent?.intentId) {
-      const replay = await this.repository.getCommandIntentResult<PlayerState>(
-        player.playerId,
-        scopedIntent.intentId,
-        [commandKey],
-        scopedIntent.intentStateKey,
-      );
-      if (replay?.status === 'APPLIED' && replay.result) {
-        if (buildEnterTutorialModeIntentStateKey(replay.result) === currentStateKey) {
-          return replay.result;
+    const replayResult = await loadCommandIntentReplay<PlayerState>({
+      repository: this.repository,
+      playerId: player.playerId,
+      intentId: scopedIntent?.intentId,
+      expectedCommandKeys: [commandKey],
+      expectedStateKey: scopedIntent?.intentStateKey,
+      pendingMessage: enterTutorialModePendingMessage,
+      mapResult: (result) => {
+        if (buildEnterTutorialModeIntentStateKey(result) === currentStateKey) {
+          return result;
         }
 
-        throw new AppError('stale_command_intent', 'Учебная тропа сменилась. Вот нынешний путь героя.');
-      }
-
-      if (replay?.status === 'PENDING') {
-        throw new AppError('command_retry_pending', 'Прошлый жест ещё в пути. Дождитесь ответа.');
-      }
-    }
-
-    if (intentSource === 'legacy_text' && intentId) {
-      const replay = await this.repository.getCommandIntentResult<PlayerState>(
-        player.playerId,
-        intentId,
-        [commandKey],
-      );
-      if (replay?.status === 'APPLIED' && replay.result) {
-        if (buildEnterTutorialModeIntentStateKey(replay.result) === currentStateKey) {
-          return replay.result;
+        throw new AppError('stale_command_intent', enterTutorialModeStaleMessage);
+      },
+    }) ?? await loadCommandIntentReplay<PlayerState>({
+      repository: this.repository,
+      playerId: player.playerId,
+      intentId: intentSource === 'legacy_text' ? intentId : undefined,
+      expectedCommandKeys: [commandKey],
+      pendingMessage: enterTutorialModePendingMessage,
+      mapResult: (result) => {
+        if (buildEnterTutorialModeIntentStateKey(result) === currentStateKey) {
+          return result;
         }
 
-        throw new AppError('stale_command_intent', 'Учебная тропа сменилась. Вот нынешний путь героя.');
-      }
-
-      if (replay?.status === 'PENDING') {
-        throw new AppError('command_retry_pending', 'Прошлый жест ещё в пути. Дождитесь ответа.');
-      }
+        throw new AppError('stale_command_intent', enterTutorialModeStaleMessage);
+      },
+    });
+    if (replayResult) {
+      return replayResult;
     }
 
     const saveIntent = intentSource === 'legacy_text'
       ? { intentId: resolveCommandIntent(intentId, undefined, intentSource, false)?.intentId as string, intentStateKey: currentStateKey }
       : scopedIntent;
 
-    if (intentSource !== 'legacy_text' && saveIntent && saveIntent.intentStateKey !== currentStateKey) {
-      throw new AppError('stale_command_intent', 'Учебная тропа сменилась. Вот нынешний путь героя.');
-    }
+    assertFreshCommandIntent({
+      intent: saveIntent,
+      intentSource,
+      currentStateKey,
+      staleMessage: enterTutorialModeStaleMessage,
+    });
 
     if (player.tutorialState !== 'ACTIVE') {
       return player;

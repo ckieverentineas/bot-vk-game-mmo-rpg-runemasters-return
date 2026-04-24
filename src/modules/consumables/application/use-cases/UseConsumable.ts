@@ -6,7 +6,12 @@ import {
   derivePlayerStats,
   derivePlayerVitals,
 } from '../../../player/domain/player-stats';
-import { resolveCommandIntent, type CommandIntentSource } from '../../../shared/application/command-intent';
+import {
+  assertFreshCommandIntent,
+  loadCommandIntentReplay,
+  resolveCommandIntent,
+  type CommandIntentSource,
+} from '../../../shared/application/command-intent';
 import type { GameRepository } from '../../../shared/application/ports/GameRepository';
 import { requirePlayerByVkId } from '../../../shared/application/require-player';
 import {
@@ -23,6 +28,9 @@ export interface UseConsumableResultView {
   readonly player: PlayerState;
   readonly acquisitionSummary: AcquisitionSummaryView | null;
 }
+
+const useConsumablePendingMessage = 'Пилюля уже применяется. Дождитесь ответа.';
+const useConsumableStaleMessage = 'Эта пилюля уже выцвела. Вернитесь к свежей Мастерской.';
 
 const resolveRecoveredVitals = (
   player: PlayerState,
@@ -68,28 +76,17 @@ const replayUseConsumableResult = async (
   intentId: string | undefined,
   intentStateKey: string | undefined,
 ): Promise<UseConsumableResultView | null> => {
-  if (!intentId) {
-    return null;
-  }
-
-  const replay = await repository.getCommandIntentResult<UseConsumableResultView | PlayerState>(
-    player.playerId,
+  return loadCommandIntentReplay<UseConsumableResultView, UseConsumableResultView | PlayerState>({
+    repository,
+    playerId: player.playerId,
     intentId,
-    ['USE_CONSUMABLE'],
-    intentStateKey,
-  );
-
-  if (replay?.status === 'APPLIED' && replay.result) {
-    return 'player' in replay.result
-      ? replay.result
-      : { player: replay.result, acquisitionSummary: null };
-  }
-
-  if (replay?.status === 'PENDING') {
-    throw new AppError('command_retry_pending', 'Пилюля уже применяется. Дождитесь ответа.');
-  }
-
-  return null;
+    expectedCommandKeys: ['USE_CONSUMABLE'],
+    expectedStateKey: intentStateKey,
+    pendingMessage: useConsumablePendingMessage,
+    mapResult: (result) => (
+      'player' in result ? result : { player: result, acquisitionSummary: null }
+    ),
+  });
 };
 
 export class UseConsumable {
@@ -115,9 +112,12 @@ export class UseConsumable {
       throw new AppError('consumable_not_found', `В сумке нет «${consumable.title}». Сначала сварите её в Мастерской.`);
     }
 
-    if (intentSource !== 'legacy_text' && intent && intent.intentStateKey !== currentStateKey) {
-      throw new AppError('stale_command_intent', 'Эта пилюля уже выцвела. Вернитесь к свежей Мастерской.');
-    }
+    assertFreshCommandIntent({
+      intent,
+      intentSource,
+      currentStateKey,
+      staleMessage: useConsumableStaleMessage,
+    });
 
     const currentVitals = derivePlayerVitals(player, derivePlayerStats(player));
     const nextVitals = resolveRecoveredVitals(player, consumable);

@@ -1,10 +1,18 @@
 import { AppError } from '../../../../shared/domain/AppError';
 import type { PlayerState } from '../../../../shared/types/game';
-import { resolveCommandIntent, type CommandIntentSource } from '../../../shared/application/command-intent';
+import {
+  assertFreshCommandIntent,
+  loadCommandIntentReplay,
+  resolveCommandIntent,
+  type CommandIntentSource,
+} from '../../../shared/application/command-intent';
 import { requirePlayerByVkId } from '../../../shared/application/require-player';
 import type { GameRepository } from '../../../shared/application/ports/GameRepository';
 import { resolveRunePageSlotIndex, type RunePageSlot } from '../../domain/rune-collection';
 import { buildSelectRunePageSlotIntentStateKey } from '../command-intent-state';
+
+const runeNavigationPendingMessage = 'Рунный жест ещё в пути. Дождитесь ответа.';
+const runeNavigationStaleMessage = 'Рунная страница сменилась. Вот нынешние знаки.';
 
 export class SelectRunePageSlot {
   public constructor(private readonly repository: GameRepository) {}
@@ -22,26 +30,24 @@ export class SelectRunePageSlot {
       throw new AppError('runes_not_found', 'У вас пока нет рун. Сначала добудьте или создайте их.');
     }
 
-    if (intentSource === 'legacy_text' && intentId) {
-      const replay = await this.repository.getCommandIntentResult<PlayerState>(player.playerId, intentId);
-      if (replay?.status === 'APPLIED' && replay.result) {
-        return replay.result;
-      }
-
-      if (replay?.status === 'PENDING') {
-        throw new AppError('command_retry_pending', 'Рунный жест ещё в пути. Дождитесь ответа.');
-      }
+    const legacyReplay = await loadCommandIntentReplay<PlayerState>({
+      repository: this.repository,
+      playerId: player.playerId,
+      intentId: intentSource === 'legacy_text' ? intentId : undefined,
+      pendingMessage: runeNavigationPendingMessage,
+    });
+    if (legacyReplay) {
+      return legacyReplay;
     }
 
     const currentStateKey = buildSelectRunePageSlotIntentStateKey(player, slot);
-    const intent = resolveCommandIntent(intentId, intentStateKey, intentSource, false);
-    if (!intent) {
-      throw new AppError('stale_command_intent', 'Рунная страница сменилась. Вот нынешние знаки.');
-    }
-
-    if (intentSource !== 'legacy_text' && intent.intentStateKey !== currentStateKey) {
-      throw new AppError('stale_command_intent', 'Рунная страница сменилась. Вот нынешние знаки.');
-    }
+    const intent = assertFreshCommandIntent({
+      intent: resolveCommandIntent(intentId, intentStateKey, intentSource, false),
+      intentSource,
+      currentStateKey,
+      staleMessage: runeNavigationStaleMessage,
+      requireIntent: true,
+    });
 
     const targetIndex = resolveRunePageSlotIndex(player.currentRuneIndex, player.runes.length, slot);
     if (targetIndex === null) {

@@ -1,6 +1,11 @@
 import { AppError } from '../../../../shared/domain/AppError';
 import type { PlayerState } from '../../../../shared/types/game';
-import { resolveCommandIntent, type CommandIntentSource } from '../../../shared/application/command-intent';
+import {
+  assertFreshCommandIntent,
+  loadCommandIntentReplay,
+  resolveCommandIntent,
+  type CommandIntentSource,
+} from '../../../shared/application/command-intent';
 import type { GameRepository } from '../../../shared/application/ports/GameRepository';
 import { requirePlayerByVkId } from '../../../shared/application/require-player';
 import {
@@ -56,20 +61,6 @@ const requireRepairBlueprint = (blueprintCode: WorkshopBlueprintCode): WorkshopR
   }
 
   return blueprint;
-};
-
-const assertFreshIntent = (
-  intentStateKey: string,
-  currentStateKey: string,
-  intentSource: CommandIntentSource,
-): void => {
-  if (intentSource === 'legacy_text') {
-    return;
-  }
-
-  if (intentStateKey !== currentStateKey) {
-    throw new AppError('stale_command_intent', staleRepairMessage);
-  }
 };
 
 const assertRepairBlueprintAvailable = (
@@ -170,27 +161,22 @@ const replayRepairWorkshopItemResult = async (
   intentId: string,
   intentStateKey: string,
 ): Promise<RepairWorkshopItemResultView | null> => {
-  const replay = await repository.getCommandIntentResult<RepairWorkshopReplayResult>(
-    player.playerId,
+  return loadCommandIntentReplay<RepairWorkshopItemResultView, RepairWorkshopReplayResult>({
+    repository,
+    playerId: player.playerId,
     intentId,
-    ['REPAIR_WORKSHOP_ITEM'],
-    intentStateKey,
-  );
+    expectedCommandKeys: ['REPAIR_WORKSHOP_ITEM'],
+    expectedStateKey: intentStateKey,
+    pendingMessage: 'Мастерская еще ремонтирует предмет. Дождитесь ответа.',
+    mapResult: (result) => {
+      if (isRepairWorkshopItemResult(result)) {
+        return result;
+      }
 
-  if (replay?.status === 'PENDING') {
-    throw new AppError('command_retry_pending', 'Мастерская еще ремонтирует предмет. Дождитесь ответа.');
-  }
-
-  if (replay?.status !== 'APPLIED' || !replay.result) {
-    return null;
-  }
-
-  if (isRepairWorkshopItemResult(replay.result)) {
-    return replay.result;
-  }
-
-  const view = buildWorkshopView(player, snapshot.blueprints, snapshot.craftedItems);
-  return buildRepairResult(view, repairBlueprintCode, replay.result);
+      const view = buildWorkshopView(player, snapshot.blueprints, snapshot.craftedItems);
+      return buildRepairResult(view, repairBlueprintCode, result);
+    },
+  });
 };
 
 export class RepairWorkshopItem {
@@ -205,9 +191,8 @@ export class RepairWorkshopItem {
     intentSource: CommandIntentSource = 'payload',
   ): Promise<RepairWorkshopItemResultView> {
     const player = await requirePlayerByVkId(this.repository, vkId);
-    const intent = resolveCommandIntent(intentId, stateKey, intentSource, false);
-
-    if (!intent) {
+    const resolvedIntent = resolveCommandIntent(intentId, stateKey, intentSource, false);
+    if (!resolvedIntent) {
       throw new AppError('stale_command_intent', staleRepairMessage);
     }
 
@@ -224,14 +209,20 @@ export class RepairWorkshopItem {
       player,
       repairBlueprintCode,
       snapshot,
-      intent.intentId,
-      intent.intentStateKey,
+      resolvedIntent.intentId,
+      resolvedIntent.intentStateKey,
     );
     if (replay) {
       return replay;
     }
 
-    assertFreshIntent(intent.intentStateKey, currentStateKey, intentSource);
+    const intent = assertFreshCommandIntent({
+      intent: resolvedIntent,
+      intentSource,
+      currentStateKey,
+      staleMessage: staleRepairMessage,
+      requireIntent: true,
+    });
     const repairBlueprint = requireRepairBlueprint(repairBlueprintCode);
     requireRepairableItem(snapshot.craftedItems, itemId, repairBlueprint);
     assertRepairBlueprintAvailable(snapshot.blueprints, repairBlueprint.code);

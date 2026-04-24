@@ -1,13 +1,20 @@
-import { AppError } from '../../../../shared/domain/AppError';
 import type { PlayerState } from '../../../../shared/types/game';
 import type { GameTelemetry } from '../../../shared/application/ports/GameTelemetry';
 import { requirePlayerByVkId } from '../../../shared/application/require-player';
 import { getEquippedRune, getEquippedRuneIdsBySlot, getRuneEquippedSlot, getSelectedRune, getUnlockedRuneSlotCount } from '../../../player/domain/player-stats';
 import { getSchoolDefinitionForArchetype } from '../../../runes/domain/rune-schools';
 
-import { resolveCommandIntent, type CommandIntentSource } from '../../../shared/application/command-intent';
+import {
+  assertFreshCommandIntent,
+  loadCommandIntentReplay,
+  resolveCommandIntent,
+  type CommandIntentSource,
+} from '../../../shared/application/command-intent';
 import type { GameRepository } from '../../../shared/application/ports/GameRepository';
 import { buildUnequipIntentStateKey } from '../command-intent-state';
+
+const runeLoadoutPendingMessage = 'Рунный жест ещё в пути. Дождитесь ответа.';
+const runeLoadoutStaleMessage = 'Этот рунный жест уже выцвел. Вернитесь к свежей руне.';
 
 export class UnequipCurrentRune {
   public constructor(
@@ -18,24 +25,26 @@ export class UnequipCurrentRune {
   public async execute(vkId: number, intentId?: string, intentStateKey?: string, intentSource: CommandIntentSource = 'payload'): Promise<PlayerState> {
     const player = await requirePlayerByVkId(this.repository, vkId);
 
-    if (intentSource === 'legacy_text' && intentId) {
-      const replay = await this.repository.getCommandIntentResult(player.playerId, intentId);
-      if (replay?.status === 'APPLIED' && replay.result) {
-        return replay.result;
-      }
-
-      if (replay?.status === 'PENDING') {
-        throw new AppError('command_retry_pending', 'Рунный жест ещё в пути. Дождитесь ответа.');
-      }
+    const legacyReplay = await loadCommandIntentReplay<PlayerState>({
+      repository: this.repository,
+      playerId: player.playerId,
+      intentId: intentSource === 'legacy_text' ? intentId : undefined,
+      pendingMessage: runeLoadoutPendingMessage,
+    });
+    if (legacyReplay) {
+      return legacyReplay;
     }
 
     const targetSlot = getSelectedRune(player) ? getRuneEquippedSlot(getSelectedRune(player)!) ?? 0 : 0;
     const currentStateKey = buildUnequipIntentStateKey(player, targetSlot);
     const intent = resolveCommandIntent(intentId, intentStateKey, intentSource, intentSource === null);
 
-    if (intentSource !== 'legacy_text' && intent && intent.intentStateKey !== currentStateKey) {
-      throw new AppError('stale_command_intent', 'Этот рунный жест уже выцвел. Вернитесь к свежей руне.');
-    }
+    assertFreshCommandIntent({
+      intent,
+      intentSource,
+      currentStateKey,
+      staleMessage: runeLoadoutStaleMessage,
+    });
 
     const previousRune = getEquippedRune(player, targetSlot);
     const updatedPlayer = await this.repository.equipRune(player.playerId, null, {

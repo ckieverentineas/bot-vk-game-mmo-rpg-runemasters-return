@@ -1,8 +1,11 @@
 import { Logger } from '../../../../utils/logger';
-import { AppError } from '../../../../shared/domain/AppError';
 import type { PlayerState, ResourceReward } from '../../../../shared/types/game';
 import { sumResourceRewardShardDelta } from '../../../shared/application/resource-reward-summary';
-import { resolveCommandIntent, type CommandIntentSource } from '../../../shared/application/command-intent';
+import {
+  loadCommandIntentReplay,
+  resolveCommandIntent,
+  type CommandIntentSource,
+} from '../../../shared/application/command-intent';
 import type {
   DailyActivityRewardClaimResult,
   GameRepository,
@@ -61,21 +64,17 @@ export class ClaimDailyTrace {
     const trace = resolveDailyTrace(this.getNow());
     const intent = resolveCommandIntent(intentId, intentStateKey, intentSource, true);
 
-    if (intent) {
-      const replay = await this.repository.getCommandIntentResult<DailyActivityRewardClaimResult>(
-        player.playerId,
-        intent.intentId,
-        [claimDailyTraceCommandKey],
-        intent.intentStateKey,
-      );
-
-      if (replay?.status === 'APPLIED' && replay.result) {
-        return this.buildViewFromClaim(replay.result, true);
-      }
-
-      if (replay?.status === 'PENDING') {
-        throw new AppError('command_retry_pending', 'Прошлый жест к следу дня ещё в пути. Дождитесь ответа.');
-      }
+    const replay = await loadCommandIntentReplay<ClaimDailyTraceView, DailyActivityRewardClaimResult>({
+      repository: this.repository,
+      playerId: player.playerId,
+      intentId: intent?.intentId,
+      expectedCommandKeys: [claimDailyTraceCommandKey],
+      expectedStateKey: intent?.intentStateKey,
+      pendingMessage: 'Прошлый жест к следу дня ещё в пути. Дождитесь ответа.',
+      mapResult: (result) => this.buildViewFromClaim(result, true),
+    });
+    if (replay) {
+      return replay;
     }
 
     const claim = await this.repository.claimDailyActivityReward(
