@@ -10,8 +10,8 @@ import {
 import { AppError, isAppError } from '../../shared/domain/AppError';
 import type { BattleActionType, BattleView, PlayerState } from '../../shared/types/game';
 import { Logger } from '../../utils/logger';
-import { createMainMenuKeyboard, createPartyKeyboard } from '../keyboards';
-import { renderBattle, renderDailyTrace, renderExplorationEvent, renderParty } from '../presenters/messages';
+import { createMainMenuKeyboard } from '../keyboards';
+import { renderBattle } from '../presenters/messages';
 import { resolveCommandEnvelope } from '../router/commandRouter';
 import {
   config,
@@ -76,6 +76,11 @@ import {
   replyWithWorkshop as sendWorkshop,
   type WorkshopReplyState,
 } from './responders/workshopReplyFlow';
+import { replyWithDailyTrace as sendDailyTrace } from './responders/activityReplyFlow';
+import {
+  replyWithParty as sendParty,
+  replyWithPartyExplorationEvent as sendPartyExplorationEvent,
+} from './responders/partyReplyFlow';
 
 type ReplyKeyboard = ReturnType<typeof createMainMenuKeyboard>;
 type TutorialRouteReplyState = PlayerState | SkipTutorialReplayResult | ReturnToAdventureReplayResult;
@@ -234,27 +239,27 @@ export class GameHandler {
 
   public async showParty(ctx: Context, vkId: number): Promise<void> {
     const view = await this.services.getParty.execute(vkId);
-    await this.reply(ctx, renderParty(view.player, view.party), createPartyKeyboard(view.party, view.player.playerId));
+    await sendParty(ctx, view);
   }
 
   public async createParty(ctx: Context, vkId: number): Promise<void> {
     const result = await this.services.createParty.execute(vkId);
-    await this.reply(ctx, renderParty(result.player, result.party), createPartyKeyboard(result.party, result.player.playerId));
+    await sendParty(ctx, result);
   }
 
   public async joinParty(ctx: Context, vkId: number, inviteCode: string): Promise<void> {
     const result = await this.services.joinParty.execute(vkId, inviteCode);
-    await this.reply(ctx, renderParty(result.player, result.party), createPartyKeyboard(result.party, result.player.playerId));
+    await sendParty(ctx, result);
   }
 
   public async leaveParty(ctx: Context, vkId: number): Promise<void> {
     const result = await this.services.leaveParty.execute(vkId);
-    await this.reply(ctx, renderParty(result.player, result.party), createPartyKeyboard(result.party, result.player.playerId));
+    await sendParty(ctx, result);
   }
 
   public async disbandParty(ctx: Context, vkId: number): Promise<void> {
     const result = await this.services.disbandParty.execute(vkId);
-    await this.reply(ctx, renderParty(result.player, result.party), createPartyKeyboard(result.party, result.player.playerId));
+    await sendParty(ctx, result);
   }
 
   public async claimDailyTrace(ctx: Context, vkId: number, context: CommandIntentContext): Promise<void> {
@@ -266,7 +271,7 @@ export class GameHandler {
       routeState.intentSource,
     );
 
-    await this.reply(ctx, renderDailyTrace(result), createMainMenuKeyboard(result.player));
+    await sendDailyTrace(ctx, result);
   }
 
   public async openQuestBook(ctx: Context, vkId: number, pageNumber = 1): Promise<void> {
@@ -383,7 +388,7 @@ export class GameHandler {
 
     const result = await this.services.exploreParty.execute(vkId);
     if (isExplorePartyEventResult(result)) {
-      await this.replyWithPartyExplorationEvent(ctx, result, vkId);
+      await sendPartyExplorationEvent(ctx, result, vkId);
       await this.notifyPartyExplorationEventPeers(ctx, result, vkId);
       return;
     }
@@ -618,20 +623,6 @@ export class GameHandler {
     }
   }
 
-  private async replyWithPartyExplorationEvent(
-    ctx: Context,
-    result: ExplorePartyEventResult,
-    viewerVkId: number,
-  ): Promise<void> {
-    const viewer = this.resolvePartyEventViewer(result, viewerVkId) ?? result.player;
-
-    await this.reply(
-      ctx,
-      renderExplorationEvent(result.event, viewer),
-      createPartyKeyboard(result.party, viewer.playerId),
-    );
-  }
-
   private async notifyPartyExplorationEventPeers(
     ctx: Context,
     result: ExplorePartyEventResult,
@@ -647,12 +638,8 @@ export class GameHandler {
         continue;
       }
 
-      await this.replyWithPartyExplorationEvent(peerContext, result, member.player.vkId);
+      await sendPartyExplorationEvent(peerContext, result, member.player.vkId);
     }
-  }
-
-  private resolvePartyEventViewer(result: ExplorePartyEventResult, viewerVkId: number): PlayerState | null {
-    return result.members.find((member) => member.player.vkId === viewerVkId)?.player ?? null;
   }
 
   private createPeerReplyContext(ctx: Context, vkId: number): Context | null {
