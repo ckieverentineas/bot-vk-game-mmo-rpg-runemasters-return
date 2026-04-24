@@ -11,7 +11,7 @@ import type { JoinPartyResult } from '../../modules/party/application/use-cases/
 import { AppError, isAppError } from '../../shared/domain/AppError';
 import type { BattleActionType, BattleView, PlayerState } from '../../shared/types/game';
 import { Logger } from '../../utils/logger';
-import { createMainMenuKeyboard, createPartyKeyboard } from '../keyboards';
+import { createEntryKeyboard, createMainMenuKeyboard, createPartyKeyboard } from '../keyboards';
 import { renderBattle } from '../presenters/messages';
 import { renderPartyLeaderJoinNotification } from '../presenters/partyMessages';
 import { resolveCommandEnvelope } from '../router/commandRouter';
@@ -99,6 +99,11 @@ const normalizeTutorialRouteReplyState = (state: TutorialRouteReplyState): { pla
     : { player: state, replayed: false }
 );
 
+const registrationPromptMessage = [
+  'Персонаж ещё не создан.',
+  'Нажмите «Начать» или напишите: Начать Лианна.',
+].join('\n');
+
 export class GameHandler {
   private readonly handlerTelemetry: GameHandlerTelemetry;
 
@@ -142,6 +147,10 @@ export class GameHandler {
           return;
         }
 
+        if (await this.replyWithRegistrationPromptIfNeeded(ctx, vkId, error)) {
+          return;
+        }
+
         await this.reply(ctx, error.message, this.resolveErrorKeyboard(error.code));
         return;
       }
@@ -164,6 +173,33 @@ export class GameHandler {
     }
 
     return false;
+  }
+
+  private async replyWithRegistrationPromptIfNeeded(
+    ctx: Context,
+    vkId: number,
+    error: AppError,
+  ): Promise<boolean> {
+    if (error.code === 'player_not_found') {
+      await this.reply(ctx, error.message, createEntryKeyboard());
+      return true;
+    }
+
+    if (error.code !== 'unknown_command') {
+      return false;
+    }
+
+    try {
+      await this.services.getPlayerProfile.execute(vkId);
+      return false;
+    } catch (profileError) {
+      if (isAppError(profileError) && profileError.code === 'player_not_found') {
+        await this.reply(ctx, registrationPromptMessage, createEntryKeyboard());
+        return true;
+      }
+
+      return false;
+    }
   }
 
   private async executeStaticCommand(

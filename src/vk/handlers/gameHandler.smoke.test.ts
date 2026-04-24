@@ -740,6 +740,23 @@ describe('GameHandler smoke', () => {
     expect(services.registerPlayer.execute).toHaveBeenCalledWith(1001, 'Лианна');
   });
 
+  it('предлагает регистрацию незарегистрированному игроку на любой текст', async () => {
+    const services = createServices();
+    vi.mocked(services.getPlayerProfile.execute).mockRejectedValueOnce(
+      new AppError('player_not_found', 'Персонаж ещё не создан.'),
+    );
+    const handler = new GameHandler(services);
+    const ctx = createFakeContext({ text: 'привет' });
+
+    await handler.handle(ctx as never);
+
+    const replies = getReplyCalls(ctx);
+
+    expect(replies[0]?.message).toContain('Персонаж ещё не создан');
+    expect(JSON.stringify(replies[0]?.keyboard)).toContain(gameCommands.start);
+    expect(services.registerPlayer.execute).not.toHaveBeenCalled();
+  });
+
   it('показывает return recap для уже существующего игрока по команде start', async () => {
     const services = createServices();
     vi.mocked(services.registerPlayer.execute).mockResolvedValueOnce({
