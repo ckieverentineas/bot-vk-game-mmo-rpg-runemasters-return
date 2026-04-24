@@ -233,7 +233,7 @@ const schoolQuestChapters: readonly SchoolQuestChapter[] = [
       },
       {
         code: 'stone_answer',
-        icon: '🪨',
+        icon: '🛡️',
         title: 'Ответ камня',
         story: 'Камень не торопится. Он помнит каждый удар и возвращает его формой.',
         objective: 'Набрать 3 опыта мастерства Тверди.',

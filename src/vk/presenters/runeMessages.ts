@@ -51,7 +51,7 @@ const runeStatSummaryLabels: Record<keyof StatBlock, string> = {
 
 const schoolIconByCode: Readonly<Record<string, string>> = {
   ember: '🔥',
-  stone: '🪨',
+  stone: '🛡️',
   gale: '🌪️',
   echo: '🧠',
 };

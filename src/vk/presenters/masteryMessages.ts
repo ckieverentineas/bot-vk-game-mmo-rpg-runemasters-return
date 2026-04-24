@@ -9,7 +9,7 @@ import { renderHintLine } from './message-formatting';
 
 const schoolIconByCode: Readonly<Record<string, string>> = {
   ember: '🔥',
-  stone: '🪨',
+  stone: '🛡️',
   gale: '🌪️',
   echo: '🧠',
 };

@@ -439,7 +439,7 @@ const renderBattleDefeatFlowLines = (battle: BattleView, player?: PlayerState): 
 
   return [
     '',
-    '🛟 После поражения',
+    '🛡️ После поражения',
     defeatFlow.consequenceLine,
     defeatFlow.preservedLine,
     defeatFlow.recoveryLine,

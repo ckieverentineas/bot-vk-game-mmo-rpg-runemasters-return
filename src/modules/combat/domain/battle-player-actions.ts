@@ -214,9 +214,9 @@ export const performPlayerDefend = (battle: BattleView): BattleView => {
     battle.log,
     `🛡️ ${formatBattleActor(battle.player.name)} готовит защиту на ${outcome.guardGain} урона.`,
     ...messageWhen(outcome.intentGuardBonus > 0, '🛡️ Раскрытый тяжёлый удар даёт время встать плотнее обычного.'),
-    ...messageWhen(outcome.stoneHoldIntentGuardBonus > 0, '🪨 Твердь держит раскрытую угрозу: стойка становится ещё крепче.'),
-    ...messageWhen(outcome.stoneSealGuardBonus > 0, '🪨 Печать Тверди добавляет опору к защитной стойке.'),
-    ...messageWhen(outcome.stoneMasteryGuardGainBonus > 0, '🪨 Мастерство Тверди усиливает защитную стойку.'),
+    ...messageWhen(outcome.stoneHoldIntentGuardBonus > 0, '🛡️ Твердь держит раскрытую угрозу: стойка становится ещё крепче.'),
+    ...messageWhen(outcome.stoneSealGuardBonus > 0, '🛡️ Печать Тверди добавляет опору к защитной стойке.'),
+    ...messageWhen(outcome.stoneMasteryGuardGainBonus > 0, '🛡️ Мастерство Тверди усиливает защитную стойку.'),
   );
 
   return finishPlayerAction(battle);
@@ -317,10 +317,10 @@ const performStoneBastion = (battle: BattleView, activeAbility: BattleRuneAction
   battle.log = appendBattleLog(
     battle.log,
     `🌀 ${formatSkillLine(battle.player.name, activeAbility.name, battle.enemy.name, `${damage} урона и ${guardGain} защиты`)}`,
-    ...(intentBonus > 0 ? ['🪨 Школа Тверди укрепляется ещё сильнее против заранее раскрытой угрозы.'] : []),
+    ...(intentBonus > 0 ? ['🛡️ Школа Тверди укрепляется ещё сильнее против заранее раскрытой угрозы.'] : []),
     ...messageWhen(intentDamageBonus > 0, '🔮 Руна бьёт точнее по раскрытому замыслу врага.'),
-    ...(synergyDamageBonus > 0 ? ['🪨 Ответ стойки превращает накопленную защиту в более жёсткий контрудар.'] : []),
-    ...messageWhen(sealGuardBonus > 0, '🪨 Печать Тверди добавляет отпору устойчивую опору.'),
+    ...(synergyDamageBonus > 0 ? ['🛡️ Ответ стойки превращает накопленную защиту в более жёсткий контрудар.'] : []),
+    ...messageWhen(sealGuardBonus > 0, '🛡️ Печать Тверди добавляет отпору устойчивую опору.'),
     `💙 Мана: ${battle.player.currentMana}/${battle.player.maxMana}.`,
   );
 

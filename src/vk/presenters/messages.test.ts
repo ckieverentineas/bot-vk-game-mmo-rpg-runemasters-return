@@ -566,7 +566,7 @@ describe('messages school-first onboarding framing', () => {
       runes: [createEquippedRune()],
     }));
 
-    expect(message).toContain('🛟 После поражения');
+    expect(message).toContain('🛡️ После поражения');
     expect(message).toContain('Не получено: победная добыча за «Учебный огонёк» не начислена');
     expect(message).toContain('Сохранено: руны, пыль, материалы, уровень, школа и задания остаются у вас.');
     expect(message).toContain('Восстановление: вы поднялись до 3/9 HP и 2/4 маны.');
@@ -1154,7 +1154,7 @@ describe('messages school-first onboarding framing', () => {
     }));
 
     expect(message).toContain('🛡️ Защита (+8 щит)');
-    expect(message).toContain('🪨 Твердь: тяжёлый удар лучше держать защитой');
+    expect(message).toContain('🛡️ Твердь: тяжёлый удар лучше держать защитой');
   });
 
   it('shows an impact recap block in battle result when a reward changes the build', () => {
