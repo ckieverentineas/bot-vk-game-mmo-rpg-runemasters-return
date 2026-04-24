@@ -20,11 +20,13 @@ import { buildBattleResultNextGoalView } from '../../modules/player/application/
 import { getRuneSchoolPresentation } from '../../modules/runes/domain/rune-schools';
 import type { BattleRuneActionSnapshot, BattleView, PlayerState, StatBlock } from '../../shared/types/game';
 import {
+  formatBattleReward,
   formatRuneDisplayName,
   renderAcquisitionSummary,
+  renderGoalLine,
   renderHintBlock,
   renderHintLine,
-  withSentencePeriod,
+  renderPrimaryActionLine,
 } from './message-formatting';
 
 const meterEmptySegment = '⬛';
@@ -314,8 +316,8 @@ const renderBattleNextGoal = (battle: BattleView, player?: PlayerState): string[
   }
 
   return [
-    `🎯 След: ${withSentencePeriod(nextGoal.objectiveText)}`,
-    `👉 Дальше: «${nextGoal.primaryActionLabel}».`,
+    renderGoalLine(nextGoal.objectiveText),
+    renderPrimaryActionLine(nextGoal.primaryActionLabel, '👉 Дальше'),
   ];
 };
 
@@ -427,7 +429,7 @@ const renderBattleRewardLines = (battle: BattleView): string[] => {
 
   return [
     '',
-    `Добыча: +${battle.rewards.experience} опыта · +${battle.rewards.gold} пыли`,
+    `Добыча: ${formatBattleReward(battle.rewards, { includeDroppedRune: false, includeShards: false })}`,
     ...(droppedRune ? [`Руна: ${formatRuneDisplayName(droppedRune)}`] : []),
     ...(droppedSchool ? [`Школа: ${droppedSchool.name}.`] : []),
   ];

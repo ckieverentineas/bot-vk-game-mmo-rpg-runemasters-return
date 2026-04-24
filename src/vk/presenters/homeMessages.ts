@@ -11,6 +11,7 @@ import {
 import { getRuneSchoolPresentation } from '../../modules/runes/domain/rune-schools';
 import type { PlayerState } from '../../shared/types/game';
 import {
+  formatCurrencyBalance,
   formatRuneDisplayName,
   renderHintBlock,
   renderNextGoalSummary,
@@ -121,7 +122,7 @@ export const renderMainMenu = (player: PlayerState): string => {
     '🏰 Стоянка',
     '',
     `⭐ Ур. ${player.level} · ${inTutorial ? '📘 обучение' : `🎯 угроза ${resolveAdaptiveAdventureLocationLevel(player)}`} · 🧭 след ${player.highestLocationLevel}`,
-    `💰 ${player.gold} пыли · ✨ ${player.radiance} сияния`,
+    formatCurrencyBalance(player),
     renderPlayerVitalsLine(player),
     `🧩 Слоты: ${getUnlockedRuneSlotCount(player)} · 🔮 ${formatRuneDisplayName(equippedRune)}`,
     player.defeatStreak > 0

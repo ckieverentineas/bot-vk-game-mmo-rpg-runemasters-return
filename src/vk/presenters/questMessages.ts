@@ -3,9 +3,12 @@ import type {
   QuestBookView,
   QuestView,
 } from '../../modules/quests/application/read-models/quest-book';
-import { formatResourceReward } from './message-formatting';
+import {
+  formatCountPhrase,
+  formatProgressCounter,
+  formatResourceReward,
+} from './message-formatting';
 
-type RussianPluralForms = readonly [one: string, few: string, many: string];
 type QuestChapterCode =
   | 'first_circle'
   | 'first_name'
@@ -86,31 +89,6 @@ const questChapterByCode: Readonly<Record<QuestView['code'], QuestChapterCode>> 
   echo_unmade_strike: 'echo_school',
   echo_warning_seal: 'echo_school',
 };
-
-const selectRussianPluralForm = (count: number, forms: RussianPluralForms): string => {
-  const absoluteCount = Math.abs(count);
-  const remainder100 = absoluteCount % 100;
-
-  if (remainder100 >= 11 && remainder100 <= 14) {
-    return forms[2];
-  }
-
-  const remainder10 = absoluteCount % 10;
-
-  if (remainder10 === 1) {
-    return forms[0];
-  }
-
-  if (remainder10 >= 2 && remainder10 <= 4) {
-    return forms[1];
-  }
-
-  return forms[2];
-};
-
-const formatCountPhrase = (count: number, forms: RussianPluralForms): string => (
-  `${count} ${selectRussianPluralForm(count, forms)}`
-);
 
 const renderQuestBookSummary = (book: QuestBookView): string => [
   `🎁 ${book.readyToClaimCount}`,
@@ -209,7 +187,7 @@ export const getQuestBookPageView = (
 };
 
 const renderProgressLine = (quest: QuestView): string => (
-  `${quest.progress.current}/${quest.progress.required} · ${quest.objective}`
+  `${formatProgressCounter(quest.progress.current, quest.progress.required)} · ${quest.objective}`
 );
 
 const trimTrailingSentencePunctuation = (value: string): string => value.replace(/[.!?]+$/u, '');

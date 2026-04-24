@@ -11,6 +11,26 @@ interface AmountLabel {
   readonly many: string;
 }
 
+export type RussianPluralForms = readonly [one: string, few: string, many: string];
+export type CurrencyBalanceOrder = 'gold-first' | 'radiance-first';
+
+interface CurrencyBalance {
+  readonly gold: number;
+  readonly radiance: number;
+}
+
+interface BattleRewardLike {
+  readonly experience: number;
+  readonly gold: number;
+  readonly shards: Partial<Record<string, number>>;
+  readonly droppedRune: RuneDraft | null;
+}
+
+interface BattleRewardFormatOptions {
+  readonly includeShards?: boolean;
+  readonly includeDroppedRune?: boolean;
+}
+
 const inventoryFieldLabels: Readonly<Record<string, AmountLabel>> = {
   USUAL: { one: 'обычный осколок', few: 'обычных осколка', many: 'обычных осколков' },
   UNUSUAL: { one: 'необычный осколок', few: 'необычных осколка', many: 'необычных осколков' },
@@ -37,6 +57,75 @@ const inventoryFieldLabels: Readonly<Record<string, AmountLabel>> = {
 };
 
 export const withSentencePeriod = (text: string): string => /[.!?]$/.test(text) ? text : `${text}.`;
+
+export const selectRussianPluralForm = (count: number, forms: RussianPluralForms): string => {
+  const absoluteCount = Math.abs(count);
+  const remainder100 = absoluteCount % 100;
+
+  if (remainder100 >= 11 && remainder100 <= 14) {
+    return forms[2];
+  }
+
+  const remainder10 = absoluteCount % 10;
+
+  if (remainder10 === 1) {
+    return forms[0];
+  }
+
+  if (remainder10 >= 2 && remainder10 <= 4) {
+    return forms[1];
+  }
+
+  return forms[2];
+};
+
+export const formatCountPhrase = (count: number, forms: RussianPluralForms): string => (
+  `${count} ${selectRussianPluralForm(count, forms)}`
+);
+
+export const formatProgressCounter = (current: number, required: number): string => (
+  `${current}/${required}`
+);
+
+export const formatExperienceAmount = (experience: number): string => `${experience} опыта`;
+
+export const formatDustAmount = (gold: number): string => `${gold} пыли`;
+
+export const formatRadianceAmount = (radiance: number): string => `${radiance} сияния`;
+
+export const formatExperienceReward = (experience: number): string => (
+  `+${formatExperienceAmount(experience)}`
+);
+
+export const formatDustReward = (gold: number): string => (
+  `+${formatDustAmount(gold)}`
+);
+
+export const formatRadianceReward = (radiance: number): string => (
+  `+${formatRadianceAmount(radiance)}`
+);
+
+export const formatCurrencyBalance = (
+  balance: CurrencyBalance,
+  order: CurrencyBalanceOrder = 'gold-first',
+): string => {
+  const parts = order === 'gold-first'
+    ? [`💰 ${formatDustAmount(balance.gold)}`, `✨ ${formatRadianceAmount(balance.radiance)}`]
+    : [`✨ ${formatRadianceAmount(balance.radiance)}`, `💰 ${formatDustAmount(balance.gold)}`];
+
+  return parts.join(' · ');
+};
+
+export const renderGoalLine = (objectiveText: string): string => (
+  `🎯 След: ${withSentencePeriod(objectiveText)}`
+);
+
+export const renderPrimaryActionLine = (
+  actionLabel: string,
+  actionPrefix = '👉 Сделать шаг',
+): string => (
+  `${actionPrefix}: «${actionLabel}».`
+);
 
 const trimHintPrefix = (text: string): string => (
   text
@@ -119,8 +208,8 @@ const formatInventoryFieldLabel = (field: string, amount: number): string => {
 
 export const formatResourceReward = (reward: ResourceReward): string => {
   const parts = [
-    reward.gold !== undefined && reward.gold > 0 ? `+${reward.gold} пыли` : null,
-    reward.radiance !== undefined && reward.radiance > 0 ? `+${reward.radiance} сияния` : null,
+    reward.gold !== undefined && reward.gold > 0 ? formatDustReward(reward.gold) : null,
+    reward.radiance !== undefined && reward.radiance > 0 ? formatRadianceReward(reward.radiance) : null,
     reward.inventoryDelta ? formatInventoryDelta(reward.inventoryDelta) : null,
     reward.blueprintDelta ? formatBlueprintDelta(reward.blueprintDelta) : null,
   ].filter((part): part is string => (
@@ -130,6 +219,26 @@ export const formatResourceReward = (reward: ResourceReward): string => {
   ));
 
   return parts.length > 0 ? parts.join(' · ') : 'без награды';
+};
+
+export const formatBattleReward = (
+  reward: BattleRewardLike,
+  options: BattleRewardFormatOptions = {},
+): string => {
+  const includeShards = options.includeShards ?? true;
+  const includeDroppedRune = options.includeDroppedRune ?? true;
+  const shardLine = includeShards ? formatInventoryDelta(reward.shards) : null;
+  const parts = [
+    formatExperienceReward(reward.experience),
+    formatDustReward(reward.gold),
+    shardLine,
+    includeDroppedRune && reward.droppedRune ? `руна: ${formatRuneDisplayName(reward.droppedRune)}` : null,
+  ].filter((part): part is string => (
+    Boolean(part)
+    && part !== 'без дополнительных материалов'
+  ));
+
+  return parts.join(' · ');
 };
 
 export const renderAcquisitionSummary = (
@@ -151,8 +260,8 @@ export const renderNextGoalSummary = (
   nextGoal: NextGoalView,
   actionPrefix = '👉 Сделать шаг',
 ): string[] => [
-  `🎯 След: ${withSentencePeriod(nextGoal.objectiveText)}`,
-  `${actionPrefix}: «${nextGoal.primaryActionLabel}».`,
+  renderGoalLine(nextGoal.objectiveText),
+  renderPrimaryActionLine(nextGoal.primaryActionLabel, actionPrefix),
   ...renderHintBlock([nextGoal.whyText]),
 ];
 

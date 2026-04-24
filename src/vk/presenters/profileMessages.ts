@@ -5,6 +5,10 @@ import {
   getUnlockedRuneSlotCount,
 } from '../../modules/player/domain/player-stats';
 import type { PlayerState, StatBlock } from '../../shared/types/game';
+import {
+  formatCurrencyBalance,
+  formatProgressCounter,
+} from './message-formatting';
 import { formatPlayerSkillProgressLine } from './player-skill-formatting';
 
 const formatStatBlock = (stats: StatBlock): string => [
@@ -39,8 +43,8 @@ export const renderProfile = (player: PlayerState): string => {
   return [
     '👤 Профиль',
     '',
-    `⭐ Ур. ${player.level} · 📊 ${player.experience}/${nextLevelXp}`,
-    `💰 ${player.gold} пыли · ✨ ${player.radiance} сияния`,
+    `⭐ Ур. ${player.level} · 📊 ${formatProgressCounter(player.experience, nextLevelXp)}`,
+    formatCurrencyBalance(player),
     `❤️ ${vitals.currentHealth}/${vitals.maxHealth} HP · 🔷 ${vitals.currentMana}/${vitals.maxMana} маны`,
     `🏆 ${player.victories} побед · 💥 ${player.defeats} поражений`,
     `🧩 Слоты рун: ${getUnlockedRuneSlotCount(player)}`,
@@ -55,7 +59,7 @@ export const renderProfile = (player: PlayerState): string => {
 export const renderInventory = (player: PlayerState): string => [
   '🎒 Инвентарь',
   '',
-  `✨ ${player.radiance} сияния · 💰 ${player.gold} пыли`,
+  formatCurrencyBalance(player, 'radiance-first'),
   '',
   `🧩 Осколки: обычн. ${player.inventory.usualShards} · необычн. ${player.inventory.unusualShards} · редк. ${player.inventory.rareShards}`,
   `💎 Выше: эпик ${player.inventory.epicShards} · легенд. ${player.inventory.legendaryShards} · миф. ${player.inventory.mythicalShards}`,

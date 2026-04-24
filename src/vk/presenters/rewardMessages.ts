@@ -4,8 +4,8 @@ import type { CollectPendingRewardView } from '../../modules/rewards/application
 import type { PendingRewardView } from '../../modules/shared/application/ports/GameRepository';
 import { listPlayerFacingTrophyActions } from '../trophy-action-presentation';
 import {
+  formatBattleReward,
   formatInventoryDelta,
-  formatRuneDisplayName,
   renderAcquisitionSummary,
   renderNextGoalSummary,
 } from './message-formatting';
@@ -15,15 +15,7 @@ import {
 } from './player-skill-formatting';
 
 const formatBaseRewardLine = (pendingReward: PendingRewardView): string => {
-  const { baseReward } = pendingReward.snapshot;
-  const parts = [
-    `+${baseReward.experience} опыта`,
-    `+${baseReward.gold} пыли`,
-    formatInventoryDelta(baseReward.shards),
-    baseReward.droppedRune ? `руна: ${formatRuneDisplayName(baseReward.droppedRune)}` : null,
-  ].filter((part): part is string => Boolean(part) && part !== 'без дополнительных материалов');
-
-  return parts.join(' · ');
+  return formatBattleReward(pendingReward.snapshot.baseReward);
 };
 
 const formatTrophyActionPreview = (

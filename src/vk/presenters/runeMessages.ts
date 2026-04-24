@@ -23,6 +23,7 @@ import {
 } from '../../modules/runes/domain/rune-schools';
 import type { AbilityDefinition, PlayerState, RuneView, StatBlock } from '../../shared/types/game';
 import {
+  formatDustAmount,
   formatRuneDisplayName,
   renderAcquisitionSummary,
   renderHintBlock,
@@ -224,10 +225,10 @@ const renderRuneEconomyLines = (selectedRune?: RuneView | null): readonly string
   const unusualCraftSpend = resolveRuneCraftSpend('UNUSUAL');
 
   return [
-    `🕯 Создание: ${gameBalance.runes.craftCost} оск. · ${usualCraftSpend.gold} пыли.`,
-    `🟢 Необычная: ${unusualCraftSpend.gold} пыли · 1 эссенция.`,
+    `🕯 Создание: ${gameBalance.runes.craftCost} оск. · ${formatDustAmount(usualCraftSpend.gold)}.`,
+    `🟢 Необычная: ${formatDustAmount(unusualCraftSpend.gold)} · 1 эссенция.`,
     ...(selectedRune
-      ? [`♻️ Перековка: ${gameBalance.runes.rerollShardCost} оск. · ${resolveRuneRerollSpend(selectedRune.rarity).gold} пыли.`]
+      ? [`♻️ Перековка: ${gameBalance.runes.rerollShardCost} оск. · ${formatDustAmount(resolveRuneRerollSpend(selectedRune.rarity).gold)}.`]
       : []),
   ];
 };
