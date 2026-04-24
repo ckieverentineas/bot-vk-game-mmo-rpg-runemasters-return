@@ -2392,7 +2392,7 @@ describe('GameHandler smoke', () => {
     expect(getReplyCalls(runeContext)[0]?.message).not.toContain('⭐ Эпическая руна · Пламя');
     expect(getReplyCalls(altarContext)[0]?.message).toContain('🕯 Алтарь рун');
     expect(getReplyCalls(altarContext)[0]?.message).toContain('⭐ Эпическая руна · Пламя');
-    expect(getReplyCalls(altarContext)[0]?.message).toContain('🜂 Играй так: дави уроном');
+    expect(getReplyCalls(altarContext)[0]?.message).toContain('💡 Играй так: дави уроном');
     expect(getReplyCalls(altarContext)[0]?.message).toContain('Импульс углей');
   });
 

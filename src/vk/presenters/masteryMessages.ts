@@ -5,6 +5,7 @@ import {
   type SchoolMasterySchoolOverview,
 } from '../../modules/player/application/read-models/school-mastery-overview';
 import type { PlayerState } from '../../shared/types/game';
+import { renderHintLine } from './message-formatting';
 
 const schoolIconByCode: Readonly<Record<string, string>> = {
   ember: '🔥',
@@ -47,7 +48,7 @@ export const renderSchoolMastery = (player: PlayerState): string => {
 
   return [
     '📜 Мастерство',
-    '⚔️ Растёт от побед с надетой руной.',
+    renderHintLine('Растёт от побед с надетой руной.'),
     '',
     ...overview.schools.flatMap((school, index): readonly string[] => [
       ...formatSchoolBlock(school),

@@ -18,6 +18,8 @@ import type { BattleRuneActionSnapshot, BattleView, PlayerState, StatBlock } fro
 import {
   formatRuneDisplayName,
   renderAcquisitionSummary,
+  renderHintBlock,
+  renderHintLine,
   withSentencePeriod,
 } from './message-formatting';
 
@@ -283,8 +285,10 @@ const renderBattleEncounterChoice = (battle: BattleView): string[] => {
     `Угроза: ${resolveBattleEnemyRankLabel(battle)} · ${battle.enemy.kind}.`,
     ...(encounterEffectLine ? [`🧭 Условие встречи: ${encounterEffectLine}`] : []),
     `💨 Тропа назад: ${fleeChancePercent}% · ваша ЛВК ${battle.player.dexterity}, враг ${battle.enemy.dexterity}.`,
-    firstMoveLine,
-    'До первой стычки ещё можно принять бой или уйти в сторону.',
+    ...renderHintBlock([
+      firstMoveLine,
+      'До первой стычки ещё можно принять бой или уйти в сторону.',
+    ]),
   ];
 };
 
@@ -327,6 +331,20 @@ const toBattleLogEntryLine = (text: string): BattleLogPresentationLine => ({
   text,
 });
 
+const splitBattleLogHint = (text: string): { readonly eventLine: string; readonly hintLine: string | null } => {
+  const hintMarker = ' Подсказка:';
+  const hintIndex = text.indexOf(hintMarker);
+
+  if (hintIndex < 0) {
+    return { eventLine: text, hintLine: null };
+  }
+
+  return {
+    eventLine: text.slice(0, hintIndex).trim(),
+    hintLine: text.slice(hintIndex + 1).trim(),
+  };
+};
+
 const selectBattleLogLines = (log: readonly string[]): readonly BattleLogPresentationLine[] => {
   if (log.length === 0) {
     return [toBattleLogEntryLine('Поле ещё молчит.')];
@@ -352,7 +370,12 @@ const renderBattleLogLine = (line: BattleLogPresentationLine): string => {
     return `… ещё ${line.omittedCount} ${eventWord} между нынешним мигом и началом схватки`;
   }
 
-  return `• ${line.text}`;
+  const { eventLine, hintLine } = splitBattleLogHint(line.text);
+
+  return [
+    `• ${eventLine}`,
+    ...(hintLine ? [`  ${renderHintLine(hintLine)}`] : []),
+  ].join('\n');
 };
 
 const resolveBattleStateLine = (battle: BattleView, isEncounterOffered: boolean): string => {
@@ -407,7 +430,7 @@ const renderBattleDefeatFlowLines = (battle: BattleView, player?: PlayerState): 
     defeatFlow.consequenceLine,
     defeatFlow.preservedLine,
     defeatFlow.recoveryLine,
-    defeatFlow.safeRouteLine,
+    ...renderHintBlock([defeatFlow.safeRouteLine]),
   ];
 };
 
@@ -457,8 +480,7 @@ export const renderBattle = (
           'Чтение боя',
           ...(enemyIntentLine ? [enemyIntentLine] : []),
           ...(partyWaitLine ? [partyWaitLine] : []),
-          ...(isViewerTurn && clarity.choiceLine ? [clarity.choiceLine] : []),
-          ...(isViewerTurn && clarity.schoolHintLine ? [clarity.schoolHintLine] : []),
+          ...(isViewerTurn ? renderHintBlock([clarity.choiceLine, clarity.schoolHintLine]) : []),
           ...(isViewerTurn ? [renderBattleRuneState(battle)] : []),
           ...(isViewerTurn && battle.turnOwner === 'PLAYER' ? [renderBattleActionState(battle)] : []),
           '',

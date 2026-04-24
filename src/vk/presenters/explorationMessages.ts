@@ -4,7 +4,10 @@ import {
   type ExplorationSceneView,
 } from '../../modules/world/domain/exploration-events';
 import type { PlayerState } from '../../shared/types/game';
-import { renderNextGoalSummary } from './message-formatting';
+import {
+  renderHintBlock,
+  renderNextGoalSummary,
+} from './message-formatting';
 
 const trimBattleAbsentPrefix = (line: string): string => line.replace(/^Боя нет:\s*/u, '');
 
@@ -16,11 +19,11 @@ export const renderExplorationEvent = (event: ExplorationSceneView, player: Play
     '',
     event.title,
     ...(event.kindLabel ? [`🏷️ ${event.kindLabel}`] : []),
-    ...(event.directorLine ? [event.directorLine] : []),
     event.description,
     '',
     `✅ ${trimBattleAbsentPrefix(event.outcomeLine)}`,
     ...(effectLine ? [`🎁 ${effectLine}`] : []),
+    ...renderHintBlock([event.directorLine]),
     '',
     ...renderNextGoalSummary(buildPlayerNextGoalView(player), '👉 Продолжить'),
   ].join('\n');

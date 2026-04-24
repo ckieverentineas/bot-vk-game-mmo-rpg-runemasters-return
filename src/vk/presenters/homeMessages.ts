@@ -12,6 +12,7 @@ import { getRuneSchoolPresentation } from '../../modules/runes/domain/rune-schoo
 import type { PlayerState } from '../../shared/types/game';
 import {
   formatRuneDisplayName,
+  renderHintBlock,
   renderNextGoalSummary,
   renderStarterSchoolLine,
   withSentencePeriod,
@@ -97,10 +98,12 @@ export const renderWelcome = (player: PlayerState, created: boolean): string => 
     '',
     'Предел зовёт. В ладони тёплый осколок.',
     'Рядом дрожит Учебный огонёк.',
-    renderSchoolFirstLoopLine(),
-    renderSchoolFirstRarityLine(),
     renderStarterSchoolLine(),
     `🎒 ${starterShardLine}`,
+    ...renderHintBlock([
+      renderSchoolFirstLoopLine(),
+      renderSchoolFirstRarityLine(),
+    ]),
     '',
     ...renderNextGoalSummary(nextGoal, '▶ Начать'),
   ].join('\n');
@@ -121,17 +124,15 @@ export const renderMainMenu = (player: PlayerState): string => {
     `💰 ${player.gold} пыли · ✨ ${player.radiance} сияния`,
     renderPlayerVitalsLine(player),
     `🧩 Слоты: ${getUnlockedRuneSlotCount(player)} · 🔮 ${formatRuneDisplayName(equippedRune)}`,
-    ...(player.tutorialState === 'ACTIVE'
-      ? ['🜂 Первый бой откроет руну и школу.']
-      : []),
-    ...(equippedSchool
-      ? [`🜂 ${equippedSchool.schoolLine} · ${equippedSchool.roleName.toLowerCase()}.`]
-      : []),
     player.defeatStreak > 0
       ? `🛡️ Поражений: ${player.defeatStreak} · маршрут мягче`
       : `🔥 Серия побед: ${player.victoryStreak}`,
     ...(recognition ? [`⭐ ${recognition.title}: ${withSentencePeriod(recognition.statusLine)}`] : []),
     ...renderNextGoalSummary(nextGoal),
+    ...renderHintBlock([
+      player.tutorialState === 'ACTIVE' ? 'Первый бой откроет руну и школу.' : null,
+      equippedSchool ? `${equippedSchool.schoolLine} · ${equippedSchool.roleName.toLowerCase()}.` : null,
+    ]),
     '',
     `⚔️ АТК ${stats.attack} · ❤️ ЗДР ${stats.health}`,
   ].join('\n');

@@ -433,7 +433,7 @@ describe('messages school-first onboarding framing', () => {
     expect(message).toContain('🔮 Школа Пламени · штурм.');
     expect(message).toContain('⭐ Вы уже пережили большой бой Пламени: школа доверила вам печать давления и дожима');
     expect(message).toContain('🎯 След: проверьте печать школы Пламени на цели печати');
-    expect(message).toContain('🜂 Печать уже даёт +1 к давлению базовой атаки');
+    expect(message).toContain('💡 Печать уже даёт +1 к давлению базовой атаки');
     expect(message).toContain('🧭 Дальше: «⚔️ Цель печати».');
   });
 
@@ -867,7 +867,7 @@ describe('messages school-first onboarding framing', () => {
     expect(message).toContain('❤️ 🟨🟨🟨🟨🟨⬛⬛⬛⬛⬛ 3/6 HP');
     expect(message).toContain('📊 Черты: ⚔️ 2 · 🛡️ 0 · 🔮 0 · 💨 2 · 🧠 1');
     expect(message).toContain('Чтение боя');
-    expect(message).toContain('🎲 Выбор: тяжёлый удар лучше встретить защитой');
+    expect(message).toContain('💡 Выбор: тяжёлый удар лучше встретить защитой');
     expect(message).toContain('🌀 Слот 1: Импульс углей — недоступно: откат 1 ход; мана 4/4, стоимость 3');
     expect(message).toContain('🛡️ Защита (+4 щит)');
     expect(message).toContain('🌀 1: Импульс углей · КД 1 · 3 маны');
@@ -1121,8 +1121,8 @@ describe('messages school-first onboarding framing', () => {
       },
     }));
 
-    expect(message).toContain('🎲 Выбор: пробивающий удар ломает стойку');
-    expect(message).toContain('🧠 Прорицание: «Guard-break» уже прочитан');
+    expect(message).toContain('💡 Выбор: пробивающий удар ломает стойку');
+    expect(message).toContain('💡 🧠 Прорицание: «Guard-break» уже прочитан');
   });
 
   it('shows school-aware guard value for stone stance in battle actions', () => {

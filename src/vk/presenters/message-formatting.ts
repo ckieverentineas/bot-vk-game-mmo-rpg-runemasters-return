@@ -38,6 +38,29 @@ const inventoryFieldLabels: Readonly<Record<string, AmountLabel>> = {
 
 export const withSentencePeriod = (text: string): string => /[.!?]$/.test(text) ? text : `${text}.`;
 
+const trimHintPrefix = (text: string): string => (
+  text
+    .trim()
+    .replace(/^💡\s*/u, '')
+    .replace(/^🜂\s*/u, '')
+    .replace(/^🎲\s*/u, '')
+    .replace(/^Подсказка:\s*/iu, '')
+);
+
+export const renderHintLine = (text: string): string => (
+  `💡 ${withSentencePeriod(trimHintPrefix(text))}`
+);
+
+export const renderHintBlock = (
+  hints: readonly (string | null | undefined)[],
+): string[] => {
+  const hintLines = hints
+    .filter((hint): hint is string => Boolean(hint?.trim()))
+    .map(renderHintLine);
+
+  return hintLines.length > 0 ? ['', ...hintLines] : [];
+};
+
 export const normalizeRuneDisplayName = (name: string): string => (
   name.replace(/руна\s+руна/gi, 'руна')
 );
@@ -119,8 +142,8 @@ export const renderAcquisitionSummary = (
   return [
     '',
     `✨ ${withSentencePeriod(summary.title)}`,
-    `🜂 ${withSentencePeriod(summary.changeLine)}`,
     ...(summary.nextStepLine ? [`👉 ${withSentencePeriod(summary.nextStepLine)}`] : []),
+    ...renderHintBlock([summary.changeLine]),
   ];
 };
 
@@ -129,8 +152,8 @@ export const renderNextGoalSummary = (
   actionPrefix = '👉 Сделать шаг',
 ): string[] => [
   `🎯 След: ${withSentencePeriod(nextGoal.objectiveText)}`,
-  ...(nextGoal.whyText ? [`🜂 ${withSentencePeriod(nextGoal.whyText)}`] : []),
   `${actionPrefix}: «${nextGoal.primaryActionLabel}».`,
+  ...renderHintBlock([nextGoal.whyText]),
 ];
 
 export const renderStarterSchoolLine = (): string => {

@@ -25,6 +25,7 @@ import type { AbilityDefinition, PlayerState, RuneView, StatBlock } from '../../
 import {
   formatRuneDisplayName,
   renderAcquisitionSummary,
+  renderHintBlock,
   renderStarterSchoolLine,
   withSentencePeriod,
 } from './message-formatting';
@@ -134,7 +135,7 @@ const formatRune = (rune: RuneView | null): string => {
     })(),
     `🔮 ${formatRuneDisplayName(rune)}`,
     `⭐ ${gameBalance.runes.profiles[rune.rarity].title}${school ? ` · ${school.name}` : ''}`,
-    ...(school ? [`🜂 ${school.playPatternLine}`] : []),
+    ...renderHintBlock([school?.playPatternLine]),
     ...formatRuneStatDetails({
       health: rune.health,
       attack: rune.attack,

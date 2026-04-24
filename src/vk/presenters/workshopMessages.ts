@@ -22,7 +22,11 @@ import type {
   WorkshopBlueprintCost,
 } from '../../modules/workshop/domain/workshop-catalog';
 import type { MaterialField } from '../../shared/types/game';
-import { withSentencePeriod } from './message-formatting';
+import {
+  renderHintBlock,
+  renderHintLine,
+  withSentencePeriod,
+} from './message-formatting';
 import {
   resolveWorkshopBlueprintTitle,
   resolveWorkshopItemClassTitle,
@@ -120,8 +124,8 @@ const renderWorkshopSummary = (summary: WorkshopScreenSummary | null | undefined
   return [
     '',
     `✨ ${withSentencePeriod(summary.title)}`,
-    `🜂 ${withSentencePeriod(summary.changeLine)}`,
     ...(nextStepLine ? [`👉 ${withSentencePeriod(nextStepLine)}`] : []),
+    ...renderHintBlock([summary.changeLine]),
   ];
 };
 
@@ -172,7 +176,7 @@ export const renderWorkshop = (
   '🛠 Мастерская',
   ...renderWorkshopSummary(summary),
   '',
-  '📌 Чертежи одноразовые · L не чинится · UL чинится инструментом.',
+  renderHintLine('Чертежи одноразовые · L не чинится · UL чинится инструментом.'),
   '',
   ...renderWorkshopBlueprints(view),
   '',
