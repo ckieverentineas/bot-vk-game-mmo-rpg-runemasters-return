@@ -13,7 +13,7 @@ export const renderDailyTrace = (view: ClaimDailyTraceView): string => {
       '✨ След дня',
       '',
       `✅ Уже найдено: ${view.trace.title}.`,
-      'Без серии и штрафов.',
+      'Сегодняшний знак уже в сумке.',
       '',
       ...renderNextGoalSummary(buildPlayerNextGoalView(view.player), '👉 Дальше'),
     ].join('\n');
@@ -25,7 +25,7 @@ export const renderDailyTrace = (view: ClaimDailyTraceView): string => {
     view.trace.title,
     view.trace.description,
     `🎁 ${rewardLine}.`,
-    'Без серии и долга.',
+    'Тихая находка. Можно идти дальше.',
     '',
     ...renderNextGoalSummary(buildPlayerNextGoalView(view.player), '👉 Дальше'),
   ].join('\n');

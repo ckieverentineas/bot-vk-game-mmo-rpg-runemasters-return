@@ -20,12 +20,12 @@ export interface DailyTraceView {
 const dailyTraceTemplates: readonly DailyTraceTemplate[] = [
   {
     title: 'Тёплый след у костра',
-    description: 'На стоянке вспыхивает короткая искра: достаточно поднять её и идти дальше своим темпом.',
+    description: 'На стоянке вспыхивает короткая искра: вы поднимаете её и дорога теплеет на ладони.',
     materialField: 'herb',
   },
   {
     title: 'Заметка на старой карте',
-    description: 'На полях карты проступает тихая пометка: маленькая польза без долга и расписания.',
+    description: 'На полях карты проступает тихая пометка: старая дорога всё ещё помнит ваши шаги.',
     materialField: 'leather',
   },
   {
@@ -35,7 +35,7 @@ const dailyTraceTemplates: readonly DailyTraceTemplate[] = [
   },
   {
     title: 'Пыль у порога алтаря',
-    description: 'У алтаря лежит горсть полезной пыли: забрать можно, пропустить тоже нормально.',
+    description: 'У алтаря лежит горсть полезной пыли: кто-то оставил её для следующего путника.',
     materialField: 'metal',
   },
 ];

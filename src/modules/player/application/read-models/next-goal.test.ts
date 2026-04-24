@@ -296,7 +296,8 @@ describe('next goal read-model', () => {
 
     expect(goal.goalType).toBe('equip_school_sign');
     expect(goal.objectiveText).toContain('наденьте печать школы Пламени');
-    expect(goal.whyText).toContain('большой бой школы Пламени');
+    expect(goal.whyText).toContain('печать школы Пламени');
+    expect(goal.whyText).toContain('начнёт работать в бою');
     expect(goal.milestoneTitle).toBe('Печать школы Пламени');
   });
 
@@ -526,7 +527,7 @@ describe('next goal read-model', () => {
     expect(goal?.goalType).toBe('review_runes_after_defeat');
     expect(goal?.primaryActionLabel).toBe('🔮 Руны');
     expect(goal?.objectiveText).toContain('проверьте «🔮 Руны», затем вернитесь через осторожную встречу');
-    expect(goal?.whyText).toContain('руны и прогресс остаются');
+    expect(goal?.whyText).toContain('Поражение не забирает руны и путь');
   });
 
   it('prioritizes a rest route while the player is too wounded for the normal path', () => {

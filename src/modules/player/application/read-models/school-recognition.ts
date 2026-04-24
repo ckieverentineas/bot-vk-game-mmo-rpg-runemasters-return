@@ -34,7 +34,7 @@ export const buildPlayerSchoolRecognitionView = (player: PlayerState): SchoolRec
           schoolCode: novicePath.schoolCode,
           title: 'Печать Пламени',
           statusLine: signEquipped
-            ? 'Вы уже пережили большой бой Пламени: школа доверила вам печать давления и дожима, а не просто первый знак.'
+            ? 'Вы уже пережили большой бой Пламени: школа доверила вам печать давления и дожима.'
             : 'Вы уже пережили большой бой Пламени. Печать школы ждёт в рунах — наденьте её, чтобы закрепить следующий ранг стиля.',
           signEquipped,
         };
@@ -43,7 +43,7 @@ export const buildPlayerSchoolRecognitionView = (player: PlayerState): SchoolRec
           schoolCode: novicePath.schoolCode,
           title: 'Печать Тверди',
           statusLine: signEquipped
-            ? 'Вы уже пережили большой бой Тверди: школа доверила вам печать выдержки и ответного хода, а не просто первый знак.'
+            ? 'Вы уже пережили большой бой Тверди: школа доверила вам печать выдержки и ответного хода.'
             : 'Вы уже пережили большой бой Тверди. Печать школы ждёт в рунах — наденьте её, чтобы закрепить следующий ранг стиля.',
           signEquipped,
         };
@@ -52,7 +52,7 @@ export const buildPlayerSchoolRecognitionView = (player: PlayerState): SchoolRec
           schoolCode: novicePath.schoolCode,
           title: 'Печать Бури',
           statusLine: signEquipped
-            ? 'Вы уже пережили большой бой Бури: школа доверила вам печать темпа и ответного хода, а не просто первый знак.'
+            ? 'Вы уже пережили большой бой Бури: школа доверила вам печать темпа и ответного хода.'
             : 'Вы уже пережили большой бой Бури. Печать школы ждёт в рунах — наденьте её, чтобы закрепить следующий ранг стиля.',
           signEquipped,
         };
@@ -61,7 +61,7 @@ export const buildPlayerSchoolRecognitionView = (player: PlayerState): SchoolRec
           schoolCode: novicePath.schoolCode,
           title: 'Печать Прорицания',
           statusLine: signEquipped
-            ? 'Вы уже пережили большой бой Прорицания: школа доверила вам печать чтения боя и точного ответа, а не просто первый знак.'
+            ? 'Вы уже пережили большой бой Прорицания: школа доверила вам печать чтения боя и точного ответа.'
             : 'Вы уже пережили большой бой Прорицания. Печать школы ждёт в рунах — наденьте её, чтобы закрепить следующий ранг чтения угроз.',
           signEquipped,
         };
@@ -71,7 +71,7 @@ export const buildPlayerSchoolRecognitionView = (player: PlayerState): SchoolRec
           title: `Печать школы ${school.name}`,
           statusLine: signEquipped
             ? `Вы уже пережили большой бой школы ${school.nameGenitive} и получили её печать.`
-            : `Вы уже пережили большой бой школы ${school.nameGenitive}. Печать ждёт, пока вы закрепите её в сборке.`,
+            : `Вы уже пережили большой бой школы ${school.nameGenitive}. Печать ждёт, пока вы наденете её среди рун.`,
           signEquipped,
         };
     }
@@ -111,7 +111,7 @@ export const buildPlayerSchoolRecognitionView = (player: PlayerState): SchoolRec
         title: 'Первый знак Прорицания',
         statusLine: signEquipped
           ? 'Вы уже прошли первое испытание Прорицания: школа признала, что вы умеете читать раскрытую угрозу и отвечать в правильный момент.'
-          : 'Вы уже прошли первое испытание Прорицания. Первый знак школы ждёт в рунах — наденьте его, чтобы закрепить чтение угрозы в сборке.',
+          : 'Вы уже прошли первое испытание Прорицания. Первый знак школы ждёт в рунах: наденьте его, чтобы закрепить чтение угрозы.',
         signEquipped,
       };
     default:
@@ -119,8 +119,8 @@ export const buildPlayerSchoolRecognitionView = (player: PlayerState): SchoolRec
         schoolCode: novicePath.schoolCode,
         title: `Первый знак школы ${school.name}`,
         statusLine: signEquipped
-          ? `Вы уже прошли первое испытание школы ${school.nameGenitive} и закрепили её путь в сборке.`
-          : `Вы уже прошли первое испытание школы ${school.nameGenitive}. Первый знак школы ждёт, пока вы наденете его в сборке.`,
+          ? `Вы уже прошли первое испытание школы ${school.nameGenitive} и закрепили её путь.`
+          : `Вы уже прошли первое испытание школы ${school.nameGenitive}. Первый знак школы ждёт, пока вы наденете его среди рун.`,
         signEquipped,
       };
   }

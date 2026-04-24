@@ -337,7 +337,7 @@ describe('acquisition summary read-model', () => {
 
     expect(summary?.kind).toBe('school_miniboss_completed');
     expect(summary?.title).toBe('Большой бой школы пройден');
-    expect(summary?.changeLine).toContain('Прорицание признало, что вы не просто увидели угрозу');
+    expect(summary?.changeLine).toContain('Прорицание признало, что вы увидели угрозу');
   });
 
   it('keeps mastery unlock as the visible gain now that two rune slots are baseline', () => {
@@ -355,8 +355,8 @@ describe('acquisition summary read-model', () => {
     const summary = buildBattleAcquisitionSummary(before, after, createBattle());
 
     expect(summary?.kind).toBe('mastery_unlock');
-    expect(summary?.title).toBe('Новая school-веха: «Разогрев дожима»');
-    expect(summary?.nextStepLine).toContain('проверьте новый эффект школы');
+    expect(summary?.title).toBe('Новая веха школы: «Разогрев дожима»');
+    expect(summary?.nextStepLine).toContain('почувствуйте новый знак школы');
   });
 
   it('returns null when battle gives no new build-impacting gain', () => {
@@ -409,7 +409,7 @@ describe('acquisition summary read-model', () => {
 
     expect(summary?.kind).toBe('school_seal_committed');
     expect(summary?.title).toBe('Печать Пламени закреплена');
-    expect(summary?.changeLine).toContain('малый бонус давления');
+    expect(summary?.changeLine).toContain('Пламя крепче давит');
     expect(summary?.nextStepLine).toContain('Цель печати');
   });
 });

@@ -30,10 +30,10 @@ const schoolTrialLineBySchoolCode: Readonly<Record<string, string>> = {
 };
 
 const schoolExplorationLineBySchoolCode: Readonly<Record<string, string>> = {
-  ember: 'след снова говорит о давлении: следующий бой лучше читать через окно добивания, а не через ожидание идеального момента.',
-  stone: 'след снова говорит о выдержке: следующая угроза спросит, где держать стойку, а где отвечать после защиты.',
-  gale: 'след снова говорит о темпе: следующий ответ должен готовить ход вперёд, а не просто закрывать текущий удар.',
-  echo: 'след снова говорит о чтении: следующая опасность станет понятнее, если сперва увидеть намерение врага.',
+  ember: 'пепел ложится по ветру: в следующей стычке ищите миг, когда враг уже просел.',
+  stone: 'камень держит старый удар: следующая угроза спросит, где стоять, а где отвечать.',
+  gale: 'ветер забегает вперёд: следующий ход должен оставить вам ответ после удара.',
+  echo: 'следы складываются в знак: сперва увидьте угрозу, потом бейте точно.',
 };
 
 const isSchoolTrialEnemy = (enemy: BattleEnemySnapshot): boolean => (
@@ -59,7 +59,7 @@ const resolveBossLine = (enemy: BattleEnemySnapshot): string | null => {
     return null;
   }
 
-  return '🎲 Совет мастеров помечает бой как проверку сборки: здесь важны ритм, защита и верный миг удара, а не один сильный приём.';
+  return '🎲 Совет мастеров отмечает большой бой: здесь важны выдержка, верный миг удара и собранная руна.';
 };
 
 const resolveEliteLine = (enemy: BattleEnemySnapshot): string | null => {
@@ -67,7 +67,7 @@ const resolveEliteLine = (enemy: BattleEnemySnapshot): string | null => {
     return null;
   }
 
-  return '🎲 Мастер испытаний усиливает сцену: этот враг проверяет чтение намерений и аккуратный ответ под угрозой.';
+  return '🎲 Мастер испытаний предупреждает: этот враг проверит, умеете ли вы читать угрозу и отвечать вовремя.';
 };
 
 const resolveTutorialLine = (context: GameMasterEncounterContext): string | null => {
@@ -96,7 +96,7 @@ const resolveSchoolExplorationSceneLine = (context: GameMasterExplorationSceneCo
     return null;
   }
 
-  return `🎲 ${masterTitle} связывает находку со школой: ${schoolLine}`;
+  return `🎲 ${masterTitle} читает знак школы: ${schoolLine}`;
 };
 
 const resolveNeutralExplorationSceneLine = (context: GameMasterExplorationSceneContext): string | null => {
@@ -106,15 +106,15 @@ const resolveNeutralExplorationSceneLine = (context: GameMasterExplorationSceneC
 
   switch (context.sceneKind) {
     case 'rest':
-      return '🎲 Наставник Совета рун отмечает передышку: пауза помогает прочитать маршрут, но не меняет правила и темп приключения.';
+      return '🎲 Наставник Совета рун кивает: передышка тоже часть пути.';
     case 'resource_find':
-      return '🎲 Мастер снабжения отмечает находку: малый материал пригодится у алтаря, но не заменяет рост через бои, руны и школы.';
+      return '🎲 Мастер снабжения кивает на находку: малый материал лучше забрать сразу, пока тропа спокойна.';
     case 'danger_sign':
-      return '🎲 Мастер испытаний отмечает опасный знак: это предупреждение о будущей угрозе, а не внезапный штраф.';
+      return '🎲 Мастер испытаний указывает на зарубки: дорога заранее показывает зубы будущей угрозы.';
     case 'trial_master':
-      return '🎲 Мастер испытаний оставляет рамку сцены: вопрос понятен, а ответ по-прежнему выбирает игрок.';
+      return '🎲 Мастер испытаний оставляет знак: местность уже задала свой вопрос.';
     case 'school_clue':
-      return '🎲 Мастер испытаний отмечает школьный след: сцена помогает понять стиль, но не выдаёт силу за посещение.';
+      return '🎲 Мастер испытаний отмечает школьный след: знак сам не сражается, но помогает понять путь.';
     default:
       return null;
   }

@@ -66,7 +66,7 @@ describe('resolveGameMasterEncounterLine', () => {
     expect(line).toContain('окно добивания');
   });
 
-  it('uses a build-check cue for bosses without a known school', () => {
+  it('uses a big-fight cue for bosses without a known school', () => {
     const line = resolveGameMasterEncounterLine({
       biome: createBiome(),
       enemy: createEnemy({ isBoss: true }),
@@ -74,8 +74,8 @@ describe('resolveGameMasterEncounterLine', () => {
       locationLevel: 8,
     });
 
-    expect(line).toContain('проверку сборки');
-    expect(line).toContain('не один сильный приём');
+    expect(line).toContain('большой бой');
+    expect(line).toContain('собранная руна');
   });
 
   it('stays silent for ordinary encounters', () => {
@@ -101,7 +101,7 @@ describe('resolveGameMasterExplorationSceneLine', () => {
 
     expect(line).toContain('Мастер снабжения');
     expect(line).toContain('малый материал');
-    expect(line).toContain('не заменяет рост через бои, руны и школы');
+    expect(line).toContain('пока тропа спокойна');
   });
 
   it('uses the equipped school voice for school clue scenes', () => {
@@ -113,7 +113,7 @@ describe('resolveGameMasterExplorationSceneLine', () => {
     });
 
     expect(line).toContain('Мастер Прорицания');
-    expect(line).toContain('увидеть намерение врага');
+    expect(line).toContain('увидьте угрозу');
     expect(line).not.toContain('сегодня');
   });
 

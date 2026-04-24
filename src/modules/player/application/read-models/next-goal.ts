@@ -78,11 +78,11 @@ const resolveSealGoalBenefitText = (schoolCode: string, nextUnlockDescription: s
     case 'ember':
       return `Печать уже даёт +1 к давлению базовой атаки; следующий ранг закрепит это как путь давления. ${nextUnlockDescription}`;
     case 'stone':
-      return `Печать уже даёт +1 guard к защитной стойке и «Каменному отпору»; следующий ранг закрепит это как путь опоры. ${nextUnlockDescription}`;
+      return `Печать уже крепит защитную стойку и «Каменный отпор»; следующий ранг закрепит это как путь опоры. ${nextUnlockDescription}`;
     case 'gale':
-      return `Печать уже даёт +1 guard к «Шагу шквала»; следующий ранг закрепит это как путь темпа. ${nextUnlockDescription}`;
+      return `Печать уже крепит защиту от «Шага шквала»; следующий ранг закрепит это как путь темпа. ${nextUnlockDescription}`;
     case 'echo':
-      return `Печать уже даёт +1 к точному ответу по раскрытому intent; следующий ранг закрепит это как путь чтения. ${nextUnlockDescription}`;
+      return `Печать уже усиливает точный ответ по раскрытой угрозе; следующий ранг закрепит это как путь чтения. ${nextUnlockDescription}`;
     default:
       return `Печать уже даёт малый боевой бонус школы; следующий ранг закрепит этот стиль. ${nextUnlockDescription}`;
   }
@@ -124,7 +124,7 @@ export const buildPlayerNextGoalView = (player: PlayerState): NextGoalView => {
       'explore',
       'получите первую руну, чтобы открыть школу рун и новый стиль боя',
       {
-        whyText: 'Первая руна открывает узнаваемый стиль боя, а не просто ещё одни цифры.',
+        whyText: 'Первая руна даст школе голос в бою.',
       },
     );
   }
@@ -142,8 +142,8 @@ export const buildPlayerNextGoalView = (player: PlayerState): NextGoalView => {
         schoolCode: selectedSchoolDefinition?.code ?? null,
         schoolName: selectedSchool?.name ?? null,
         whyText: selectedSchool
-          ? `Так школа ${selectedSchoolDefinition?.nameGenitive ?? selectedSchool.name} станет вашей реальной боевой сборкой.`
-          : 'Так школа рун перейдёт из коллекции в реальный стиль боя.',
+          ? `Так знак школы ${selectedSchoolDefinition?.nameGenitive ?? selectedSchool.name} начнёт работать в ваших руках.`
+          : 'Так школа рун перейдёт из коллекции в ваши руки.',
       },
     );
   }
@@ -161,8 +161,8 @@ export const buildPlayerNextGoalView = (player: PlayerState): NextGoalView => {
         schoolCode: schoolDefinition?.code ?? null,
         schoolName: equippedSchool?.name ?? null,
         whyText: antiStallRecovery.reason === 'LOW_HEALTH'
-          ? 'Вы ранены: лишний знак в сборке безопаснее, чем сразу снова давить маршрут силой.'
-          : 'После серии поражений лучше сначала закрыть свободный слот, а уже потом идти к лёгкой встрече.',
+          ? 'Вы ранены: лишний знак в рунах поможет пережить следующую встречу.'
+          : 'После тяжёлой серии лучше закрыть свободный слот, а потом вернуться на тропу.',
       },
     );
   }
@@ -181,8 +181,8 @@ export const buildPlayerNextGoalView = (player: PlayerState): NextGoalView => {
         schoolCode: schoolDefinition?.code ?? null,
         schoolName: equippedSchool?.name ?? null,
         whyText: antiStallRecovery.reason === 'LOW_HEALTH'
-          ? 'Низкое HP не должно превращать маршрут в тупик: сначала восстановление, потом обычный темп.'
-          : 'Серия поражений временно включает мягкий маршрут без школьных испытаний и верхних угроз.',
+          ? 'Сначала верните дыхание, потом снова давите маршрут.'
+          : 'После тяжёлой серии дорога начнётся с более спокойной встречи.',
       },
     );
   }
@@ -198,8 +198,8 @@ export const buildPlayerNextGoalView = (player: PlayerState): NextGoalView => {
         schoolCode: schoolDefinition?.code ?? null,
         schoolName: equippedSchool?.name ?? null,
         whyText: equippedSchool
-          ? `${equippedSchool.name} начнёт ощущаться через свой особый боевой приём, а не только через пассивный бонус.`
-          : 'Так руна начнёт менять бой не только статами, но и решением по ходу боя.',
+          ? `${equippedSchool.name} начнёт ощущаться через свой особый боевой приём.`
+          : 'Так руна начнёт менять ваши решения в бою.',
       },
     );
   }
@@ -239,8 +239,8 @@ export const buildPlayerNextGoalView = (player: PlayerState): NextGoalView => {
           schoolCode: novicePath.schoolCode,
           schoolName: equippedSchool?.name ?? schoolDefinition.name,
           whyText: novicePath.minibossRewardRarity && bestSchoolSign.rarity === novicePath.minibossRewardRarity
-            ? `Так большой бой школы ${schoolDefinition.nameGenitive} перейдёт из редкой награды в реальную боевую сборку.`
-            : `Так первое признание школы ${schoolDefinition.nameGenitive} перейдёт из награды в реальную боевую сборку.`,
+            ? `Так печать школы ${schoolDefinition.nameGenitive} начнёт работать в бою, а не ждать в сумке.`
+            : `Так первый знак школы ${schoolDefinition.nameGenitive} начнёт работать в бою, а не ждать в сумке.`,
           milestoneTitle: novicePath.minibossRewardRarity && bestSchoolSign.rarity === novicePath.minibossRewardRarity
             ? `Печать школы ${schoolDefinition.nameGenitive}`
             : `Первый знак школы ${schoolDefinition.nameGenitive}`,
@@ -265,7 +265,7 @@ export const buildPlayerNextGoalView = (player: PlayerState): NextGoalView => {
         {
           schoolCode: novicePath.schoolCode,
           schoolName: equippedSchool?.name ?? schoolDefinition.name,
-          whyText: `Этот бой проверяет, стал ли первый знак школы ${schoolDefinition.nameGenitive} реальной боевой сборкой, а не просто редкой наградой.`,
+          whyText: `Этот бой проверит, держится ли первый знак школы ${schoolDefinition.nameGenitive} под настоящим давлением.`,
           milestoneTitle: `Большой бой школы ${schoolDefinition.nameGenitive}`,
           milestoneProgressText: `${novicePath.biomeName} · ${novicePath.minibossEnemyName}`,
           milestoneBenefitText: `Победа может принести первую ${novicePath.minibossRewardRarity === 'RARE' ? 'редкую' : 'новую'} руну школы ${schoolDefinition.nameGenitive}.`,
@@ -327,10 +327,10 @@ export const buildPlayerNextGoalView = (player: PlayerState): NextGoalView => {
       {
         schoolCode: schoolDefinition?.code ?? null,
         schoolName: equippedSchool?.name ?? null,
-        whyText: 'Каждая надетая руна работает полностью: боевые черты, пассивы и активное действие в бою.',
+        whyText: 'Каждая надетая руна работает полностью: боевые черты, скрытая сила и свой приём в бою.',
         milestoneTitle: 'Свободный слот рун',
         milestoneProgressText: 'Второй слот рун уже открыт.',
-        milestoneBenefitText: 'Вторая руна добавит полные боевые черты, пассивы и свой приём, если он у неё есть.',
+        milestoneBenefitText: 'Вторая руна добавит свои черты, скрытую силу и приём, если он у неё есть.',
       },
     );
   }
@@ -342,7 +342,7 @@ export const buildPlayerNextGoalView = (player: PlayerState): NextGoalView => {
     {
       schoolCode: schoolDefinition?.code ?? null,
       schoolName: equippedSchool?.name ?? null,
-      whyText: 'Так вы продолжите развивать текущую школу и расширять сборку через честные короткие сессии.',
+      whyText: 'Так школа будет расти вместе с дорогой и новыми рунами.',
     },
   );
 };
@@ -403,7 +403,7 @@ export const buildBattleResultNextGoalView = (
       {
         schoolCode: getSchoolDefinitionForArchetype(battle.rewards.droppedRune.archetypeCode)?.code ?? null,
         schoolName: getRuneSchoolPresentation(battle.rewards.droppedRune.archetypeCode)?.name ?? null,
-        whyText: 'Так вы усилите стиль боя перед следующим боем.',
+        whyText: 'Так новая руна встретит следующий бой уже в ваших руках.',
       },
     );
   }
@@ -414,7 +414,7 @@ export const buildBattleResultNextGoalView = (
       'open_runes',
       'проверьте «🔮 Руны», затем вернитесь через осторожную встречу',
       {
-        whyText: 'Поражение не забирает сборку: руны и прогресс остаются, а следующий поиск будет мягче.',
+        whyText: 'Поражение не забирает руны и путь: следующий поиск начнётся мягче.',
       },
     );
   }
@@ -423,9 +423,9 @@ export const buildBattleResultNextGoalView = (
     return createGoalView(
       'push_higher_threat',
       'explore',
-      'исследуйте маршрут дальше и продолжайте усиливать сборку',
+      'исследуйте маршрут дальше и продолжайте усиливать руны',
       {
-        whyText: 'Сейчас полезнее искать следующую полезную руну и расширять сборку.',
+        whyText: 'Следующая полезная руна может ждать уже за ближайшей встречей.',
       },
     );
   }

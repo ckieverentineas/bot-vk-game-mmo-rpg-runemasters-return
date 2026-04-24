@@ -12,13 +12,13 @@ describe('player skill formatting', () => {
       skillCode: 'gathering.skinning',
       experience: 100,
       rank: 1,
-    })).toBe('Свежевание: Практик свежевания · ранг закреплён');
+    })).toBe('Свежевание: Знаток свежевания · ранг удержан');
 
     expect(formatPlayerSkillProgressLine({
       skillCode: 'gathering.essence_extraction',
       experience: 1,
       rank: 0,
-    })).toBe('Извлечение эссенции: Новичок извлечения эссенции · первые успехи');
+    })).toBe('Извлечение эссенции: Ученик извлечения эссенции · рука привыкает');
   });
 
   it('formats trophy skill gains as qualitative progress instead of raw numbers', () => {
@@ -28,7 +28,7 @@ describe('player skill formatting', () => {
       experienceAfter: 4,
       rankBefore: 0,
       rankAfter: 0,
-    })).toBe('Свежевание: Новичок свежевания · первые успехи крепнут');
+    })).toBe('Свежевание: Ученик свежевания · движение стало вернее');
 
     expect(formatPlayerSkillGainLine({
       skillCode: 'gathering.skinning',
@@ -36,7 +36,7 @@ describe('player skill formatting', () => {
       experienceAfter: 100,
       rankBefore: 0,
       rankAfter: 1,
-    })).toBe('Свежевание: Практик свежевания · новый ранг');
+    })).toBe('Свежевание: Знаток свежевания · новый ранг');
   });
 
   it('formats action preview skill titles consistently', () => {

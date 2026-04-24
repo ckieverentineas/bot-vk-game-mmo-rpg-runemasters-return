@@ -87,12 +87,12 @@ const schoolMasteryDefinitions: readonly SchoolMasteryDefinition[] = [
       {
         rank: 1,
         title: 'Ответ стойки',
-        description: 'Если вы уже держите guard, «Каменный отпор» бьёт сильнее и крепче держит стойку.',
+        description: 'Если вы уже держите щит, «Каменный отпор» бьёт сильнее и крепче держит стойку.',
       },
       {
         rank: 2,
         title: 'Печать опоры',
-        description: 'Редкая печать Тверди закрепляет стойку: защита получает малый бонус печати к guard.',
+        description: 'Редкая печать Тверди закрепляет стойку: защита получает малую силу печати к щиту.',
       },
     ],
   },
@@ -108,7 +108,7 @@ const schoolMasteryDefinitions: readonly SchoolMasteryDefinition[] = [
       {
         threshold: 5,
         title: 'Связка шквала',
-        description: 'Буря уже держит инициативу: чередуйте давление, руну и осторожный следующий ход.',
+        description: 'Буря уже держит первый порыв: чередуйте давление, руну и осторожный следующий ход.',
       },
     ],
     unlocks: [
@@ -136,7 +136,7 @@ const schoolMasteryDefinitions: readonly SchoolMasteryDefinition[] = [
       {
         threshold: 5,
         title: 'Верная примета',
-        description: 'Прорицание уже увереннее читает бой: раскрытый intent становится главным окном ответа.',
+        description: 'Прорицание уже увереннее читает бой: раскрытая угроза становится главным окном ответа.',
       },
     ],
     unlocks: [
@@ -148,7 +148,7 @@ const schoolMasteryDefinitions: readonly SchoolMasteryDefinition[] = [
       {
         rank: 2,
         title: 'Печать предзнаменования',
-        description: 'Редкая печать Прорицания закрепляет чтение боя: раскрытый intent даёт малый бонус печати к точному ответу.',
+        description: 'Редкая печать Прорицания закрепляет чтение боя: раскрытая угроза даёт малую силу печати к точному ответу.',
       },
     ],
   },

@@ -42,7 +42,7 @@ describe('player skills', () => {
       code: 'crafting.alchemy',
       category: 'crafting',
       title: 'Алхимия',
-      description: 'Создание пилюль и зелий из трофейных материалов.',
+      description: 'Создание пилюль и зелий из трав, слизи и трофейных материалов.',
     });
   });
 
@@ -58,7 +58,7 @@ describe('player skills', () => {
       code: 'rune.active_use',
       category: 'rune',
       title: 'Активные руны',
-      description: 'Практика боевого применения активных рунных навыков.',
+      description: 'Боевые приёмы рун, применённые в нужный миг.',
     });
     expect(getPlayerSkillDefinition('unknown.skill')).toBeNull();
   });

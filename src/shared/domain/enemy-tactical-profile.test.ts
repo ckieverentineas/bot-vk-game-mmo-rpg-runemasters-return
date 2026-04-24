@@ -50,7 +50,7 @@ describe('enemy tactical profile', () => {
 
     expect(profile).toMatchObject({
       code: 'BASIC_PRESSURE',
-      habitLine: 'особого телеграфа нет: давит обычными ударами',
+      habitLine: 'особого предупреждения нет: давит обычными ударами',
     });
   });
 });

@@ -9,7 +9,7 @@ export interface BattleClarityView {
 }
 
 const buildGuardLine = (battle: BattleView): string => (
-  (battle.player.guardPoints ?? 0) > 0 ? ` · guard ${battle.player.guardPoints}` : ''
+  (battle.player.guardPoints ?? 0) > 0 ? ` · щит ${battle.player.guardPoints}` : ''
 );
 
 const resolveEnemyRiskLabel = (battle: BattleView): string => {
@@ -18,10 +18,10 @@ const resolveEnemyRiskLabel = (battle: BattleView): string => {
   }
 
   if (battle.enemy.intent?.code === 'GUARD_BREAK') {
-    return 'враг готовит guard-break';
+    return 'враг готовит пробивающий удар';
   }
 
-  return 'следующий ход врага пока без особого телеграфа';
+  return 'следующий ход врага пока без явной угрозы';
 };
 
 const hasReadyRuneAction = (battle: BattleView): boolean => (
@@ -50,7 +50,7 @@ const resolveChoiceLine = (battle: BattleView): string | null => {
 
   if (battle.enemy.intent?.code === 'HEAVY_STRIKE') {
     return readyRuneAction
-      ? '🎲 Выбор: тяжёлый удар лучше встретить защитой; готовая руна тоже получает окно по раскрытому замыслу.'
+      ? '🎲 Выбор: тяжёлый удар лучше встретить защитой; готовая руна тоже получает хороший миг для ответа.'
       : '🎲 Выбор: тяжёлый удар лучше встретить защитой; голая атака рискованнее.';
   }
 
@@ -77,8 +77,8 @@ const resolveSchoolHint = (battle: BattleView): string | null => {
 
       if (battle.enemy.intent?.code === 'GUARD_BREAK') {
         return firstSchoolSignEquipped
-          ? '🔥 Первый знак Пламени: guard-break — ваше окно давления; отвечайте атакой или «Импульсом углей», пока враг раскрыт.'
-          : '🔥 Пламя: guard-break — окно давления; атака и готовая техника не дают врагу спокойно сломать стойку.';
+          ? '🔥 Первый знак Пламени: пробивающий удар открывает окно давления; отвечайте атакой или «Импульсом углей», пока враг раскрыт.'
+          : '🔥 Пламя: пробивающий удар открывает окно давления; атака и готовая техника не дают врагу спокойно сломать стойку.';
       }
 
       if (firstSchoolSignEquipped) {
@@ -105,11 +105,11 @@ const resolveSchoolHint = (battle: BattleView): string | null => {
       }
 
       if (firstSchoolSignEquipped && battle.enemy.intent?.code === 'GUARD_BREAK') {
-        return '🪨 Первый знак Тверди: guard-break наказывает слепую стойку — добавьте ответный ход, а не только защиту.';
+        return '🪨 Первый знак Тверди: пробивающий удар наказывает слепую стойку; добавьте ответный ход, а не только защиту.';
       }
 
       if (firstSchoolSignEquipped) {
-        return '🪨 Первый знак Тверди: школа уже в сборке — переживите опасный ход и отвечайте сильнее, чем обычная руна.';
+        return '🪨 Первый знак Тверди: школа уже в руках; переживите опасный ход и отвечайте сильнее, чем обычная руна.';
       }
 
       if (battle.enemy.intent?.code === 'HEAVY_STRIKE') {
@@ -117,10 +117,10 @@ const resolveSchoolHint = (battle: BattleView): string | null => {
       }
 
       if (battle.enemy.intent?.code === 'GUARD_BREAK') {
-        return '🪨 Твердь: guard-break ломает чистую стойку — не ставьте весь ход только на защиту без ответа.';
+        return '🪨 Твердь: пробивающий удар ломает чистую стойку; не ставьте весь ход только на защиту без ответа.';
       }
 
-      return '🪨 Твердь: ценность школы в том, чтобы пережить опасный ход и ответить сильнее, чем обычная сборка.';
+      return '🪨 Твердь: ценность школы в том, чтобы пережить опасный ход и ответить сильнее обычного.';
     case 'gale': {
       const activeAbility = battle.player.runeLoadout?.activeAbility;
       if (hasEquippedSchoolSeal(battle, 'gale') && hasReadyRuneActionCode(battle, 'gale_step')) {
@@ -129,8 +129,8 @@ const resolveSchoolHint = (battle: BattleView): string | null => {
 
       if (battle.enemy.intent && hasReadyRuneActionCode(battle, 'gale_step')) {
         return firstSchoolSignEquipped
-          ? '🌪️ Первый знак Бури: раскрытый замысел — окно темпа; «Шаг шквала» бьёт и лучше прикрывает следующий ответ.'
-          : '🌪️ Буря: раскрытый замысел — окно темпа; «Шаг шквала» бьёт и лучше прикрывает следующий ответ.';
+          ? '🌪️ Первый знак Бури: раскрытая угроза даёт окно темпа; «Шаг шквала» бьёт и лучше прикрывает следующий ответ.'
+          : '🌪️ Буря: раскрытая угроза даёт окно темпа; «Шаг шквала» бьёт и лучше прикрывает следующий ответ.';
       }
 
       if (firstSchoolSignEquipped && activeAbility && activeAbility.currentCooldown <= 0 && battle.player.currentMana >= activeAbility.manaCost) {
@@ -151,7 +151,7 @@ const resolveSchoolHint = (battle: BattleView): string | null => {
       if (hasEquippedSchoolSeal(battle, 'echo')) {
         return battle.enemy.intent
           ? `🧠 Печать Прорицания: «${battle.enemy.intent.title}» уже прочитан — печать усиливает точный ответ.`
-          : '🧠 Печать Прорицания: ищите цель с раскрытым intent — там печать даст следующий слой чтения боя.';
+          : '🧠 Печать Прорицания: ищите цель с раскрытой угрозой; там печать даст следующий слой чтения боя.';
       }
 
       if (firstSchoolSignEquipped) {

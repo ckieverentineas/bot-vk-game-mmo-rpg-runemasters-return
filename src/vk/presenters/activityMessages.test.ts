@@ -59,7 +59,7 @@ describe('renderDailyTrace', () => {
 
     expect(message).toContain('След дня');
     expect(message).toContain('🎁 +6 пыли · +1 обычный осколок · +1 кожа.');
-    expect(message).toContain('Без серии и долга.');
+    expect(message).toContain('Тихая находка. Можно идти дальше.');
     expect(message).toContain('След:');
   });
 
@@ -67,7 +67,7 @@ describe('renderDailyTrace', () => {
     const message = renderDailyTrace(createView({ claimedNow: false }));
 
     expect(message).toContain('Уже найдено: Заметка на старой карте.');
-    expect(message).toContain('Без серии и штрафов.');
+    expect(message).toContain('Сегодняшний знак уже в сумке.');
     expect(message).not.toContain('🎁 +6 пыли');
   });
 });

@@ -56,7 +56,7 @@ export const resolveEnemyTacticalProfile = (enemy: EnemyTacticalProfileInput): E
 
   return {
     code: 'BASIC_PRESSURE',
-    habitLine: 'особого телеграфа нет: давит обычными ударами',
+    habitLine: 'особого предупреждения нет: давит обычными ударами',
     answerLine: 'чередуйте атаку и защиту, если бой начинает затягиваться',
   };
 };

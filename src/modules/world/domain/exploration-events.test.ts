@@ -195,7 +195,7 @@ describe('resolveStandaloneExplorationEvent', () => {
       title: '🧺 Безопасная находка',
     });
     expect(event?.outcomeLine).toContain('Боя нет');
-    expect(event?.nextStepLine).toContain('бой');
+    expect(event?.nextStepLine).toContain('встрече');
   });
 
   it('can return a danger-sign scene before a future encounter', () => {
@@ -216,7 +216,7 @@ describe('resolveStandaloneExplorationEvent', () => {
     expect(event?.nextStepLine).toContain('прочитать первый ход');
   });
 
-  it('can return a school-aware standalone scene without FOMO wording', () => {
+  it('can return a school standalone scene without FOMO wording', () => {
     const event = resolveStandaloneExplorationEvent({
       biome: createBiome(),
       currentSchoolCode: 'echo',
@@ -229,7 +229,7 @@ describe('resolveStandaloneExplorationEvent', () => {
     expect(event?.title).toContain('предзнаменование');
     expect(event?.kind).toBe('school_clue');
     expect(event?.directorLine).toContain('Мастер Прорицания');
-    expect(event?.directorLine).toContain('увидеть намерение врага');
+    expect(event?.directorLine).toContain('увидьте угрозу');
     expect(`${event?.description} ${event?.outcomeLine}`).not.toContain('сегодня');
   });
 

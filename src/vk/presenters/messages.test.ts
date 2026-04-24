@@ -342,10 +342,10 @@ describe('messages school-first onboarding framing', () => {
     expect(detail).toContain('🔮 Руна B');
     expect(detail).toContain('⚡ Активно:');
     expect(detail).toContain('🌀 Импульс углей · 3 маны · КД 2');
-    expect(detail).toContain('Базовый активный рунный навык архетипа огня.');
+    expect(detail).toContain('Удар угольной вспышкой');
     expect(detail).toContain('🛡️ Пассивно:');
     expect(detail).toContain('🛡️ Сердце углей');
-    expect(detail).toContain('Пассивно усиливает атакующее давление владельца руны.');
+    expect(detail).toContain('Уголь в груди держит жар атаки');
 
     expect(altar).toContain('🕯 Алтарь рун');
     expect(altar).toContain('Фокус: руна 2 из 6');
@@ -473,8 +473,8 @@ describe('messages school-first onboarding framing', () => {
     }));
 
     expect(message).toContain('🧰 Навыки');
-    expect(message).toContain('Свежевание: Практик свежевания · ранг закреплён');
-    expect(message).toContain('Извлечение эссенции: Новичок извлечения эссенции · первые успехи');
+    expect(message).toContain('Свежевание: Знаток свежевания · ранг удержан');
+    expect(message).toContain('Извлечение эссенции: Ученик извлечения эссенции · рука привыкает');
     expect(message).not.toContain('ранг 1 · 100 опыта');
     expect(message).not.toContain('ранг 0 · 1/100');
   });
@@ -1253,7 +1253,7 @@ describe('messages school-first onboarding framing', () => {
 
     expect(message).toContain('🔪 Свежевать');
     expect(message).toContain('🎒 +2 кожи · +1 кость.');
-    expect(message).toContain('Свежевание: Новичок свежевания · первые успехи крепнут');
+    expect(message).toContain('Свежевание: Ученик свежевания · движение стало вернее');
     expect(message).not.toContain('Свежевание: 3 → 4');
     expect(message).toContain('👉 Дальше: «⚔️ Исследовать».');
   });

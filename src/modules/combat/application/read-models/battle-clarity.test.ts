@@ -91,7 +91,7 @@ describe('buildBattleClarityView', () => {
       },
     }));
 
-    expect(clarity.stateLine).toContain('guard 3');
+    expect(clarity.stateLine).toContain('щит 3');
     expect(clarity.stateLine).toContain('враг готовит тяжёлый удар');
     expect(clarity.choiceLine).toContain('тяжёлый удар лучше встретить защитой');
   });
@@ -129,7 +129,7 @@ describe('buildBattleClarityView', () => {
     }));
 
     expect(clarity.schoolHintLine).toContain('окно давления');
-    expect(clarity.schoolHintLine).toContain('guard-break');
+    expect(clarity.schoolHintLine).toContain('пробивающий удар');
   });
 
   it('builds a stone-specific hold hint against heavy strike', () => {

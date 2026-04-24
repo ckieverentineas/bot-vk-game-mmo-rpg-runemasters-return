@@ -4,7 +4,7 @@ export const abilitySeed = [
   {
     code: 'ember_pulse',
     name: 'Импульс углей',
-    description: 'Базовый активный рунный навык архетипа огня.',
+    description: 'Удар угольной вспышкой: быстро давит врага и помогает дожать раненую цель.',
     kind: 'ACTIVE',
     target: 'ENEMY',
     runeArchetypeCode: 'ember',
@@ -15,7 +15,7 @@ export const abilitySeed = [
   {
     code: 'ember_heart',
     name: 'Сердце углей',
-    description: 'Пассивно усиливает атакующее давление владельца руны.',
+    description: 'Уголь в груди держит жар атаки и подталкивает каждый удар вперёд.',
     kind: 'PASSIVE',
     target: 'SELF',
     runeArchetypeCode: 'ember',
@@ -26,7 +26,7 @@ export const abilitySeed = [
   {
     code: 'stone_guard',
     name: 'Каменный дозор',
-    description: 'Пассивно усиливает выживаемость и защиту.',
+    description: 'Камень под кожей помогает пережить удар и крепче держать щит.',
     kind: 'PASSIVE',
     target: 'SELF',
     runeArchetypeCode: 'stone',
@@ -37,7 +37,7 @@ export const abilitySeed = [
   {
     code: 'stone_bastion',
     name: 'Каменный отпор',
-    description: 'Активный ответ школы Камня: даёт защиту и удерживает темп против опасных ходов врага.',
+    description: 'Каменный ответ поднимает щит и помогает встретить опасный ход без паники.',
     kind: 'ACTIVE',
     target: 'SELF',
     runeArchetypeCode: 'stone',
@@ -48,7 +48,7 @@ export const abilitySeed = [
   {
     code: 'gale_step',
     name: 'Шаг шквала',
-    description: 'Активный манёвр, который должен лечь в будущую систему темпа и инициативы.',
+    description: 'Рывок шквала бьёт врага и сразу оставляет защиту на следующий ответ.',
     kind: 'ACTIVE',
     target: 'SELF',
     runeArchetypeCode: 'gale',
@@ -59,7 +59,7 @@ export const abilitySeed = [
   {
     code: 'echo_mind',
     name: 'Эхо разума',
-    description: 'Пассивно усиливает интеллект и магическую глубину руны.',
+    description: 'Тихое эхо помогает читать угрозы и отвечать точнее.',
     kind: 'PASSIVE',
     target: 'SELF',
     runeArchetypeCode: 'echo',

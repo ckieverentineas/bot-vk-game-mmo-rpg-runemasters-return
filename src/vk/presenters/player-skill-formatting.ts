@@ -4,7 +4,7 @@ import {
 } from '../../modules/player/domain/player-skills';
 import type { PlayerSkillCode, PlayerSkillView } from '../../shared/types/game';
 
-const playerSkillRankLabels = ['Новичок', 'Практик'] as const;
+const playerSkillRankLabels = ['Ученик', 'Знаток'] as const;
 
 const playerSkillRankSubjects: Readonly<Record<PlayerSkillCode, string>> = {
   'gathering.skinning': 'свежевания',
@@ -45,23 +45,23 @@ export const formatPlayerSkillRank = (skillCode: PlayerSkillCode, rank: number):
 export const formatPlayerSkillProgressHint = (experience: number, rank: number): string => {
   const nextThreshold = resolveNextPlayerSkillThreshold(rank);
   if (nextThreshold === null) {
-    return 'ранг закреплён';
+    return 'ранг удержан';
   }
 
   if (experience <= 0) {
-    return 'практики пока нет';
+    return 'след ещё чист';
   }
 
   const progressRatio = experience / nextThreshold;
   if (progressRatio >= 0.75) {
-    return 'близко к следующему рангу';
+    return 'новый ранг близко';
   }
 
   if (progressRatio >= 0.35) {
-    return 'уверенная практика';
+    return 'приём держится';
   }
 
-  return 'первые успехи';
+  return 'рука привыкает';
 };
 
 export const formatPlayerSkillProgressLine = (skill: PlayerSkillView): string => [
@@ -70,36 +70,36 @@ export const formatPlayerSkillProgressLine = (skill: PlayerSkillView): string =>
 ].join(' · ');
 
 const formatPracticeGain = (progressHint: string): string => {
-  if (progressHint === 'практики пока нет') {
-    return 'практика только начинается';
+  if (progressHint === 'след ещё чист') {
+    return 'след отмечен';
   }
 
-  if (progressHint === 'первые успехи') {
-    return 'первые успехи крепнут';
+  if (progressHint === 'рука привыкает') {
+    return 'движение стало вернее';
   }
 
-  if (progressHint === 'уверенная практика') {
-    return 'практика стала увереннее';
+  if (progressHint === 'приём держится') {
+    return 'приём стал крепче';
   }
 
-  if (progressHint === 'близко к следующему рангу') {
-    return 'следующий ранг уже близко';
+  if (progressHint === 'новый ранг близко') {
+    return 'новый ранг уже близко';
   }
 
   return progressHint;
 };
 
 const formatProgressTransition = (progressHint: string): string => {
-  if (progressHint === 'первые успехи') {
-    return 'появились первые успехи';
+  if (progressHint === 'рука привыкает') {
+    return 'рука стала вернее';
   }
 
-  if (progressHint === 'уверенная практика') {
-    return 'практика стала уверенной';
+  if (progressHint === 'приём держится') {
+    return 'приём стал крепче';
   }
 
-  if (progressHint === 'близко к следующему рангу') {
-    return 'следующий ранг уже близко';
+  if (progressHint === 'новый ранг близко') {
+    return 'новый ранг уже близко';
   }
 
   return progressHint;

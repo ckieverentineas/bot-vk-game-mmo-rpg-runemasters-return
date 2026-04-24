@@ -23,7 +23,7 @@ const renderSchoolFirstLoopLine = (): string => (
 );
 
 const renderSchoolFirstRarityLine = (): string => (
-  'Редкость позже расширит сборку.'
+  'Редкость позже откроет новые рунные связки.'
 );
 
 const renderPlayerVitalsLine = (player: PlayerState): string => {

@@ -83,7 +83,7 @@ export const replyWithDeleteConfirmation = async (ctx: Context, player: PlayerSt
       '⚠️ Удаление персонажа',
       '',
       `Будет удалён герой уровня ${player.level}${runeSummary}.`,
-      'Это действие необратимо: прогресс и сборка будут удалены.',
+      'Это действие необратимо: прогресс и руны будут удалены.',
       '«🗑️ Да, удалить» — только если действительно хотите начать заново.',
     ].join('\n'),
     { keyboard: createDeleteConfirmationKeyboard(player) },
