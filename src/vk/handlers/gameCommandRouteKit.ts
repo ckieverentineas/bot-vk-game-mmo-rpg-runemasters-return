@@ -8,6 +8,7 @@ export type CommandIntentContext = {
   readonly intentId: string | null;
   readonly stateKey: string | null;
   readonly intentSource: ReturnType<typeof resolveCommandEnvelope>['intentSource'];
+  readonly commandArgument: string | null;
 };
 
 export type StaticCommandHandler = (

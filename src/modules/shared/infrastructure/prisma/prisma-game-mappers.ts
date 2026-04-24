@@ -187,6 +187,7 @@ export const mapPlayerRecord = (player: PlayerRecord): PlayerState => hydratePla
   userId: player.userId,
   vkId: player.user.vkId,
   playerId: player.id,
+  name: player.name,
   level: player.level,
   experience: player.experience,
   gold: player.gold,

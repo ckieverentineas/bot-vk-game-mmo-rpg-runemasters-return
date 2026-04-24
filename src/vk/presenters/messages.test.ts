@@ -171,6 +171,12 @@ describe('messages school-first onboarding framing', () => {
     });
   });
 
+  it('shows the chosen nickname on the welcome screen', () => {
+    const message = renderWelcome(createPlayer({ name: 'Лианна' }), true);
+
+    expect(message).toContain('👤 Лианна');
+  });
+
   it('explains the school-first tutorial flow in the location screen', () => {
     const message = renderLocation(createPlayer());
 
@@ -400,6 +406,12 @@ describe('messages school-first onboarding framing', () => {
     expect(message).toContain('Извлечение эссенции: Ученик извлечения эссенции · рука привыкает');
     expect(message).not.toContain('ранг 1 · 100 опыта');
     expect(message).not.toContain('ранг 0 · 1/100');
+  });
+
+  it('shows the chosen nickname in the profile', () => {
+    const message = renderProfile(createPlayer({ name: 'Лианна' }));
+
+    expect(message).toContain('👤 Лианна');
   });
 
   it('keeps detailed school mastery milestones in the mastery screen', () => {

@@ -1,6 +1,7 @@
 import type { PlayerState } from '../../../../shared/types/game';
 import type { GameTelemetry } from '../../../shared/application/ports/GameTelemetry';
 import type { GameRepository } from '../../../shared/application/ports/GameRepository';
+import { normalizeRequestedPlayerName } from '../../domain/player-name';
 
 type RegisterPlayerRepository = Pick<GameRepository, 'createPlayer' | 'log'>;
 
@@ -10,8 +11,12 @@ export class RegisterPlayer {
     private readonly telemetry: GameTelemetry,
   ) {}
 
-  public async execute(vkId: number): Promise<{ player: PlayerState; created: boolean }> {
-    const result = await this.repository.createPlayer(vkId);
+  public async execute(vkId: number, requestedName?: string): Promise<{ player: PlayerState; created: boolean }> {
+    const normalizedName = normalizeRequestedPlayerName(requestedName);
+    const result = await this.repository.createPlayer(
+      vkId,
+      normalizedName ? { name: normalizedName } : undefined,
+    );
     if (result.created) {
       await this.repository.log(result.player.userId, 'player_registered', { vkId });
       await this.telemetry.onboardingStarted(result.player.userId, {

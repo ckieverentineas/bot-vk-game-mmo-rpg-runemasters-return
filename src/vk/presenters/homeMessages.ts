@@ -96,6 +96,7 @@ export const renderWelcome = (player: PlayerState, created: boolean): string => 
 
   return [
     '🎮 Runemasters Return',
+    `👤 ${player.name}`,
     '',
     'Предел зовёт. В ладони тёплый осколок.',
     'Рядом дрожит Учебный огонёк.',

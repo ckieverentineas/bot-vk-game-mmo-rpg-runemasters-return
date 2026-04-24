@@ -730,6 +730,16 @@ describe('GameHandler smoke', () => {
     expect(replies[0]?.message).toContain('Маршрут: удар -> первая руна -> школа -> стиль боя.');
   });
 
+  it('передает ник из текстовой регистрации', async () => {
+    const services = createServices();
+    const handler = new GameHandler(services);
+    const ctx = createFakeContext({ text: 'Начать Лианна' });
+
+    await handler.handle(ctx as never);
+
+    expect(services.registerPlayer.execute).toHaveBeenCalledWith(1001, 'Лианна');
+  });
+
   it('показывает return recap для уже существующего игрока по команде start', async () => {
     const services = createServices();
     vi.mocked(services.registerPlayer.execute).mockResolvedValueOnce({

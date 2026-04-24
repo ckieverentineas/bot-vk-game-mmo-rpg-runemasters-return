@@ -5,7 +5,11 @@ import {
 } from '../gameCommandRouteKit';
 
 export const coreCommandRoutes = {
-  [gameCommands.start]: (handler, ctx, vkId) => handler.startGame(ctx, vkId),
+  [gameCommands.start]: (handler, ctx, vkId, context) => handler.startGame(
+    ctx,
+    vkId,
+    context.commandArgument ?? undefined,
+  ),
   [gameCommands.backToMenu]: (handler, ctx, vkId) => handler.showMainMenu(ctx, vkId),
   [gameCommands.profile]: (handler, ctx, vkId) => handler.showProfile(ctx, vkId),
   [gameCommands.mastery]: (handler, ctx, vkId) => handler.showSchoolMastery(ctx, vkId),

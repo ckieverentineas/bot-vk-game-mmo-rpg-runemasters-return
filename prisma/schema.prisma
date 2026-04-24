@@ -19,6 +19,7 @@ model User {
 model Player {
   id               Int                   @id @default(autoincrement())
   userId           Int                   @unique
+  name             String?
   level            Int                   @default(1)
   experience       Int                   @default(0)
   gold             Int                   @default(0)

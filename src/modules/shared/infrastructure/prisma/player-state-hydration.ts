@@ -16,6 +16,7 @@ import {
   emptyInventory,
   getRuneEquippedSlot,
 } from '../../../player/domain/player-stats';
+import { resolvePlayerDisplayName } from '../../../player/domain/player-name';
 import {
   createSchoolMasteryView,
   listMissingStarterSchoolMasteries,
@@ -29,6 +30,7 @@ export interface PersistedPlayerStateHydrationInput {
   readonly userId: number;
   readonly vkId: number;
   readonly playerId: number;
+  readonly name?: string | null;
   readonly level: number;
   readonly experience: number;
   readonly gold: number;
@@ -190,6 +192,7 @@ export const hydratePlayerStateFromPersistence = (
     userId: persisted.userId,
     vkId: persisted.vkId,
     playerId: persisted.playerId,
+    name: resolvePlayerDisplayName(persisted.name, persisted.vkId),
     level: persisted.level,
     experience: persisted.experience,
     gold: persisted.gold,

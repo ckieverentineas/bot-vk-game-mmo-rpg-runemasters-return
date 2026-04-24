@@ -37,6 +37,35 @@ describe('normalizeCommand', () => {
     expect(normalizeCommand('неизвестная-команда')).toBe('неизвестная-команда');
   });
 
+  it('выделяет ник из текстовой команды регистрации', () => {
+    const resolved = resolveCommandEnvelope({
+      text: 'Начать Лианна',
+      senderId: 1001,
+      peerId: 2000000001,
+      conversationMessageId: 77,
+      id: 501,
+      messagePayload: null,
+    } as never);
+
+    expect(resolved.command).toBe(gameCommands.start);
+    expect(resolved.commandArgument).toBe('Лианна');
+    expect(resolved.intentId).toBeNull();
+  });
+
+  it('не считает боевой алиас ником регистрации', () => {
+    const resolved = resolveCommandEnvelope({
+      text: 'начать бой',
+      senderId: 1001,
+      peerId: 2000000001,
+      conversationMessageId: 78,
+      id: 502,
+      messagePayload: null,
+    } as never);
+
+    expect(resolved.command).toBe(gameCommands.engageBattle);
+    expect(resolved.commandArgument).toBeNull();
+  });
+
   it('больше не считает старые stat-команды поддержанным transport-командным слоем', () => {
     expect(normalizeCommand('+АТК')).toBe('+атк');
 

@@ -4,6 +4,7 @@ import { randomBytes } from 'node:crypto';
 
 import { AppError } from '../../../../shared/domain/AppError';
 import type { PartyView } from '../../../../shared/types/game';
+import { resolvePlayerDisplayName } from '../../../player/domain/player-name';
 import {
   type PlayerRecord,
 } from './prisma-game-mappers';
@@ -51,8 +52,6 @@ const normalizePartyRole = (role: string): PartyView['members'][number]['role'] 
   role === 'LEADER' ? 'LEADER' : 'MEMBER'
 );
 
-const formatPartyMemberName = (vkId: number): string => `Рунный мастер #${vkId}`;
-
 export const mapPartyRecord = (party: PartyRecord): PartyView => ({
   id: party.id,
   inviteCode: party.inviteCode,
@@ -63,7 +62,7 @@ export const mapPartyRecord = (party: PartyRecord): PartyView => ({
   members: party.members.map((member) => ({
     playerId: member.playerId,
     vkId: member.player.user.vkId,
-    name: formatPartyMemberName(member.player.user.vkId),
+    name: resolvePlayerDisplayName(member.player.name, member.player.user.vkId),
     role: normalizePartyRole(member.role),
     joinedAt: member.joinedAt.toISOString(),
   })),

@@ -14,6 +14,7 @@ import {
 
 export interface ResolvedCommandEnvelope {
   readonly command: string;
+  readonly commandArgument: string | null;
   readonly intentId: string | null;
   readonly stateKey: string | null;
   readonly intentSource: CommandIntentSource;
@@ -22,6 +23,23 @@ export interface ResolvedCommandEnvelope {
 export const normalizeCommand = (value: string): string => {
   const normalized = value.trim().toLowerCase();
   return commandAliases[normalized] ?? normalized;
+};
+
+const staticGameCommandValues = new Set<string>(Object.values(gameCommands));
+
+const resolveStartCommandArgument = (raw: string, normalizedCommand: string): string | null => {
+  if (staticGameCommandValues.has(normalizedCommand)) {
+    return null;
+  }
+
+  const trimmed = raw.trim();
+  const [head = ''] = trimmed.split(/\s+/u, 1);
+  if (normalizeCommand(head) !== gameCommands.start) {
+    return null;
+  }
+
+  const argument = trimmed.slice(head.length).trim();
+  return argument.length > 0 ? argument : null;
 };
 
 type LegacyTextIntentMatcher = (command: string) => boolean;
@@ -102,7 +120,9 @@ export const resolveCommandEnvelope = (ctx: Context): ResolvedCommandEnvelope =>
     ? payload.command as string
     : ctx.text ?? '';
 
-  const command = normalizeCommand(raw);
+  const normalizedCommand = normalizeCommand(raw);
+  const commandArgument = payloadOwnsCommand ? null : resolveStartCommandArgument(raw, normalizedCommand);
+  const command = commandArgument === null ? normalizedCommand : gameCommands.start;
   const payloadIntentId = hasPayloadIntentId ? payload.intentId as string : null;
   const payloadStateKey = hasPayloadStateKey ? payload.stateKey as string : null;
   const legacyTextIntentId = !payloadOwnsCommand && supportsLegacyTextIntent(command)
@@ -112,6 +132,7 @@ export const resolveCommandEnvelope = (ctx: Context): ResolvedCommandEnvelope =>
 
   return {
     command,
+    commandArgument,
     intentId: payloadIntentId ?? legacyTextIntentId,
     stateKey: payloadStateKey,
     intentSource: payloadOwnsCommand ? 'payload' : legacyTextIntentRequired ? 'legacy_text' : null,

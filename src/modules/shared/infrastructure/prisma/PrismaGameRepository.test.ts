@@ -115,6 +115,7 @@ const materializePlayerRecordFixture = (fileName: string) => {
 const createPlayerRecord = () => ({
   id: 1,
   userId: 10,
+  name: null,
   level: 3,
   experience: 12,
   gold: 7,
@@ -2402,6 +2403,31 @@ describe('PrismaGameRepository release hardening', () => {
     }));
   });
 
+  it('stores a requested nickname when creating a player', async () => {
+    const { repository, tx } = createPrismaMock();
+
+    tx.player.findFirst.mockResolvedValue(null);
+    tx.user.create.mockResolvedValue({
+      player: {
+        ...createPlayerRecord(),
+        name: 'Лианна',
+      },
+    });
+
+    const result = await repository.createPlayer(1001, { name: 'Лианна' });
+
+    expect(result.player.name).toBe('Лианна');
+    expect(tx.user.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
+        player: expect.objectContaining({
+          create: expect.objectContaining({
+            name: 'Лианна',
+          }),
+        }),
+      }),
+    }));
+  });
+
   it('replays a confirmed delete intent without requiring the deleted player row', async () => {
     const { repository, tx } = createPrismaMock();
 
@@ -2995,6 +3021,44 @@ describe('PrismaGameRepository release hardening', () => {
         playerId: 2,
       },
     });
+  });
+
+  it('uses saved player names in active party views', async () => {
+    const { repository, tx } = createPrismaMock();
+
+    tx.playerParty.findFirst.mockResolvedValue(createPartyRecord({
+      members: [
+        {
+          partyId: 'party-1',
+          playerId: 1,
+          role: 'LEADER',
+          joinedAt: new Date('2026-04-12T00:00:00.000Z'),
+          player: {
+            name: 'Лианна',
+            user: {
+              vkId: 1001,
+            },
+          },
+        },
+        {
+          partyId: 'party-1',
+          playerId: 2,
+          role: 'MEMBER',
+          joinedAt: new Date('2026-04-12T00:01:00.000Z'),
+          player: {
+            name: null,
+            user: {
+              vkId: 1002,
+            },
+          },
+        },
+      ],
+    }));
+
+    const party = await repository.getActiveParty(1);
+
+    expect(party?.members[0]?.name).toBe('Лианна');
+    expect(party?.members[1]?.name).toBe('Рунный мастер #1002');
   });
 
   it('lets the leader disband an active party outside battle', async () => {

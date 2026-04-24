@@ -278,6 +278,8 @@ const trophyActionCodeCommandMap = {
 } satisfies Readonly<Record<TrophyActionCode, TrophyActionCommand>>;
 
 export const commandAliases: Readonly<Record<string, GameCommand>> = {
+  '/start': gameCommands.start,
+  'start': gameCommands.start,
   'меню': gameCommands.backToMenu,
   'удалить перса': gameCommands.deletePlayer,
   'обучение': gameCommands.location,

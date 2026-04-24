@@ -76,6 +76,7 @@ export const createTestPlayer = (overrides: Partial<PlayerState> = {}): PlayerSt
   userId: 1,
   vkId: 1001,
   playerId: 1,
+  name: 'Рунный мастер #1001',
   level: 1,
   experience: 0,
   gold: 0,

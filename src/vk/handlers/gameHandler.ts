@@ -123,6 +123,7 @@ export class GameHandler {
       intentId,
       stateKey,
       intentSource,
+      commandArgument: commandEnvelope.commandArgument,
     };
 
     try {
@@ -332,8 +333,10 @@ export class GameHandler {
     await sendQuestClaimResult(ctx, result);
   }
 
-  public async startGame(ctx: Context, vkId: number): Promise<void> {
-    const result = await this.services.registerPlayer.execute(vkId);
+  public async startGame(ctx: Context, vkId: number, requestedName?: string): Promise<void> {
+    const result = requestedName
+      ? await this.services.registerPlayer.execute(vkId, requestedName)
+      : await this.services.registerPlayer.execute(vkId);
     if (!result.created && await sendPendingRewardIfAny(ctx, this.services, result.player)) {
       return;
     }

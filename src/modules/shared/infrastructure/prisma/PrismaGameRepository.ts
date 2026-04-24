@@ -1480,8 +1480,11 @@ export class PrismaGameRepository implements GameRepository {
     });
   }
 
-  public async createPlayer(vkId: number): Promise<{ player: PlayerState; created: boolean; recoveredFromRace: boolean }> {
-    return this.playerPersistence.createPlayer(vkId);
+  public async createPlayer(
+    vkId: number,
+    options?: Parameters<GameRepository['createPlayer']>[1],
+  ): Promise<{ player: PlayerState; created: boolean; recoveredFromRace: boolean }> {
+    return this.playerPersistence.createPlayer(vkId, options);
   }
 
   public async getCommandIntentResult<TResult = PlayerState>(

@@ -7,7 +7,8 @@ import type { PlayerState } from '../../../../shared/types/game';
 import {
   DEFAULT_UNLOCKED_RUNE_SLOT_COUNT,
 } from '../../../player/domain/player-stats';
-import type { CreatePlayerResult } from '../../application/ports/GameRepository';
+import { resolvePlayerDisplayName } from '../../../player/domain/player-name';
+import type { CreatePlayerOptions, CreatePlayerResult } from '../../application/ports/GameRepository';
 import {
   mapPlayerRecord,
   playerInclude,
@@ -42,7 +43,7 @@ export class PrismaPlayerPersistence {
     return player ? mapPlayerRecord(player) : null;
   }
 
-  public async createPlayer(vkId: number): Promise<CreatePlayerResult> {
+  public async createPlayer(vkId: number, options: CreatePlayerOptions = {}): Promise<CreatePlayerResult> {
     const existing = await this.findPlayerByVkId(vkId);
     if (existing) {
       return {
@@ -53,12 +54,14 @@ export class PrismaPlayerPersistence {
     }
 
     let created;
+    const playerName = resolvePlayerDisplayName(options.name, vkId);
     try {
       created = await this.prisma.user.create({
         data: {
           vkId,
           player: {
             create: {
+              name: playerName,
               level: env.game.startingLevel,
               experience: 0,
               gold: 0,

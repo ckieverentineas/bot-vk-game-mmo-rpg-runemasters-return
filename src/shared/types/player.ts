@@ -50,6 +50,7 @@ export interface PlayerState {
   userId: number;
   vkId: number;
   playerId: number;
+  name: string;
   level: number;
   experience: number;
   gold: number;

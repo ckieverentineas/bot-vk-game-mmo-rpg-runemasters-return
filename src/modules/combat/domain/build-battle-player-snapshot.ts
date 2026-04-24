@@ -4,6 +4,7 @@ import { getSchoolNovicePathDefinition, hasRuneOfSchoolAtLeastRarity } from '../
 import { getPlayerSchoolMasteryForArchetype } from '../../player/domain/school-mastery';
 import { getSchoolDefinitionForArchetype } from '../../runes/domain/rune-schools';
 import { addStats, derivePlayerVitals, getEquippedRune } from '../../player/domain/player-stats';
+import { resolvePlayerDisplayName } from '../../player/domain/player-name';
 import {
   canEquipWorkshopItem,
   resolveWorkshopEquipmentStatBonus,
@@ -57,7 +58,7 @@ export const buildBattlePlayerSnapshot = (
   playerId: number,
   vkId: number,
   stats: StatBlock,
-  player: Pick<PlayerState, 'runes' | 'schoolMasteries' | 'currentHealth' | 'currentMana'>,
+  player: Pick<PlayerState, 'name' | 'runes' | 'schoolMasteries' | 'currentHealth' | 'currentMana'>,
   workshopItems: readonly WorkshopEquippedItemView[] = [],
   options: BuildBattlePlayerSnapshotOptions = {},
 ): BattlePlayerSnapshot => {
@@ -87,7 +88,7 @@ export const buildBattlePlayerSnapshot = (
 
   return {
     playerId,
-    name: `Рунный мастер #${vkId}`,
+    name: resolvePlayerDisplayName(player.name, vkId),
     attack: battleStats.attack,
     defence: battleStats.defence,
     magicDefence: battleStats.magicDefence,

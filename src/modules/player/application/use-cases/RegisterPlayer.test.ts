@@ -27,6 +27,22 @@ describe('RegisterPlayer', () => {
     });
   });
 
+  it('passes a requested nickname to player creation', async () => {
+    const player = createTestPlayer({ name: 'Лианна' });
+    const telemetry = {
+      onboardingStarted: vi.fn().mockResolvedValue(undefined),
+    } as unknown as GameTelemetry;
+    const repository = {
+      createPlayer: vi.fn().mockResolvedValue({ player, created: true, recoveredFromRace: false }),
+      log: vi.fn().mockResolvedValue(undefined),
+    } as unknown as GameRepository;
+    const useCase = new RegisterPlayer(repository, telemetry);
+
+    await (useCase.execute as (vkId: number, requestedName: string) => Promise<unknown>)(player.vkId, '  Лианна  ');
+
+    expect(repository.createPlayer).toHaveBeenCalledWith(player.vkId, { name: 'Лианна' });
+  });
+
   it('returns created false without duplicate log when creation lost a race', async () => {
     const player = createTestPlayer();
     const telemetry = {

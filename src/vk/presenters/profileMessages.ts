@@ -42,6 +42,7 @@ export const renderProfile = (player: PlayerState): string => {
 
   return [
     '👤 Профиль',
+    `👤 ${player.name}`,
     '',
     `⭐ Ур. ${player.level} · 📊 ${formatProgressCounter(player.experience, nextLevelXp)}`,
     formatCurrencyBalance(player),

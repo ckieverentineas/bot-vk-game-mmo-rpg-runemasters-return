@@ -17,6 +17,7 @@ const createPlayer = (overrides: Partial<PlayerState> = {}): PlayerState => ({
   userId: 1,
   vkId: 1001,
   playerId: 1,
+  name: 'Рунный мастер #1001',
   level: 1,
   experience: 0,
   gold: 0,
@@ -84,6 +85,14 @@ describe('buildBattlePlayerSnapshot', () => {
 
     expect(snapshot.currentHealth).toBe(snapshot.maxHealth);
     expect(snapshot.currentMana).toBe(snapshot.maxMana);
+  });
+
+  it('uses the persisted player nickname in battle snapshots', () => {
+    const snapshot = buildBattlePlayerSnapshot(1, 1001, createStats(), createPlayer({
+      name: 'Лианна',
+    }));
+
+    expect(snapshot.name).toBe('Лианна');
   });
 
   it('adds equipped workshop item bonuses and records their battle loadout', () => {
