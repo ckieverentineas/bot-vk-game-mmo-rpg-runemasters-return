@@ -1,5 +1,9 @@
 import type { BattleView, RuneDraft, RuneRarity } from '../../../shared/types/game';
 import type { GameRandom } from '../../../shared/domain/GameRandom';
+import {
+  resolveEnemyThreatBountyReward,
+  type EnemyThreatBountyReward,
+} from '../../world/domain/enemy-threat-growth';
 import { RuneFactory } from '../../runes/domain/rune-factory';
 import { appendBattleLog, cloneBattle } from './battle-utils';
 
@@ -19,6 +23,36 @@ const formatShardRewards = (rewards: Partial<Record<RuneRarity, number>>): strin
 
   return parts.length > 0 ? parts.join(', ') : 'без осколков';
 };
+
+const hasBountyReward = (reward: EnemyThreatBountyReward): boolean => (
+  reward.experience > 0
+  || reward.gold > 0
+  || Object.values(reward.shards).some((amount) => amount !== undefined && amount > 0)
+);
+
+const mergeShardRewards = (
+  base: Partial<Record<RuneRarity, number>>,
+  bonus: Partial<Record<RuneRarity, number>>,
+): Partial<Record<RuneRarity, number>> => {
+  const result: Partial<Record<RuneRarity, number>> = { ...base };
+
+  for (const [rarity, amount] of Object.entries(bonus)) {
+    if (amount === undefined || amount <= 0) {
+      continue;
+    }
+
+    const key = rarity as RuneRarity;
+    result[key] = (result[key] ?? 0) + amount;
+  }
+
+  return result;
+};
+
+const formatBountyReward = (reward: EnemyThreatBountyReward): string => [
+  reward.experience > 0 ? `+${reward.experience} опыта` : null,
+  reward.gold > 0 ? `+${reward.gold} пыли` : null,
+  formatShardRewards(reward.shards) !== 'без осколков' ? formatShardRewards(reward.shards) : null,
+].filter((part): part is string => part !== null).join(', ');
 
 export interface VictoryRewardOptions {
   readonly forcedRune?: RuneDraft | null;
@@ -69,17 +103,34 @@ export class RewardEngine {
       shardRewards.RARE = 1 + Math.floor(nextBattle.locationLevel / 40);
     }
 
+    const bountyReward = nextBattle.enemy.threat
+      ? resolveEnemyThreatBountyReward({
+          enemyName: nextBattle.enemy.threat.baseEnemyName,
+          survivalCount: nextBattle.enemy.threat.survivalCount,
+          experience: nextBattle.enemy.threat.experience,
+          levelBonus: nextBattle.enemy.threat.levelBonus,
+        })
+      : null;
+    const finalShardRewards = bountyReward
+      ? mergeShardRewards(shardRewards, bountyReward.shards)
+      : shardRewards;
+
     const droppedRune = resolveDroppedRune(nextBattle, options, random);
 
     nextBattle.rewards = {
       ...nextBattle.rewards,
-      shards: shardRewards,
+      experience: nextBattle.rewards.experience + (bountyReward?.experience ?? 0),
+      gold: nextBattle.rewards.gold + (bountyReward?.gold ?? 0),
+      shards: finalShardRewards,
       droppedRune,
     };
 
     nextBattle.log = appendBattleLog(
       nextBattle.log,
-      `🏆 Победа! Награда: ${nextBattle.rewards.experience} опыта, ${nextBattle.rewards.gold} пыли, ${formatShardRewards(shardRewards)}.`,
+      `🏆 Победа! Награда: ${nextBattle.rewards.experience} опыта, ${nextBattle.rewards.gold} пыли, ${formatShardRewards(finalShardRewards)}.`,
+      ...(bountyReward && hasBountyReward(bountyReward)
+        ? [`🏠 Дозорная премия: ${formatBountyReward(bountyReward)}.`]
+        : []),
       ...(droppedRune ? [`🔮 Найдена руна: ${droppedRune.name}.`] : []),
     );
 

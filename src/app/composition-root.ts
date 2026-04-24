@@ -21,6 +21,7 @@ import { JoinParty } from '../modules/party/application/use-cases/JoinParty';
 import { LeaveParty } from '../modules/party/application/use-cases/LeaveParty';
 import { ClaimQuestReward } from '../modules/quests/application/use-cases/ClaimQuestReward';
 import { GetQuestBook } from '../modules/quests/application/use-cases/GetQuestBook';
+import { GetRunicTavern } from '../modules/quests/application/use-cases/GetRunicTavern';
 import { CollectPendingReward } from '../modules/rewards/application/use-cases/CollectPendingReward';
 import { GetPendingReward } from '../modules/rewards/application/use-cases/GetPendingReward';
 import { RecoverPendingRewardsOnStart } from '../modules/rewards/application/use-cases/RecoverPendingRewardsOnStart';
@@ -59,6 +60,7 @@ export interface AppServices {
   disbandParty: DisbandParty;
   exploreParty: ExploreParty;
   getQuestBook: GetQuestBook;
+  getRunicTavern: GetRunicTavern;
   getBestiary: GetBestiary;
   claimDailyTrace: ClaimDailyTrace;
   claimQuestReward: ClaimQuestReward;
@@ -108,6 +110,7 @@ export const createAppServices = (): AppServices => {
     disbandParty: new DisbandParty(repository),
     exploreParty: new ExploreParty(repository, worldCatalog, random),
     getQuestBook: new GetQuestBook(repository, telemetry),
+    getRunicTavern: new GetRunicTavern(repository, worldCatalog),
     getBestiary: new GetBestiary(repository, worldCatalog),
     claimDailyTrace: new ClaimDailyTrace(repository, telemetry),
     claimQuestReward: new ClaimQuestReward(repository, telemetry),

@@ -44,3 +44,5 @@ export {
   renderQuestBook,
   renderQuestClaimResult,
 } from './questMessages';
+
+export { renderRunicTavern } from './runicTavernMessages';

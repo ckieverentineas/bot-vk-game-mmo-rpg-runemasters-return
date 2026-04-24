@@ -1,6 +1,7 @@
 import type {
   BattleEnemyThreatRank,
   BattleEnemyThreatSnapshot,
+  RuneRarity,
 } from '../../../shared/types/game';
 
 export interface EnemyThreatGrowthInput {
@@ -10,6 +11,12 @@ export interface EnemyThreatGrowthInput {
   readonly levelBonus: number;
 }
 
+export interface EnemyThreatBountyReward {
+  readonly experience: number;
+  readonly gold: number;
+  readonly shards: Partial<Record<RuneRarity, number>>;
+}
+
 const namedThreatSurvivalCount = 3;
 const namedThreatLevelBonus = 3;
 const namedThreatExperience = 24;
@@ -17,6 +24,32 @@ const namedThreatExperience = 24;
 const calamityThreatSurvivalCount = 6;
 const calamityThreatLevelBonus = 6;
 const calamityThreatExperience = 60;
+
+const emptyBountyReward: EnemyThreatBountyReward = {
+  experience: 0,
+  gold: 0,
+  shards: {},
+};
+
+const rankBountyBase: Readonly<Record<Exclude<BattleEnemyThreatRank, 'SURVIVOR'>, EnemyThreatBountyReward>> = {
+  NAMED: {
+    experience: 4,
+    gold: 8,
+    shards: {
+      USUAL: 1,
+      UNUSUAL: 1,
+    },
+  },
+  CALAMITY: {
+    experience: 12,
+    gold: 25,
+    shards: {
+      USUAL: 3,
+      UNUSUAL: 2,
+      RARE: 1,
+    },
+  },
+};
 
 export const resolveEnemyThreatRank = (threat: EnemyThreatGrowthInput): BattleEnemyThreatRank => {
   if (
@@ -59,6 +92,26 @@ export const buildEnemyThreatSnapshot = (threat: EnemyThreatGrowthInput): Battle
   experience: threat.experience,
   levelBonus: threat.levelBonus,
 });
+
+export const resolveEnemyThreatBountyReward = (threat: EnemyThreatGrowthInput): EnemyThreatBountyReward => {
+  const rank = resolveEnemyThreatRank(threat);
+  if (rank === 'SURVIVOR') {
+    return emptyBountyReward;
+  }
+
+  const base = rankBountyBase[rank];
+  return {
+    experience: base.experience
+      + threat.levelBonus
+      + threat.survivalCount
+      + Math.floor(threat.experience / 12),
+    gold: base.gold
+      + threat.survivalCount * 3
+      + threat.levelBonus * 4
+      + Math.floor(threat.experience / 6),
+    shards: { ...base.shards },
+  };
+};
 
 export const resolveEnemyThreatEncounterLine = (threat: EnemyThreatGrowthInput): string => {
   const displayName = resolveEnemyThreatDisplayName(threat);

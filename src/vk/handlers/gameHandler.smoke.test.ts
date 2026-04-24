@@ -317,6 +317,34 @@ const createServices = (): AppServices => {
     inProgressCount: 0,
     claimedCount: 0,
   };
+  const runicTavernBoard = {
+    player: basePlayer,
+    namedCount: 1,
+    calamityCount: 0,
+    threats: [
+      {
+        enemyCode: 'blue-slime',
+        displayName: 'Упрямый Синий слизень',
+        baseEnemyName: 'Синий слизень',
+        rank: 'NAMED',
+        rankLabel: 'именная угроза',
+        currentBiomeCode: 'dark-forest',
+        currentBiomeName: 'Тёмный лес',
+        originBiomeName: 'Тёмный лес',
+        survivalCount: 3,
+        experience: 24,
+        levelBonus: 3,
+        lastSeenLocationLevel: 6,
+        dangerScore: 79,
+        recommendedParty: false,
+        bountyReward: {
+          experience: 12,
+          gold: 33,
+          shards: { USUAL: 1, UNUSUAL: 1 },
+        },
+      },
+    ],
+  };
   const bestiary = {
     pageNumber: 1,
     totalPages: 1,
@@ -513,6 +541,9 @@ const createServices = (): AppServices => {
     getQuestBook: {
       execute: vi.fn().mockResolvedValue(questBook),
     } as unknown as AppServices['getQuestBook'],
+    getRunicTavern: {
+      execute: vi.fn().mockResolvedValue(runicTavernBoard),
+    } as unknown as AppServices['getRunicTavern'],
     getBestiary: {
       execute: vi.fn().mockResolvedValue(bestiary),
       executeLocation: vi.fn().mockResolvedValue(bestiaryLocation),
@@ -812,6 +843,20 @@ describe('GameHandler smoke', () => {
     expect(message).toContain('📜 Книга путей');
     expect(message).toContain('📌 🎁 1');
     expect(message).toContain('Пробуждение Пустого мастера');
+  });
+
+  it('открывает трактир Рунного дозора отдельной кнопкой', async () => {
+    const services = createServices();
+    const handler = new GameHandler(services);
+    const ctx = createFakeContext({ command: 'трактир' });
+
+    await handler.handle(ctx as never);
+
+    const message = getReplyCalls(ctx)[0]?.message ?? '';
+    expect(services.getRunicTavern.execute).toHaveBeenCalledWith(1001);
+    expect(message).toContain('🏠 Трактир Рунного дозора');
+    expect(message).toContain('Упрямый Синий слизень');
+    expect(message).toContain('Премия Дозора');
   });
 
   it('открывает бестиарий отдельной кнопкой', async () => {

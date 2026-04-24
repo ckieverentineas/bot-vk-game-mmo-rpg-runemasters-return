@@ -125,4 +125,39 @@ describe('RewardEngine', () => {
     expect(rewarded.droppedRune).not.toBeNull();
     expect(rewarded.battle.rewards?.droppedRune).toEqual(rewarded.droppedRune);
   });
+
+  it('adds the runic tavern bounty when a named threat is defeated', () => {
+    const rewarded = RewardEngine.applyVictoryRewards(createBattle({
+      locationLevel: 6,
+      enemy: {
+        ...createBattle().enemy,
+        name: 'Упрямый Синий слизень',
+        threat: {
+          rank: 'NAMED',
+          baseEnemyName: 'Синий слизень',
+          survivalCount: 3,
+          experience: 24,
+          levelBonus: 3,
+        },
+      },
+      rewards: {
+        experience: 10,
+        gold: 4,
+        shards: {},
+        droppedRune: null,
+      },
+    }));
+
+    expect(rewarded.battle.rewards).toMatchObject({
+      experience: 22,
+      gold: 37,
+      shards: {
+        USUAL: 3,
+        UNUSUAL: 1,
+      },
+    });
+    expect(rewarded.battle.log).toContain(
+      '🏠 Дозорная премия: +12 опыта, +33 пыли, обычных осколков: 1, необычных осколков: 1.',
+    );
+  });
 });

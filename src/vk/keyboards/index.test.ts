@@ -594,7 +594,9 @@ describe('profile keyboard', () => {
     const payloads = collectPayloads(createMainMenuKeyboard(player));
 
     expect(labels).toContain('✨ След дня');
+    expect(labels).toContain('🏠 Трактир');
     expect(payloads).toContainEqual({ command: gameCommands.dailyTrace });
+    expect(payloads).toContainEqual({ command: gameCommands.runicTavern });
   });
 
   it('opens school mastery from the main navigation', () => {

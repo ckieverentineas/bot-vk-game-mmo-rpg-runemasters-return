@@ -51,6 +51,7 @@ import {
   replyWithQuestBook as sendQuestBook,
   replyWithQuestClaimResult as sendQuestClaimResult,
 } from './responders/questReplyFlow';
+import { replyWithRunicTavern as sendRunicTavern } from './responders/runicTavernReplyFlow';
 import {
   replyWithDeleteConfirmation as sendDeleteConfirmation,
   replyWithDeletedPlayer as sendDeletedPlayer,
@@ -317,6 +318,11 @@ export class GameHandler {
   public async openQuestBook(ctx: Context, vkId: number, pageNumber = 1): Promise<void> {
     const book = await this.services.getQuestBook.execute(vkId);
     await sendQuestBook(ctx, book, pageNumber);
+  }
+
+  public async openRunicTavern(ctx: Context, vkId: number): Promise<void> {
+    const board = await this.services.getRunicTavern.execute(vkId);
+    await sendRunicTavern(ctx, board);
   }
 
   public async openBestiary(ctx: Context, vkId: number, pageNumber = 1): Promise<void> {

@@ -17,6 +17,7 @@ export {
 export { createPendingRewardKeyboard } from './rewards';
 export { createKeyboardClear } from './clear';
 export { createQuestBookKeyboard } from './quests';
+export { createRunicTavernKeyboard } from './runicTavern';
 export {
   createAltarKeyboard,
   createRuneDetailKeyboard,

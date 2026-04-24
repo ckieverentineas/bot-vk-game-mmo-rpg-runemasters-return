@@ -331,6 +331,21 @@ describe('normalizeCommand', () => {
     expect(resolved.intentSource).toBe('legacy_text');
   });
 
+  it('нормализует трактирные алиасы в доску Рунного дозора', () => {
+    const tavern = resolveCommandEnvelope({
+      text: 'доска угроз',
+      senderId: 1001,
+      peerId: 2000000001,
+      conversationMessageId: 94,
+      id: 518,
+      messagePayload: null,
+    } as never);
+
+    expect(tavern.command).toBe(gameCommands.runicTavern);
+    expect(tavern.intentId).toBeNull();
+    expect(tavern.intentSource).toBeNull();
+  });
+
   it('выводит server-owned intent для legacy text боевых команд', () => {
     const attack = resolveCommandEnvelope({
       text: 'атака',
