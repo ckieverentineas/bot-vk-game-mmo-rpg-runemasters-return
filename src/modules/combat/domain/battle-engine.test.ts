@@ -1,6 +1,7 @@
 import { describe, expect, it, vi, afterEach } from 'vitest';
 
 import type { BattleView } from '../../../shared/types/game';
+import { getAlchemyConsumable } from '../../consumables/domain/alchemy-consumables';
 import { BattleEngine } from './battle-engine';
 
 const createBattle = (overrides: Partial<BattleView> = {}): BattleView => ({
@@ -242,6 +243,21 @@ describe('BattleEngine', () => {
     expect(resolved.player.runeLoadout?.activeAbility?.currentCooldown).toBe(2);
     expect(resolved.turnOwner).toBe('ENEMY');
     expect(resolved.log.some((entry) => entry.includes('Импульс углей'))).toBe(true);
+  });
+
+  it('позволяет применить пилюлю восстановления без передачи хода', () => {
+    const battle = createBattle({
+      player: {
+        ...createBattle().player,
+        currentHealth: 2,
+      },
+    });
+
+    const resolved = BattleEngine.useConsumable(battle, getAlchemyConsumable('healing_pill'));
+
+    expect(resolved.player.currentHealth).toBe(8);
+    expect(resolved.turnOwner).toBe('PLAYER');
+    expect(resolved.log.some((entry) => entry.includes('Пилюля восстановления'))).toBe(true);
   });
 
   it('позволяет применить активное действие второй руны', () => {

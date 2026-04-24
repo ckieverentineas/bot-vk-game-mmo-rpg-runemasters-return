@@ -15,6 +15,7 @@ const playerSkillRankSubjects: Readonly<Record<PlayerSkillCode, string>> = {
   'defence.endurance': 'выносливости',
   'rune.active_use': 'активных рун',
   'rune.preparation': 'подготовки рун',
+  'crafting.alchemy': 'алхимии',
 };
 
 export interface PlayerSkillGainView {

@@ -161,6 +161,10 @@ const createPlayerRecord = () => ({
     essence: 0,
     metal: 0,
     crystal: 0,
+    healingPills: 0,
+    focusPills: 0,
+    guardPills: 0,
+    clarityPills: 0,
     updatedAt: new Date('2026-04-12T00:00:00.000Z'),
   },
   schoolMasteries: [],
@@ -1262,35 +1266,51 @@ describe('PrismaGameRepository release hardening', () => {
     }));
   });
 
-  it('spends pill materials and applies the stat delta atomically', async () => {
+  it('spends pill materials and stores the crafted consumable atomically', async () => {
     const { repository, tx } = createPrismaMock();
 
     tx.playerInventory.updateMany.mockResolvedValue({ count: 1 });
+    tx.playerInventory.update.mockResolvedValue({});
+    tx.playerSkill.findMany.mockResolvedValue([]);
+    tx.playerSkill.upsert.mockResolvedValue({});
     tx.player.update.mockResolvedValue({});
     tx.player.findUnique.mockResolvedValue({
       ...createPlayerRecord(),
-      baseHealth: 9,
+      inventory: {
+        ...createPlayerRecord().inventory,
+        healingPills: 1,
+      },
+      skills: [
+        {
+          playerId: 1,
+          skillCode: 'crafting.alchemy',
+          experience: 8,
+          rank: 0,
+          updatedAt: new Date('2026-04-12T00:00:00.000Z'),
+        },
+      ],
     });
 
-    await expect(repository.craftPlayerItem(
+    await expect(repository.craftPlayerConsumable(
       1,
       { leather: -2, bone: -1 },
-      {
-        health: 1,
-        attack: 0,
-        defence: 0,
-        magicDefence: 0,
-        dexterity: 0,
-        intelligence: 0,
-      },
+      { healingPills: 1 },
+      [{ skillCode: 'crafting.alchemy', points: 8 }],
       'intent-pill-1',
       'state-pill-1',
       'state-pill-1',
     )).resolves.toMatchObject({
       playerId: 1,
-      baseStats: expect.objectContaining({
-        health: 9,
+      inventory: expect.objectContaining({
+        healingPills: 1,
       }),
+      skills: [
+        {
+          skillCode: 'crafting.alchemy',
+          experience: 8,
+          rank: 0,
+        },
+      ],
     });
 
     expect(tx.playerInventory.updateMany).toHaveBeenCalledWith({
@@ -1304,10 +1324,33 @@ describe('PrismaGameRepository release hardening', () => {
         bone: { increment: -1 },
       },
     });
+    expect(tx.playerInventory.update).toHaveBeenCalledWith({
+      where: { playerId: 1 },
+      data: {
+        healingPills: { increment: 1 },
+      },
+    });
+    expect(tx.playerSkill.upsert).toHaveBeenCalledWith({
+      where: {
+        playerId_skillCode: {
+          playerId: 1,
+          skillCode: 'crafting.alchemy',
+        },
+      },
+      update: {
+        experience: 8,
+        rank: 0,
+      },
+      create: {
+        playerId: 1,
+        skillCode: 'crafting.alchemy',
+        experience: 8,
+        rank: 0,
+      },
+    });
     expect(tx.player.update).toHaveBeenCalledWith({
       where: { id: 1 },
       data: {
-        baseHealth: { increment: 1 },
         updatedAt: expect.any(Date),
       },
     });
@@ -1478,6 +1521,56 @@ describe('PrismaGameRepository release hardening', () => {
         rank: 0,
       },
     });
+  });
+
+  it('spends battle consumables only after the battle revision guard wins', async () => {
+    const { repository, tx } = createPrismaMock();
+    const persistedBattle = createBattleRow({
+      actionRevision: 1,
+      battleSnapshot: JSON.stringify(readFixture('battle-snapshot-v1.json')),
+    });
+
+    tx.battleSession.updateMany.mockResolvedValue({ count: 1 });
+    tx.battleSession.findFirst.mockResolvedValue(persistedBattle);
+    tx.playerInventory.updateMany.mockResolvedValue({ count: 1 });
+    tx.player.findUnique.mockResolvedValue(createPlayerRecord());
+
+    await repository.saveBattleWithInventoryDelta(createBattleView({
+      status: 'ACTIVE',
+      result: null,
+      rewards: null,
+      actionRevision: 0,
+    }), { healingPills: -1 });
+
+    expect(tx.playerInventory.updateMany).toHaveBeenCalledWith({
+      where: {
+        playerId: 1,
+        healingPills: { gte: 1 },
+      },
+      data: {
+        healingPills: { increment: -1 },
+      },
+    });
+  });
+
+  it('does not spend battle consumables when the battle revision is stale', async () => {
+    const { repository, tx } = createPrismaMock();
+    const currentBattle = createBattleRow({
+      actionRevision: 1,
+      battleSnapshot: JSON.stringify(readFixture('battle-snapshot-v1.json')),
+    });
+
+    tx.battleSession.updateMany.mockResolvedValue({ count: 0 });
+    tx.battleSession.findFirst.mockResolvedValue(currentBattle);
+
+    await repository.saveBattleWithInventoryDelta(createBattleView({
+      status: 'ACTIVE',
+      result: null,
+      rewards: null,
+      actionRevision: 0,
+    }), { healingPills: -1 });
+
+    expect(tx.playerInventory.updateMany).not.toHaveBeenCalled();
   });
 
   it('persists battle skill gains when battle finalization wins the revision guard', async () => {

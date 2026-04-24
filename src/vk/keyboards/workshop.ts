@@ -1,10 +1,17 @@
 import { Keyboard } from 'vk-io';
 
-import { buildCraftingIntentStateKey } from '../../modules/crafting/application/command-intent-state';
+import {
+  buildCraftingIntentStateKey,
+  buildUseConsumableIntentStateKey,
+} from '../../modules/crafting/application/command-intent-state';
 import {
   canPayCraftingRecipe,
   listCraftingRecipes,
 } from '../../modules/crafting/domain/crafting-recipes';
+import {
+  getAlchemyConsumableCount,
+  listAlchemyConsumables,
+} from '../../modules/consumables/domain/alchemy-consumables';
 import {
   buildCraftWorkshopItemIntentStateKey,
   buildEquipWorkshopItemIntentStateKey,
@@ -24,6 +31,7 @@ import {
   createWorkshopUnequipCommand,
   gameCommands,
   resolveCraftingRecipeCodeCommand,
+  resolveUseConsumableCodeCommand,
 } from '../commands/catalog';
 import {
   resolveWorkshopBlueprintTitle,
@@ -158,11 +166,30 @@ const createPillCraftingRows = (view: WorkshopView): KeyboardLayout => {
   return chunkRows(buttons, rowSize);
 };
 
+const createUseConsumableRows = (view: WorkshopView): KeyboardLayout => {
+  const buttons = listAlchemyConsumables()
+    .map((consumable) => ({
+      consumable,
+      count: getAlchemyConsumableCount(view.player.inventory, consumable),
+    }))
+    .filter((entry) => entry.count > 0)
+    .map(({ consumable, count }) => ({
+      label: truncateLabel(`${consumable.buttonLabel} x${count}`, 40),
+      command: resolveUseConsumableCodeCommand(consumable.code),
+      color: Keyboard.PRIMARY_COLOR,
+      intentScoped: true,
+      stateKey: buildUseConsumableIntentStateKey(view.player, consumable.code),
+    }));
+
+  return chunkRows(buttons, rowSize);
+};
+
 const createWorkshopLayout = (view: WorkshopView): KeyboardLayout => [
   ...createWorkshopCraftRows(view),
   ...createWorkshopEquipmentRows(view),
   ...createWorkshopRepairRows(view),
   ...createPillCraftingRows(view),
+  ...createUseConsumableRows(view),
   [
     { label: '🔮 Руны', command: gameCommands.runeCollection, color: Keyboard.SECONDARY_COLOR },
     { label: '🕯 Алтарь', command: gameCommands.altar, color: Keyboard.SECONDARY_COLOR },

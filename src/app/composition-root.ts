@@ -3,6 +3,7 @@ import { buildWorldCatalog } from '../content/world';
 import { gameContent } from '../content/game-content';
 import { ClaimDailyTrace } from '../modules/activity/application/use-cases/ClaimDailyTrace';
 import { PerformBattleAction } from '../modules/combat/application/use-cases/PerformBattleAction';
+import { UseConsumable } from '../modules/consumables/application/use-cases/UseConsumable';
 import { CraftItem } from '../modules/crafting/application/use-cases/CraftItem';
 import { GetActiveBattle } from '../modules/combat/application/use-cases/GetActiveBattle';
 import { ExploreLocation } from '../modules/exploration/application/use-cases/ExploreLocation';
@@ -67,6 +68,7 @@ export interface AppServices {
   exploreLocation: ExploreLocation;
   getActiveBattle: GetActiveBattle;
   performBattleAction: PerformBattleAction;
+  useConsumable: UseConsumable;
   getRuneCollection: GetRuneCollection;
   moveRuneCursor: MoveRuneCursor;
   selectRunePageSlot: SelectRunePageSlot;
@@ -115,6 +117,7 @@ export const createAppServices = (): AppServices => {
     exploreLocation: new ExploreLocation(repository, worldCatalog, random, telemetry),
     getActiveBattle: new GetActiveBattle(repository, random),
     performBattleAction: new PerformBattleAction(repository, random),
+    useConsumable: new UseConsumable(repository),
     getRuneCollection: new GetRuneCollection(repository),
     moveRuneCursor: new MoveRuneCursor(repository),
     selectRunePageSlot: new SelectRunePageSlot(repository),

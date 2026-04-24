@@ -1,6 +1,11 @@
 import { AppError } from '../../../../shared/domain/AppError';
 import type { BattleActionType, BattleView, PlayerState } from '../../../../shared/types/game';
 import { buildBattleAcquisitionSummary, type AcquisitionSummaryView } from '../../../player/application/read-models/acquisition-summary';
+import {
+  getAlchemyConsumableByBattleAction,
+  isAlchemyConsumableBattleAction,
+  resolveAlchemyConsumableSpend,
+} from '../../../consumables/domain/alchemy-consumables';
 import { resolveCommandIntent, type CommandIntentSource } from '../../../shared/application/command-intent';
 import { requirePlayerByVkId } from '../../../shared/application/require-player';
 import type { GameRandom } from '../../../shared/application/ports/GameRandom';
@@ -31,7 +36,11 @@ export class PerformBattleAction {
     private readonly random: GameRandom,
   ) {}
 
-  private resolveCommandKey(action: BattleActionType): 'BATTLE_ENGAGE' | 'BATTLE_FLEE' | 'BATTLE_ATTACK' | 'BATTLE_DEFEND' | 'BATTLE_RUNE_SKILL' {
+  private resolveCommandKey(action: BattleActionType): 'BATTLE_ENGAGE' | 'BATTLE_FLEE' | 'BATTLE_ATTACK' | 'BATTLE_DEFEND' | 'BATTLE_RUNE_SKILL' | 'BATTLE_USE_CONSUMABLE' {
+    if (isAlchemyConsumableBattleAction(action)) {
+      return 'BATTLE_USE_CONSUMABLE';
+    }
+
     if (isRuneSkillAction(action)) {
       return 'BATTLE_RUNE_SKILL';
     }
@@ -126,6 +135,25 @@ export class PerformBattleAction {
     }
 
     const actorBattle = this.prepareBattleForActor(recoveredBattle.battle, player);
+    const consumable = getAlchemyConsumableByBattleAction(action);
+    if (consumable) {
+      if ((player.inventory[consumable.inventoryField] ?? 0) <= 0) {
+        throw new AppError('consumable_not_found', `В сумке нет «${consumable.title}». Сварите её в Мастерской.`);
+      }
+
+      const battleAfterConsumable = BattleEngine.useConsumable(actorBattle, consumable);
+      const result = this.wrapBattleResult(await this.repository.saveBattleWithInventoryDelta(
+        battleAfterConsumable,
+        resolveAlchemyConsumableSpend(consumable),
+        {
+          ...commandOptions,
+          actingPlayerId: player.playerId,
+        },
+      ));
+      await this.persistReplayResult(player.playerId, intent?.intentId, result);
+      return result;
+    }
+
     const fleeSucceeded = action === 'FLEE'
       && actorBattle.encounter?.canFlee === true
       && this.random.rollPercentage(actorBattle.encounter.fleeChancePercent);

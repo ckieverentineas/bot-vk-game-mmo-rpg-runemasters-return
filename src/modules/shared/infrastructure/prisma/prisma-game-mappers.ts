@@ -225,6 +225,10 @@ export const mapPlayerRecord = (player: PlayerRecord): PlayerState => hydratePla
         essence: player.inventory.essence,
         metal: player.inventory.metal,
         crystal: player.inventory.crystal,
+        healingPills: player.inventory.healingPills ?? 0,
+        focusPills: player.inventory.focusPills ?? 0,
+        guardPills: player.inventory.guardPills ?? 0,
+        clarityPills: player.inventory.clarityPills ?? 0,
       }
     : null,
   schoolMasteries: player.schoolMasteries.map((entry) => ({

@@ -26,6 +26,10 @@ export const emptyInventory = (): InventoryView => ({
   essence: 0,
   metal: 0,
   crystal: 0,
+  healingPills: 0,
+  focusPills: 0,
+  guardPills: 0,
+  clarityPills: 0,
 });
 
 export const addStats = (left: StatBlock, right: StatBlock): StatBlock => ({

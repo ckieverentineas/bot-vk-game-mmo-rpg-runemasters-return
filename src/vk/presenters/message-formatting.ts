@@ -30,6 +30,10 @@ const inventoryFieldLabels: Readonly<Record<string, AmountLabel>> = {
   essence: { one: 'эссенция', few: 'эссенции', many: 'эссенций' },
   metal: { one: 'металл', few: 'металла', many: 'металла' },
   crystal: { one: 'кристалл', few: 'кристалла', many: 'кристаллов' },
+  healingPills: { one: 'пилюля восстановления', few: 'пилюли восстановления', many: 'пилюль восстановления' },
+  focusPills: { one: 'пилюля фокуса', few: 'пилюли фокуса', many: 'пилюль фокуса' },
+  guardPills: { one: 'пилюля стойкости', few: 'пилюли стойкости', many: 'пилюль стойкости' },
+  clarityPills: { one: 'пилюля ясности', few: 'пилюли ясности', many: 'пилюль ясности' },
 };
 
 export const withSentencePeriod = (text: string): string => /[.!?]$/.test(text) ? text : `${text}.`;

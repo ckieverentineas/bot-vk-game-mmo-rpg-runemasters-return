@@ -29,6 +29,8 @@ describe('normalizeCommand', () => {
     expect(normalizeCommand('стойкость')).toBe(gameCommands.craftGuardPlate);
     expect(normalizeCommand('фокус')).toBe(gameCommands.craftRuneFocus);
     expect(normalizeCommand('оберег')).toBe(gameCommands.craftVitalCharm);
+    expect(normalizeCommand('восстановление')).toBe(gameCommands.craftVitalCharm);
+    expect(normalizeCommand('выпить')).toBe(gameCommands.useHealingPill);
   });
 
   it('не ломает неизвестные текстовые команды', () => {
@@ -95,7 +97,23 @@ describe('normalizeCommand', () => {
     } as never);
 
     expect(resolved.command).toBe(gameCommands.craftVitalCharm);
-    expect(resolved.intentId).toBe('legacy-text:2000000001:1001:84:пилюля живучести');
+    expect(resolved.intentId).toBe('legacy-text:2000000001:1001:84:пилюля восстановления');
+    expect(resolved.stateKey).toBeNull();
+    expect(resolved.intentSource).toBe('legacy_text');
+  });
+
+  it('выводит server-owned intent для legacy text применения пилюль', () => {
+    const resolved = resolveCommandEnvelope({
+      text: 'выпить',
+      senderId: 1001,
+      peerId: 2000000001,
+      conversationMessageId: 85,
+      id: 509,
+      messagePayload: null,
+    } as never);
+
+    expect(resolved.command).toBe(gameCommands.useHealingPill);
+    expect(resolved.intentId).toBe('legacy-text:2000000001:1001:85:выпить пилюлю восстановления');
     expect(resolved.stateKey).toBeNull();
     expect(resolved.intentSource).toBe('legacy_text');
   });

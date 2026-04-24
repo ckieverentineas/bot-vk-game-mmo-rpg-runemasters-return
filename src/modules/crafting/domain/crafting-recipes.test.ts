@@ -1,25 +1,17 @@
 import { describe, expect, it } from 'vitest';
 
-import type { InventoryView, PlayerState, StatBlock } from '../../../shared/types/game';
+import type { InventoryView, PlayerState } from '../../../shared/types/game';
 import {
   canPayCraftingRecipe,
-  formatCraftingStatDelta,
+  formatCraftingRecipeOutput,
   getCraftingRecipe,
   resolveAvailableCraftingRecipes,
   resolveCraftingRecipeCost,
+  resolveCraftingRecipeConsumableDelta,
   resolveCraftingRecipeInventoryDelta,
   resolveCraftingRecipeMissingCost,
-  resolveCraftingRecipeRank,
+  resolveCraftingRecipeOutput,
 } from './crafting-recipes';
-
-const baseStats = (): StatBlock => ({
-  health: 8,
-  attack: 4,
-  defence: 3,
-  magicDefence: 1,
-  dexterity: 2,
-  intelligence: 1,
-});
 
 const inventory = (overrides: Partial<InventoryView> = {}): InventoryView => ({
   usualShards: 0,
@@ -34,14 +26,18 @@ const inventory = (overrides: Partial<InventoryView> = {}): InventoryView => ({
   essence: 0,
   metal: 0,
   crystal: 0,
+  healingPills: 0,
+  focusPills: 0,
+  guardPills: 0,
+  clarityPills: 0,
   ...overrides,
 });
 
 const player = (
-  overrides: Partial<Pick<PlayerState, 'baseStats' | 'inventory'>> = {},
-): Pick<PlayerState, 'baseStats' | 'inventory'> => ({
-  baseStats: baseStats(),
+  overrides: Partial<Pick<PlayerState, 'inventory' | 'skills'>> = {},
+): Pick<PlayerState, 'inventory' | 'skills'> => ({
   inventory: inventory(),
+  skills: [],
   ...overrides,
 });
 
@@ -49,30 +45,28 @@ describe('crafting recipes', () => {
   it('prices early alchemy pills from trophy materials', () => {
     const vitalPill = getCraftingRecipe('vital_charm');
 
-    expect(vitalPill.title).toBe('Пилюля живучести');
-    expect(resolveCraftingRecipeCost(player(), vitalPill)).toEqual({
+    expect(vitalPill.title).toBe('Пилюля восстановления');
+    expect(resolveCraftingRecipeCost(vitalPill)).toEqual({
       leather: 2,
       bone: 1,
     });
-    expect(resolveCraftingRecipeInventoryDelta(player(), vitalPill)).toEqual({
+    expect(resolveCraftingRecipeInventoryDelta(vitalPill)).toEqual({
       leather: -2,
       bone: -1,
     });
   });
 
-  it('scales the next pill cost from the stat already improved by that recipe', () => {
+  it('produces more pills when the alchemy skill rank grows', () => {
     const vitalPill = getCraftingRecipe('vital_charm');
     const improvedPlayer = player({
-      baseStats: {
-        ...baseStats(),
-        health: 10,
-      },
+      skills: [{ skillCode: 'crafting.alchemy', experience: 100, rank: 1 }],
     });
+    const output = resolveCraftingRecipeOutput(improvedPlayer, vitalPill);
 
-    expect(resolveCraftingRecipeRank(improvedPlayer, vitalPill)).toBe(2);
-    expect(resolveCraftingRecipeCost(improvedPlayer, vitalPill)).toEqual({
-      leather: 6,
-      bone: 3,
+    expect(output.consumable.code).toBe('healing_pill');
+    expect(output.quantity).toBe(2);
+    expect(resolveCraftingRecipeConsumableDelta(improvedPlayer, vitalPill)).toEqual({
+      healingPills: 2,
     });
   });
 
@@ -98,7 +92,7 @@ describe('crafting recipes', () => {
     ]);
   });
 
-  it('formats stat payoff as qualitative pill progress', () => {
-    expect(formatCraftingStatDelta(getCraftingRecipe('rune_focus').statDelta)).toBe('+1 интеллект');
+  it('formats consumable payoff as recoverable resources', () => {
+    expect(formatCraftingRecipeOutput(player(), getCraftingRecipe('rune_focus'))).toBe('Пилюля фокуса x1 · +6 маны');
   });
 });

@@ -15,7 +15,8 @@ export type AcquisitionSummaryKind =
   | 'school_miniboss_completed'
   | 'school_style_committed'
   | 'school_seal_committed'
-  | 'crafting_upgrade';
+  | 'consumable_crafted'
+  | 'consumable_used';
 
 export interface AcquisitionSummaryView {
   readonly kind: AcquisitionSummaryKind;

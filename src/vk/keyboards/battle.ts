@@ -4,6 +4,10 @@ import { buildBattleActionIntentStateKey } from '../../modules/combat/applicatio
 import { buildBattleRuneActionReadinessView } from '../../modules/combat/application/read-models/battle-rune-action-readiness';
 import { isBattleEncounterOffered } from '../../modules/combat/domain/battle-encounter';
 import {
+  getAlchemyConsumableCount,
+  listAlchemyConsumables,
+} from '../../modules/consumables/domain/alchemy-consumables';
+import {
   getBattleRuneLoadout,
   resolveBattleRuneSkillAction,
   type BattleRuneSlotIndex,
@@ -12,7 +16,7 @@ import { resolveDefendGuardGain, resolveIntentDefendGuardBonus } from '../../mod
 import { buildExploreLocationIntentStateKey } from '../../modules/exploration/application/command-intent-state';
 import { buildBattleResultNextGoalView } from '../../modules/player/application/read-models/next-goal';
 import type { BattleView, PlayerState } from '../../shared/types/game';
-import { gameCommands } from '../commands/catalog';
+import { gameCommands, resolveUseConsumableCodeCommand } from '../commands/catalog';
 import { buildKeyboard } from './builder';
 import { resolveSchoolContinuationLabel } from './goal-labels';
 import type { KeyboardBuilder, KeyboardButtonDefinition, KeyboardLayout } from './types';
@@ -64,7 +68,30 @@ const createBattleEncounterActionLayout = (battle: BattleView): KeyboardLayout =
   return [[engageButton, fleeButton]];
 };
 
-const createBattleActionLayout = (battle: BattleView): KeyboardLayout => {
+const createBattleConsumableRows = (battle: BattleView, player?: PlayerState): KeyboardLayout => {
+  if (!player || isBattleEncounterOffered(battle)) {
+    return [];
+  }
+
+  const buttons = listAlchemyConsumables()
+    .filter((consumable) => getAlchemyConsumableCount(player.inventory, consumable) > 0)
+    .map((consumable) => ({
+      label: `${consumable.battleButtonLabel} x${getAlchemyConsumableCount(player.inventory, consumable)}`,
+      command: resolveUseConsumableCodeCommand(consumable.code),
+      color: Keyboard.PRIMARY_COLOR,
+      intentScoped: true,
+      stateKey: buildBattleActionIntentStateKey(battle, consumable.battleAction),
+    }));
+
+  const rows: KeyboardButtonDefinition[][] = [];
+  for (let index = 0; index < buttons.length; index += 2) {
+    rows.push(buttons.slice(index, index + 2));
+  }
+
+  return rows;
+};
+
+const createBattleActionLayout = (battle: BattleView, player?: PlayerState): KeyboardLayout => {
   if (isBattleEncounterOffered(battle)) {
     return createBattleEncounterActionLayout(battle);
   }
@@ -98,6 +125,7 @@ const createBattleActionLayout = (battle: BattleView): KeyboardLayout => {
       },
     ],
     ...(skillButtons.length > 0 ? [skillButtons] : []),
+    ...createBattleConsumableRows(battle, player),
   ];
 };
 
@@ -140,8 +168,8 @@ const createBattleResultLayout = (battle: BattleView, player?: PlayerState): Key
   ];
 };
 
-export const createBattleKeyboard = (battle: BattleView): KeyboardBuilder => (
-  buildKeyboard(createBattleActionLayout(battle))
+export const createBattleKeyboard = (battle: BattleView, player?: PlayerState): KeyboardBuilder => (
+  buildKeyboard(createBattleActionLayout(battle, player))
 );
 
 export const createBattleResultKeyboard = (battle: BattleView, player?: PlayerState): KeyboardBuilder => (

@@ -26,6 +26,10 @@ import {
 import { GameHandlerTelemetry } from './gameHandlerTelemetry';
 import type { TrophyActionCode } from '../../modules/rewards/domain/trophy-actions';
 import {
+  getAlchemyConsumable,
+  type AlchemyConsumableCode,
+} from '../../modules/consumables/domain/alchemy-consumables';
+import {
   replyWithBattle as sendBattle,
   replyWithExplorationResult as sendExplorationResult,
   resolveBattleReplyKeyboard,
@@ -399,6 +403,33 @@ export class GameHandler {
 
       throw error;
     }
+  }
+
+  public async useConsumableCommand(
+    ctx: Context,
+    vkId: number,
+    consumableCode: AlchemyConsumableCode,
+    context: CommandIntentContext,
+  ): Promise<void> {
+    const activeBattle = await this.safeGetActiveBattle(vkId);
+    if (activeBattle) {
+      await this.executeBattleAction(ctx, vkId, getAlchemyConsumable(consumableCode).battleAction, context);
+      return;
+    }
+
+    const routeState = toRouteState(context);
+    const result = await this.services.useConsumable.execute(
+      vkId,
+      consumableCode,
+      routeState.intentId,
+      routeState.stateKey,
+      routeState.intentSource,
+    );
+    const view = await this.services.getWorkshop.execute(vkId);
+    await this.replyWithWorkshop(ctx, {
+      view,
+      acquisitionSummary: result.acquisitionSummary,
+    });
   }
 
   public async openRuneCollection(ctx: Context, vkId: number, trackSchoolNoviceOpen = false): Promise<void> {

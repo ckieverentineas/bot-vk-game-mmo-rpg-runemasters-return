@@ -1,4 +1,5 @@
 import { AppError } from '../../../shared/domain/AppError';
+import type { AlchemyConsumableDefinition } from '../../consumables/domain/alchemy-consumables';
 import type {
   BattleActionType,
   BattlePartyMemberSnapshot,
@@ -238,6 +239,29 @@ const addGuardPoints = (player: BattlePlayerSnapshot, guardGain: number, guardCa
   player.guardPoints = Math.min(guardCap, getGuardPoints(player) + guardGain);
 };
 
+const applyPlayerRecovery = (
+  player: BattlePlayerSnapshot,
+  consumable: AlchemyConsumableDefinition,
+): { readonly healthGain: number; readonly manaGain: number; readonly guardGain: number } => {
+  const previousHealth = player.currentHealth;
+  const previousMana = player.currentMana;
+  const previousGuard = getGuardPoints(player);
+  const guardGain = Math.max(0, consumable.effect.guard);
+
+  player.currentHealth = Math.min(player.maxHealth, player.currentHealth + Math.max(0, consumable.effect.health));
+  player.currentMana = Math.min(player.maxMana, player.currentMana + Math.max(0, consumable.effect.mana));
+
+  if (guardGain > 0) {
+    addGuardPoints(player, guardGain, resolveGuardCap(player));
+  }
+
+  return {
+    healthGain: player.currentHealth - previousHealth,
+    manaGain: player.currentMana - previousMana,
+    guardGain: getGuardPoints(player) - previousGuard,
+  };
+};
+
 const tickRuneCooldown = (battle: BattleView): void => {
   for (const { loadout } of listBattleRuneLoadouts(battle.player)) {
     const activeAbility = loadout.activeAbility;
@@ -465,6 +489,11 @@ export class BattleEngine {
       case 'RUNE_SKILL_SLOT_1':
       case 'RUNE_SKILL_SLOT_2':
         return this.useRuneSkill(battle, action);
+      case 'USE_HEALING_PILL':
+      case 'USE_FOCUS_PILL':
+      case 'USE_GUARD_PILL':
+      case 'USE_CLARITY_PILL':
+        throw new AppError('unknown_battle_action', 'Для пилюли нужен выбранный алхимический состав.');
       default:
         throw new AppError('unknown_battle_action', `Неизвестное боевое действие: ${action}.`);
     }
@@ -522,6 +551,24 @@ export class BattleEngine {
       default:
         throw new AppError('rune_skill_not_available', `Навык «${activeAbility.name}» ещё не поддерживается в бою.`);
     }
+  }
+
+  public static useConsumable(battle: BattleView, consumable: AlchemyConsumableDefinition): BattleView {
+    const nextBattle = cloneBattle(battle);
+    this.assertPlayerTurn(nextBattle);
+
+    const recovery = applyPlayerRecovery(nextBattle.player, consumable);
+    if (recovery.healthGain === 0 && recovery.manaGain === 0 && recovery.guardGain === 0) {
+      throw new AppError('consumable_not_needed', `Сейчас «${consumable.title}» ничего не восстановит.`);
+    }
+
+    syncCurrentPartyMemberSnapshot(nextBattle);
+    nextBattle.log = appendBattleLog(
+      nextBattle.log,
+      `🧪 ${formatBattleActor(nextBattle.player.name)} применяет «${consumable.title}»: +${recovery.healthGain} HP, +${recovery.manaGain} маны${recovery.guardGain > 0 ? `, +${recovery.guardGain} щита` : ''}.`,
+    );
+
+    return nextBattle;
   }
 
   public static resolveEnemyTurn(battle: BattleView): BattleView {

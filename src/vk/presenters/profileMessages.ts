@@ -69,4 +69,7 @@ export const renderInventory = (player: PlayerState): string => [
   '',
   `Кожа: ${player.inventory.leather}, Кость: ${player.inventory.bone}, Трава: ${player.inventory.herb}`,
   `Эссенция: ${player.inventory.essence}, Металл: ${player.inventory.metal}, Кристалл: ${player.inventory.crystal}`,
+  '',
+  `Пилюли: восстановление ${player.inventory.healingPills ?? 0}, фокус ${player.inventory.focusPills ?? 0}`,
+  `Стойкость ${player.inventory.guardPills ?? 0}, ясность ${player.inventory.clarityPills ?? 0}`,
 ].join('\n');

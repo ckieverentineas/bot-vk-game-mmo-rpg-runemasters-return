@@ -40,7 +40,7 @@ const canPayInventoryDelta = (
   Object.entries(delta).every(([field, amount]) => (
     amount === undefined
     || amount >= 0
-    || inventory[field as InventoryField] >= Math.abs(amount)
+    || (inventory[field as InventoryField] ?? 0) >= Math.abs(amount)
   ))
 );
 

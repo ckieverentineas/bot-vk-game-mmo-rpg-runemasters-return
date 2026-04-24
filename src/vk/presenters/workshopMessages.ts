@@ -1,8 +1,12 @@
 import {
-  formatCraftingStatDelta,
+  formatCraftingRecipeOutput,
   listCraftingRecipes,
   resolveCraftingRecipeCost,
 } from '../../modules/crafting/domain/crafting-recipes';
+import {
+  getAlchemyConsumableCount,
+  listAlchemyConsumables,
+} from '../../modules/consumables/domain/alchemy-consumables';
 import type { AcquisitionSummaryView } from '../../modules/player/application/read-models/acquisition-summary';
 import type { WorkshopCraftedItemSummaryView } from '../../modules/workshop/application/use-cases/CraftWorkshopItem';
 import type { WorkshopEquippedItemSummaryView } from '../../modules/workshop/application/use-cases/EquipWorkshopItem';
@@ -147,11 +151,18 @@ const renderCraftedItems = (view: WorkshopView): readonly string[] => [
 ];
 
 const renderPillCrafting = (view: WorkshopView): readonly string[] => [
-  'Пилюли из добычи:',
+  'Алхимия пилюль:',
   ...listCraftingRecipes().map((recipe) => {
-    const cost = resolveCraftingRecipeCost(view.player, recipe);
-    return `- ${recipe.title}: ${formatWorkshopCost(cost)} -> ${formatCraftingStatDelta(recipe.statDelta)}.`;
+    const cost = resolveCraftingRecipeCost(recipe);
+    return `- ${recipe.title}: ${formatWorkshopCost(cost)} -> ${formatCraftingRecipeOutput(view.player, recipe)}.`;
   }),
+];
+
+const renderConsumableStock = (view: WorkshopView): readonly string[] => [
+  'Запас пилюль:',
+  ...listAlchemyConsumables().map((consumable) => (
+    `- ${consumable.title}: x${getAlchemyConsumableCount(view.player.inventory, consumable)} · ${consumable.description}`
+  )),
 ];
 
 export const renderWorkshop = (
@@ -161,7 +172,7 @@ export const renderWorkshop = (
   '🛠 Мастерская',
   ...renderWorkshopSummary(summary),
   '',
-  'Здесь лежат одноразовые чертежи, предметы с прочностью и старые пилюли из добычи.',
+  'Здесь лежат одноразовые чертежи, предметы с прочностью и алхимия пилюль из добычи.',
   'L предметы не ремонтируются. UL можно восстановить редкими ремонтными чертежами.',
   '',
   ...renderWorkshopBlueprints(view),
@@ -171,4 +182,6 @@ export const renderWorkshop = (
   ...renderCraftedItems(view),
   '',
   ...renderPillCrafting(view),
+  '',
+  ...renderConsumableStock(view),
 ].join('\n');

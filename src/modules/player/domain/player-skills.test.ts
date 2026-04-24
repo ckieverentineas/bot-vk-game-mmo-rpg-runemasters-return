@@ -37,6 +37,15 @@ describe('player skills', () => {
     ]);
   });
 
+  it('includes alchemy as a crafting skill for consumable brewing', () => {
+    expect(getPlayerSkillDefinition('crafting.alchemy')).toEqual({
+      code: 'crafting.alchemy',
+      category: 'crafting',
+      title: 'Алхимия',
+      description: 'Создание пилюль и зелий из трофейных материалов.',
+    });
+  });
+
   it('keeps player skill codes unique', () => {
     const codes = listPlayerSkillCodes();
     const uniqueCodes = new Set(codes);

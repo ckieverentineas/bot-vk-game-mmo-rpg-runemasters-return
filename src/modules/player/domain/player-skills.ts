@@ -56,6 +56,12 @@ const playerSkillDefinitions: readonly PlayerSkillDefinition[] = [
     title: 'Подготовка рун',
     description: 'Канальные и подготовительные рунные действия.',
   },
+  {
+    code: 'crafting.alchemy',
+    category: 'crafting',
+    title: 'Алхимия',
+    description: 'Создание пилюль и зелий из трофейных материалов.',
+  },
 ];
 
 const maxPlayerSkillRank = 1;

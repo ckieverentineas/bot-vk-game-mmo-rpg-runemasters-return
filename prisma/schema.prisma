@@ -103,6 +103,10 @@ model PlayerInventory {
   essence          Int      @default(0)
   metal            Int      @default(0)
   crystal          Int      @default(0)
+  healingPills     Int      @default(0)
+  focusPills       Int      @default(0)
+  guardPills       Int      @default(0)
+  clarityPills     Int      @default(0)
   updatedAt        DateTime @updatedAt
   player           Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
 }

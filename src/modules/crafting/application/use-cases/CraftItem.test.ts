@@ -27,6 +27,10 @@ const inventory = (overrides: Partial<InventoryView> = {}): InventoryView => ({
   essence: 0,
   metal: 0,
   crystal: 0,
+  healingPills: 0,
+  focusPills: 0,
+  guardPills: 0,
+  clarityPills: 0,
   ...overrides,
 });
 
@@ -50,6 +54,7 @@ const createPlayer = (overrides: Partial<PlayerState> = {}): PlayerState => ({
   tutorialState: 'SKIPPED',
   inventory: inventory(),
   runes: [],
+  skills: [],
   createdAt: '2026-04-12T00:00:00.000Z',
   updatedAt: '2026-04-12T00:00:00.000Z',
   ...overrides,
@@ -59,7 +64,7 @@ const createRepository = (player: PlayerState, updatedPlayer: PlayerState = play
   findPlayerByVkId: vi.fn().mockResolvedValue(player),
   getCommandIntentResult: vi.fn().mockResolvedValue(null),
   storeCommandIntentResult: vi.fn().mockResolvedValue(undefined),
-  craftPlayerItem: vi.fn().mockResolvedValue(updatedPlayer),
+  craftPlayerConsumable: vi.fn().mockResolvedValue(updatedPlayer),
 } as unknown as GameRepository);
 
 describe('CraftItem', () => {
@@ -71,11 +76,8 @@ describe('CraftItem', () => {
       }),
     });
     const updatedPlayer = createPlayer({
-      baseStats: {
-        ...baseStats(),
-        health: 9,
-      },
-      inventory: inventory(),
+      inventory: inventory({ healingPills: 1 }),
+      skills: [{ skillCode: 'crafting.alchemy', experience: 8, rank: 0 }],
     });
     const repository = createRepository(player, updatedPlayer);
     const useCase = new CraftItem(repository);
@@ -83,17 +85,11 @@ describe('CraftItem', () => {
 
     const result = await useCase.execute(player.vkId, 'vital_charm', 'intent-pill-1', stateKey, 'payload');
 
-    expect(repository.craftPlayerItem).toHaveBeenCalledWith(
+    expect(repository.craftPlayerConsumable).toHaveBeenCalledWith(
       player.playerId,
       { leather: -2, bone: -1 },
-      {
-        health: 1,
-        attack: 0,
-        defence: 0,
-        magicDefence: 0,
-        dexterity: 0,
-        intelligence: 0,
-      },
+      { healingPills: 1 },
+      [{ skillCode: 'crafting.alchemy', points: 8 }],
       'intent-pill-1',
       stateKey,
       stateKey,
@@ -101,8 +97,8 @@ describe('CraftItem', () => {
     expect(repository.storeCommandIntentResult).toHaveBeenCalledWith(player.playerId, 'intent-pill-1', result);
     expect(result.player).toBe(updatedPlayer);
     expect(result.acquisitionSummary).toMatchObject({
-      kind: 'crafting_upgrade',
-      title: 'Алхимия: Пилюля живучести',
+      kind: 'consumable_crafted',
+      title: 'Алхимия: Пилюля восстановления x1',
     });
   });
 
@@ -116,7 +112,7 @@ describe('CraftItem', () => {
       code: 'not_enough_crafting_resources',
     });
 
-    expect(repository.craftPlayerItem).not.toHaveBeenCalled();
+    expect(repository.craftPlayerConsumable).not.toHaveBeenCalled();
     expect(repository.storeCommandIntentResult).not.toHaveBeenCalled();
   });
 
@@ -125,10 +121,10 @@ describe('CraftItem', () => {
     const replayed = {
       player,
       acquisitionSummary: {
-        kind: 'crafting_upgrade' as const,
-        title: 'Алхимия: Пилюля живучести',
-        changeLine: 'Максимальное здоровье растёт на 1.',
-        nextStepLine: 'Проверить рост.',
+        kind: 'consumable_crafted' as const,
+        title: 'Алхимия: Пилюля восстановления x1',
+        changeLine: 'Создана пилюля.',
+        nextStepLine: 'Выпить позже.',
       },
     };
     const repository = {
@@ -139,7 +135,7 @@ describe('CraftItem', () => {
 
     await expect(useCase.execute(1001, 'vital_charm', 'intent-pill-1', undefined, 'legacy_text')).resolves.toBe(replayed);
 
-    expect(repository.craftPlayerItem).not.toHaveBeenCalled();
+    expect(repository.craftPlayerConsumable).not.toHaveBeenCalled();
   });
 
   it('rejects stale payload pills when the altar state has changed', async () => {
@@ -156,6 +152,6 @@ describe('CraftItem', () => {
       code: 'stale_command_intent',
     });
 
-    expect(repository.craftPlayerItem).not.toHaveBeenCalled();
+    expect(repository.craftPlayerConsumable).not.toHaveBeenCalled();
   });
 });

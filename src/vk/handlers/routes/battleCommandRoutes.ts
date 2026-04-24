@@ -1,4 +1,5 @@
 import type { BattleActionType } from '../../../shared/types/game';
+import type { AlchemyConsumableCode } from '../../../modules/consumables/domain/alchemy-consumables';
 import { gameCommands } from '../../commands/catalog';
 import type {
   StaticCommandHandler,
@@ -7,6 +8,10 @@ import type {
 
 const createBattleActionRoute = (action: BattleActionType): StaticCommandHandler => (
   (handler, ctx, vkId, context) => handler.executeBattleAction(ctx, vkId, action, context)
+);
+
+const createUseConsumableRoute = (consumableCode: AlchemyConsumableCode): StaticCommandHandler => (
+  (handler, ctx, vkId, context) => handler.useConsumableCommand(ctx, vkId, consumableCode, context)
 );
 
 export const battleCommandRoutes = {
@@ -19,4 +24,8 @@ export const battleCommandRoutes = {
   [gameCommands.skillSlot1]: createBattleActionRoute('RUNE_SKILL_SLOT_1'),
   [gameCommands.skillSlot2]: createBattleActionRoute('RUNE_SKILL_SLOT_2'),
   [gameCommands.spell]: createBattleActionRoute('RUNE_SKILL'),
+  [gameCommands.useHealingPill]: createUseConsumableRoute('healing_pill'),
+  [gameCommands.useFocusPill]: createUseConsumableRoute('focus_pill'),
+  [gameCommands.useGuardPill]: createUseConsumableRoute('guard_pill'),
+  [gameCommands.useClarityPill]: createUseConsumableRoute('clarity_pill'),
 } satisfies StaticCommandRouteConfig;

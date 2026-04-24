@@ -1,6 +1,17 @@
 export type StatKey = 'health' | 'attack' | 'defence' | 'magicDefence' | 'dexterity' | 'intelligence';
 export type TurnOwner = 'PLAYER' | 'ENEMY';
-export type BattleActionType = 'ENGAGE' | 'FLEE' | 'ATTACK' | 'DEFEND' | 'RUNE_SKILL' | 'RUNE_SKILL_SLOT_1' | 'RUNE_SKILL_SLOT_2';
+export type BattleActionType =
+  | 'ENGAGE'
+  | 'FLEE'
+  | 'ATTACK'
+  | 'DEFEND'
+  | 'RUNE_SKILL'
+  | 'RUNE_SKILL_SLOT_1'
+  | 'RUNE_SKILL_SLOT_2'
+  | 'USE_HEALING_PILL'
+  | 'USE_FOCUS_PILL'
+  | 'USE_GUARD_PILL'
+  | 'USE_CLARITY_PILL';
 export type BattleStatus = 'ACTIVE' | 'COMPLETED';
 export type BattleResult = 'VICTORY' | 'DEFEAT' | 'FLED';
 export type BattleEnemyIntentCode = 'HEAVY_STRIKE' | 'GUARD_BREAK';
@@ -8,10 +19,11 @@ export type TutorialState = 'ACTIVE' | 'SKIPPED' | 'COMPLETED';
 export type RuneRarity = 'USUAL' | 'UNUSUAL' | 'RARE' | 'EPIC' | 'LEGENDARY' | 'MYTHICAL';
 export type ShardField = 'usualShards' | 'unusualShards' | 'rareShards' | 'epicShards' | 'legendaryShards' | 'mythicalShards';
 export type MaterialField = 'leather' | 'bone' | 'herb' | 'essence' | 'metal' | 'crystal';
-export type InventoryField = ShardField | MaterialField;
+export type ConsumableField = 'healingPills' | 'focusPills' | 'guardPills' | 'clarityPills';
+export type InventoryField = ShardField | MaterialField | ConsumableField;
 export type AbilityKind = 'ACTIVE' | 'PASSIVE';
 export type AbilityTarget = 'SELF' | 'ENEMY' | 'BATTLEFIELD';
-export type PlayerSkillCategory = 'combat' | 'defence' | 'gathering' | 'rune';
+export type PlayerSkillCategory = 'combat' | 'defence' | 'gathering' | 'rune' | 'crafting';
 export type GatheringSkillCode =
   | 'gathering.skinning'
   | 'gathering.reagent_gathering'
@@ -23,7 +35,8 @@ export type DefenceSkillCode = 'defence.endurance';
 export type RuneSkillCode =
   | 'rune.active_use'
   | 'rune.preparation';
-export type PlayerSkillCode = GatheringSkillCode | CombatSkillCode | DefenceSkillCode | RuneSkillCode;
+export type CraftingSkillCode = 'crafting.alchemy';
+export type PlayerSkillCode = GatheringSkillCode | CombatSkillCode | DefenceSkillCode | RuneSkillCode | CraftingSkillCode;
 
 export interface SchoolMasteryView {
   schoolCode: string;
@@ -73,6 +86,10 @@ export interface InventoryView {
   essence: number;
   metal: number;
   crystal: number;
+  healingPills?: number;
+  focusPills?: number;
+  guardPills?: number;
+  clarityPills?: number;
 }
 
 export type InventoryDelta = Partial<Record<InventoryField, number>>;

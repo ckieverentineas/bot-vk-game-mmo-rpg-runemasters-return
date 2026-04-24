@@ -1,19 +1,23 @@
 import { AppError } from '../../../../shared/domain/AppError';
-import type { InventoryDelta, MaterialField, PlayerState } from '../../../../shared/types/game';
+import type { InventoryDelta, MaterialField, PlayerSkillPointGain, PlayerState } from '../../../../shared/types/game';
 import type { AcquisitionSummaryView } from '../../../player/application/read-models/acquisition-summary';
 import { resolveCommandIntent, type CommandIntentSource } from '../../../shared/application/command-intent';
 import type { GameRepository } from '../../../shared/application/ports/GameRepository';
 import { requirePlayerByVkId } from '../../../shared/application/require-player';
+import { alchemySkillCode, formatAlchemyConsumableEffect } from '../../../consumables/domain/alchemy-consumables';
 import { buildCraftingIntentStateKey } from '../command-intent-state';
 import {
   canPayCraftingRecipe,
   getCraftingRecipe,
+  resolveCraftingRecipeConsumableDelta,
   resolveCraftingRecipeCost,
   resolveCraftingRecipeInventoryDelta,
   resolveCraftingRecipeMissingCost,
+  resolveCraftingRecipeOutput,
   type CraftingRecipeCode,
   type CraftingRecipeCost,
   type CraftingRecipeDefinition,
+  type CraftingRecipeOutput,
 } from '../../domain/crafting-recipes';
 
 export interface CraftItemResultView {
@@ -38,14 +42,22 @@ const formatCraftingCost = (cost: CraftingRecipeCost): string => {
   return parts.length > 0 ? parts.join(', ') : 'без материалов';
 };
 
+const buildAlchemySkillGain = (recipe: CraftingRecipeDefinition): readonly PlayerSkillPointGain[] => [
+  {
+    skillCode: alchemySkillCode,
+    points: recipe.skillExperience,
+  },
+];
+
 const buildCraftingSummary = (
   recipe: CraftingRecipeDefinition,
   cost: CraftingRecipeCost,
+  output: CraftingRecipeOutput,
 ): AcquisitionSummaryView => ({
-  kind: 'crafting_upgrade',
-  title: `Алхимия: ${recipe.title}`,
-  changeLine: `${recipe.resultLine} Потрачено: ${formatCraftingCost(cost)}.`,
-  nextStepLine: 'Проверьте рост в летописи или сразу испытайте пилюлю в следующей встрече.',
+  kind: 'consumable_crafted',
+  title: `Алхимия: ${recipe.title} x${output.quantity}`,
+  changeLine: `${recipe.resultLine} Эффект: ${formatAlchemyConsumableEffect(output.consumable.effect)}. Потрачено: ${formatCraftingCost(cost)}.`,
+  nextStepLine: 'Пилюлю можно выпить в бою или оставить для восстановления между встречами.',
 });
 
 const replayCraftItemResult = async (
@@ -108,18 +120,20 @@ export class CraftItem {
       throw new AppError('stale_command_intent', 'Эта пилюля уже выцвела. Вернитесь к свежей Мастерской.');
     }
 
-    const cost = resolveCraftingRecipeCost(player, recipe);
-    const updatedPlayer = await this.repository.craftPlayerItem(
+    const cost = resolveCraftingRecipeCost(recipe);
+    const output = resolveCraftingRecipeOutput(player, recipe);
+    const updatedPlayer = await this.repository.craftPlayerConsumable(
       player.playerId,
-      resolveCraftingRecipeInventoryDelta(player, recipe) as InventoryDelta,
-      recipe.statDelta,
+      resolveCraftingRecipeInventoryDelta(recipe) as InventoryDelta,
+      resolveCraftingRecipeConsumableDelta(player, recipe) as InventoryDelta,
+      buildAlchemySkillGain(recipe),
       intent?.intentId,
       intent?.intentStateKey,
       intentSource === 'legacy_text' ? undefined : intent ? currentStateKey : undefined,
     );
     const result = {
       player: updatedPlayer,
-      acquisitionSummary: buildCraftingSummary(recipe, cost),
+      acquisitionSummary: buildCraftingSummary(recipe, cost, output),
     };
 
     if (intent?.intentId) {

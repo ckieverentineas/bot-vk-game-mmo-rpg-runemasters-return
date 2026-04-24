@@ -21,6 +21,10 @@ const inventoryFields: readonly InventoryField[] = [
   'essence',
   'metal',
   'crystal',
+  'healingPills',
+  'focusPills',
+  'guardPills',
+  'clarityPills',
 ];
 
 const isString = (value: unknown): value is string => typeof value === 'string';

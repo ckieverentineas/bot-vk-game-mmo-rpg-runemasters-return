@@ -119,6 +119,7 @@ const createPlayer = (overrides: Partial<PlayerState> = {}): PlayerState => ({
   level: 1,
   experience: 0,
   gold: 0,
+  radiance: 0,
   baseStats: {
     health: 8,
     attack: 4,
@@ -150,6 +151,10 @@ const createPlayer = (overrides: Partial<PlayerState> = {}): PlayerState => ({
     essence: 0,
     metal: 0,
     crystal: 0,
+    healingPills: 0,
+    focusPills: 0,
+    guardPills: 0,
+    clarityPills: 0,
   },
   runes: [],
   createdAt: '2026-04-12T00:00:00.000Z',
@@ -614,6 +619,12 @@ const createServices = (): AppServices => {
         acquisitionSummary: null,
       }),
     } as unknown as AppServices['craftItem'],
+    useConsumable: {
+      execute: vi.fn().mockResolvedValue({
+        player: basePlayer,
+        acquisitionSummary: null,
+      }),
+    } as unknown as AppServices['useConsumable'],
     craftRune: {
       execute: vi.fn().mockResolvedValue({
         player: runePlayer,
@@ -1898,7 +1909,7 @@ describe('GameHandler smoke', () => {
   it('пробрасывает intentId для алхимии пилюли через transport payload', async () => {
     const services = createServices();
     const handler = new GameHandler(services);
-    const ctx = createFakeContext({ command: 'пилюля живучести', intentId: 'intent-pill-1', stateKey: 'state-pill-1' });
+    const ctx = createFakeContext({ command: 'пилюля восстановления', intentId: 'intent-pill-1', stateKey: 'state-pill-1' });
 
     await handler.handle(ctx as never);
 
@@ -1909,6 +1920,50 @@ describe('GameHandler smoke', () => {
       'state-pill-1',
       'payload',
     );
+  });
+
+  it('пробрасывает intentId для применения пилюли вне боя через transport payload', async () => {
+    const services = createServices();
+    vi.mocked(services.getActiveBattle.execute).mockResolvedValueOnce(null);
+    const handler = new GameHandler(services);
+    const ctx = createFakeContext({
+      command: gameCommands.useHealingPill,
+      intentId: 'intent-use-pill-1',
+      stateKey: 'state-use-pill-1',
+    });
+
+    await handler.handle(ctx as never);
+
+    expect(services.useConsumable.execute).toHaveBeenCalledWith(
+      1001,
+      'healing_pill',
+      'intent-use-pill-1',
+      'state-use-pill-1',
+      'payload',
+    );
+    expect(services.performBattleAction.execute).not.toHaveBeenCalled();
+  });
+
+  it('направляет применение пилюли в активном бою через боевое действие', async () => {
+    const services = createServices();
+    vi.mocked(services.getActiveBattle.execute).mockResolvedValueOnce(createBattle());
+    const handler = new GameHandler(services);
+    const ctx = createFakeContext({
+      command: gameCommands.useHealingPill,
+      intentId: 'intent-battle-pill-1',
+      stateKey: 'state-battle-pill-1',
+    });
+
+    await handler.handle(ctx as never);
+
+    expect(services.performBattleAction.execute).toHaveBeenCalledWith(
+      1001,
+      'USE_HEALING_PILL',
+      'intent-battle-pill-1',
+      'state-battle-pill-1',
+      'payload',
+    );
+    expect(services.useConsumable.execute).not.toHaveBeenCalled();
   });
 
   it('пробрасывает intentId для создания предмета мастерской через transport payload', async () => {

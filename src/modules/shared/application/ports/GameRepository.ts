@@ -26,6 +26,7 @@ import type { WorkshopBlueprintCode } from '../../../workshop/domain/workshop-ca
 export type RuneLoadoutCommandIntentKey = 'EQUIP_RUNE' | 'UNEQUIP_RUNE';
 export type RuneNavigationCommandIntentKey = 'MOVE_RUNE_CURSOR' | 'SELECT_RUNE_PAGE_SLOT';
 export type RuneCraftCommandIntentKey = 'CRAFT_RUNE' | 'REROLL_RUNE_STAT' | 'DESTROY_RUNE' | 'CRAFT_ITEM';
+export type ConsumableCommandIntentKey = 'USE_CONSUMABLE';
 export type ExplorationCommandIntentKey = 'ENTER_TUTORIAL_MODE' | 'SKIP_TUTORIAL' | 'RETURN_TO_ADVENTURE' | 'EXPLORE_LOCATION';
 export type QuestRewardCommandIntentKey = 'CLAIM_QUEST_REWARD';
 export type DailyActivityCommandIntentKey = 'CLAIM_DAILY_TRACE';
@@ -35,12 +36,14 @@ export type BattleActionCommandIntentKey =
   | 'BATTLE_FLEE'
   | 'BATTLE_ATTACK'
   | 'BATTLE_DEFEND'
-  | 'BATTLE_RUNE_SKILL';
+  | 'BATTLE_RUNE_SKILL'
+  | 'BATTLE_USE_CONSUMABLE';
 export type BattleCommandIntentKey = BattleActionCommandIntentKey | 'EXPLORE_LOCATION';
 export type GameCommandIntentKey =
   | RuneCraftCommandIntentKey
   | RuneLoadoutCommandIntentKey
   | RuneNavigationCommandIntentKey
+  | ConsumableCommandIntentKey
   | ExplorationCommandIntentKey
   | QuestRewardCommandIntentKey
   | DailyActivityCommandIntentKey
@@ -98,6 +101,13 @@ export interface RecordInventoryDeltaResultOptions {
 }
 
 export interface RecordPlayerVitalsResultOptions {
+  readonly commandKey: GameCommandIntentKey;
+  readonly intentId?: string;
+  readonly intentStateKey?: string;
+  readonly currentStateKey?: string;
+}
+
+export interface RecordInventoryAndVitalsResultOptions {
   readonly commandKey: GameCommandIntentKey;
   readonly intentId?: string;
   readonly intentStateKey?: string;
@@ -255,6 +265,13 @@ export interface GameRepository {
     options: RecordPlayerVitalsResultOptions,
     buildResult: (player: PlayerState) => TResult,
   ): Promise<TResult>;
+  recordInventoryAndVitalsResult<TResult>(
+    playerId: number,
+    delta: InventoryDelta,
+    vitals: Required<Pick<PlayerState, 'currentHealth' | 'currentMana'>>,
+    options: RecordInventoryAndVitalsResultOptions,
+    buildResult: (player: PlayerState) => TResult,
+  ): Promise<TResult>;
   applyPlayerSkillExperience(playerId: number, gains: readonly PlayerSkillPointGain[]): Promise<PlayerState>;
   listClaimedQuestRewardCodes(playerId: number): Promise<readonly string[]>;
   listBestiaryDiscovery(playerId: number): Promise<BestiaryDiscoveryView>;
@@ -298,7 +315,15 @@ export interface GameRepository {
   rerollRuneStat(playerId: number, runeId: string, rarity: RuneRarity, stats: StatBlock, intentId?: string, intentStateKey?: string, currentStateKey?: string): Promise<PlayerState>;
   deleteRune(playerId: number, runeId: string): Promise<PlayerState>;
   destroyRune(playerId: number, runeId: string, refund: InventoryDelta, intentId?: string, intentStateKey?: string, currentStateKey?: string): Promise<PlayerState>;
-  craftPlayerItem(playerId: number, cost: InventoryDelta, statDelta: StatBlock, intentId?: string, intentStateKey?: string, currentStateKey?: string): Promise<PlayerState>;
+  craftPlayerConsumable(
+    playerId: number,
+    cost: InventoryDelta,
+    consumableDelta: InventoryDelta,
+    skillGains: readonly PlayerSkillPointGain[],
+    intentId?: string,
+    intentStateKey?: string,
+    currentStateKey?: string,
+  ): Promise<PlayerState>;
   listPlayerBlueprints(playerId: number): Promise<readonly PlayerBlueprintView[]>;
   listPlayerCraftedItems(playerId: number): Promise<readonly PlayerCraftedItemView[]>;
   grantPlayerBlueprint(
@@ -343,6 +368,7 @@ export interface GameRepository {
   createBattle(playerId: number, battle: CreateBattleInput, options?: CreateBattleOptions): Promise<BattleView>;
   getActiveBattle(playerId: number): Promise<BattleView | null>;
   saveBattle(battle: BattleView, options?: SaveBattleOptions): Promise<BattleView>;
+  saveBattleWithInventoryDelta(battle: BattleView, delta: InventoryDelta, options?: SaveBattleOptions): Promise<BattleView>;
   finalizeBattle(playerId: number, battle: BattleView, options?: SaveBattleOptions): Promise<FinalizeBattleResult>;
   log(userId: number, action: string, details: unknown): Promise<void>;
 }

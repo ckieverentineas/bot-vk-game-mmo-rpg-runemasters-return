@@ -28,6 +28,7 @@ const createPlayer = (overrides: Partial<PlayerState> = {}): PlayerState => ({
   inventory: {
     usualShards: 0, unusualShards: 0, rareShards: 0, epicShards: 0, legendaryShards: 0, mythicalShards: 0,
     leather: 0, bone: 0, herb: 0, essence: 0, metal: 0, crystal: 0,
+    healingPills: 0, focusPills: 0, guardPills: 0, clarityPills: 0,
   },
   runes: [],
   createdAt: '2026-04-12T00:00:00.000Z',
@@ -284,6 +285,54 @@ describe('PerformBattleAction', () => {
         acquisitionSummary: null,
       }),
     );
+    expect(repository.finalizeBattle).not.toHaveBeenCalled();
+  });
+
+  it('uses a healing pill in battle without giving up the player turn', async () => {
+    const player = createPlayer({
+      inventory: {
+        ...createPlayer().inventory,
+        healingPills: 1,
+      },
+    });
+    const activeBattle = createBattle({
+      player: {
+        ...createBattle().player,
+        currentHealth: 2,
+      },
+    });
+    const repository = {
+      findPlayerByVkId: vi.fn().mockResolvedValue(player),
+      getCommandIntentResult: vi.fn().mockResolvedValue(null),
+      storeCommandIntentResult: vi.fn().mockResolvedValue(undefined),
+      getActiveBattle: vi.fn().mockResolvedValue(activeBattle),
+      finalizeBattle: vi.fn(),
+      saveBattle: vi.fn(),
+      saveBattleWithInventoryDelta: vi.fn(async (battle: BattleView) => battle),
+    } as unknown as GameRepository;
+    const useCase = new PerformBattleAction(repository, createRandom());
+    const stateKey = buildBattleActionIntentStateKey(activeBattle, 'USE_HEALING_PILL');
+
+    const result = await useCase.execute(player.vkId, 'USE_HEALING_PILL', 'intent-heal-1', stateKey, 'payload');
+
+    expect(result.battle.turnOwner).toBe('PLAYER');
+    expect(result.battle.player.currentHealth).toBe(8);
+    expect(repository.saveBattleWithInventoryDelta).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: activeBattle.id,
+        turnOwner: 'PLAYER',
+        player: expect.objectContaining({ currentHealth: 8 }),
+      }),
+      { healingPills: -1 },
+      expect.objectContaining({
+        commandKey: 'BATTLE_USE_CONSUMABLE',
+        actingPlayerId: player.playerId,
+        intentId: 'intent-heal-1',
+        intentStateKey: stateKey,
+        currentStateKey: stateKey,
+      }),
+    );
+    expect(repository.saveBattle).not.toHaveBeenCalled();
     expect(repository.finalizeBattle).not.toHaveBeenCalled();
   });
 

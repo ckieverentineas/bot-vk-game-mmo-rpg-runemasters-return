@@ -60,6 +60,7 @@ const normalizeBattleReplyState = (state: BattleReplyState): BattleActionResultV
 export const resolveBattleReplyKeyboard = (
   battle: BattleView,
   viewerPlayerId?: number,
+  player?: PlayerState,
 ): ReturnType<typeof createBattleKeyboard> => {
   if (battle.status !== 'ACTIVE') {
     return createBattleResultKeyboard(battle);
@@ -69,7 +70,7 @@ export const resolveBattleReplyKeyboard = (
     return createKeyboardClear();
   }
 
-  return createBattleKeyboard(battle);
+  return createBattleKeyboard(battle, player);
 };
 
 export const replyWithExplorationResult = async (
@@ -102,9 +103,13 @@ export const replyWithBattle = async (
   const viewerPlayerId = resolveViewerPlayerId(battle, vkId);
 
   if (battle.status === 'ACTIVE') {
+    const player = vkId === undefined
+      ? null
+      : await services.getPlayerProfile.execute(vkId);
+
     await ctx.reply(
       renderBattle(battle, undefined, undefined, viewerPlayerId),
-      { keyboard: resolveBattleReplyKeyboard(battle, viewerPlayerId) },
+      { keyboard: resolveBattleReplyKeyboard(battle, viewerPlayerId, player ?? undefined) },
     );
     return;
   }

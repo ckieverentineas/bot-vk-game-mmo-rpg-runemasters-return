@@ -25,6 +25,7 @@ const createPlayer = (overrides: Partial<PlayerState> = {}): PlayerState => ({
   level: 1,
   experience: 0,
   gold: 0,
+  radiance: 0,
   baseStats: {
     health: 8,
     attack: 4,
@@ -56,6 +57,10 @@ const createPlayer = (overrides: Partial<PlayerState> = {}): PlayerState => ({
     essence: 0,
     metal: 0,
     crystal: 0,
+    healingPills: 0,
+    focusPills: 0,
+    guardPills: 0,
+    clarityPills: 0,
   },
   runes: [
     {
@@ -597,8 +602,8 @@ describe('profile keyboard', () => {
     expect(payloads.find((payload) => payload.command === gameCommands.craftVitalCharm)?.stateKey)
       .toEqual(expect.any(String));
     expect(labels).toEqual(expect.arrayContaining([
-      '❤️ Живучесть',
-      '⚔️ Удар',
+      '❤️ Сварить',
+      '🧠 Ясность',
       '🛡️ Стойкость',
       '💠 Фокус',
     ]));
@@ -743,6 +748,28 @@ describe('profile keyboard', () => {
     expect(defend?.stateKey).toEqual(expect.any(String));
     expect(skill?.intentId).toEqual(expect.any(String));
     expect(skill?.stateKey).toEqual(expect.any(String));
+  });
+
+  it('adds available consumables to the battle keyboard', () => {
+    const player = createPlayer({
+      inventory: {
+        ...createPlayer().inventory,
+        healingPills: 2,
+        focusPills: 1,
+      },
+    });
+    const keyboard = createBattleKeyboard(createBattle(), player);
+    const labels = collectLabels(keyboard);
+    const payloads = collectPayloads(keyboard);
+
+    expect(labels).toEqual(expect.arrayContaining([
+      '❤️ Пилюля x2',
+      '💠 Фокус x1',
+    ]));
+    expect(payloads.find((payload) => payload.command === gameCommands.useHealingPill)?.stateKey)
+      .toEqual(expect.any(String));
+    expect(payloads.find((payload) => payload.command === gameCommands.useFocusPill)?.stateKey)
+      .toEqual(expect.any(String));
   });
 
   it('shows only engage and flee actions while an encounter is still offered', () => {

@@ -1,4 +1,5 @@
 import type { StatKey } from '../../shared/types/game';
+import type { AlchemyConsumableCode } from '../../modules/consumables/domain/alchemy-consumables';
 import type { CraftingRecipeCode } from '../../modules/crafting/domain/crafting-recipes';
 import type { TrophyActionCode } from '../../modules/rewards/domain/trophy-actions';
 import { runeCollectionPageSize } from '../../modules/runes/domain/rune-collection';
@@ -59,10 +60,14 @@ export const gameCommands = {
   altar: 'алтарь',
   workshop: 'мастерская',
   craftRune: 'создать',
-  craftVitalCharm: 'пилюля живучести',
-  craftKeenEdge: 'пилюля удара',
+  craftVitalCharm: 'пилюля восстановления',
+  craftKeenEdge: 'пилюля ясности',
   craftGuardPlate: 'пилюля стойкости',
   craftRuneFocus: 'пилюля фокуса',
+  useHealingPill: 'выпить пилюлю восстановления',
+  useFocusPill: 'выпить пилюлю фокуса',
+  useGuardPill: 'выпить пилюлю стойкости',
+  useClarityPill: 'выпить пилюлю ясности',
   rerollRuneMenu: 'изменить руну',
   destroyRune: 'сломать',
   nextRune: '+руна',
@@ -142,6 +147,11 @@ type CraftingRecipeCommand =
   | typeof gameCommands.craftKeenEdge
   | typeof gameCommands.craftGuardPlate
   | typeof gameCommands.craftRuneFocus;
+type UseConsumableCommand =
+  | typeof gameCommands.useHealingPill
+  | typeof gameCommands.useFocusPill
+  | typeof gameCommands.useGuardPill
+  | typeof gameCommands.useClarityPill;
 type TrophyActionCommand =
   | typeof gameCommands.collectAllReward
   | typeof gameCommands.skinBeastReward
@@ -199,6 +209,20 @@ const craftingRecipeCodeCommandMap = {
   guard_plate: gameCommands.craftGuardPlate,
   rune_focus: gameCommands.craftRuneFocus,
 } satisfies Readonly<Record<CraftingRecipeCode, CraftingRecipeCommand>>;
+
+const useConsumableCommandMap = {
+  [gameCommands.useHealingPill]: 'healing_pill',
+  [gameCommands.useFocusPill]: 'focus_pill',
+  [gameCommands.useGuardPill]: 'guard_pill',
+  [gameCommands.useClarityPill]: 'clarity_pill',
+} satisfies Readonly<Record<UseConsumableCommand, AlchemyConsumableCode>>;
+
+const useConsumableCodeCommandMap = {
+  healing_pill: gameCommands.useHealingPill,
+  focus_pill: gameCommands.useFocusPill,
+  guard_pill: gameCommands.useGuardPill,
+  clarity_pill: gameCommands.useClarityPill,
+} satisfies Readonly<Record<AlchemyConsumableCode, UseConsumableCommand>>;
 
 const trophyActionCommandMap = {
   [gameCommands.collectAllReward]: 'claim_all',
@@ -283,16 +307,26 @@ export const commandAliases: Readonly<Record<string, GameCommand>> = {
   'заточка': gameCommands.craftKeenEdge,
   'пластина': gameCommands.craftGuardPlate,
   'фокус': gameCommands.craftRuneFocus,
+  'выпить': gameCommands.useHealingPill,
+  'хил': gameCommands.useHealingPill,
+  'лечение': gameCommands.useHealingPill,
+  'выпить фокус': gameCommands.useFocusPill,
+  'выпить стойкость': gameCommands.useGuardPill,
+  'выпить ясность': gameCommands.useClarityPill,
   'крафт': gameCommands.workshop,
   'кузница': gameCommands.workshop,
   'ремонт': gameCommands.workshop,
   'чертежи': gameCommands.workshop,
   'мастерская': gameCommands.workshop,
   'живучесть': gameCommands.craftVitalCharm,
+  'восстановление': gameCommands.craftVitalCharm,
   'удар': gameCommands.craftKeenEdge,
+  'ясность': gameCommands.craftKeenEdge,
   'стойкость': gameCommands.craftGuardPlate,
   'пилюля живучесть': gameCommands.craftVitalCharm,
+  'пилюля восстановления': gameCommands.craftVitalCharm,
   'пилюля удар': gameCommands.craftKeenEdge,
+  'пилюля ясность': gameCommands.craftKeenEdge,
   'пилюля стойкость': gameCommands.craftGuardPlate,
   'пилюля фокус': gameCommands.craftRuneFocus,
   '++руна': gameCommands.nextRune,
@@ -337,6 +371,18 @@ export const resolveCraftingRecipeCommand = (command: string): CraftingRecipeCod
 
 export const resolveCraftingRecipeCodeCommand = (recipeCode: CraftingRecipeCode): CraftingRecipeCommand => (
   craftingRecipeCodeCommandMap[recipeCode]
+);
+
+export const resolveUseConsumableCommand = (command: string): AlchemyConsumableCode | null => {
+  if (!hasOwn(useConsumableCommandMap, command)) {
+    return null;
+  }
+
+  return useConsumableCommandMap[command];
+};
+
+export const resolveUseConsumableCodeCommand = (consumableCode: AlchemyConsumableCode): UseConsumableCommand => (
+  useConsumableCodeCommandMap[consumableCode]
 );
 
 export const createBestiaryPageCommand = (pageNumber: number): BestiaryPageCommand => {

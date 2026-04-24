@@ -110,6 +110,10 @@ const normalizeInventory = (inventory: Partial<InventoryView> | null | undefined
     essence: clampNonNegativeInteger(inventory?.essence, fallback.essence),
     metal: clampNonNegativeInteger(inventory?.metal, fallback.metal),
     crystal: clampNonNegativeInteger(inventory?.crystal, fallback.crystal),
+    healingPills: clampNonNegativeInteger(inventory?.healingPills, fallback.healingPills ?? 0),
+    focusPills: clampNonNegativeInteger(inventory?.focusPills, fallback.focusPills ?? 0),
+    guardPills: clampNonNegativeInteger(inventory?.guardPills, fallback.guardPills ?? 0),
+    clarityPills: clampNonNegativeInteger(inventory?.clarityPills, fallback.clarityPills ?? 0),
   };
 };
 

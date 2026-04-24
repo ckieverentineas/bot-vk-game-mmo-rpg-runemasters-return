@@ -27,6 +27,8 @@ export const buildBattleActionIntentStateKey = (battle: BattleView, action: Batt
         }
       : null,
     currentMana: battle.player.currentMana,
+    currentHealth: battle.player.currentHealth,
+    guardPoints: battle.player.guardPoints ?? 0,
     activeAbility: activeAbility
       ? {
           code: activeAbility.code,

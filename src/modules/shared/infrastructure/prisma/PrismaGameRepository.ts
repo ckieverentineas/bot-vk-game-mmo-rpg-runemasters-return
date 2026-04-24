@@ -121,6 +121,7 @@ import type {
   PendingRewardSourceView,
   PendingRewardView,
   QuestRewardClaimResult,
+  RecordInventoryAndVitalsResultOptions,
   RecordInventoryDeltaResultOptions,
   RecordPlayerVitalsResultOptions,
   RecoverPendingRewardsResult,
@@ -362,27 +363,6 @@ const canRepairCraftedItemRecord = (item: PlayerCraftedItem): boolean => {
 const canEquipCraftedItemRecord = (item: PlayerCraftedItem): boolean => (
   canEquipWorkshopItem(toWorkshopEquippedItem(item))
 );
-
-const buildPlayerStatDeltaInput = (delta: StatBlock): Prisma.PlayerUpdateInput => {
-  const data: Prisma.PlayerUpdateInput = {};
-  const statFieldMap = {
-    health: 'baseHealth',
-    attack: 'baseAttack',
-    defence: 'baseDefence',
-    magicDefence: 'baseMagicDefence',
-    dexterity: 'baseDexterity',
-    intelligence: 'baseIntelligence',
-  } satisfies Record<keyof StatBlock, keyof Prisma.PlayerUpdateInput>;
-
-  for (const [stat, field] of Object.entries(statFieldMap) as Array<[keyof StatBlock, keyof Prisma.PlayerUpdateInput]>) {
-    const amount = delta[stat];
-    if (amount !== 0) {
-      data[field] = { increment: amount } as never;
-    }
-  }
-
-  return data;
-};
 
 const spendRuneDust = async (
   client: TransactionClient,
@@ -1190,6 +1170,36 @@ export class PrismaGameRepository implements GameRepository {
       options.intentStateKey,
       options.currentStateKey,
       async () => {
+        await tx.playerProgress.update({
+          where: { playerId },
+          data: {
+            currentHealth: vitals.currentHealth,
+            currentMana: vitals.currentMana,
+          },
+        });
+
+        const updatedPlayer = mapPlayerRecord(await this.requirePlayerRecord(tx, playerId));
+        return buildResult(updatedPlayer);
+      },
+    ));
+  }
+
+  public async recordInventoryAndVitalsResult<TResult>(
+    playerId: number,
+    delta: InventoryDelta,
+    vitals: Required<Pick<PlayerState, 'currentHealth' | 'currentMana'>>,
+    options: RecordInventoryAndVitalsResultOptions,
+    buildResult: (player: PlayerState) => TResult,
+  ): Promise<TResult> {
+    return this.prisma.$transaction((tx) => this.runWithCommandIntent(
+      tx,
+      playerId,
+      options.commandKey,
+      options.intentId,
+      options.intentStateKey,
+      options.currentStateKey,
+      async () => {
+        await this.applyInventoryDelta(tx, playerId, delta);
         await tx.playerProgress.update({
           where: { playerId },
           data: {
@@ -2445,10 +2455,11 @@ export class PrismaGameRepository implements GameRepository {
     });
   }
 
-  public async craftPlayerItem(
+  public async craftPlayerConsumable(
     playerId: number,
     cost: InventoryDelta,
-    statDelta: StatBlock,
+    consumableDelta: InventoryDelta,
+    skillGains: readonly PlayerSkillPointGain[],
     intentId?: string,
     intentStateKey?: string,
     currentStateKey?: string,
@@ -2468,15 +2479,22 @@ export class PrismaGameRepository implements GameRepository {
         });
 
         if (spent.count === 0) {
-          throw new AppError('not_enough_crafting_resources', 'Материалы для пилюли уже потрачены. Вернитесь к Алтарю.');
+          throw new AppError('not_enough_crafting_resources', 'Материалы для пилюли уже потрачены. Вернитесь к Мастерской.');
         }
+
+        const consumableUpdate = buildInventoryDeltaInput(consumableDelta);
+        if (Object.keys(consumableUpdate).length > 0) {
+          await tx.playerInventory.update({
+            where: { playerId },
+            data: consumableUpdate as Prisma.PlayerInventoryUpdateInput,
+          });
+        }
+
+        await this.persistPlayerSkillGains(tx, playerId, skillGains);
 
         await tx.player.update({
           where: { id: playerId },
-          data: {
-            ...buildPlayerStatDeltaInput(statDelta),
-            updatedAt: new Date(),
-          },
+          data: { updatedAt: new Date() },
         });
 
         return mapPlayerRecord(await this.requirePlayerRecord(tx, playerId));
@@ -3396,6 +3414,91 @@ export class PrismaGameRepository implements GameRepository {
 
           return mapBattleRecord(currentBattle);
         }
+
+        const currentBattle = await tx.battleSession.findFirst({
+          where: {
+            id: battle.id,
+            playerId: battle.playerId,
+          },
+        });
+
+        if (!currentBattle) {
+          throw new AppError('battle_not_found', 'Текущая схватка уже рассеялась. Ищите новую встречу.');
+        }
+
+        await this.persistPlayerSkillGains(tx, actingPlayerId, options?.playerSkillGains);
+
+        return mapBattleRecord(currentBattle);
+      };
+
+      if (options?.commandKey && options.intentId && options.intentStateKey) {
+        return this.runWithCommandIntent<BattleView>(
+          tx,
+          actingPlayerId,
+          options.commandKey,
+          options.intentId,
+          options.intentStateKey,
+          options.currentStateKey,
+          apply,
+        );
+      }
+
+      return apply();
+    });
+  }
+
+  public async saveBattleWithInventoryDelta(
+    battle: BattleView,
+    delta: InventoryDelta,
+    options?: SaveBattleOptions,
+  ): Promise<BattleView> {
+    const actingPlayerId = options?.actingPlayerId ?? battle.playerId;
+
+    return this.prisma.$transaction(async (tx) => {
+      const apply = async (): Promise<BattleView> => {
+        const persistedBattle = mapBattlePersistence(battle);
+        const { actionRevision: expectedRevision, ...persistedState } = persistedBattle;
+        void expectedRevision;
+        const nextBattleSnapshot = stringifyJson(buildBattleSnapshot({
+          ...battle,
+          actionRevision: battle.actionRevision + 1,
+        }), '{}');
+        const saved = await tx.battleSession.updateMany({
+          where: {
+            id: battle.id,
+            playerId: battle.playerId,
+            status: 'ACTIVE',
+            actionRevision: battle.actionRevision,
+          },
+          data: {
+            ...persistedState,
+            battleSnapshot: nextBattleSnapshot,
+            actionRevision: {
+              increment: 1,
+            },
+          },
+        });
+
+        if (saved.count === 0) {
+          const currentBattle = await tx.battleSession.findFirst({
+            where: {
+              id: battle.id,
+              playerId: battle.playerId,
+            },
+          });
+
+          if (!currentBattle) {
+            throw new AppError('battle_not_found', 'Текущая схватка уже рассеялась. Ищите новую встречу.');
+          }
+
+          if (isStaleBattleMutation(battle.actionRevision, currentBattle)) {
+            await this.logStaleBattleMutation(tx, actingPlayerId, battle, currentBattle.actionRevision);
+          }
+
+          return mapBattleRecord(currentBattle);
+        }
+
+        await this.applyInventoryDelta(tx, actingPlayerId, delta);
 
         const currentBattle = await tx.battleSession.findFirst({
           where: {
