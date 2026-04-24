@@ -14,6 +14,9 @@
 
 ### Added
 
+- R8 release gate 1.0: добавлен `npm run release:gate`, который последовательно запускает `db:generate`, `db:deploy`, `check`, `release:local-playtest`, `release:school-evidence`, `release:evidence` и `release:preflight`, а затем блокирует выпуск при blocker findings, незаписанных manual decisions, красных дырах в документах или критических content ошибках;
+- R8 release docs: добавлены ручной playtest-гайд 1.0, economy source/sink таблица, release doc sync и `docs/release/manual-decisions.json` для явных release-owner решений;
+
 - добавлена cleanup-карта проекта: компонентный refactor roadmap фиксирует горячие зоны, правила безопасной декомпозиции и очередь RF-001..RF-018 с процентами прогресса;
 - RF-010 repository cleanup: application/use-case слои перешли с полного `GameRepository` на scoped port-типы и локальные `...Repository` зависимости, при этом Prisma остаётся единым инфраструктурным адаптером;
 - RF-011 Prisma cleanup: `PrismaGameRepository` стал фасадом для command intent, player, party и workshop persistence-компонентов, общие inventory/error helpers вынесены рядом с Prisma-адаптером, а repository-level контракты сохранены без изменения поведения;

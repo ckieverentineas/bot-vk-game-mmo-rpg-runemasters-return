@@ -127,8 +127,9 @@ Runemasters Return — VK MMO RPG на TypeScript с модульным игро
 - `npm run release:school-evidence` — узкий markdown-отчёт по school-first telemetry funnel из `GameLog` для ручного school-path pass;
 - `npm run release:evidence` — unified release evidence report из `GameLog` за последние 7 дней по умолчанию; собирает school payoff, onboarding coverage, next-goal/return clarity и QA/exploit signals в одном markdown-срезе и пишет локальный `docs/testing/release-evidence-report.md`;
 - `npm run release:local-playtest` — локальный first-session smoke через реальный `GameHandler` и SQLite: legacy text и keyboard payload проходят старт, обучение, бой, первую руну, экипировку и профиль без VK API;
+- `npm run release:gate` — полный локальный gate 1.0: Prisma generate/deploy, check, playtest, school evidence, release evidence, preflight и проверка релизных документов;
 - `src/modules/runes/domain/rune-collection.ts` — paging helper'ы рунной коллекции поверх существующего `currentRuneIndex` без новой persistence-схемы;
-- `src/tooling/release` — правила версионирования, content validation, unified evidence/preflight-проверка и скрипты `npm run content:validate` / `npm run release:status` / `npm run release:evidence` / `npm run release:preflight`;
+- `src/tooling/release` — правила версионирования, content validation, unified evidence/preflight-проверка и скрипты `npm run content:validate` / `npm run release:status` / `npm run release:evidence` / `npm run release:preflight` / `npm run release:gate`;
 - `src/vk/handlers/gameHandler.smoke.test.ts` — smoke-проверки пользовательских сценариев через transport orchestration без реального VK API;
 - `src/modules/shared/infrastructure/prisma/PrismaGameRepository.test.ts` — регрессионные тесты на idempotency, underflow-защиту инвентаря и защиту от дублирования боевых/рунных мутаций;
 - `src/modules/combat/domain/battle-engine.test.ts`, `src/modules/world/domain/enemy-scaling.test.ts`, `src/modules/runes/domain/rune-collection.test.ts`, `src/modules/runes/domain/rune-factory.test.ts` — тесты на боевые рельсы, инициативу, paging рун и rarity caps;
@@ -233,9 +234,12 @@ npm run check
 npm run release:status
 npm run release:summary
 npm run release:local-playtest
+npm run release:school-evidence
 npm run release:evidence
 npm run release:preflight
+npm run release:gate
 npm run db:generate
+npm run db:deploy
 npm run db:push
 npm run db:seed
 npm run db:studio
@@ -352,6 +356,7 @@ Enemy intent теперь не просто предупреждает об оп
 - `npm run release:local-playtest` создаёт синтетических игроков и проверяет first-session route через legacy text и payload-кнопки с актуальными `stateKey`;
 - `npm run release:evidence` собирает единый markdown-отчёт по runtime evidence для onboarding coverage, school payoff, return recap, next-goal и QA/exploit rails; по умолчанию берёт окно последних 7 дней и при необходимости поддерживает `--since`, `--until`, `--days`, `--output`; date-only `--since/--until` трактуются как UTC-границы календарного дня;
 - перед выкладкой изменений стоит прогонять `npm run release:preflight`, чтобы проверить документацию, релизные рельсы и остановить релиз при пропущенных или пустых обязательных файлах;
+- `npm run release:gate` последовательно запускает полный локальный сценарий 1.0 и падает при blocker findings, незаписанных manual decisions, красных дырах в документах или критических content ошибках;
 - `.github/workflows/ci.yml` повторяет минимальный релизный пайплайн в CI;
 - локальный и CI-процесс зафиксирован в `RELEASE_CHECKLIST.md`;
 - пользовательские изменения фиксируются в `CHANGELOG.md`.

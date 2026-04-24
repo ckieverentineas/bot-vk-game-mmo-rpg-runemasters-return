@@ -338,6 +338,20 @@ describe('summarizeReleaseEvidence', () => {
     ], '2026-04-20T03:00:00.000Z');
 
     expect(report.verdict).toBe('warn');
+    expect(report.findings).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: 'duplicate-reward-ledger-keys',
+        severity: 'blocker',
+      }),
+      expect.objectContaining({
+        id: 'duplicate-reward-battle-ids',
+        severity: 'blocker',
+      }),
+      expect.objectContaining({
+        id: 'stale-battle-action-rejected',
+        severity: 'manual_decision',
+      }),
+    ]));
     expect(report.verdictReasons.join(' ')).toContain('ledgerKey');
     expect(report.verdictReasons.join(' ')).toContain('battleId');
     expect(report.exploitSummary).toEqual({
@@ -449,6 +463,12 @@ describe('summarizeReleaseEvidence', () => {
     ], '2026-04-20T03:00:00.000Z');
 
     expect(report.verdict).toBe('warn');
+    expect(report.findings).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: 'return-recap-missing',
+        severity: 'manual_decision',
+      }),
+    ]));
     expect(report.verdictReasons.join(' ')).toContain('return_recap_shown');
     expect(report.nextGoalRows).toEqual([
       {
@@ -724,6 +744,12 @@ describe('summarizeReleaseEvidence', () => {
     ], '2026-04-20T03:00:00.000Z');
 
     expect(report.verdict).toBe('warn');
+    expect(report.findings).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: 'rare-seal-payoff-missing',
+        severity: 'blocker',
+      }),
+    ]));
     expect(report.verdictReasons.join(' ')).toContain('rare seal payoff');
   });
 
@@ -1038,6 +1064,9 @@ describe('buildReleaseEvidenceMarkdown', () => {
     ], '2026-04-20T03:00:00.000Z'));
 
     expect(markdown).toContain('# Release Evidence Report');
+    expect(markdown).toContain('## Blockers');
+    expect(markdown).toContain('## Manual release-owner decisions');
+    expect(markdown).toContain('## Info');
     expect(markdown).toContain('## School payoff funnel');
     expect(markdown).toContain('## Quest book funnel');
     expect(markdown).toContain('## Economy health');

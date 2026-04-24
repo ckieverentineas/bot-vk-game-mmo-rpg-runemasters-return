@@ -17,6 +17,8 @@
 - `RELEASE_CHECKLIST.md` — практический gate перед релизом.
 - `CHANGELOG.md` — история shipped-изменений и release notes.
 - `docs/product/1-0-release-charter.md` — обещание 1.0, explicit out-of-scope и ethical retention boundaries.
+- `docs/release/release-doc-sync-1-0.md` — короткая сверка README, CHANGELOG, PLAN и RELEASE_CHECKLIST для 1.0.
+- `docs/release/economy-source-sink-1-0.md` — таблица источников и стоков экономики ранней игры.
 - `docs/product/school-bible-v1.md` — product lock по идентичности школ, allowed/forbidden overlap и safe hidden trophy directions.
 - `docs/product/bestiary-v1.md` — правила бестиария: локации по 5, скрытие мобов до встречи, скрытие добычи до первого обработанного трофея без новых таблиц.
 - `docs/product/action-based-progression-and-trophy-loot.md` — committed design candidate для pending trophy rewards, action-based навыков, скрытого дропа и узких специализаций.
@@ -66,7 +68,7 @@
 
 ## Что не считаем доказанным
 
-- School-first path по четырём школам теперь подтверждён автоматическим runtime evidence до `RARE seal`: `novice elite -> UNUSUAL знак -> rune hub/equip -> school miniboss -> RARE печать`. Текущий `release:evidence` всё ещё остаётся `warn` только из-за `return_recap_shown`: после экрана возврата пока нет follow-up proxy в отчёте.
+- School-first path по четырём школам подтверждается автоматическим runtime evidence до `RARE seal`: `novice elite -> UNUSUAL знак -> rune hub/equip -> school miniboss -> RARE печать`. Если отчёт видит спорный return/post-session proxy, это оформляется как manual decision с владельцем и follow-up.
 - Игровая версия считается только по commit-based правилу из `release:status`; `package.json` остаётся технической npm-метаинформацией и не является player-facing версией игры.
 - Production database rollout не считается оформленным, пока нет явной процедуры backup + migration/deploy для SQLite.
 - Action-based trophy rewards имеют local handler manual evidence для pending trophy collect/replay в `docs/testing/pending-trophy-manual-playtest-q022.md`, но ещё не считаются полностью release-proven без release evidence или release-owner решения. Hidden drop pools за пределами первого Ember-среза, глубокие многоступенчатые threshold-лестницы и stat growth остаются будущими работами.
@@ -86,9 +88,9 @@
 
 ## Ближайший порядок работ
 
-1. Прогнать technical gate после остановки бота: `npm run db:generate`, `npm run check`, `npm run release:local-playtest`, `npm run release:preflight`.
+1. Прогнать полный local release gate после остановки бота: `npm run release:gate`.
 2. Пройти ручной playtest поверх автоматического first-session smoke: onboarding, encounter choice, fight/flee, rune hub, две руны, craft/reroll/destroy и четыре school paths. Quest book open/claim/replay уже закрыт local handler evidence в Q-011 и виден в `release:evidence`; pending trophy collect/replay уже закрыт local handler evidence в Q-022. Оба сценария можно повторить на живом боте перед релизом как optional smoke.
-3. Собрать `npm run release:school-evidence` и `npm run release:evidence`; если verdict остаётся `warn` или хуже, релиз не готов без явного release-owner решения.
+3. При ручном спорном сигнале записать решение в `docs/release/manual-decisions.json` с владельцем, причиной и follow-up.
 4. После evidence pass обновить `README.md`, `CHANGELOG.md`, `PLAN.md` и при необходимости `ARCHITECTURE.md` / `RELEASE_CHECKLIST.md`.
 5. Подготовить минимальный ops-runbook: где `.env`, где SQLite DB, как запускается production-процесс, где логи и как откатываться.
 

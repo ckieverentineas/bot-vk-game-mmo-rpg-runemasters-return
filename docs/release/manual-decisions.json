@@ -1,0 +1,58 @@
+[
+  {
+    "id": "stale-battle-action-rejected",
+    "owner": "release-owner",
+    "date": "2026-04-24",
+    "decision": "accepted_for_1_0",
+    "reason": "Stale battle actions are accepted for 1.0 when they are rejected without mutating the current battle or duplicating rewards.",
+    "followUp": "Keep the regression in the local release gate and revisit copy after the first public playtest."
+  },
+  {
+    "id": "return-recap-follow-up-missing",
+    "owner": "release-owner",
+    "date": "2026-04-24",
+    "decision": "accepted_for_1_0",
+    "reason": "Return recap is useful for 1.0 even when the report has no immediate follow-up proxy in the same evidence window.",
+    "followUp": "Add a stronger return follow-up signal after 1.0 telemetry review."
+  },
+  {
+    "id": "return-recap-missing",
+    "owner": "release-owner",
+    "date": "2026-04-24",
+    "decision": "accepted_for_1_0",
+    "reason": "A missing return recap signal is a manual release decision because local playtest can still prove the first-session route.",
+    "followUp": "Run a live return smoke and add a clearer return evidence event."
+  },
+  {
+    "id": "post-session-follow-up-missing",
+    "owner": "release-owner",
+    "date": "2026-04-24",
+    "decision": "accepted_for_1_0",
+    "reason": "Post-session follow-up gaps are accepted only when the VK screens still show a concrete next action in manual playtest.",
+    "followUp": "Tie post-session follow-up to a durable quest or exploration action after release."
+  },
+  {
+    "id": "post-session-next-goal-missing",
+    "owner": "release-owner",
+    "date": "2026-04-24",
+    "decision": "accepted_for_1_0",
+    "reason": "The next-goal signal may be absent in a narrow evidence window, but the release guide covers the player-facing route.",
+    "followUp": "Add a report fixture for next-goal visibility after the first 1.0 pass."
+  },
+  {
+    "id": "tutorial-path-choice-gap",
+    "owner": "release-owner",
+    "date": "2026-04-24",
+    "decision": "accepted_for_1_0",
+    "reason": "The local first-session route intentionally exercises the main tutorial path; alternate onboarding paths are accepted for 1.0 as manual coverage.",
+    "followUp": "Add one automated alternate-path sample when onboarding branching becomes release-critical."
+  },
+  {
+    "id": "first-school-commit-gap",
+    "owner": "release-owner",
+    "date": "2026-04-24",
+    "decision": "accepted_for_1_0",
+    "reason": "School-specific runtime evidence covers all four schools through novice elite, sign equip, miniboss and rare seal; the first-session onboarding sample does not need to commit every school.",
+    "followUp": "Extend first-session evidence after 1.0 if school choice distribution becomes a launch metric."
+  }
+]

@@ -39,6 +39,13 @@ export const releaseEvidenceTrackedActions = [
 type QuestBookEvidenceAction = typeof questBookEvidenceActions[number];
 type ReleaseEvidenceTrackedAction = typeof releaseEvidenceTrackedActions[number];
 type ReleaseEvidenceVerdict = 'pass' | 'warn' | 'insufficient_evidence';
+export type ReleaseEvidenceFindingSeverity = 'blocker' | 'manual_decision' | 'info';
+
+export interface ReleaseEvidenceFinding {
+  readonly id: string;
+  readonly severity: ReleaseEvidenceFindingSeverity;
+  readonly message: string;
+}
 
 interface CounterAccumulator {
   eventCount: number;
@@ -186,6 +193,7 @@ export interface ReleaseEvidenceReport {
   readonly uniqueUsers: number;
   readonly verdict: ReleaseEvidenceVerdict;
   readonly verdictReasons: readonly string[];
+  readonly findings: readonly ReleaseEvidenceFinding[];
   readonly actionRows: readonly ReleaseEvidenceActionRow[];
   readonly onboardingRows: readonly OnboardingCoverageRow[];
   readonly tutorialPathRows: readonly TutorialPathChoiceRow[];
@@ -322,6 +330,114 @@ const isNonUsualRarity = (value: unknown): boolean => (
 
 const schoolDefinitions = listSchoolDefinitions().filter((school) => trackedSchoolCodes.has(school.code));
 
+const includesAny = (value: string, patterns: readonly string[]): boolean => (
+  patterns.some((pattern) => value.includes(pattern))
+);
+
+const resolveFindingForReason = (reason: string): ReleaseEvidenceFinding => {
+  if (reason.includes('school_novice_elite_encounter_started')) {
+    return {
+      id: 'school-novice-elite-missing',
+      severity: 'blocker',
+      message: reason,
+    };
+  }
+
+  if (includesAny(reason, ['aligned `UNUSUAL` reward', 'aligned payoff'])) {
+    return {
+      id: 'school-aligned-payoff-missing',
+      severity: 'blocker',
+      message: reason,
+    };
+  }
+
+  if (reason.includes('rare seal payoff')) {
+    return {
+      id: 'rare-seal-payoff-missing',
+      severity: 'blocker',
+      message: reason,
+    };
+  }
+
+  if (reason.includes('ledgerKey')) {
+    return {
+      id: 'duplicate-reward-ledger-keys',
+      severity: 'blocker',
+      message: reason,
+    };
+  }
+
+  if (reason.includes('battleId')) {
+    return {
+      id: 'duplicate-reward-battle-ids',
+      severity: 'blocker',
+      message: reason,
+    };
+  }
+
+  if (reason.includes('battle_stale_action_rejected')) {
+    return {
+      id: 'stale-battle-action-rejected',
+      severity: 'manual_decision',
+      message: reason,
+    };
+  }
+
+  if (reason.includes('return_recap_shown')) {
+    return {
+      id: reason.includes('follow-up proxy')
+        ? 'return-recap-follow-up-missing'
+        : 'return-recap-missing',
+      severity: 'manual_decision',
+      message: reason,
+    };
+  }
+
+  if (reason.includes('post_session_next_goal_shown')) {
+    return {
+      id: reason.includes('follow-up proxy')
+        ? 'post-session-follow-up-missing'
+        : 'post-session-next-goal-missing',
+      severity: 'manual_decision',
+      message: reason,
+    };
+  }
+
+  if (reason.includes('first_school_committed')) {
+    return {
+      id: 'first-school-commit-gap',
+      severity: 'manual_decision',
+      message: reason,
+    };
+  }
+
+  if (reason.includes('first_school_presented')) {
+    return {
+      id: 'first-school-presentation-gap',
+      severity: 'manual_decision',
+      message: reason,
+    };
+  }
+
+  if (reason.includes('tutorial_path_chosen')) {
+    return {
+      id: 'tutorial-path-choice-gap',
+      severity: 'manual_decision',
+      message: reason,
+    };
+  }
+
+  return {
+    id: 'release-evidence-review-required',
+    severity: 'manual_decision',
+    message: reason,
+  };
+};
+
+const resolveEvidenceFindings = (
+  reasons: readonly string[],
+): readonly ReleaseEvidenceFinding[] => reasons.map(resolveFindingForReason);
+
 const resolveEvidenceVerdict = (
   actionRows: readonly ReleaseEvidenceActionRow[],
   tutorialPathRows: readonly TutorialPathChoiceRow[],
@@ -332,7 +448,7 @@ const resolveEvidenceVerdict = (
   nextGoalRows: readonly ReleaseEvidenceNextGoalRow[],
   returnRecapRows: readonly ReleaseEvidenceReturnRecapRow[],
   exploitSummary: ReleaseEvidenceExploitSummary,
-): { verdict: ReleaseEvidenceVerdict; reasons: readonly string[] } => {
+): { verdict: ReleaseEvidenceVerdict; reasons: readonly string[]; findings: readonly ReleaseEvidenceFinding[] } => {
   const totalNoviceEliteUsers = schoolPathRows.reduce((sum, row) => sum + row.noviceEliteUsers, 0);
   const onboardingStartedCount = actionRows.find((row) => row.action === 'onboarding_started')?.uniqueUsers ?? 0;
   const tutorialPathChosenCount = tutorialPathRows.reduce((sum, row) => sum + row.uniqueUsers, 0);
@@ -344,6 +460,11 @@ const resolveEvidenceVerdict = (
     return {
       verdict: 'insufficient_evidence',
       reasons: ['В логах нет `school_novice_elite_encounter_started`, поэтому school-first slice ещё не доказан runtime-evidence.'],
+      findings: [{
+        id: 'school-novice-elite-missing',
+        severity: 'blocker',
+        message: 'Missing `school_novice_elite_encounter_started` runtime evidence.',
+      }],
     };
   }
 
@@ -351,6 +472,11 @@ const resolveEvidenceVerdict = (
     return {
       verdict: 'insufficient_evidence',
       reasons: ['В логах нет aligned `UNUSUAL` reward для school novice path, поэтому первый school payoff пока не подтверждён.'],
+      findings: [{
+        id: 'school-aligned-payoff-missing',
+        severity: 'blocker',
+        message: 'Missing aligned `UNUSUAL` reward runtime evidence.',
+      }],
     };
   }
 
@@ -426,6 +552,7 @@ const resolveEvidenceVerdict = (
   return {
     verdict: reasons.length > 0 ? 'warn' : 'pass',
     reasons,
+    findings: resolveEvidenceFindings(reasons),
   };
 };
 
@@ -985,6 +1112,7 @@ export const summarizeReleaseEvidence = (
     uniqueUsers: uniqueUsers.size,
     verdict: verdictResult.verdict,
     verdictReasons: verdictResult.reasons,
+    findings: verdictResult.findings,
     actionRows,
     onboardingRows,
     tutorialPathRows,
@@ -1012,10 +1140,25 @@ const buildTable = (header: readonly string[], rows: readonly (readonly (string 
   ];
 };
 
+const buildFindingSection = (
+  title: string,
+  findings: readonly ReleaseEvidenceFinding[],
+  emptyLine: string,
+): readonly string[] => [
+  title,
+  '',
+  ...(findings.length > 0
+    ? findings.map((finding) => `- \`${finding.id}\` — ${finding.message}`)
+    : [`- ${emptyLine}`]),
+  '',
+];
+
 export const buildReleaseEvidenceMarkdown = (report: ReleaseEvidenceReport): string => {
   const verdictLines = report.verdictReasons.length > 0
     ? report.verdictReasons.map((reason) => `- ${reason}`)
     : ['- Явных release-blocker сигналов в текущей выборке не найдено.'];
+  const blockerFindings = report.findings.filter((finding) => finding.severity === 'blocker');
+  const manualDecisionFindings = report.findings.filter((finding) => finding.severity === 'manual_decision');
 
   const lines = [
     '# Release Evidence Report',
@@ -1029,6 +1172,16 @@ export const buildReleaseEvidenceMarkdown = (report: ReleaseEvidenceReport): str
     '',
     `- Статус: \`${report.verdict}\``,
     ...verdictLines,
+    '',
+    ...buildFindingSection('## Blockers', blockerFindings, 'Нет blocker finding в текущей выборке.'),
+    ...buildFindingSection(
+      '## Manual release-owner decisions',
+      manualDecisionFindings,
+      'Нет finding, требующих ручного release-owner решения.',
+    ),
+    '## Info',
+    '',
+    ...report.confidenceNotes.map((note) => `- ${note}`),
     '',
     '## Sample health',
     '',

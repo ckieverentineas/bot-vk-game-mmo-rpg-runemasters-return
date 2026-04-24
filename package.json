@@ -10,6 +10,7 @@
     "check": "npm run typecheck && npm run content:validate && npm run build && npm run test",
     "start": "node dist/index.js",
     "db:generate": "prisma generate",
+    "db:deploy": "prisma migrate deploy",
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev",
     "db:studio": "prisma studio",
@@ -20,6 +21,7 @@
     "release:school-evidence": "tsx src/tooling/release/school-path-evidence.ts",
     "release:evidence": "tsx src/tooling/release/release-evidence.ts",
     "release:local-playtest": "tsx src/tooling/release/local-playtest.ts",
+    "release:gate": "tsx src/tooling/release/release-gate.ts",
     "release:preflight": "tsx src/tooling/release/release-preflight.ts",
     "lint": "tsc --noEmit -p tsconfig.json",
     "test": "vitest run --passWithNoTests"
