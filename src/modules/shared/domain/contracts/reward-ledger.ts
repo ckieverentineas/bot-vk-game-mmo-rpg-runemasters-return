@@ -183,13 +183,3 @@ export const createAppliedPendingRewardLedgerEntry = (
   pendingRewardSnapshot: snapshot,
   appliedAt,
 });
-
-export const createExpiredPendingRewardLedgerEntry = (
-  snapshot: PendingRewardExpiredSnapshotV1,
-  expiredAt: string,
-): ExpiredPendingRewardLedgerEntryV1 => ({
-  ...createPendingRewardLedgerBase(snapshot),
-  status: 'EXPIRED',
-  pendingRewardSnapshot: snapshot,
-  expiredAt,
-});

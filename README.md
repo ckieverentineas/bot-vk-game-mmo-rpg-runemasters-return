@@ -109,9 +109,9 @@ Runemasters Return — VK MMO RPG на TypeScript с модульным игро
 - `docs/product/1-0-release-charter.md` — утверждённое обещание релиза 1.0, explicit out-of-scope и ethical retention red lines;
 - `docs/product/school-bible-v1.md` — product lock по четырём стартовым школам: identity, tactical ask, allowed/forbidden overlap и safe hidden trophy directions;
 - `docs/product/action-based-progression-and-trophy-loot.md` — дизайн pending trophy rewards, action-based навыков, скрытого дропа от школ/рун/ролей и узких специализаций;
-- `docs/reviews/phase-1-exit-gate.md` — единый gate-review для перехода из Foundation & Platform к Vertical Slice scope lock;
+- `docs/reviews/phase-1-exit-gate.md` — исторический gate-review для перехода из Foundation & Platform к Vertical Slice scope lock; текущая релизная готовность живёт в `PLAN.md`, `RELEASE_CHECKLIST.md` и evidence-отчётах;
 - `docs/reviews/progression-rework-v1.md` — решение по уходу от новых stat points за уровни к school mastery как следующей оси роста;
-- `docs/reviews/starter-synergy-v1.md` — первый locked same-school synergy slice для Пламени и Тверди;
+- `docs/reviews/starter-synergy-v1.md` — исторический первый same-school synergy slice для Пламени и Тверди; актуальная идентичность четырёх школ закреплена в `docs/product/school-bible-v1.md` и runtime-тестах;
 - `docs/reviews/rune-hub-ux-v1.md` — актуальный rune hub baseline: список по 5 рун, отдельная карточка выбранной руны и два равноправных стартовых слота;
 - `docs/reviews/support-rune-slot-v1.md` и `docs/reviews/support-rune-slot-v2.md` — superseded-ссылки старой модели второго слота, оставленные только для исторических changelog-ссылок;
 - `docs/telemetry/telemetry-plan.md` — минимальный telemetry v1 план для onboarding clarity, school readability, return UX, economy health и exploit review;

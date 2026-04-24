@@ -466,25 +466,3 @@ export const buildEquipAcquisitionSummary = (
 
   return buildSchoolStyleCommittedSummary(novicePath.schoolCode, school.name, school.nameGenitive);
 };
-
-export const buildEquippedSchoolStyleSummary = (
-  player: PlayerState,
-): AcquisitionSummaryView | null => {
-  const equippedRune = getEquippedRune(player, 0);
-  if (!equippedRune) {
-    return null;
-  }
-
-  const school = getSchoolDefinitionForArchetype(equippedRune.archetypeCode);
-  const novicePath = getSchoolNovicePathDefinition(school?.code);
-  if (
-    !school
-    || !novicePath
-    || equippedRune.rarity !== novicePath.rewardRarity
-    || !!(novicePath.minibossRewardRarity && hasRuneOfSchoolAtLeastRarity(player, novicePath.schoolCode, novicePath.minibossRewardRarity))
-  ) {
-    return null;
-  }
-
-  return buildSchoolStyleCommittedSummary(novicePath.schoolCode, school.name, school.nameGenitive);
-};

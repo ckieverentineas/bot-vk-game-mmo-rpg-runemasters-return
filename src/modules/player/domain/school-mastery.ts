@@ -154,8 +154,6 @@ const schoolMasteryDefinitions: readonly SchoolMasteryDefinition[] = [
   },
 ];
 
-export const listSchoolMasteryDefinitions = (): readonly SchoolMasteryDefinition[] => schoolMasteryDefinitions;
-
 export const getSchoolMasteryDefinition = (schoolCode: string | null | undefined): SchoolMasteryDefinition | null => (
   schoolMasteryDefinitions.find((entry) => entry.schoolCode === schoolCode) ?? null
 );
@@ -202,18 +200,6 @@ export const resolveNextSchoolMasteryMilestone = (
 
   return listSchoolMasteryMilestones(mastery.schoolCode)
     .find((milestone) => mastery.experience < milestone.threshold) ?? null;
-};
-
-export const resolveCurrentSchoolMasteryMilestone = (
-  mastery: Pick<SchoolMasteryView, 'schoolCode' | 'experience'> | null | undefined,
-): SchoolMasteryMilestoneDefinition | null => {
-  if (!mastery) {
-    return null;
-  }
-
-  return [...listSchoolMasteryMilestones(mastery.schoolCode)]
-    .reverse()
-    .find((milestone) => mastery.experience >= milestone.threshold) ?? null;
 };
 
 export const listSchoolMasteryMilestoneStates = (

@@ -1,4 +1,4 @@
-import type { BattleRewardView, BattleView, RuneDraft, RuneRarity } from '../../../../shared/types/game';
+import type { BattleView, RuneDraft, RuneRarity } from '../../../../shared/types/game';
 
 import { hasSchemaVersion, isJsonRecord } from './versioned-contract';
 
@@ -73,13 +73,6 @@ export const isRewardIntent = (value: unknown): value is RewardIntent => (
   && isNumber(value.playerId)
   && isRewardPayload(value.payload)
 );
-
-export const buildBattleRewardViewFromIntent = (intent: RewardIntent): BattleRewardView => ({
-  experience: intent.payload.experience,
-  gold: intent.payload.gold,
-  shards: { ...intent.payload.shards },
-  droppedRune: intent.payload.droppedRune,
-});
 
 export const createBattleVictoryRewardIntent = (
   playerId: number,

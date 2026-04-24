@@ -1,5 +1,7 @@
 # Phase 1 Exit Gate — Foundation to Vertical Slice
 
+> Historical review snapshot. Current release readiness is governed by `PLAN.md`, `RELEASE_CHECKLIST.md`, generated evidence reports, and the current product/platform docs linked from `README.md`.
+
 ## Purpose
 
 Зафиксировать минимальное go/no-go решение между `Foundation & Platform` и `Vertical Slice` без дублирования уже существующих platform docs.

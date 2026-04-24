@@ -517,7 +517,3 @@ const questDefinitions: readonly QuestDefinition[] = [
 ];
 
 export const listQuestDefinitions = (): readonly QuestDefinition[] => questDefinitions;
-
-export const findQuestDefinition = (code: string): QuestDefinition | null => (
-  questDefinitions.find((quest) => quest.code === code) ?? null
-);

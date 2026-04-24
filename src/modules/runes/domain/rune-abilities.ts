@@ -61,8 +61,3 @@ export const describeRuneContent = (rune: RuneAbilityCarrier): RuneContentDescri
   passiveAbilities: listAbilityDefinitions(rune.passiveAbilityCodes),
   activeAbilities: listAbilityDefinitions(rune.activeAbilityCodes),
 });
-
-export const listRuneAbilities = (rune: Pick<RuneDraft, 'activeAbilityCodes' | 'passiveAbilityCodes'>): AbilityDefinition[] => {
-  const codes = [...(rune.passiveAbilityCodes ?? []), ...(rune.activeAbilityCodes ?? [])];
-  return codes.map((code) => getAbilityDefinition(code));
-};

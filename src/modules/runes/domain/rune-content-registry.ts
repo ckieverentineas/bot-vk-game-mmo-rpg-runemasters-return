@@ -19,8 +19,6 @@ export const getRuneArchetypeByCode = (code: string): RuneArchetypeDefinition | 
   archetypeByCode.get(code) ?? null
 );
 
-export const listAbilities = (): readonly AbilityDefinition[] => abilities;
-
 export const getAbilityByCode = (code: string): AbilityDefinition | null => (
   abilityByCode.get(code) ?? null
 );

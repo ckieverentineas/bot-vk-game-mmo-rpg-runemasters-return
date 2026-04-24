@@ -1,5 +1,7 @@
 # Starter Synergy v1
 
+> Historical first-slice review for Пламя/Твердь. Current four-school identity and combat expectations live in `docs/product/school-bible-v1.md`, `src/content/runes/data/*`, and the shipped runtime tests.
+
 ## Purpose
 
 Сделать первый шаг от просто school mastery к **читаемому боевому комбо-паттерну** для locked Vertical Slice школ.

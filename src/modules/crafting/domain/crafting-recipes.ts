@@ -1,4 +1,4 @@
-import type { InventoryDelta, InventoryView, MaterialField, PlayerState } from '../../../shared/types/game';
+import type { InventoryDelta, MaterialField, PlayerState } from '../../../shared/types/game';
 import {
   formatAlchemyConsumableEffect,
   getAlchemyConsumable,
@@ -147,15 +147,6 @@ export const resolveAvailableCraftingRecipes = (
   player: Pick<PlayerState, 'inventory'>,
 ): readonly CraftingRecipeDefinition[] => (
   craftingRecipes.filter((recipe) => canPayCraftingRecipe(player, recipe))
-);
-
-export const hasCraftingMaterials = (inventory: InventoryView): boolean => (
-  inventory.leather > 0
-  || inventory.bone > 0
-  || inventory.herb > 0
-  || inventory.essence > 0
-  || inventory.metal > 0
-  || inventory.crystal > 0
 );
 
 export const formatCraftingRecipeOutput = (

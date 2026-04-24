@@ -22,6 +22,7 @@
 - RF-014 VK screen cleanup: добавлен общий `screenReply`, а daily trace, party screen и party exploration event переведены в responder-компоненты, чтобы `GameHandler` маршрутизировал результаты без ручной сборки presenter + keyboard;
 - RF-015 VK copy cleanup: повторяемое форматирование ресурсов, боевых наград, счётчиков прогресса, русских числовых форм и CTA-строк собрано в `message-formatting.ts`, а battle/home/profile/reward/quest/rune presenters используют эти named helpers;
 - RF-016 reward cleanup: pending trophy ledger, applied trophy result и reward economy telemetry вынесены в `rewards/application`, а Prisma, quest reward и daily trace используют общие границы вместо локальной сборки наградных payload'ов;
+- RF-017 dead-code cleanup: удалены подтверждённо неиспользуемые exported helpers в crafting, quest, rune, school mastery/novice path и reward contracts, а старые review-доки с устаревшим scope помечены историческими с явными актуальными заменами;
 - RF-009 command-intent cleanup: replay/pending/stale проверки вынесены в общий guard-helper и подключены к бою, исследованию, рунам, мастерской, алхимии, следу дня и наградам книги путей;
 - RF-008 exploration cleanup: standalone exploration events получили общий effect-persistence helper для ресурсных находок, восстановления HP/маны и no-effect сцен в solo/party flows;
 - RF-007 exploration cleanup: solo и party exploration теперь используют общий battle-start builder для snapshot'ов, encounter choice, `CreateBattleInput` и стартового хода врага;

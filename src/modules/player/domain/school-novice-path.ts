@@ -84,14 +84,6 @@ export const getSchoolNovicePathDefinitionForEnemy = (enemyCode: string | null |
   novicePathDefinitions.find((entry) => entry.enemyCode === enemyCode || entry.minibossEnemyCode === enemyCode) ?? null
 );
 
-export const isSchoolNoviceTrialEnemy = (enemyCode: string | null | undefined): boolean => (
-  novicePathDefinitions.some((entry) => entry.enemyCode === enemyCode)
-);
-
-export const isSchoolMinibossEnemy = (enemyCode: string | null | undefined): boolean => (
-  novicePathDefinitions.some((entry) => entry.minibossEnemyCode != null && entry.minibossEnemyCode === enemyCode)
-);
-
 export const hasRuneOfSchoolAtLeastRarity = (
   player: Pick<PlayerState, 'runes'>,
   schoolCode: string,
