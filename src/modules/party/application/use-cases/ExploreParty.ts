@@ -11,6 +11,7 @@ import type {
 import { BattleEngine } from '../../../combat/domain/battle-engine';
 import { createBattleEncounter, isBattleEncounterOffered } from '../../../combat/domain/battle-encounter';
 import { buildBattlePlayerSnapshot } from '../../../combat/domain/build-battle-player-snapshot';
+import { resolveRecoveredPlayerVitals } from '../../../exploration/application/exploration-event-effects';
 import {
   addStats,
   derivePlayerStats,
@@ -26,15 +27,38 @@ import {
 } from '../../../workshop/domain/workshop-catalog';
 import type { WorldCatalog } from '../../../world/application/ports/WorldCatalog';
 import {
+  type ExplorationBattleOutcome,
   type ExplorationRoamingTemplatePool,
-  resolveExplorationBattleOutcome,
+  resolveExplorationOutcome,
   resolveExplorationSchoolCode,
 } from '../../../exploration/domain/exploration-outcome';
+import {
+  getExplorationSceneInventoryDelta,
+  getExplorationSceneVitalRecovery,
+  type ExplorationSceneView,
+} from '../../../world/domain/exploration-events';
 
 interface PartyMemberBattleContext {
   readonly player: PlayerState;
   readonly workshopItems: readonly WorkshopEquippedItemView[];
 }
+
+export interface ExplorePartyEventMemberResult {
+  readonly player: PlayerState;
+}
+
+export interface ExplorePartyEventResult {
+  readonly event: ExplorationSceneView;
+  readonly player: PlayerState;
+  readonly party: PartyView;
+  readonly members: readonly ExplorePartyEventMemberResult[];
+}
+
+export type ExplorePartyResult = BattleView | ExplorePartyEventResult;
+
+export const isExplorePartyEventResult = (result: ExplorePartyResult): result is ExplorePartyEventResult => (
+  'event' in result
+);
 
 const toWorkshopEquippedItem = (item: PlayerCraftedItemView): WorkshopEquippedItemView => ({
   id: item.id,
@@ -132,7 +156,7 @@ export class ExploreParty {
     private readonly random: GameRandom,
   ) {}
 
-  public async execute(vkId: number): Promise<BattleView> {
+  public async execute(vkId: number): Promise<ExplorePartyResult> {
     const leader = await requirePlayerByVkId(this.repository, vkId);
     const party = await this.repository.getActiveParty(leader.playerId);
     if (!party) {
@@ -176,7 +200,7 @@ export class ExploreParty {
       throw new AppError('party_member_not_found', 'Лидер не найден в собственном отряде.');
     }
 
-    const outcome = resolveExplorationBattleOutcome({
+    const outcome = resolveExplorationOutcome({
       player: leader,
       biome,
       templates: this.worldCatalog.listMobTemplatesForBiome(biome.code),
@@ -188,6 +212,19 @@ export class ExploreParty {
       workshopItems: leaderContext.workshopItems,
     }, this.random);
 
+    if (outcome.kind === 'event') {
+      return this.persistPartyExplorationEventResult(party, memberContexts, leader, outcome.event);
+    }
+
+    return this.startPartyBattleFromOutcome(party, memberContexts, leader, outcome);
+  }
+
+  private async startPartyBattleFromOutcome(
+    party: PartyView,
+    memberContexts: readonly PartyMemberBattleContext[],
+    leader: PlayerState,
+    outcome: ExplorationBattleOutcome,
+  ): Promise<BattleView> {
     const partyMembers = memberContexts.map((member) => {
       const stats = resolveMemberBattleStats(member, leader.playerId, outcome.playerStats);
       const snapshot = buildBattlePlayerSnapshot(
@@ -253,6 +290,52 @@ export class ExploreParty {
     }
 
     return battle;
+  }
+
+  private async persistPartyExplorationEventResult(
+    party: PartyView,
+    memberContexts: readonly PartyMemberBattleContext[],
+    leader: PlayerState,
+    event: ExplorationSceneView,
+  ): Promise<ExplorePartyEventResult> {
+    const members = await Promise.all(memberContexts.map(async (member) => ({
+      player: await this.applyPartyExplorationEventEffect(member.player, event),
+    } satisfies ExplorePartyEventMemberResult)));
+    const resultPlayer = members.find((member) => member.player.playerId === leader.playerId)?.player;
+
+    return {
+      event,
+      player: resultPlayer ?? leader,
+      party,
+      members,
+    };
+  }
+
+  private async applyPartyExplorationEventEffect(
+    player: PlayerState,
+    event: ExplorationSceneView,
+  ): Promise<PlayerState> {
+    const inventoryDelta = getExplorationSceneInventoryDelta(event);
+    if (inventoryDelta) {
+      return this.repository.recordInventoryDeltaResult(
+        player.playerId,
+        inventoryDelta,
+        { commandKey: 'EXPLORE_PARTY' },
+        (updatedPlayer) => updatedPlayer,
+      );
+    }
+
+    const vitalRecovery = getExplorationSceneVitalRecovery(event);
+    if (vitalRecovery) {
+      return this.repository.recordPlayerVitalsResult(
+        player.playerId,
+        resolveRecoveredPlayerVitals(player, vitalRecovery),
+        { commandKey: 'EXPLORE_PARTY' },
+        (updatedPlayer) => updatedPlayer,
+      );
+    }
+
+    return player;
   }
 
   private async loadPartyMemberContexts(party: PartyView): Promise<readonly PartyMemberBattleContext[]> {

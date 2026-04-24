@@ -130,13 +130,23 @@ const createBattleActionLayout = (battle: BattleView, player?: PlayerState): Key
 };
 
 const createBattleResultLayout = (battle: BattleView, player?: PlayerState): KeyboardLayout => {
-  const exploreStateKey = player ? buildExploreLocationIntentStateKey(player) : undefined;
+  const isPartyVictory = battle.battleType === 'PARTY_PVE'
+    && battle.party !== undefined
+    && battle.party !== null
+    && battle.result === 'VICTORY';
+  const exploreStateKey = !isPartyVictory && player
+    ? buildExploreLocationIntentStateKey(player)
+    : undefined;
   const nextGoal = player ? buildBattleResultNextGoalView(battle, player) : null;
-  const exploreLabel = battle.result === 'DEFEAT'
+  const exploreLabel = isPartyVictory
+    ? '⚔️ Исследовать вместе'
+    : battle.result === 'DEFEAT'
     ? '⚔️ Осторожно дальше'
     : nextGoal?.primaryAction === 'explore'
       ? nextGoal.primaryActionLabel
       : resolveSchoolContinuationLabel(player, '⚔️ Исследовать');
+  const exploreCommand = isPartyVictory ? gameCommands.exploreParty : gameCommands.explore;
+  const isExploreIntentScoped = !isPartyVictory && Boolean(player);
 
   return [
     battle.rewards?.droppedRune || nextGoal?.primaryAction === 'open_runes'
@@ -148,17 +158,17 @@ const createBattleResultLayout = (battle: BattleView, player?: PlayerState): Key
           },
           {
             label: exploreLabel,
-            command: gameCommands.explore,
+            command: exploreCommand,
             color: Keyboard.POSITIVE_COLOR,
-            intentScoped: Boolean(player),
+            intentScoped: isExploreIntentScoped,
             stateKey: exploreStateKey,
           },
         ]
       : [{
           label: exploreLabel,
-          command: gameCommands.explore,
+          command: exploreCommand,
           color: Keyboard.POSITIVE_COLOR,
-          intentScoped: Boolean(player),
+          intentScoped: isExploreIntentScoped,
           stateKey: exploreStateKey,
         }],
     [

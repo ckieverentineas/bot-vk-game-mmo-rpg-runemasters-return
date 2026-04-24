@@ -3,11 +3,15 @@
 import type { AppServices } from '../../app/composition-root';
 import type { ReturnToAdventureReplayResult } from '../../modules/exploration/application/use-cases/ReturnToAdventure';
 import type { SkipTutorialReplayResult } from '../../modules/exploration/application/use-cases/SkipTutorial';
+import {
+  isExplorePartyEventResult,
+  type ExplorePartyEventResult,
+} from '../../modules/party/application/use-cases/ExploreParty';
 import { AppError, isAppError } from '../../shared/domain/AppError';
 import type { BattleActionType, BattleView, PlayerState } from '../../shared/types/game';
 import { Logger } from '../../utils/logger';
 import { createMainMenuKeyboard, createPartyKeyboard } from '../keyboards';
-import { renderBattle, renderDailyTrace, renderParty } from '../presenters/messages';
+import { renderBattle, renderDailyTrace, renderExplorationEvent, renderParty } from '../presenters/messages';
 import { resolveCommandEnvelope } from '../router/commandRouter';
 import {
   config,
@@ -346,9 +350,15 @@ export class GameHandler {
       return;
     }
 
-    const battle = await this.services.exploreParty.execute(vkId);
-    await this.replyWithBattle(ctx, battle, vkId);
-    await this.notifyPartyBattlePeers(ctx, battle, vkId);
+    const result = await this.services.exploreParty.execute(vkId);
+    if (isExplorePartyEventResult(result)) {
+      await this.replyWithPartyExplorationEvent(ctx, result, vkId);
+      await this.notifyPartyExplorationEventPeers(ctx, result, vkId);
+      return;
+    }
+
+    await this.replyWithBattle(ctx, result, vkId);
+    await this.notifyPartyBattlePeers(ctx, result, vkId);
   }
 
   public async showPendingReward(ctx: Context, vkId: number): Promise<void> {
@@ -575,6 +585,43 @@ export class GameHandler {
 
       await this.replyWithBattle(peerContext, battle, member.vkId);
     }
+  }
+
+  private async replyWithPartyExplorationEvent(
+    ctx: Context,
+    result: ExplorePartyEventResult,
+    viewerVkId: number,
+  ): Promise<void> {
+    const viewer = this.resolvePartyEventViewer(result, viewerVkId) ?? result.player;
+
+    await this.reply(
+      ctx,
+      renderExplorationEvent(result.event, viewer),
+      createPartyKeyboard(result.party, viewer.playerId),
+    );
+  }
+
+  private async notifyPartyExplorationEventPeers(
+    ctx: Context,
+    result: ExplorePartyEventResult,
+    actorVkId: number,
+  ): Promise<void> {
+    for (const member of result.members) {
+      if (member.player.vkId === actorVkId) {
+        continue;
+      }
+
+      const peerContext = this.createPeerReplyContext(ctx, member.player.vkId);
+      if (!peerContext) {
+        continue;
+      }
+
+      await this.replyWithPartyExplorationEvent(peerContext, result, member.player.vkId);
+    }
+  }
+
+  private resolvePartyEventViewer(result: ExplorePartyEventResult, viewerVkId: number): PlayerState | null {
+    return result.members.find((member) => member.player.vkId === viewerVkId)?.player ?? null;
   }
 
   private createPeerReplyContext(ctx: Context, vkId: number): Context | null {

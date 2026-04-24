@@ -1492,10 +1492,19 @@ describe('GameHandler smoke', () => {
     await handler.handle(ctx as never);
 
     expect(services.collectPendingReward.execute).toHaveBeenCalledWith(1001, 'skin_beast', 'battle-victory:battle-1');
+    expect(services.getParty.execute).toHaveBeenCalledWith(1001);
     expect(getReplyCalls(ctx)[0]?.message).toContain('🔪 Свежевать');
     expect(getReplyCalls(ctx)[0]?.message).toContain('В сумке: +2 кожи · +1 кость.');
     expect(getReplyCalls(ctx)[0]?.message).toContain('Свежевание: Новичок свежевания · появились первые успехи');
     expect(getReplyCalls(ctx)[0]?.message).not.toContain('Свежевание: 0 → 1');
+
+    const keyboard = serializeKeyboard(getReplyCalls(ctx)[0]?.keyboard) as {
+      readonly rows: ReadonlyArray<ReadonlyArray<{ readonly action: { readonly label: string } }>>;
+      readonly currentRow?: ReadonlyArray<{ readonly action: { readonly label: string } }>;
+    };
+    const labels = [...keyboard.rows.flat(), ...(keyboard.currentRow ?? [])].map((button) => button.action.label);
+
+    expect(labels).toContain('⚔️ Исследовать отрядом');
   });
 
   it('показывает impact recap в результате боя, если награда реально меняет сборку', async () => {
@@ -2707,6 +2716,84 @@ describe('GameHandler smoke', () => {
     expect(directMessages[0]?.userId).toBe(1002);
     expect(directMessages[0]?.message).toContain('👤 Вы: Рунный мастер #1002');
     expect(directMessages[0]?.message).toContain('👤 Товарищ: Рунный мастер #1001');
+  });
+
+  it('досылает союзнику совместное событие исследования без старта боя', async () => {
+    const services = createServices();
+    const leader = createPlayer({
+      tutorialState: 'SKIPPED',
+      locationLevel: 2,
+      activeBattleId: null,
+    });
+    const ally = createPlayer({
+      userId: 2,
+      vkId: 1002,
+      playerId: 2,
+      tutorialState: 'SKIPPED',
+      locationLevel: 2,
+      activeBattleId: null,
+    });
+    const party = {
+      id: 'party-1',
+      inviteCode: 'ABC123',
+      leaderPlayerId: leader.playerId,
+      status: 'OPEN' as const,
+      activeBattleId: null,
+      maxMembers: 2,
+      members: [
+        {
+          playerId: leader.playerId,
+          vkId: leader.vkId,
+          name: 'Рунный мастер #1001',
+          role: 'LEADER' as const,
+          joinedAt: '2026-04-12T00:00:00.000Z',
+        },
+        {
+          playerId: ally.playerId,
+          vkId: ally.vkId,
+          name: 'Рунный мастер #1002',
+          role: 'MEMBER' as const,
+          joinedAt: '2026-04-12T00:01:00.000Z',
+        },
+      ],
+      createdAt: '2026-04-12T00:00:00.000Z',
+      updatedAt: '2026-04-12T00:01:00.000Z',
+    };
+    vi.mocked(services.getPlayerProfile.execute).mockResolvedValueOnce(leader);
+    vi.mocked(services.exploreParty.execute).mockResolvedValueOnce({
+      event: {
+        code: 'abandoned-camp',
+        kind: 'resource_find',
+        kindLabel: 'находка',
+        title: '🎒 Брошенный привал',
+        directorLine: '🎲 Мастер снабжения отмечает находку: полезно, но без гонки за дневной выгодой.',
+        description: 'Под навесом из корней лежат следы чужой экспедиции.',
+        outcomeLine: 'Боя нет: отряд забирает малый запас трав.',
+        nextStepLine: 'Дальше можно снова двинуться глубже.',
+        effect: { kind: 'inventory_delta', delta: { herb: 1 }, line: 'Найдено: трава +1.' },
+      },
+      player: leader,
+      party,
+      members: [
+        { player: leader },
+        { player: ally },
+      ],
+    } as never);
+    const handler = new GameHandler(services);
+    const ctx = createFakeContext({ command: gameCommands.exploreParty });
+
+    await handler.handle(ctx as never);
+
+    const replies = getReplyCalls(ctx);
+    const directMessages = getDirectMessageCalls(ctx);
+    expect(replies[0]?.message).toContain('🧭 Исследование');
+    expect(replies[0]?.message).toContain('Брошенный привал');
+    expect(JSON.stringify(replies[0]?.keyboard)).toContain('Исследовать отрядом');
+    expect(directMessages).toHaveLength(1);
+    expect(directMessages[0]?.userId).toBe(1002);
+    expect(directMessages[0]?.message).toContain('Брошенный привал');
+    expect(directMessages[0]?.message).toContain('Найдено: трава +1.');
+    expect(JSON.stringify(directMessages[0]?.keyboard)).not.toContain('атака');
   });
 
   it('передает ход союзнику отдельным сообщением и убирает боевые кнопки у уже сходившего игрока', async () => {

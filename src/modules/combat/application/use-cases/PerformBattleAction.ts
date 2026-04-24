@@ -9,10 +9,12 @@ import {
 import { resolveCommandIntent, type CommandIntentSource } from '../../../shared/application/command-intent';
 import { requirePlayerByVkId } from '../../../shared/application/require-player';
 import type { GameRandom } from '../../../shared/application/ports/GameRandom';
-import type { GameRepository } from '../../../shared/application/ports/GameRepository';
+import type { GameRepository, SaveBattleOptions } from '../../../shared/application/ports/GameRepository';
+import { isBattleEncounterOffered } from '../../domain/battle-encounter';
 import { BattleEngine } from '../../domain/battle-engine';
 import { resolveBattleActionSkillGains } from '../../domain/battle-action-skill-growth';
 import { isRuneSkillAction } from '../../domain/battle-rune-loadouts';
+import { appendBattleLog } from '../../domain/battle-utils';
 import { buildBattleActionIntentStateKey } from '../command-intent-state';
 
 import { finalizeRecoveredBattleIfNeeded } from '../finalize-recovered-battle';
@@ -22,6 +24,14 @@ import { resolveVictoryRewardOptions } from '../resolve-victory-reward-options';
 const isPartyBattle = (battle: BattleView): battle is BattleView & { party: NonNullable<BattleView['party']> } => (
   battle.battleType === 'PARTY_PVE' && battle.party !== undefined && battle.party !== null
 );
+
+const partyAutoAttackIdleMs = 30_000;
+
+const hasPartyTurnTimedOut = (battle: BattleView): boolean => {
+  const updatedAtTime = Date.parse(battle.updatedAt);
+
+  return Number.isFinite(updatedAtTime) && Date.now() - updatedAtTime > partyAutoAttackIdleMs;
+};
 
 export interface BattleActionResultView {
   readonly battle: BattleView;
@@ -134,6 +144,12 @@ export class PerformBattleAction {
       return result;
     }
 
+    const autoAttackResult = await this.resolveTimedOutPartyTurn(recoveredBattle.battle, player);
+    if (autoAttackResult) {
+      await this.persistReplayResult(player.playerId, intent?.intentId, autoAttackResult);
+      return autoAttackResult;
+    }
+
     const actorBattle = this.prepareBattleForActor(recoveredBattle.battle, player);
     const consumable = getAlchemyConsumableByBattleAction(action);
     if (consumable) {
@@ -192,6 +208,86 @@ export class PerformBattleAction {
     const result = this.wrapBattleResult(await this.repository.saveBattle(battle, battlePersistenceOptions));
     await this.persistReplayResult(player.playerId, intent?.intentId, result);
     return result;
+  }
+
+  private async resolveTimedOutPartyTurn(
+    battle: BattleView,
+    requester: PlayerState,
+  ): Promise<BattleActionResultView | null> {
+    if (!this.shouldAutoAttackPartyMember(battle, requester)) {
+      return null;
+    }
+
+    const currentTurnPlayerId = battle.party.currentTurnPlayerId;
+    const currentMember = battle.party.members.find((member) => member.playerId === currentTurnPlayerId);
+    if (!currentMember || currentMember.snapshot.currentHealth <= 0) {
+      return null;
+    }
+
+    const actor = await this.repository.findPlayerById(currentMember.playerId);
+    if (!actor) {
+      throw new AppError('party_member_not_found', 'Участник отряда уже не найден.');
+    }
+
+    const actorBattle = {
+      ...battle,
+      player: currentMember.snapshot,
+      log: appendBattleLog(
+        battle.log,
+        `⏳ ${currentMember.name} медлит больше 30 секунд: автоатака.`,
+      ),
+    };
+    const battleAfterPlayerAction = BattleEngine.performPlayerAction(actorBattle, 'ATTACK');
+    const playerSkillGains = resolveBattleActionSkillGains({
+      action: 'ATTACK',
+      before: actorBattle,
+      afterPlayerAction: battleAfterPlayerAction,
+    });
+    const battlePersistenceOptions: SaveBattleOptions = {
+      commandKey: 'BATTLE_ATTACK',
+      actingPlayerId: actor.playerId,
+      playerSkillGains,
+    };
+    let nextBattle = battleAfterPlayerAction;
+
+    if (nextBattle.status === 'ACTIVE') {
+      nextBattle = BattleEngine.resolveEnemyTurn(nextBattle);
+    }
+
+    if (nextBattle.status === 'COMPLETED') {
+      const rewarded = nextBattle.result === 'VICTORY'
+        ? RewardEngine.applyVictoryRewards(nextBattle, resolveVictoryRewardOptions(actor, nextBattle, this.random), this.random)
+        : { battle: nextBattle, droppedRune: null };
+      const finalized = await this.repository.finalizeBattle(actor.playerId, rewarded.battle, battlePersistenceOptions);
+      const requesterAfterBattle = actor.playerId === requester.playerId
+        ? finalized.player
+        : await this.repository.findPlayerById(requester.playerId);
+
+      if (!requesterAfterBattle) {
+        throw new AppError('player_not_found', 'Персонаж уже не найден.');
+      }
+
+      return {
+        battle: finalized.battle,
+        player: requesterAfterBattle,
+        acquisitionSummary: buildBattleAcquisitionSummary(requester, requesterAfterBattle, finalized.battle),
+      };
+    }
+
+    return this.wrapBattleResult(await this.repository.saveBattle(nextBattle, battlePersistenceOptions));
+  }
+
+  private shouldAutoAttackPartyMember(
+    battle: BattleView,
+    requester: PlayerState,
+  ): battle is BattleView & { party: NonNullable<BattleView['party']> } {
+    return isPartyBattle(battle)
+      && battle.status === 'ACTIVE'
+      && battle.turnOwner === 'PLAYER'
+      && battle.party.currentTurnPlayerId !== null
+      && battle.party.currentTurnPlayerId !== requester.playerId
+      && !isBattleEncounterOffered(battle)
+      && hasPartyTurnTimedOut(battle);
   }
 
   private prepareBattleForActor(battle: BattleView, player: PlayerState): BattleView {

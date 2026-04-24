@@ -11,8 +11,6 @@ import {
   hasRuneOfSchoolAtLeastRarity,
 } from '../../../player/domain/school-novice-path';
 import {
-  derivePlayerStats,
-  derivePlayerVitals,
   resolveEncounterLocationLevel,
 } from '../../../player/domain/player-stats';
 import { resolveCommandIntent, type CommandIntentSource } from '../../../shared/application/command-intent';
@@ -37,6 +35,7 @@ import {
 import { Logger } from '../../../../utils/logger';
 
 import { buildExploreLocationIntentStateKey } from '../command-intent-state';
+import { resolveRecoveredPlayerVitals } from '../exploration-event-effects';
 
 export interface ExploreLocationReplayResult {
   readonly battle: BattleView;
@@ -83,18 +82,6 @@ const markExploreLocationReplay = (result: ExploreLocationResult): ExploreLocati
   }
 
   return { battle: result, replayed: true };
-};
-
-const resolveRecoveredPlayerVitals = (
-  player: PlayerState,
-  recovery: { readonly healthRatio: number; readonly manaRatio: number },
-): Required<Pick<PlayerState, 'currentHealth' | 'currentMana'>> => {
-  const vitals = derivePlayerVitals(player, derivePlayerStats(player));
-
-  return {
-    currentHealth: Math.max(vitals.currentHealth, Math.ceil(vitals.maxHealth * recovery.healthRatio)),
-    currentMana: Math.max(vitals.currentMana, Math.ceil(vitals.maxMana * recovery.manaRatio)),
-  };
 };
 
 const lowerBiomeRoamingChancePercent = 10;

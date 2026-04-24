@@ -635,6 +635,49 @@ describe('profile keyboard', () => {
     expect(battleResultLabels).not.toContain('⚔️ Проверить школу');
   });
 
+  it('routes party victory battle-result CTA to joint exploration', () => {
+    const player = createPlayer();
+    const firstMember = createBattle().player;
+    const secondMember = {
+      ...createBattle().player,
+      playerId: 2,
+      name: 'Рунный мастер #1002',
+    };
+    const keyboard = createBattleResultKeyboard(createBattle({
+      status: 'COMPLETED',
+      result: 'VICTORY',
+      battleType: 'PARTY_PVE',
+      party: {
+        id: 'party-1',
+        inviteCode: 'ABC123',
+        leaderPlayerId: 1,
+        currentTurnPlayerId: null,
+        enemyTargetPlayerId: null,
+        actedPlayerIds: [1, 2],
+        members: [
+          { playerId: 1, vkId: 1001, name: firstMember.name, snapshot: firstMember },
+          { playerId: 2, vkId: 1002, name: secondMember.name, snapshot: secondMember },
+        ],
+      },
+      rewards: {
+        experience: 6,
+        gold: 2,
+        shards: { USUAL: 1 },
+        droppedRune: null,
+      },
+    }), player);
+    const labels = collectLabels(keyboard);
+    const payloads = collectPayloads(keyboard);
+
+    const jointExplore = payloads.find((payload) => payload.command === gameCommands.exploreParty);
+
+    expect(labels).toContain('⚔️ Исследовать вместе');
+    expect(jointExplore).toBeDefined();
+    expect(jointExplore?.intentId).toBeUndefined();
+    expect(jointExplore?.stateKey).toBeUndefined();
+    expect(payloads.find((payload) => payload.command === gameCommands.explore)).toBeUndefined();
+  });
+
   it('allows removing slot 1 even when slot 2 is filled', () => {
     const labels = collectLabels(createRuneDetailKeyboard(createPlayer({
       unlockedRuneSlotCount: 2,

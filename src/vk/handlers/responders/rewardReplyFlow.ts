@@ -8,6 +8,7 @@ import type { PlayerState } from '../../../shared/types/game';
 import {
   createKeyboardClear,
   createMainMenuKeyboard,
+  createPartyKeyboard,
   createPendingRewardKeyboard,
 } from '../../keyboards';
 import {
@@ -16,7 +17,7 @@ import {
   renderPendingReward,
 } from '../../presenters/messages';
 
-type RewardReplyServices = Pick<AppServices, 'collectPendingReward' | 'getPendingReward'>;
+type RewardReplyServices = Pick<AppServices, 'collectPendingReward' | 'getPendingReward' | 'getParty'>;
 
 const vkInvisibleKeyboardClearMessage = '\u2063';
 
@@ -73,9 +74,13 @@ export const replyWithCollectedPendingReward = async (
   stateKey?: string,
 ): Promise<void> => {
   const result = await services.collectPendingReward.execute(vkId, actionCode, stateKey);
+  const partyView = await services.getParty.execute(vkId);
+  const keyboard = partyView.party
+    ? createPartyKeyboard(partyView.party, partyView.player.playerId)
+    : createMainMenuKeyboard(partyView.player);
 
   await ctx.reply(
     renderCollectedPendingReward(result),
-    { keyboard: createMainMenuKeyboard(result.player) },
+    { keyboard },
   );
 };
