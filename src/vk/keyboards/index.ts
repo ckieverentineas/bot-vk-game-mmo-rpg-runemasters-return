@@ -10,6 +10,7 @@ export {
   createBattleResultKeyboard,
 } from './battle';
 export {
+  createBestiaryEnemyKeyboard,
   createBestiaryKeyboard,
   createBestiaryLocationKeyboard,
 } from './bestiary';

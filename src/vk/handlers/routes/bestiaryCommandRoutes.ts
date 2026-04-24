@@ -1,6 +1,11 @@
 import {
+  type BestiaryEnemyCommandPayload,
+  type BestiaryLocationCommandPayload,
   gameCommands,
+  resolveBestiaryEnemyCommand,
+  resolveBestiaryEnemyRewardCommand,
   resolveBestiaryLocationCommand,
+  resolveBestiaryLocationRewardCommand,
   resolveBestiaryPageCommand,
 } from '../../commands/catalog';
 import {
@@ -14,9 +19,26 @@ export const bestiaryCommandRoutes = {
 } satisfies StaticCommandRouteConfig;
 
 export const bestiaryDynamicCommandRoutes = [
-  createDynamicCommandRoute<string>(
+  createDynamicCommandRoute<BestiaryLocationCommandPayload>(
     resolveBestiaryLocationCommand,
-    (handler, ctx, vkId, biomeCode) => handler.openBestiaryLocation(ctx, vkId, biomeCode),
+    (handler, ctx, vkId, payload) => handler.openBestiaryLocation(
+      ctx,
+      vkId,
+      payload.biomeCode,
+      payload.enemyPageNumber,
+    ),
+  ),
+  createDynamicCommandRoute<BestiaryEnemyCommandPayload>(
+    resolveBestiaryEnemyCommand,
+    (handler, ctx, vkId, payload) => handler.openBestiaryEnemy(ctx, vkId, payload.biomeCode, payload.enemyCode),
+  ),
+  createDynamicCommandRoute<string>(
+    resolveBestiaryLocationRewardCommand,
+    (handler, ctx, vkId, biomeCode) => handler.claimBestiaryLocationReward(ctx, vkId, biomeCode),
+  ),
+  createDynamicCommandRoute<BestiaryEnemyCommandPayload>(
+    resolveBestiaryEnemyRewardCommand,
+    (handler, ctx, vkId, payload) => handler.claimBestiaryEnemyReward(ctx, vkId, payload.biomeCode, payload.enemyCode),
   ),
   createDynamicCommandRoute<number>(
     resolveBestiaryPageCommand,

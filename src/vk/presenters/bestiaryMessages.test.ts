@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import type {
+  BestiaryEnemyDetailView,
   BestiaryEnemyView,
   BestiaryLocationDetailView,
   BestiaryLocationSummaryView,
@@ -8,6 +9,7 @@ import type {
 } from '../../modules/world/application/read-models/bestiary';
 import type { BiomeView, MobTemplateView } from '../../shared/types/game';
 import {
+  renderBestiaryEnemyDetail,
   renderBestiaryLocationDetail,
   renderBestiaryOverview,
 } from './bestiaryMessages';
@@ -116,6 +118,10 @@ describe('bestiary messages', () => {
           claimedNow: false,
         },
       }),
+      locationPageNumber: 1,
+      enemyPageNumber: 1,
+      totalEnemyPages: 1,
+      totalEnemies: 2,
       enemies: [
         createEnemy(),
         createEnemy({
@@ -142,9 +148,33 @@ describe('bestiary messages', () => {
     expect(message).toContain('📖 Бестиарий / Темный лес');
     expect(message).toContain('Лесной волк · обычный · зверь');
     expect(message).toContain('🏆 5');
-    expect(message).toContain('🎁 +2 кожи · +1 кость · 🔮 руна 22%');
-    expect(message).toContain('5 побед: +1 сияния · получено сейчас');
+    expect(message).toContain('🐾 Следы 1/1 · всего 2');
+    expect(message).toContain('🏁 награды учтены');
     expect(message).toContain('2. ??? · след не встречен');
     expect(message).not.toContain('Секретный след');
+  });
+
+  it('renders a selected enemy as a focused card', () => {
+    const detail: BestiaryEnemyDetailView = {
+      location: createLocation(),
+      locationPageNumber: 1,
+      enemyPageNumber: 1,
+      enemyIndex: 0,
+      totalEnemies: 2,
+      enemy: createEnemy({
+        killMilestones: [
+          { threshold: 1, reward: { radiance: 1 }, isCompleted: true, isClaimed: true, claimedNow: false },
+          { threshold: 5, reward: { radiance: 1 }, isCompleted: true, isClaimed: false, claimedNow: false },
+        ],
+      }),
+    };
+
+    const message = renderBestiaryEnemyDetail(detail);
+
+    expect(message).toContain('📖 Бестиарий / Темный лес');
+    expect(message).toContain('🐾 1/2');
+    expect(message).toContain('🐾 Лесной волк · обычный · зверь');
+    expect(message).toContain('🎁 +2 кожи · +1 кость · 🔮 руна 22%');
+    expect(message).toContain('5 побед: +1 сияния · можно забрать');
   });
 });

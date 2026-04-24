@@ -5,13 +5,13 @@ import type { BestiaryDiscoveryView, GameRepository } from '../../../shared/appl
 import type { WorldCatalog } from '../ports/WorldCatalog';
 import {
   bestiaryKillMilestoneThresholds,
-  bestiaryLocationPageSize,
+  buildBestiaryEnemyDetailView,
   buildBestiaryLocationDetailView,
   buildBestiaryOverviewView,
   isBestiaryLocationUnlocked,
-  normalizeBestiaryPageNumber,
   resolveBestiaryKillMilestoneReward,
   resolveBestiaryLocationDiscoveryReward,
+  type BestiaryEnemyDetailView,
   type BestiaryKillMilestoneKey,
   type BestiaryLocationDetailView,
   type BestiaryOverviewView,
@@ -37,72 +37,109 @@ export class GetBestiary {
     const player = await requirePlayerByVkId(this.repository, vkId);
     const discovery = await this.repository.listBestiaryDiscovery(player.playerId);
     const biomes = this.worldCatalog.listBiomes();
-    const pageBiomes = this.getPageBiomes(biomes, pageNumber);
-    const discoveryClaim = await this.claimUnlockedLocationDiscoveryRewards(
-      player,
-      pageBiomes,
-      biomes,
-      discovery,
-    );
 
     return buildBestiaryOverviewView({
       biomes,
       listMobTemplatesForBiome: (biomeCode) => this.worldCatalog.listMobTemplatesForBiome(biomeCode),
-      discovery: discoveryClaim.discovery,
+      discovery,
       requestedPageNumber: pageNumber,
       highestLocationLevel: player.highestLocationLevel,
-      claimedLocationRewardCodes: discoveryClaim.discovery.claimedLocationRewardCodes,
-      newlyClaimedLocationRewardCodes: discoveryClaim.newlyClaimedLocationRewardCodes,
+      claimedLocationRewardCodes: discovery.claimedLocationRewardCodes,
     });
   }
 
-  public async executeLocation(vkId: number, biomeCode: string): Promise<BestiaryLocationDetailView> {
+  public async executeLocation(
+    vkId: number,
+    biomeCode: string,
+    enemyPageNumber = 1,
+  ): Promise<BestiaryLocationDetailView> {
+    const player = await requirePlayerByVkId(this.repository, vkId);
+    const discovery = await this.repository.listBestiaryDiscovery(player.playerId);
+    const biomes = this.worldCatalog.listBiomes();
+    this.requireUnlockedBiome(biomes, biomeCode, player.highestLocationLevel);
+
+    return buildBestiaryLocationDetailView({
+      biomeCode,
+      biomes,
+      listMobTemplatesForBiome: (currentBiomeCode) => this.worldCatalog.listMobTemplatesForBiome(currentBiomeCode),
+      discovery,
+      highestLocationLevel: player.highestLocationLevel,
+      requestedEnemyPageNumber: enemyPageNumber,
+      claimedLocationRewardCodes: discovery.claimedLocationRewardCodes,
+    });
+  }
+
+  public async executeEnemy(
+    vkId: number,
+    biomeCode: string,
+    enemyCode: string,
+  ): Promise<BestiaryEnemyDetailView> {
+    const player = await requirePlayerByVkId(this.repository, vkId);
+    const discovery = await this.repository.listBestiaryDiscovery(player.playerId);
+    const biomes = this.worldCatalog.listBiomes();
+    const biome = this.requireUnlockedBiome(biomes, biomeCode, player.highestLocationLevel);
+    this.requireEnemyTemplate(biome.code, enemyCode);
+
+    return buildBestiaryEnemyDetailView({
+      biomeCode: biome.code,
+      enemyCode,
+      biomes,
+      listMobTemplatesForBiome: (currentBiomeCode) => this.worldCatalog.listMobTemplatesForBiome(currentBiomeCode),
+      discovery,
+      highestLocationLevel: player.highestLocationLevel,
+      claimedLocationRewardCodes: discovery.claimedLocationRewardCodes,
+    });
+  }
+
+  public async claimLocationReward(vkId: number, biomeCode: string): Promise<BestiaryLocationDetailView> {
     const player = await requirePlayerByVkId(this.repository, vkId);
     const initialDiscovery = await this.repository.listBestiaryDiscovery(player.playerId);
     const biomes = this.worldCatalog.listBiomes();
-    const biome = this.requireBiome(biomes, biomeCode);
-
-    if (!isBestiaryLocationUnlocked(biome, player.highestLocationLevel)) {
-      throw new AppError('bestiary_location_locked', 'Эта локация еще закрыта. Продвиньтесь глубже в исследовании.');
-    }
-
+    const biome = this.requireUnlockedBiome(biomes, biomeCode, player.highestLocationLevel);
     const locationDiscoveryClaim = await this.claimUnlockedLocationDiscoveryRewards(
       player,
       [biome],
       biomes,
       initialDiscovery,
     );
-    const templates = this.worldCatalog.listMobTemplatesForBiome(biome.code);
-    const killMilestoneClaim = await this.claimQualifiedKillMilestoneRewards(
-      player.playerId,
-      templates,
-      locationDiscoveryClaim.discovery,
-    );
 
     return buildBestiaryLocationDetailView({
       biomeCode: biome.code,
       biomes,
       listMobTemplatesForBiome: (currentBiomeCode) => this.worldCatalog.listMobTemplatesForBiome(currentBiomeCode),
-      discovery: killMilestoneClaim.discovery,
+      discovery: locationDiscoveryClaim.discovery,
       highestLocationLevel: player.highestLocationLevel,
-      claimedLocationRewardCodes: killMilestoneClaim.discovery.claimedLocationRewardCodes,
+      claimedLocationRewardCodes: locationDiscoveryClaim.discovery.claimedLocationRewardCodes,
       newlyClaimedLocationRewardCodes: locationDiscoveryClaim.newlyClaimedLocationRewardCodes,
-      newlyClaimedKillMilestones: killMilestoneClaim.newlyClaimedKillMilestones,
     });
   }
 
-  private getPageBiomes(
-    biomes: readonly BiomeView[],
-    requestedPageNumber: number,
-  ): readonly BiomeView[] {
-    const pageNumber = normalizeBestiaryPageNumber(
-      requestedPageNumber,
-      biomes.length,
-      bestiaryLocationPageSize,
+  public async claimEnemyReward(
+    vkId: number,
+    biomeCode: string,
+    enemyCode: string,
+  ): Promise<BestiaryEnemyDetailView> {
+    const player = await requirePlayerByVkId(this.repository, vkId);
+    const initialDiscovery = await this.repository.listBestiaryDiscovery(player.playerId);
+    const biomes = this.worldCatalog.listBiomes();
+    const biome = this.requireUnlockedBiome(biomes, biomeCode, player.highestLocationLevel);
+    const template = this.requireEnemyTemplate(biome.code, enemyCode);
+    const killMilestoneClaim = await this.claimQualifiedKillMilestoneRewards(
+      player.playerId,
+      [template],
+      initialDiscovery,
     );
-    const pageStart = (pageNumber - 1) * bestiaryLocationPageSize;
 
-    return biomes.slice(pageStart, pageStart + bestiaryLocationPageSize);
+    return buildBestiaryEnemyDetailView({
+      biomeCode: biome.code,
+      enemyCode,
+      biomes,
+      listMobTemplatesForBiome: (currentBiomeCode) => this.worldCatalog.listMobTemplatesForBiome(currentBiomeCode),
+      discovery: killMilestoneClaim.discovery,
+      highestLocationLevel: player.highestLocationLevel,
+      claimedLocationRewardCodes: killMilestoneClaim.discovery.claimedLocationRewardCodes,
+      newlyClaimedKillMilestones: killMilestoneClaim.newlyClaimedKillMilestones,
+    });
   }
 
   private requireBiome(biomes: readonly BiomeView[], biomeCode: string): BiomeView {
@@ -113,6 +150,32 @@ export class GetBestiary {
     }
 
     return biome;
+  }
+
+  private requireUnlockedBiome(
+    biomes: readonly BiomeView[],
+    biomeCode: string,
+    highestLocationLevel: number,
+  ): BiomeView {
+    const biome = this.requireBiome(biomes, biomeCode);
+
+    if (!isBestiaryLocationUnlocked(biome, highestLocationLevel)) {
+      throw new AppError('bestiary_location_locked', 'Эта локация еще закрыта. Продвиньтесь глубже в исследовании.');
+    }
+
+    return biome;
+  }
+
+  private requireEnemyTemplate(biomeCode: string, enemyCode: string): MobTemplateView {
+    const template = this.worldCatalog
+      .listMobTemplatesForBiome(biomeCode)
+      .find((candidate) => candidate.code === enemyCode);
+
+    if (!template) {
+      throw new AppError('bestiary_enemy_not_found', 'Такой след не найден в этой локации.');
+    }
+
+    return template;
   }
 
   private async claimUnlockedLocationDiscoveryRewards(

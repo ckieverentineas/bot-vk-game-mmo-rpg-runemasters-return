@@ -19,7 +19,14 @@ import type { GameRandom } from '../../modules/shared/application/ports/GameRand
 import type { PendingRewardView } from '../../modules/shared/application/ports/GameRepository';
 import { derivePlayerStats, resolveAutoEquipRuneSlot, resolveMaxMana } from '../../modules/player/domain/player-stats';
 import type { BattleView, PlayerState, RuneRarity } from '../../shared/types/game';
-import { createBestiaryLocationCommand, gameCommands, resolveTrophyActionCodeCommand } from '../../vk/commands/catalog';
+import {
+  createBestiaryEnemyCommand,
+  createBestiaryEnemyRewardCommand,
+  createBestiaryLocationCommand,
+  createBestiaryLocationRewardCommand,
+  gameCommands,
+  resolveTrophyActionCodeCommand,
+} from '../../vk/commands/catalog';
 import { GameHandler } from '../../vk/handlers/gameHandler';
 import {
   buildLocalPlaytestSummary,
@@ -566,8 +573,18 @@ const runBestiaryChecks = async (runtime: LocalPlaytestRuntime): Promise<void> =
   assertReplyIncludes(bestiaryReply, 'Bestiary', [
     '📖 Бестиарий',
     'Порог Инициации',
-    'Следы: 1/1',
-    'Первое открытие: +1 сияния',
+    '🧭 1/1',
+    '🏁 +1 сияния · можно забрать',
+  ]);
+
+  const bestiaryLocationRewardReply = await runCommand(
+    runtime,
+    'bestiary-initium-location-reward',
+    createBestiaryLocationRewardCommand('initium'),
+  );
+  assertReplyIncludes(bestiaryLocationRewardReply, 'Bestiary location reward', [
+    '📖 Бестиарий / Порог Инициации',
+    '+1 сияния · получено сейчас',
   ]);
 
   const bestiaryLocationReply = await runCommand(
@@ -578,9 +595,29 @@ const runBestiaryChecks = async (runtime: LocalPlaytestRuntime): Promise<void> =
   assertReplyIncludes(bestiaryLocationReply, 'Bestiary location', [
     '📖 Бестиарий / Порог Инициации',
     'Учебный огонёк',
-    'Побед: 1',
-    'добыча: +1 эссенция',
-    'награды убийств',
+    '🐾 Следы 1/1',
+    '🏆 1',
+  ]);
+
+  const bestiaryEnemyReply = await runCommand(
+    runtime,
+    'bestiary-training-wisp',
+    createBestiaryEnemyCommand('initium', 'training-wisp'),
+  );
+  assertReplyIncludes(bestiaryEnemyReply, 'Bestiary enemy', [
+    '📖 Бестиарий / Порог Инициации',
+    'Учебный огонёк',
+    '🏆 Побед: 1',
+    '🎁 +1 эссенция',
+  ]);
+
+  const bestiaryEnemyRewardReply = await runCommand(
+    runtime,
+    'bestiary-training-wisp-reward',
+    createBestiaryEnemyRewardCommand('initium', 'training-wisp'),
+  );
+  assertReplyIncludes(bestiaryEnemyRewardReply, 'Bestiary enemy reward', [
+    '1 побед: +1 сияния · получено сейчас',
   ]);
 };
 

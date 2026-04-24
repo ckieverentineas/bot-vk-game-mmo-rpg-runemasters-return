@@ -2,6 +2,7 @@ export { renderBattle } from './battleMessages';
 
 export {
   renderBestiary,
+  renderBestiaryEnemyDetail,
   renderBestiaryLocationDetail,
   renderBestiaryOverview,
 } from './bestiaryMessages';

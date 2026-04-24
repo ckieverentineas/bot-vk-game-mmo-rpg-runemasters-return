@@ -7,7 +7,10 @@ import type { GameTelemetry } from '../../modules/shared/application/ports/GameT
 import { AppError } from '../../shared/domain/AppError';
 import type { BattleView, PlayerState } from '../../shared/types/game';
 import {
+  createBestiaryEnemyCommand,
+  createBestiaryEnemyRewardCommand,
   createBestiaryLocationCommand,
+  createBestiaryLocationRewardCommand,
   createWorkshopCraftCommand,
   createWorkshopRepairCommand,
   gameCommands,
@@ -392,6 +395,10 @@ const createServices = (): AppServices => {
   };
   const bestiaryLocation = {
     location: bestiary.locations[0],
+    locationPageNumber: 1,
+    enemyPageNumber: 1,
+    totalEnemyPages: 1,
+    totalEnemies: 1,
     enemies: [
       {
         isDiscovered: true,
@@ -437,6 +444,14 @@ const createServices = (): AppServices => {
         },
       },
     ],
+  };
+  const bestiaryEnemy = {
+    location: bestiary.locations[0],
+    locationPageNumber: 1,
+    enemyPageNumber: 1,
+    enemyIndex: 0,
+    totalEnemies: 1,
+    enemy: bestiaryLocation.enemies[0],
   };
   const workshopView = {
     player: basePlayer,
@@ -550,6 +565,9 @@ const createServices = (): AppServices => {
     getBestiary: {
       execute: vi.fn().mockResolvedValue(bestiary),
       executeLocation: vi.fn().mockResolvedValue(bestiaryLocation),
+      executeEnemy: vi.fn().mockResolvedValue(bestiaryEnemy),
+      claimLocationReward: vi.fn().mockResolvedValue(bestiaryLocation),
+      claimEnemyReward: vi.fn().mockResolvedValue(bestiaryEnemy),
     } as unknown as AppServices['getBestiary'],
     claimQuestReward: {
       execute: vi.fn().mockResolvedValue({
@@ -854,9 +872,35 @@ describe('GameHandler smoke', () => {
     await handler.handle(ctx as never);
 
     const message = getReplyCalls(ctx)[0]?.message ?? '';
-    expect(services.getBestiary.executeLocation).toHaveBeenCalledWith(1001, 'initium');
+    expect(services.getBestiary.executeLocation).toHaveBeenCalledWith(1001, 'initium', 1);
     expect(message).toContain('Учебный огонёк');
     expect(message).toContain('🏆 1');
+  });
+
+  it('открывает карточку моба бестиария через payload', async () => {
+    const services = createServices();
+    const handler = new GameHandler(services);
+    const ctx = createFakeContext({ command: createBestiaryEnemyCommand('initium', 'training-wisp') });
+
+    await handler.handle(ctx as never);
+
+    const message = getReplyCalls(ctx)[0]?.message ?? '';
+    expect(services.getBestiary.executeEnemy).toHaveBeenCalledWith(1001, 'initium', 'training-wisp');
+    expect(message).toContain('🐾 1/1');
+    expect(message).toContain('Учебный огонёк');
+  });
+
+  it('собирает награду бестиария через динамическую кнопку', async () => {
+    const services = createServices();
+    const handler = new GameHandler(services);
+    const locationCtx = createFakeContext({ command: createBestiaryLocationRewardCommand('initium') });
+    const enemyCtx = createFakeContext({ command: createBestiaryEnemyRewardCommand('initium', 'training-wisp') });
+
+    await handler.handle(locationCtx as never);
+    await handler.handle(enemyCtx as never);
+
+    expect(services.getBestiary.claimLocationReward).toHaveBeenCalledWith(1001, 'initium');
+    expect(services.getBestiary.claimEnemyReward).toHaveBeenCalledWith(1001, 'initium', 'training-wisp');
   });
 
   it('показывает отдельный экран мастерства школы', async () => {

@@ -89,6 +89,9 @@ export const gameCommands = {
 
 export const bestiaryPageCommandPrefix = 'бестиарий страница ';
 export const bestiaryLocationCommandPrefix = 'бестиарий локация ';
+export const bestiaryEnemyCommandPrefix = 'бестиарий моб ';
+export const bestiaryLocationRewardCommandPrefix = 'бестиарий награда локация ';
+export const bestiaryEnemyRewardCommandPrefix = 'бестиарий награда моб ';
 export const questBookPageCommandPrefix = 'книга путей страница ';
 export const workshopCraftCommandPrefix = 'мастерская чертеж ';
 export const workshopRepairCommandPrefix = 'мастерская ремонт ';
@@ -100,6 +103,9 @@ export const workshopUnequipCommandPrefix = 'workshop unequip ';
 export type StaticGameCommand = (typeof gameCommands)[keyof typeof gameCommands];
 export type BestiaryPageCommand = `${typeof bestiaryPageCommandPrefix}${number}`;
 export type BestiaryLocationCommand = `${typeof bestiaryLocationCommandPrefix}${string}`;
+export type BestiaryEnemyCommand = `${typeof bestiaryEnemyCommandPrefix}${string} ${string}`;
+export type BestiaryLocationRewardCommand = `${typeof bestiaryLocationRewardCommandPrefix}${string}`;
+export type BestiaryEnemyRewardCommand = `${typeof bestiaryEnemyRewardCommandPrefix}${string} ${string}`;
 export type QuestBookPageCommand = `${typeof questBookPageCommandPrefix}${number}`;
 export type WorkshopCraftCommand = `${typeof workshopCraftCommandPrefix}${WorkshopBlueprintCode}`;
 export type WorkshopRepairCommand = `${typeof workshopRepairCommandPrefix}${string} ${WorkshopBlueprintCode}`;
@@ -110,6 +116,9 @@ export type GameCommand =
   | StaticGameCommand
   | BestiaryPageCommand
   | BestiaryLocationCommand
+  | BestiaryEnemyCommand
+  | BestiaryLocationRewardCommand
+  | BestiaryEnemyRewardCommand
   | QuestBookPageCommand
   | WorkshopCraftCommand
   | WorkshopRepairCommand
@@ -120,6 +129,16 @@ export type GameCommand =
 export interface WorkshopRepairCommandPayload {
   readonly itemId: string;
   readonly repairBlueprintCode: WorkshopBlueprintCode;
+}
+
+export interface BestiaryLocationCommandPayload {
+  readonly biomeCode: string;
+  readonly enemyPageNumber: number;
+}
+
+export interface BestiaryEnemyCommandPayload {
+  readonly biomeCode: string;
+  readonly enemyCode: string;
 }
 
 type RuneStatRerollCommand =
@@ -403,19 +422,89 @@ export const resolveBestiaryPageCommand = (command: string): number | null => {
   return Number(match[1]);
 };
 
-export const createBestiaryLocationCommand = (biomeCode: string): BestiaryLocationCommand => (
-  `${bestiaryLocationCommandPrefix}${biomeCode}` as BestiaryLocationCommand
-);
+export const createBestiaryLocationCommand = (
+  biomeCode: string,
+  enemyPageNumber = 1,
+): BestiaryLocationCommand => {
+  const safeEnemyPageNumber = Number.isFinite(enemyPageNumber)
+    ? Math.max(1, Math.floor(enemyPageNumber))
+    : 1;
+  const pageSuffix = safeEnemyPageNumber > 1 ? ` страница ${safeEnemyPageNumber}` : '';
 
-export const resolveBestiaryLocationCommand = (command: string): string | null => {
+  return `${bestiaryLocationCommandPrefix}${biomeCode}${pageSuffix}` as BestiaryLocationCommand;
+};
+
+export const resolveBestiaryLocationCommand = (command: string): BestiaryLocationCommandPayload | null => {
   const trimmedCommand = command.trim();
 
   if (!trimmedCommand.startsWith(bestiaryLocationCommandPrefix)) {
     return null;
   }
 
-  const biomeCode = trimmedCommand.slice(bestiaryLocationCommandPrefix.length).trim();
+  const suffix = trimmedCommand.slice(bestiaryLocationCommandPrefix.length).trim();
+  const match = /^(\S+)(?: страница ([1-9]\d*))?$/.exec(suffix);
+
+  if (!match) {
+    return null;
+  }
+
+  return {
+    biomeCode: match[1],
+    enemyPageNumber: match[2] ? Number(match[2]) : 1,
+  };
+};
+
+export const createBestiaryEnemyCommand = (
+  biomeCode: string,
+  enemyCode: string,
+): BestiaryEnemyCommand => (
+  `${bestiaryEnemyCommandPrefix}${biomeCode} ${enemyCode}` as BestiaryEnemyCommand
+);
+
+export const resolveBestiaryEnemyCommand = (command: string): BestiaryEnemyCommandPayload | null => {
+  const trimmedCommand = command.trim();
+
+  if (!trimmedCommand.startsWith(bestiaryEnemyCommandPrefix)) {
+    return null;
+  }
+
+  const match = /^(\S+)\s+(\S+)$/.exec(trimmedCommand.slice(bestiaryEnemyCommandPrefix.length).trim());
+
+  return match ? { biomeCode: match[1], enemyCode: match[2] } : null;
+};
+
+export const createBestiaryLocationRewardCommand = (biomeCode: string): BestiaryLocationRewardCommand => (
+  `${bestiaryLocationRewardCommandPrefix}${biomeCode}` as BestiaryLocationRewardCommand
+);
+
+export const resolveBestiaryLocationRewardCommand = (command: string): string | null => {
+  const trimmedCommand = command.trim();
+
+  if (!trimmedCommand.startsWith(bestiaryLocationRewardCommandPrefix)) {
+    return null;
+  }
+
+  const biomeCode = trimmedCommand.slice(bestiaryLocationRewardCommandPrefix.length).trim();
   return biomeCode.length > 0 ? biomeCode : null;
+};
+
+export const createBestiaryEnemyRewardCommand = (
+  biomeCode: string,
+  enemyCode: string,
+): BestiaryEnemyRewardCommand => (
+  `${bestiaryEnemyRewardCommandPrefix}${biomeCode} ${enemyCode}` as BestiaryEnemyRewardCommand
+);
+
+export const resolveBestiaryEnemyRewardCommand = (command: string): BestiaryEnemyCommandPayload | null => {
+  const trimmedCommand = command.trim();
+
+  if (!trimmedCommand.startsWith(bestiaryEnemyRewardCommandPrefix)) {
+    return null;
+  }
+
+  const match = /^(\S+)\s+(\S+)$/.exec(trimmedCommand.slice(bestiaryEnemyRewardCommandPrefix.length).trim());
+
+  return match ? { biomeCode: match[1], enemyCode: match[2] } : null;
 };
 
 export const createQuestBookPageCommand = (pageNumber: number): QuestBookPageCommand => {

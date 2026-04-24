@@ -2,6 +2,7 @@ import { resolveEnemyTacticalProfile, type EnemyTacticalProfile } from '../../..
 import type { BiomeView, MobTemplateView, ResourceReward } from '../../../shared/types/game';
 
 export const bestiaryLocationPageSize = 5;
+export const bestiaryEnemyPageSize = 4;
 export const bestiaryKillMilestoneThresholds = [1, 5, 10, 25] as const;
 
 const locationDiscoveryRadianceByBiomeCode: Readonly<Record<string, number>> = {
@@ -93,7 +94,20 @@ export interface BestiaryOverviewView {
 
 export interface BestiaryLocationDetailView {
   readonly location: BestiaryLocationSummaryView;
+  readonly locationPageNumber: number;
+  readonly enemyPageNumber: number;
+  readonly totalEnemyPages: number;
+  readonly totalEnemies: number;
   readonly enemies: readonly BestiaryEnemyView[];
+}
+
+export interface BestiaryEnemyDetailView {
+  readonly location: BestiaryLocationSummaryView;
+  readonly locationPageNumber: number;
+  readonly enemyPageNumber: number;
+  readonly enemyIndex: number;
+  readonly totalEnemies: number;
+  readonly enemy: BestiaryEnemyView;
 }
 
 export interface BuildBestiaryOverviewViewInput {
@@ -113,6 +127,21 @@ export interface BuildBestiaryLocationDetailViewInput {
   readonly listMobTemplatesForBiome: (biomeCode: string) => readonly MobTemplateView[];
   readonly discovery: BestiaryDiscoveryState;
   readonly highestLocationLevel: number;
+  readonly requestedEnemyPageNumber?: number;
+  readonly enemyPageSize?: number;
+  readonly claimedLocationRewardCodes?: readonly string[];
+  readonly newlyClaimedLocationRewardCodes?: readonly string[];
+  readonly newlyClaimedKillMilestones?: readonly BestiaryKillMilestoneKey[];
+}
+
+export interface BuildBestiaryEnemyDetailViewInput {
+  readonly biomeCode: string;
+  readonly enemyCode: string;
+  readonly biomes: readonly BiomeView[];
+  readonly listMobTemplatesForBiome: (biomeCode: string) => readonly MobTemplateView[];
+  readonly discovery: BestiaryDiscoveryState;
+  readonly highestLocationLevel: number;
+  readonly enemyPageSize?: number;
   readonly claimedLocationRewardCodes?: readonly string[];
   readonly newlyClaimedLocationRewardCodes?: readonly string[];
   readonly newlyClaimedKillMilestones?: readonly BestiaryKillMilestoneKey[];
@@ -146,6 +175,10 @@ export const isBestiaryLocationUnlocked = (
 
 export const createBestiaryKillMilestoneKey = (enemyCode: string, threshold: number): string => (
   `${enemyCode}:${threshold}`
+);
+
+const resolveLocationPageNumber = (biomeIndex: number): number => (
+  Math.floor(Math.max(0, biomeIndex) / bestiaryLocationPageSize) + 1
 );
 
 export const resolveBestiaryLocationDiscoveryReward = (
@@ -307,6 +340,8 @@ export const buildBestiaryLocationDetailView = ({
   listMobTemplatesForBiome,
   discovery,
   highestLocationLevel,
+  requestedEnemyPageNumber = 1,
+  enemyPageSize = bestiaryEnemyPageSize,
   claimedLocationRewardCodes = [],
   newlyClaimedLocationRewardCodes = [],
   newlyClaimedKillMilestones = [],
@@ -318,23 +353,86 @@ export const buildBestiaryLocationDetailView = ({
     throw new Error(`Bestiary location not found: ${biomeCode}`);
   }
 
-  const enemies = buildBestiaryEnemies(
+  const allEnemies = buildBestiaryEnemies(
     biome.code,
     listMobTemplatesForBiome,
     discovery,
     newlyClaimedKillMilestones,
   );
+  const enemyPageNumber = normalizeBestiaryPageNumber(
+    requestedEnemyPageNumber,
+    allEnemies.length,
+    enemyPageSize,
+  );
+  const pageStart = (enemyPageNumber - 1) * enemyPageSize;
 
   return {
     location: buildLocationSummary(
       biome,
       biomeIndex,
-      enemies,
+      allEnemies,
       highestLocationLevel,
       new Set(claimedLocationRewardCodes),
       new Set(newlyClaimedLocationRewardCodes),
     ),
-    enemies,
+    locationPageNumber: resolveLocationPageNumber(biomeIndex),
+    enemyPageNumber,
+    totalEnemyPages: Math.max(1, Math.ceil(allEnemies.length / enemyPageSize)),
+    totalEnemies: allEnemies.length,
+    enemies: allEnemies.slice(pageStart, pageStart + enemyPageSize),
+  };
+};
+
+export const buildBestiaryEnemyDetailView = ({
+  biomeCode,
+  enemyCode,
+  biomes,
+  listMobTemplatesForBiome,
+  discovery,
+  highestLocationLevel,
+  enemyPageSize = bestiaryEnemyPageSize,
+  claimedLocationRewardCodes = [],
+  newlyClaimedLocationRewardCodes = [],
+  newlyClaimedKillMilestones = [],
+}: BuildBestiaryEnemyDetailViewInput): BestiaryEnemyDetailView => {
+  const biomeIndex = biomes.findIndex((biome) => biome.code === biomeCode);
+  const biome = biomes[biomeIndex];
+
+  if (!biome) {
+    throw new Error(`Bestiary location not found: ${biomeCode}`);
+  }
+
+  const allEnemies = buildBestiaryEnemies(
+    biome.code,
+    listMobTemplatesForBiome,
+    discovery,
+    newlyClaimedKillMilestones,
+  );
+  const enemyIndex = allEnemies.findIndex((enemy) => enemy.template.code === enemyCode);
+  const enemy = allEnemies[enemyIndex];
+
+  if (!enemy) {
+    throw new Error(`Bestiary enemy not found: ${enemyCode}`);
+  }
+
+  return {
+    location: buildLocationSummary(
+      biome,
+      biomeIndex,
+      allEnemies,
+      highestLocationLevel,
+      new Set(claimedLocationRewardCodes),
+      new Set(newlyClaimedLocationRewardCodes),
+    ),
+    locationPageNumber: resolveLocationPageNumber(biomeIndex),
+    enemyPageNumber: normalizeBestiaryPageNumber(
+      Math.floor(enemyIndex / enemyPageSize) + 1,
+      allEnemies.length,
+      enemyPageSize,
+    ),
+    enemyIndex,
+    totalEnemies: allEnemies.length,
+    enemy,
   };
 };
 

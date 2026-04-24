@@ -62,6 +62,7 @@ import {
 } from './responders/homeReplyFlow';
 import {
   replyWithBestiary as sendBestiary,
+  replyWithBestiaryEnemy as sendBestiaryEnemy,
   replyWithBestiaryLocation as sendBestiaryLocation,
 } from './responders/bestiaryReplyFlow';
 import {
@@ -278,9 +279,39 @@ export class GameHandler {
     await sendBestiary(ctx, bestiary);
   }
 
-  public async openBestiaryLocation(ctx: Context, vkId: number, biomeCode: string): Promise<void> {
-    const bestiaryLocation = await this.services.getBestiary.executeLocation(vkId, biomeCode);
+  public async openBestiaryLocation(
+    ctx: Context,
+    vkId: number,
+    biomeCode: string,
+    enemyPageNumber = 1,
+  ): Promise<void> {
+    const bestiaryLocation = await this.services.getBestiary.executeLocation(vkId, biomeCode, enemyPageNumber);
     await sendBestiaryLocation(ctx, bestiaryLocation);
+  }
+
+  public async openBestiaryEnemy(
+    ctx: Context,
+    vkId: number,
+    biomeCode: string,
+    enemyCode: string,
+  ): Promise<void> {
+    const bestiaryEnemy = await this.services.getBestiary.executeEnemy(vkId, biomeCode, enemyCode);
+    await sendBestiaryEnemy(ctx, bestiaryEnemy);
+  }
+
+  public async claimBestiaryLocationReward(ctx: Context, vkId: number, biomeCode: string): Promise<void> {
+    const bestiaryLocation = await this.services.getBestiary.claimLocationReward(vkId, biomeCode);
+    await sendBestiaryLocation(ctx, bestiaryLocation);
+  }
+
+  public async claimBestiaryEnemyReward(
+    ctx: Context,
+    vkId: number,
+    biomeCode: string,
+    enemyCode: string,
+  ): Promise<void> {
+    const bestiaryEnemy = await this.services.getBestiary.claimEnemyReward(vkId, biomeCode, enemyCode);
+    await sendBestiaryEnemy(ctx, bestiaryEnemy);
   }
 
   public async claimQuestReward(ctx: Context, vkId: number, context: CommandIntentContext): Promise<void> {

@@ -1,5 +1,6 @@
 export type {
   BestiaryDiscoveryState,
+  BestiaryEnemyDetailView,
   BestiaryEnemyView,
   BestiaryLocationDetailView,
   BestiaryLocationSummaryView,

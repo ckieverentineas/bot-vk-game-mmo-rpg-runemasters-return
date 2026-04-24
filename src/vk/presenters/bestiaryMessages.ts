@@ -1,9 +1,11 @@
 import type {
+  BestiaryEnemyDetailView,
   BestiaryEnemyView,
   BestiaryLocationDetailView,
   BestiaryLocationSummaryView,
   BestiaryOverviewView,
 } from '../../modules/world/application/read-models/bestiary';
+import { bestiaryEnemyPageSize } from '../../modules/world/domain/bestiary';
 import type { ResourceReward, StatBlock } from '../../shared/types/game';
 import {
   formatInventoryDelta,
@@ -62,7 +64,7 @@ const formatDiscoveryRewardStatus = (location: BestiaryLocationSummaryView): str
   }
 
   if (location.isUnlocked) {
-    return 'доступно';
+    return 'можно забрать';
   }
 
   return `откроется с ур. ${location.unlockLocationLevel}`;
@@ -127,7 +129,7 @@ const formatKillMilestoneStatus = (milestone: BestiaryEnemyView['killMilestones'
     return 'получено';
   }
 
-  return milestone.isCompleted ? 'доступно' : 'впереди';
+  return milestone.isCompleted ? 'можно забрать' : 'впереди';
 };
 
 const formatKillMilestoneLine = (enemy: BestiaryEnemyView): string => {
@@ -140,18 +142,45 @@ const formatKillMilestoneLine = (enemy: BestiaryEnemyView): string => {
     : '🏁 наград пока нет';
 };
 
-const formatEnemyLine = (enemy: BestiaryEnemyView, index: number): string => {
+const hasClaimableKillMilestone = (enemy: BestiaryEnemyView): boolean => (
+  enemy.killMilestones.some((milestone) => milestone.isCompleted && !milestone.isClaimed)
+);
+
+const formatEnemyListLine = (
+  enemy: BestiaryEnemyView,
+  index: number,
+  enemyPageNumber: number,
+): string => {
+  const visibleIndex = ((enemyPageNumber - 1) * bestiaryEnemyPageSize) + index + 1;
+
   if (!enemy.isDiscovered) {
-    return `${index + 1}. ??? · след не встречен`;
+    return `${visibleIndex}. ??? · след не встречен`;
+  }
+
+  const rewardState = hasClaimableKillMilestone(enemy) ? '🎁 есть награда' : '🏁 награды учтены';
+
+  return [
+    `${visibleIndex}. ${enemy.template.name} · ${formatEnemyRole(enemy)} · ${formatEnemyKind(enemy.template.kind)}`,
+    `   🏆 ${enemy.victoryCount} · ${rewardState}`,
+  ].join('\n');
+};
+
+const formatEnemyDetail = (enemy: BestiaryEnemyView): readonly string[] => {
+  if (!enemy.isDiscovered) {
+    return [
+      '❔ След не встречен.',
+      '🎁 Добыча и повадки откроются после первой встречи.',
+    ];
   }
 
   return [
-    `${index + 1}. ${enemy.template.name} · ${formatEnemyRole(enemy)} · ${formatEnemyKind(enemy.template.kind)}`,
-    `   🏆 ${enemy.victoryCount} · 📊 ${formatStats(enemy.template.baseStats)}`,
-    `   ${formatTacticalProfile(enemy)}`,
-    `   ${formatDropLine(enemy)}`,
-    `   ${formatKillMilestoneLine(enemy)}`,
-  ].join('\n');
+    `🐾 ${enemy.template.name} · ${formatEnemyRole(enemy)} · ${formatEnemyKind(enemy.template.kind)}`,
+    `🏆 Побед: ${enemy.victoryCount}`,
+    `📊 ${formatStats(enemy.template.baseStats)}`,
+    formatTacticalProfile(enemy),
+    formatDropLine(enemy),
+    formatKillMilestoneLine(enemy),
+  ];
 };
 
 export const renderBestiaryOverview = (bestiary: BestiaryOverviewView): string => [
@@ -168,10 +197,18 @@ export const renderBestiaryLocationDetail = (detail: BestiaryLocationDetailView)
   `📖 Бестиарий / ${detail.location.biome.name}`,
   `${formatBiomeLevels(detail.location)} · 🏁 ${formatReward(detail.location.discoveryReward.reward)} · ${formatDiscoveryRewardStatus(detail.location)}`,
   `🧭 ${detail.location.discoveredEnemyCount}/${detail.location.totalEnemyCount} · 🎁 ${detail.location.revealedDropCount}/${detail.location.totalEnemyCount}`,
+  `🐾 Следы ${detail.enemyPageNumber}/${detail.totalEnemyPages} · всего ${detail.totalEnemies}`,
   '',
-  ...detail.enemies.map(formatEnemyLine).flatMap((enemy, index) => (
+  ...detail.enemies.map((enemy, index) => formatEnemyListLine(enemy, index, detail.enemyPageNumber)).flatMap((enemy, index) => (
     index === 0 ? [enemy] : ['', enemy]
   )),
+].join('\n');
+
+export const renderBestiaryEnemyDetail = (detail: BestiaryEnemyDetailView): string => [
+  `📖 Бестиарий / ${detail.location.biome.name}`,
+  `🐾 ${detail.enemyIndex + 1}/${detail.totalEnemies}`,
+  '',
+  ...formatEnemyDetail(detail.enemy),
 ].join('\n');
 
 export const renderBestiary = renderBestiaryOverview;
