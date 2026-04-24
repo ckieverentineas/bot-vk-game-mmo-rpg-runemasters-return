@@ -110,6 +110,7 @@
 
 ### Changed
 
+- RF-003 combat cleanup: player attack, defend, rune skill and battle consumable resolution moved from `BattleEngine` into focused `battle-player-actions`, `battle-damage` and `battle-log-lines` domain helpers with dedicated tests;
 - RF-002 combat cleanup: turn-flow, party target selection and player-turn resource refresh moved from `BattleEngine` into a focused `battle-turn-flow` domain component with dedicated tests;
 - отрядные встречи больше не выглядят застрявшими на одном слизне: обычные враги в пати ротируются стабильным курсором, сложность не проваливается слишком далеко ниже уже достигнутой глубины без поражений, adaptive difficulty считает фактические HP/ману после боя, а условие `Усталый враг` остаётся включённым и теперь записывается в летопись при принятии встречи;
 - player-facing copy в бою, трофеях, return recap, main menu, exploration-сценах и stale/retry ответах переписан ближе к языку мира: меньше “нажмите”, “режим”, “статы”, “тип” и служебных UI-ярлыков, больше следа, трофеев, развилки и летописи схватки;
