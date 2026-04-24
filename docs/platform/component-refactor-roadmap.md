@@ -6,8 +6,8 @@
 - Created: `2026-04-24`
 - Scope: component-oriented architecture, functional domain core, safer maintenance rails.
 - Progress policy: one task = one chat request = one verification pass = one commit.
-- Overall cleanup progress after RF-012 lands: `12/18 = 67%`.
-- Closed tasks: `RF-001`, `RF-002`, `RF-003`, `RF-004`, `RF-005`, `RF-006`, `RF-007`, `RF-008`, `RF-009`, `RF-010`, `RF-011`, `RF-012`.
+- Overall cleanup progress after RF-013 lands: `13/18 = 72%`.
+- Closed tasks: `RF-001`, `RF-002`, `RF-003`, `RF-004`, `RF-005`, `RF-006`, `RF-007`, `RF-008`, `RF-009`, `RF-010`, `RF-011`, `RF-012`, `RF-013`.
 
 ## Goal
 
@@ -36,6 +36,8 @@ The project already has a useful `DDD-lite` skeleton:
 After RF-011, Prisma persistence is split around extracted `command-intent`, `player`, `party` and `workshop` components, with shared inventory/error helpers beside the adapter. The root `PrismaGameRepository` still implements `GameRepository`, but it now acts more like a facade while the remaining battle/reward/rune persistence is easier to carve next.
 
 After RF-012, `src/shared/types/game.ts` is a compatibility barrel over context files in `src/shared/types`: `combat`, `player`, `rewards`, `runes`, `world`, `party`, `inventory` and `stats`. New code can import from the narrow owner while existing modules keep working through the old path.
+
+After RF-013, shared typed test factories live in `src/shared/testing`: game factories build player, battle, rune, party and world fixtures, and repository factories cover simple player lookup ports. High-churn VK, local playtest, exploration, party and register tests now reuse those fixtures instead of carrying full inline objects.
 
 The main composition point is `src/app/composition-root.ts`: it builds one Prisma repository, one world catalog, one random source, telemetry, and all use-case classes.
 

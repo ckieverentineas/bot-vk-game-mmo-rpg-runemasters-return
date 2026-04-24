@@ -18,6 +18,7 @@
 - RF-010 repository cleanup: application/use-case слои перешли с полного `GameRepository` на scoped port-типы и локальные `...Repository` зависимости, при этом Prisma остаётся единым инфраструктурным адаптером;
 - RF-011 Prisma cleanup: `PrismaGameRepository` стал фасадом для command intent, player, party и workshop persistence-компонентов, общие inventory/error helpers вынесены рядом с Prisma-адаптером, а repository-level контракты сохранены без изменения поведения;
 - RF-012 shared types cleanup: большой `src/shared/types/game.ts` разрезан на контекстные владельцы `combat`, `player`, `rewards`, `runes`, `world`, `party`, `inventory` и `stats`, а старый путь оставлен compatibility barrel'ом для постепенного переноса импортов;
+- RF-013 test cleanup: добавлены typed factories для player/battle/rune/party/world fixtures и player lookup repository, а high-churn тесты VK presenter/smoke, local playtest, exploration outcome, party и register flows переведены с крупных inline-объектов на общие заготовки;
 - RF-009 command-intent cleanup: replay/pending/stale проверки вынесены в общий guard-helper и подключены к бою, исследованию, рунам, мастерской, алхимии, следу дня и наградам книги путей;
 - RF-008 exploration cleanup: standalone exploration events получили общий effect-persistence helper для ресурсных находок, восстановления HP/маны и no-effect сцен в solo/party flows;
 - RF-007 exploration cleanup: solo и party exploration теперь используют общий battle-start builder для snapshot'ов, encounter choice, `CreateBattleInput` и стартового хода врага;

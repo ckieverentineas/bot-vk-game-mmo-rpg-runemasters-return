@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
+import {
+  createTestBattle,
+  createTestBattleEnemySnapshot,
+  createTestBattlePlayerSnapshot,
+  createTestInventory,
+  createTestPlayer,
+  createTestRuneDraft,
+} from '../../shared/testing/game-factories';
 import type { BattleView, PlayerState, RuneDraft } from '../../shared/types/game';
 import {
   renderBattle,
@@ -21,65 +29,17 @@ import type { PendingRewardView } from '../../modules/shared/application/ports/G
 import type { CollectPendingRewardView } from '../../modules/rewards/application/use-cases/CollectPendingReward';
 import { getWorkshopBlueprint } from '../../modules/workshop/domain/workshop-catalog';
 
-const createPlayer = (overrides: Partial<PlayerState> = {}): PlayerState => ({
-  userId: 1,
-  vkId: 1001,
-  playerId: 1,
-  level: 1,
-  experience: 0,
-  gold: 0,
-  baseStats: {
-    health: 8,
-    attack: 4,
-    defence: 3,
-    magicDefence: 1,
-    dexterity: 3,
-    intelligence: 1,
-  },
-  locationLevel: 0,
-  currentRuneIndex: 0,
-  activeBattleId: null,
-  victories: 0,
-  victoryStreak: 0,
-  defeats: 0,
-  defeatStreak: 0,
-  mobsKilled: 0,
-  highestLocationLevel: 0,
-  tutorialState: 'ACTIVE',
-  inventory: {
+const createPlayer = (overrides: Partial<PlayerState> = {}): PlayerState => createTestPlayer({
+  inventory: createTestInventory({
     usualShards: 25,
     unusualShards: 10,
     rareShards: 3,
-    epicShards: 0,
-    legendaryShards: 0,
-    mythicalShards: 0,
-    leather: 0,
-    bone: 0,
-    herb: 0,
-    essence: 0,
-    metal: 0,
-    crystal: 0,
-  },
-  runes: [],
-  createdAt: '2026-04-12T00:00:00.000Z',
-  updatedAt: '2026-04-12T00:00:00.000Z',
+  }),
   ...overrides,
 });
 
-const createDroppedRune = (): RuneDraft => ({
-  runeCode: 'rune-1',
-  archetypeCode: 'ember',
-  passiveAbilityCodes: ['ember_heart'],
-  activeAbilityCodes: ['ember_pulse'],
+const createDroppedRune = (): RuneDraft => createTestRuneDraft({
   name: 'Обычная руна Пламени',
-  rarity: 'USUAL',
-  isEquipped: false,
-  health: 1,
-  attack: 2,
-  defence: 0,
-  magicDefence: 0,
-  dexterity: 0,
-  intelligence: 0,
 });
 
 const createEquippedRune = () => ({
@@ -130,53 +90,16 @@ const createCollectionRune = (name: string, equippedSlot: number | null = null) 
   equippedSlot,
 });
 
-const createBattle = (overrides: Partial<BattleView> = {}): BattleView => ({
-  id: 'battle-1',
-  playerId: 1,
+const createBattle = (overrides: Partial<BattleView> = {}): BattleView => createTestBattle({
   status: 'COMPLETED',
-  battleType: 'PVE',
   actionRevision: 1,
-  locationLevel: 0,
-  biomeCode: 'initium',
-  enemyCode: 'training-wisp',
-  turnOwner: 'PLAYER',
-  player: {
-    playerId: 1,
-    name: 'Рунный мастер #1001',
-    attack: 4,
-    defence: 3,
-    magicDefence: 1,
-    dexterity: 3,
-    intelligence: 1,
-    maxHealth: 8,
-    currentHealth: 8,
-    maxMana: 4,
-    currentMana: 4,
-    runeLoadout: null,
-    guardPoints: 0,
-  },
-  enemy: {
-    code: 'training-wisp',
+  player: createTestBattlePlayerSnapshot({ name: 'Рунный мастер #1001' }),
+  enemy: createTestBattleEnemySnapshot({
     name: 'Учебный огонёк',
-    kind: 'spirit',
-    isElite: false,
-    isBoss: false,
-    attack: 2,
-    defence: 0,
-    magicDefence: 0,
-    dexterity: 2,
-    intelligence: 1,
-    maxHealth: 6,
     currentHealth: 0,
-    maxMana: 4,
-    currentMana: 4,
-    experienceReward: 6,
-    goldReward: 2,
-    runeDropChance: 0,
     attackText: 'касается искрой',
-    intent: null,
-    hasUsedSignatureMove: false,
-  },
+    lootTable: undefined,
+  }),
   log: ['🏆 Победа!'],
   result: 'VICTORY',
   rewards: {
@@ -185,8 +108,6 @@ const createBattle = (overrides: Partial<BattleView> = {}): BattleView => ({
     shards: { USUAL: 2 },
     droppedRune: null,
   },
-  createdAt: '2026-04-12T00:00:00.000Z',
-  updatedAt: '2026-04-12T00:00:00.000Z',
   ...overrides,
 });
 
