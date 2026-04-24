@@ -6,7 +6,8 @@
 - Created: `2026-04-24`
 - Scope: component-oriented architecture, functional domain core, safer maintenance rails.
 - Progress policy: one task = one chat request = one verification pass = one commit.
-- Overall cleanup progress after this document lands: `1/18 = 6%`.
+- Overall cleanup progress after RF-002 lands: `2/18 = 11%`.
+- Closed tasks: `RF-001`, `RF-002`.
 
 ## Goal
 
