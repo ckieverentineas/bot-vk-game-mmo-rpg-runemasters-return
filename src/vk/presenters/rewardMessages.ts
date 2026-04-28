@@ -1,6 +1,8 @@
 import type { AcquisitionSummaryView } from '../../modules/player/application/read-models/acquisition-summary';
 import type { CollectPendingRewardView } from '../../modules/rewards/application/use-cases/CollectPendingReward';
+import type { PendingRewardWorkshopItemDurabilityChangeSnapshot } from '../../modules/rewards/domain/pending-reward-snapshot';
 import type { PendingRewardView } from '../../modules/shared/application/ports/GameRepository';
+import { isWorkshopItemCode } from '../../modules/workshop/domain/workshop-catalog';
 import { listPlayerFacingTrophyActions } from '../trophy-action-presentation';
 import {
   formatBattleReward,
@@ -12,6 +14,7 @@ import {
   formatPlayerSkillGainLine,
   formatPlayerSkillTitles,
 } from './player-skill-formatting';
+import { resolveWorkshopItemTitle } from './workshopLabels';
 
 const formatBaseRewardLine = (pendingReward: PendingRewardView): string => {
   return formatBattleReward(pendingReward.snapshot.baseReward);
@@ -23,6 +26,36 @@ const formatTrophyActionPreview = (
   const rewardLine = action.reward ? formatInventoryDelta(action.reward.inventoryDelta) : 'добыча без предпросмотра';
   return `${action.label} — ${rewardLine} · ${formatPlayerSkillTitles(action.skillCodes)}`;
 };
+
+const resolveDurabilityChangeItemTitle = (
+  change: PendingRewardWorkshopItemDurabilityChangeSnapshot,
+): string => (
+  isWorkshopItemCode(change.itemCode)
+    ? resolveWorkshopItemTitle(change.itemCode)
+    : 'Предмет мастерской'
+);
+
+const formatDurabilityStatusSuffix = (
+  change: PendingRewardWorkshopItemDurabilityChangeSnapshot,
+): string => {
+  if (change.statusAfter === 'BROKEN') {
+    return ' · сломан';
+  }
+
+  if (change.statusAfter === 'DESTROYED') {
+    return ' · разрушен';
+  }
+
+  return '';
+};
+
+const formatWorkshopItemDurabilityChangeLine = (
+  change: PendingRewardWorkshopItemDurabilityChangeSnapshot,
+): string => (
+  `🧰 ${resolveDurabilityChangeItemTitle(change)}: прочность `
+  + `${change.durabilityBefore} → ${change.durabilityAfter}/${change.maxDurability}`
+  + `${formatDurabilityStatusSuffix(change)}.`
+);
 
 export const renderPendingReward = (
   pendingReward: PendingRewardView,
@@ -48,6 +81,8 @@ export const renderCollectedPendingReward = (result: CollectPendingRewardView): 
     action.code === result.selectedActionCode
   ));
   const skillLines = result.appliedResult.skillUps.map(formatPlayerSkillGainLine);
+  const durabilityLines = (result.appliedResult.workshopItemDurabilityChanges ?? [])
+    .map(formatWorkshopItemDurabilityChangeLine);
   const sourceLine = result.pendingReward.source
     ? `Трофей разобран: ${result.pendingReward.source.enemyName}.`
     : 'Трофей разобран.';
@@ -57,6 +92,7 @@ export const renderCollectedPendingReward = (result: CollectPendingRewardView): 
     '',
     `✅ ${sourceLine}`,
     `🎒 ${formatInventoryDelta(result.appliedResult.inventoryDelta)}.`,
+    ...durabilityLines,
     ...(skillLines.length > 0 ? ['', '🧰 Ремесло', ...skillLines] : []),
   ].join('\n');
 };

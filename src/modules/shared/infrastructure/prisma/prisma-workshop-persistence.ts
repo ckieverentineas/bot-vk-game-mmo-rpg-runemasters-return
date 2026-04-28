@@ -33,8 +33,10 @@ import {
   type WorkshopBlueprintDefinition,
   type WorkshopCraftItemBlueprintDefinition,
   type WorkshopEquippedItemView,
+  type WorkshopItemClass,
   type WorkshopItemCode,
   type WorkshopItemSlot,
+  type WorkshopItemStatus,
   type WorkshopRepairToolBlueprintDefinition,
 } from '../../../workshop/domain/workshop-catalog';
 import {
@@ -71,6 +73,20 @@ type PersistPlayerSkillGains = (
 interface PrismaWorkshopPersistenceContext {
   readonly runWithCommandIntent: RunWithCommandIntent;
   readonly persistPlayerSkillGains: PersistPlayerSkillGains;
+}
+
+export interface WorkshopItemDurabilityChangeView {
+  readonly itemId: string;
+  readonly itemCode: WorkshopItemCode;
+  readonly itemClass: WorkshopItemClass;
+  readonly slot: WorkshopItemSlot;
+  readonly statusBefore: WorkshopItemStatus;
+  readonly statusAfter: WorkshopItemStatus;
+  readonly equippedBefore: boolean;
+  readonly equippedAfter: boolean;
+  readonly durabilityBefore: number;
+  readonly durabilityAfter: number;
+  readonly maxDurability: number;
 }
 
 const workshopMaterialFields: readonly MaterialField[] = [
@@ -355,6 +371,23 @@ const battleDecaySlots = new Set<WorkshopItemSlot>(['weapon', 'armor']);
 const shouldDecayAfterBattle = (item: BattleWorkshopLoadoutItem): boolean => (
   isWorkshopItemSlot(item.slot) && battleDecaySlots.has(item.slot)
 );
+
+const buildWorkshopItemDurabilityChange = (
+  item: WorkshopEquippedItemView,
+  decayed: WorkshopEquippedItemView,
+): WorkshopItemDurabilityChangeView => ({
+  itemId: item.id,
+  itemCode: item.code,
+  itemClass: item.itemClass,
+  slot: item.slot,
+  statusBefore: item.status,
+  statusAfter: decayed.status,
+  equippedBefore: item.equipped,
+  equippedAfter: decayed.equipped,
+  durabilityBefore: item.durability,
+  durabilityAfter: decayed.durability,
+  maxDurability: item.maxDurability,
+});
 
 export class PrismaWorkshopPersistence {
   public constructor(
@@ -813,7 +846,7 @@ export class PrismaWorkshopPersistence {
     client: TransactionClient,
     playerId: number,
     battle: BattleView,
-  ): Promise<void> {
+  ): Promise<readonly WorkshopItemDurabilityChangeView[]> {
     const itemIds = [
       ...new Set(
         (battle.player.workshopLoadout ?? [])
@@ -823,7 +856,7 @@ export class PrismaWorkshopPersistence {
     ];
 
     if (itemIds.length === 0) {
-      return;
+      return [];
     }
 
     const items = await client.playerCraftedItem.findMany({
@@ -835,17 +868,17 @@ export class PrismaWorkshopPersistence {
       },
     });
 
-    await this.decayCraftedItems(client, playerId, items);
+    return this.decayCraftedItems(client, playerId, items);
   }
 
   public async decayEquippedItemsByCode(
     client: TransactionClient,
     playerId: number,
     itemCodes: readonly WorkshopItemCode[],
-  ): Promise<void> {
+  ): Promise<readonly WorkshopItemDurabilityChangeView[]> {
     const uniqueItemCodes = [...new Set(itemCodes)];
     if (uniqueItemCodes.length === 0) {
-      return;
+      return [];
     }
 
     const items = await client.playerCraftedItem.findMany({
@@ -858,18 +891,21 @@ export class PrismaWorkshopPersistence {
       },
     });
 
-    await this.decayCraftedItems(client, playerId, items);
+    return this.decayCraftedItems(client, playerId, items);
   }
 
   private async decayCraftedItems(
     client: TransactionClient,
     playerId: number,
     items: readonly PlayerCraftedItem[],
-  ): Promise<void> {
-    for (const item of items) {
-      const decayed = resolveWorkshopItemDecay(toWorkshopEquippedItem(item));
+  ): Promise<readonly WorkshopItemDurabilityChangeView[]> {
+    const changes: WorkshopItemDurabilityChangeView[] = [];
 
-      await client.playerCraftedItem.updateMany({
+    for (const item of items) {
+      const workshopItem = toWorkshopEquippedItem(item);
+      const decayed = resolveWorkshopItemDecay(workshopItem);
+
+      const updated = await client.playerCraftedItem.updateMany({
         where: {
           id: item.id,
           playerId,
@@ -882,6 +918,12 @@ export class PrismaWorkshopPersistence {
           durability: decayed.durability,
         },
       });
+
+      if (updated.count > 0) {
+        changes.push(buildWorkshopItemDurabilityChange(workshopItem, decayed));
+      }
     }
+
+    return changes;
   }
 }

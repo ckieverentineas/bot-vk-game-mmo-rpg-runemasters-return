@@ -51,12 +51,27 @@ export interface PendingRewardSchoolUpSnapshot {
   readonly rankAfter: number;
 }
 
+export interface PendingRewardWorkshopItemDurabilityChangeSnapshot {
+  readonly itemId: string;
+  readonly itemCode: string;
+  readonly itemClass: string;
+  readonly slot: string;
+  readonly statusBefore: string;
+  readonly statusAfter: string;
+  readonly equippedBefore: boolean;
+  readonly equippedAfter: boolean;
+  readonly durabilityBefore: number;
+  readonly durabilityAfter: number;
+  readonly maxDurability: number;
+}
+
 export interface PendingRewardAppliedResultSnapshot {
   readonly baseRewardApplied: boolean;
   readonly inventoryDelta: InventoryDelta;
   readonly skillUps: readonly PendingRewardSkillUpSnapshot[];
   readonly statUps: readonly PendingRewardStatUpSnapshot[];
   readonly schoolUps: readonly PendingRewardSchoolUpSnapshot[];
+  readonly workshopItemDurabilityChanges?: readonly PendingRewardWorkshopItemDurabilityChangeSnapshot[];
 }
 
 export interface PendingRewardSnapshotBaseV1 {
@@ -138,6 +153,7 @@ const statKeys: readonly StatKey[] = [
 ];
 
 const isString = (value: unknown): value is string => typeof value === 'string';
+const isBoolean = (value: unknown): value is boolean => typeof value === 'boolean';
 const isNumber = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value) && value >= 0;
 
 const isRewardSourceType = (value: unknown): value is RewardSourceType => value === 'BATTLE_VICTORY';
@@ -224,6 +240,29 @@ const isPendingRewardSchoolUpSnapshot = (value: unknown): value is PendingReward
   && isNumber(value.rankAfter)
 );
 
+const isPendingRewardWorkshopItemDurabilityChangeSnapshot = (
+  value: unknown,
+): value is PendingRewardWorkshopItemDurabilityChangeSnapshot => (
+  isJsonRecord(value)
+  && isString(value.itemId)
+  && isString(value.itemCode)
+  && isString(value.itemClass)
+  && isString(value.slot)
+  && isString(value.statusBefore)
+  && isString(value.statusAfter)
+  && isBoolean(value.equippedBefore)
+  && isBoolean(value.equippedAfter)
+  && isNumber(value.durabilityBefore)
+  && isNumber(value.durabilityAfter)
+  && isNumber(value.maxDurability)
+);
+
+const isPendingRewardWorkshopItemDurabilityChanges = (
+  value: unknown,
+): value is readonly PendingRewardWorkshopItemDurabilityChangeSnapshot[] => (
+  Array.isArray(value) && value.every(isPendingRewardWorkshopItemDurabilityChangeSnapshot)
+);
+
 const isPendingRewardAppliedResultSnapshot = (value: unknown): value is PendingRewardAppliedResultSnapshot => (
   isJsonRecord(value)
   && typeof value.baseRewardApplied === 'boolean'
@@ -234,6 +273,10 @@ const isPendingRewardAppliedResultSnapshot = (value: unknown): value is PendingR
   && value.statUps.every(isPendingRewardStatUpSnapshot)
   && Array.isArray(value.schoolUps)
   && value.schoolUps.every(isPendingRewardSchoolUpSnapshot)
+  && (
+    value.workshopItemDurabilityChanges === undefined
+    || isPendingRewardWorkshopItemDurabilityChanges(value.workshopItemDurabilityChanges)
+  )
 );
 
 const hasConsistentResolutionState = (value: unknown): boolean => {

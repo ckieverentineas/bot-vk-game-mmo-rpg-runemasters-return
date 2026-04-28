@@ -39,6 +39,7 @@ import { getSchoolNovicePathDefinitionForEnemy, hasRuneOfSchoolAtLeastRarity } f
 import {
   type PendingRewardAppliedResultSnapshot,
   type PendingRewardSkillUpSnapshot,
+  type PendingRewardWorkshopItemDurabilityChangeSnapshot,
 } from '../../../rewards/domain/pending-reward-snapshot';
 import type {
   TrophyActionCode,
@@ -1459,13 +1460,44 @@ export class PrismaGameRepository implements GameRepository {
 
       await this.applyInventoryDelta(tx, playerId, inventoryDelta);
       await this.persistPendingRewardSkillUps(tx, playerId, skillUps);
-      await this.decayTrophyToolLoadout(tx, playerId, action.code);
+
+      const workshopItemDurabilityChanges = await this.decayTrophyToolLoadout(tx, playerId, action.code);
+      const collectedAppliedResult: PendingRewardAppliedResultSnapshot = workshopItemDurabilityChanges.length > 0
+        ? {
+            ...appliedResult,
+            workshopItemDurabilityChanges,
+          }
+        : appliedResult;
+
+      if (workshopItemDurabilityChanges.length > 0) {
+        const finalAppliedLedger = createAppliedPendingRewardLedger({
+          ledger,
+          action,
+          appliedResult: collectedAppliedResult,
+          appliedAt: appliedAtIso,
+        });
+
+        const refreshedLedger = await tx.rewardLedgerRecord.updateMany({
+          where: {
+            playerId,
+            ledgerKey,
+            status: 'APPLIED',
+          },
+          data: {
+            entrySnapshot: stringifyJson(finalAppliedLedger, '{}'),
+          },
+        });
+
+        if (refreshedLedger.count === 0) {
+          throw new AppError('command_retry_pending', 'Трофей уже разбирается. Подождите мгновение.');
+        }
+      }
 
       return {
         player: mapPlayerRecord(await this.requirePlayerRecord(tx, playerId)),
         ledgerKey: appliedLedger.ledgerKey,
         selectedActionCode: action.code,
-        appliedResult,
+        appliedResult: collectedAppliedResult,
       };
     });
   }
@@ -2423,13 +2455,13 @@ export class PrismaGameRepository implements GameRepository {
     client: TransactionClient,
     playerId: number,
     actionCode: TrophyActionCode,
-  ): Promise<void> {
+  ): Promise<readonly PendingRewardWorkshopItemDurabilityChangeSnapshot[]> {
     const itemCodes = resolveTrophyToolItemCodes(actionCode);
     if (itemCodes.length === 0) {
-      return;
+      return [];
     }
 
-    await this.workshopPersistence.decayEquippedItemsByCode(client, playerId, itemCodes);
+    return this.workshopPersistence.decayEquippedItemsByCode(client, playerId, itemCodes);
   }
 
   public async getActiveParty(playerId: number): Promise<PartyView | null> {

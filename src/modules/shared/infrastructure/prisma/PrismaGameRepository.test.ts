@@ -2585,7 +2585,8 @@ describe('PrismaGameRepository release hardening', () => {
       },
     });
 
-    const updateData = tx.rewardLedgerRecord.updateMany.mock.calls[0]?.[0]?.data;
+    const rewardLedgerUpdateCalls = tx.rewardLedgerRecord.updateMany.mock.calls;
+    const updateData = rewardLedgerUpdateCalls[rewardLedgerUpdateCalls.length - 1]?.[0]?.data;
     const ledgerSnapshot = JSON.parse(String(updateData?.entrySnapshot));
 
     expect(ledgerSnapshot).toMatchObject({
@@ -2608,6 +2609,21 @@ describe('PrismaGameRepository release hardening', () => {
           ],
           statUps: [],
           schoolUps: [],
+          workshopItemDurabilityChanges: [
+            {
+              itemId: 'skinning-tool-1',
+              itemCode: 'skinning_kit',
+              itemClass: 'UL',
+              slot: 'tool',
+              statusBefore: 'ACTIVE',
+              statusAfter: 'ACTIVE',
+              equippedBefore: true,
+              equippedAfter: true,
+              durabilityBefore: 2,
+              durabilityAfter: 1,
+              maxDurability: 12,
+            },
+          ],
         },
       },
     });

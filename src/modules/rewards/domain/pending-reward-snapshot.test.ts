@@ -358,6 +358,21 @@ describe('pending reward snapshots', () => {
             rankAfter: 1,
           },
         ],
+        workshopItemDurabilityChanges: [
+          {
+            itemId: 'skinning-tool-1',
+            itemCode: 'skinning_kit',
+            itemClass: 'UL',
+            slot: 'tool',
+            statusBefore: 'ACTIVE',
+            statusAfter: 'ACTIVE',
+            equippedBefore: true,
+            equippedAfter: true,
+            durabilityBefore: 2,
+            durabilityAfter: 1,
+            maxDurability: 12,
+          },
+        ],
       },
     };
 

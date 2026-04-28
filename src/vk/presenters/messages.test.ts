@@ -1323,6 +1323,21 @@ describe('messages school-first onboarding framing', () => {
         ],
         statUps: [],
         schoolUps: [],
+        workshopItemDurabilityChanges: [
+          {
+            itemId: 'skinning-tool-1',
+            itemCode: 'skinning_kit',
+            itemClass: 'UL',
+            slot: 'tool',
+            statusBefore: 'ACTIVE',
+            statusAfter: 'ACTIVE',
+            equippedBefore: true,
+            equippedAfter: true,
+            durabilityBefore: 2,
+            durabilityAfter: 1,
+            maxDurability: 12,
+          },
+        ],
       },
     };
 
@@ -1330,6 +1345,7 @@ describe('messages school-first onboarding framing', () => {
 
     expect(message).toContain('🔪 Свежевать');
     expect(message).toContain('🎒 +2 кожи · +1 кость.');
+    expect(message).toContain('🧰 Набор свежевателя: прочность 2 → 1/12.');
     expect(message).toContain('Свежевание: Ученик свежевания · движение стало вернее');
     expect(message).not.toContain('Свежевание: 3 → 4');
     expect(message).not.toContain('💡 След:');
