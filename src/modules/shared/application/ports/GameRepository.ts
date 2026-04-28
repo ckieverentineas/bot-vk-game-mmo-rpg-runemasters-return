@@ -363,6 +363,7 @@ export interface GameRepository {
     playerId: number,
     blueprintInstanceId: string,
     outcome: WorkshopCraftedItemOutcome,
+    dustCost: number,
     options?: WorkshopMutationOptions,
   ): Promise<PlayerCraftedItemView>;
   awakenWorkshopBlueprintFeature(

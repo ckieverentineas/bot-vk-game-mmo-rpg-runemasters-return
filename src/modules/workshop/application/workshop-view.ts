@@ -5,6 +5,7 @@ import {
   canRepairWorkshopItem,
   canEquipWorkshopItem,
   listWorkshopBlueprints,
+  resolveWorkshopCraftDustCost,
   resolveWorkshopMissingCost,
   type WorkshopBlueprintCost,
   type WorkshopBlueprintDefinition,
@@ -27,6 +28,8 @@ export interface WorkshopBlueprintEntryView {
   readonly blueprint: WorkshopBlueprintDefinition;
   readonly ownedQuantity: number;
   readonly canCraft: boolean;
+  readonly dustCost: number;
+  readonly missingDust: number;
   readonly missingCost: WorkshopBlueprintCost;
   readonly canAwakenFeature: boolean;
   readonly featureAwakeningRadianceCost: number;
@@ -89,6 +92,8 @@ const buildBlueprintEntry = (
   blueprint: WorkshopBlueprintDefinition,
 ): WorkshopBlueprintEntryView => {
   const missingCost = resolveWorkshopMissingCost(player.inventory, blueprint);
+  const dustCost = resolveWorkshopCraftDustCost(blueprint);
+  const missingDust = Math.max(0, dustCost - player.gold);
   const featureAwakeningRadianceCost = blueprint.kind === 'craft_item' && canAwakenWorkshopBlueprintFeature(instance)
     ? workshopBlueprintFeatureAwakeningRadianceCost
     : 0;
@@ -99,7 +104,10 @@ const buildBlueprintEntry = (
     blueprint,
     ownedQuantity: 1,
     canCraft: blueprint.kind === 'craft_item'
-      && canCraftWorkshopBlueprint(player.inventory, blueprint),
+      && canCraftWorkshopBlueprint(player.inventory, blueprint)
+      && missingDust === 0,
+    dustCost,
+    missingDust,
     missingCost,
     canAwakenFeature: featureAwakeningRadianceCost > 0 && missingRadiance === 0,
     featureAwakeningRadianceCost,

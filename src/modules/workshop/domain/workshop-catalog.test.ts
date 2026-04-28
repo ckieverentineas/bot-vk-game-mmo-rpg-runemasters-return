@@ -15,6 +15,7 @@ import {
   listWorkshopBlueprints,
   resolveWorkshopEquipmentStatBonus,
   resolveWorkshopCraftInventoryDelta,
+  resolveWorkshopCraftDustCost,
   resolveWorkshopItemDecay,
   resolveWorkshopMissingCost,
 } from './workshop-catalog';
@@ -80,6 +81,7 @@ describe('workshop catalog', () => {
       itemClass: 'L',
       rarity: 'RARE',
       maxDurability: 14,
+      dustCost: 8,
       cost: {
         leather: 4,
         bone: 2,
@@ -108,6 +110,7 @@ describe('workshop catalog', () => {
     });
 
     expect(canCraftWorkshopBlueprint(inventory, blueprint)).toBe(false);
+    expect(resolveWorkshopCraftDustCost(blueprint)).toBe(6);
     expect(resolveWorkshopMissingCost(inventory, blueprint)).toEqual({
       leather: 2,
       herb: 1,

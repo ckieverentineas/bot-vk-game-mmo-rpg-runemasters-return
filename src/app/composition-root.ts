@@ -136,7 +136,7 @@ export const createAppServices = (): AppServices => {
     destroyCurrentRune: new DestroyCurrentRune(repository),
     getWorkshop: new GetWorkshop(repository),
     awakenWorkshopBlueprintFeature: new AwakenWorkshopBlueprintFeature(repository, telemetry),
-    craftWorkshopItem: new CraftWorkshopItem(repository),
+    craftWorkshopItem: new CraftWorkshopItem(repository, telemetry),
     repairWorkshopItem: new RepairWorkshopItem(repository),
     buyWorkshopShopOffer: new BuyWorkshopShopOffer(repository, telemetry),
     equipWorkshopItem: new EquipWorkshopItem(repository),

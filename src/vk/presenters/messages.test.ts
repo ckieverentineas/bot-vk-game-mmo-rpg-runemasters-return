@@ -491,7 +491,12 @@ describe('messages school-first onboarding framing', () => {
           instance: createBlueprintInstance({ id: 'bp-hunter-cleaver-1', blueprintCode: 'hunter_cleaver' }),
           ownedQuantity: 1,
           canCraft: true,
+          dustCost: 8,
+          missingDust: 0,
           missingCost: {},
+          canAwakenFeature: false,
+          featureAwakeningRadianceCost: 0,
+          missingRadiance: 0,
         },
         {
           blueprint: getWorkshopBlueprint('tracker_jacket'),
@@ -505,7 +510,12 @@ describe('messages school-first onboarding framing', () => {
           }),
           ownedQuantity: 1,
           canCraft: false,
+          dustCost: 6,
+          missingDust: 6,
           missingCost: { leather: 1 },
+          canAwakenFeature: false,
+          featureAwakeningRadianceCost: 0,
+          missingRadiance: 0,
         },
         {
           blueprint: getWorkshopBlueprint('skinning_kit'),
@@ -519,7 +529,12 @@ describe('messages school-first onboarding framing', () => {
           }),
           ownedQuantity: 0,
           canCraft: false,
+          dustCost: 4,
+          missingDust: 4,
           missingCost: { leather: 2, bone: 2 },
+          canAwakenFeature: false,
+          featureAwakeningRadianceCost: 0,
+          missingRadiance: 0,
         },
       ],
       repairTools: [],
@@ -560,11 +575,14 @@ describe('messages school-first onboarding framing', () => {
     expect(message).toContain('• 🎽 Надеть: Охотничий тесак.');
     expect(message).toContain('• 🧪 Сварить: восстановления, стойкости.');
     expect(message).toContain('• 💊 Выпить: восстановления x1.');
+    expect(message).toContain('💰 Пыль: 0.');
     expect(message).toContain('• ✅ готово · Охотничий тесак');
+    expect(message).toContain('кожа 4 · кость 2 · металл 1 · работа 8 пыли');
     expect(message).toContain('чертеж #bp-hunte · тонкое · редкий · квестовый, квест');
-    expect(message).toContain('• 🧩 не хватает: кожа 1 · Куртка следопыта');
+    expect(message).toContain('• 🧩 не хватает: кожа 1 · 💰 не хватает пыли 6 · Куртка следопыта');
     expect(message).toContain('чертеж #bp-track · крепкое · необычный · секретный, бестиарий');
     expect(message).toContain('• 🔒 нужен чертеж · Набор свежевателя');
+    expect(message).toContain('кожа 2 · кость 2 · работа 4 пыли');
     expect(message).toContain('🎽 Снаряжение');
     expect(message).toContain('можно надеть');
     expect(message).toContain('❤️ Пилюля восстановления x1: +6 HP.');

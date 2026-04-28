@@ -160,12 +160,43 @@ const formatWorkshopCost = (cost: WorkshopBlueprintCost): string => {
   return parts.length > 0 ? parts.join(' · ') : 'без материалов';
 };
 
+const formatWorkshopDustCost = (dustCost: number): string => (
+  dustCost > 0 ? `${dustCost} пыли` : 'без пыли'
+);
+
 const hasWorkshopCost = (cost: WorkshopBlueprintCost): boolean => (
   Object.values(cost).some((amount) => amount !== undefined && amount > 0)
 );
 
 const formatMissingCost = (cost: WorkshopBlueprintCost): string => {
   return hasWorkshopCost(cost) ? `не хватает: ${formatWorkshopCost(cost)}` : 'материалы готовы';
+};
+
+const formatBlueprintCraftState = (entry: WorkshopBlueprintEntryView): string => {
+  if (entry.canCraft) {
+    return '✅ готово';
+  }
+
+  if (entry.ownedQuantity <= 0) {
+    return '🔒 нужен чертеж';
+  }
+
+  const missingMaterials = hasWorkshopCost(entry.missingCost)
+    ? formatMissingCost(entry.missingCost)
+    : null;
+  const missingDust = entry.missingDust > 0
+    ? `💰 не хватает пыли ${entry.missingDust}`
+    : null;
+
+  if (missingMaterials && missingDust) {
+    return `🧩 ${missingMaterials} · ${missingDust}`;
+  }
+
+  if (missingMaterials) {
+    return `🧩 ${missingMaterials}`;
+  }
+
+  return missingDust ?? 'материалы готовы';
 };
 
 const formatMaterialStock = (inventory: InventoryView): string => (
@@ -292,6 +323,7 @@ const renderWorkshopActions = (view: WorkshopView): readonly string[] => {
   return [
     '📌 Сейчас',
     ...(actionLines.length > 0 ? actionLines : ['• Готовых действий нет.']),
+    `💰 Пыль: ${view.player.gold}.`,
     `🧵 Материалы: ${formatMaterialStock(view.player.inventory)}.`,
   ];
 };
@@ -300,11 +332,7 @@ const formatBlueprintEntry = (entry: WorkshopBlueprintEntryView): string => {
   const blueprint = entry.blueprint;
   const title = resolveWorkshopBlueprintTitle(blueprint.code);
   const ownedLine = entry.ownedQuantity > 0 ? formatBlueprintInstanceDetails(entry) : 'чертежа нет';
-  const craftState = entry.canCraft
-    ? '✅ готово'
-    : entry.ownedQuantity > 0
-      ? `🧩 ${formatMissingCost(entry.missingCost)}`
-      : '🔒 нужен чертеж';
+  const craftState = formatBlueprintCraftState(entry);
   const resultLine = blueprint.kind === 'craft_item'
     ? `${resolveWorkshopItemSlotTitle(blueprint.slot)} · ${resolveWorkshopItemClassTitle(blueprint.itemClass)} · прочн. ${blueprint.maxDurability}`
     : `${resolveWorkshopItemClassTitle(blueprint.itemClass)} · ремонт`;
@@ -315,11 +343,15 @@ const formatBlueprintEntry = (entry: WorkshopBlueprintEntryView): string => {
         ? `✨ пробуждение: ${entry.featureAwakeningRadianceCost} сияния`
         : `✨ не хватает сияния ${entry.missingRadiance}`
       : null;
+  const craftCostLine = blueprint.kind === 'craft_item'
+    ? `работа ${formatWorkshopDustCost(entry.dustCost)}`
+    : null;
   const parts = [
     `• ${craftState} · ${title}: ${ownedLine}`,
     resultLine,
     ...(awakeningLine ? [awakeningLine] : []),
     formatWorkshopCost(blueprint.cost),
+    ...(craftCostLine ? [craftCostLine] : []),
   ];
 
   return `${parts.join(' · ')}.`;

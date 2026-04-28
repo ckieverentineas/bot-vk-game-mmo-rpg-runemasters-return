@@ -20,6 +20,20 @@ export const buildWorkshopShopPurchaseEconomyTelemetryPayload = (
   playerLevel,
 });
 
+export const buildWorkshopCraftEconomyTelemetryPayload = (
+  blueprint: Pick<WorkshopCraftItemBlueprintDefinition, 'code' | 'dustCost'>,
+  playerLevel: number,
+): EconomyTransactionTelemetryPayload => ({
+  transactionType: 'dust_spent',
+  sourceType: 'WORKSHOP_CRAFT',
+  sourceId: blueprint.code,
+  resourceDustDelta: -blueprint.dustCost,
+  resourceRadianceDelta: 0,
+  resourceShardsDelta: 0,
+  runeDelta: 0,
+  playerLevel,
+});
+
 export const buildWorkshopBlueprintFeatureAwakeningEconomyTelemetryPayload = (
   blueprint: Pick<WorkshopCraftItemBlueprintDefinition, 'code'>,
   radianceCost: number,

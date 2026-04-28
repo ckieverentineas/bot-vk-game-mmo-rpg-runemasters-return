@@ -698,7 +698,12 @@ describe('profile keyboard', () => {
           instance: blueprintInstance,
           ownedQuantity: 1,
           canCraft: true,
+          dustCost: 4,
+          missingDust: 0,
           missingCost: {},
+          canAwakenFeature: false,
+          featureAwakeningRadianceCost: 0,
+          missingRadiance: 0,
         },
       ],
       repairTools: [],
@@ -706,7 +711,9 @@ describe('profile keyboard', () => {
       shopOffers: [],
     });
     const payloads = collectPayloads(keyboard);
+    const labels = collectLabels(keyboard);
 
+    expect(labels).toContain('⚒ Набор свежевателя · 4 пыли');
     expect(payloads).toContainEqual(expect.objectContaining({
       command: createWorkshopCraftCommand(blueprintInstance.id),
       intentId: expect.any(String),
@@ -733,6 +740,8 @@ describe('profile keyboard', () => {
           },
           ownedQuantity: 1,
           canCraft: true,
+          dustCost: 8,
+          missingDust: 0,
           missingCost: {},
           canAwakenFeature: true,
           featureAwakeningRadianceCost: 1,

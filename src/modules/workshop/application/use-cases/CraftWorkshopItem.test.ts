@@ -1,10 +1,11 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import type { InventoryView, MaterialField, PlayerState, StatBlock } from '../../../../../shared/types/game';
 import type {
   CommandIntentReplayResult,
   GameRepository,
 } from '../../../../shared/application/ports/GameRepository';
+import type { GameTelemetry } from '../../../../shared/application/ports/GameTelemetry';
 import {
   getWorkshopBlueprint,
   type WorkshopCraftItemBlueprintDefinition,
@@ -78,6 +79,10 @@ const createPlayer = (overrides: Partial<PlayerState> = {}): PlayerState => ({
   ...overrides,
 });
 
+const createTelemetry = (): GameTelemetry => ({
+  economyTransactionCommitted: vi.fn().mockResolvedValue(undefined),
+} as Partial<GameTelemetry> as GameTelemetry);
+
 const createBlueprintInstance = (
   overrides: Partial<PlayerBlueprintInstanceView> = {},
 ): PlayerBlueprintInstanceView => ({
@@ -127,6 +132,7 @@ interface CraftRequest {
   readonly playerId: number;
   readonly blueprintInstanceId: string;
   readonly outcome: WorkshopCraftedItemOutcome | undefined;
+  readonly dustCost: number;
   readonly options: WorkshopMutationOptions | undefined;
 }
 
@@ -210,12 +216,14 @@ class InMemoryCraftWorkshopRepository implements Pick<
     playerId: number,
     blueprintInstanceId: string,
     outcome: WorkshopCraftedItemOutcome,
+    dustCost: number,
     options?: WorkshopMutationOptions,
   ): Promise<PlayerCraftedItemView> {
     this.craftRequests.push({
       playerId,
       blueprintInstanceId,
       outcome,
+      dustCost,
       options,
     });
 
@@ -230,6 +238,7 @@ class InMemoryCraftWorkshopRepository implements Pick<
     }
 
     this.spendBlueprint(blueprintInstanceId);
+    this.spendDust(dustCost);
     this.spendMaterials(blueprint);
 
     const craftedItem = createItem({
@@ -261,6 +270,13 @@ class InMemoryCraftWorkshopRepository implements Pick<
     ));
   }
 
+  private spendDust(dustCost: number): void {
+    this.player = {
+      ...this.player,
+      gold: this.player.gold - dustCost,
+    };
+  }
+
   private spendMaterials(blueprint: WorkshopCraftItemBlueprintDefinition): void {
     const nextInventory = { ...this.player.inventory };
 
@@ -278,6 +294,7 @@ class InMemoryCraftWorkshopRepository implements Pick<
 describe('CraftWorkshopItem', () => {
   it('crafts an owned blueprint and returns the refreshed workshop view', async () => {
     const player = createPlayer({
+      gold: 8,
       inventory: inventory({
         leather: 4,
         bone: 2,
@@ -286,7 +303,8 @@ describe('CraftWorkshopItem', () => {
     });
     const blueprintInstances = [createBlueprintInstance({ id: 'bp-hunter-cleaver-1', blueprintCode: 'hunter_cleaver' })];
     const repository = new InMemoryCraftWorkshopRepository(player, blueprintInstances);
-    const useCase = new CraftWorkshopItem(repository.asGameRepository());
+    const telemetry = createTelemetry();
+    const useCase = new CraftWorkshopItem(repository.asGameRepository(), telemetry);
     const stateKey = buildCraftWorkshopItemIntentStateKey(player, 'bp-hunter-cleaver-1', blueprintInstances, []);
 
     const result = await useCase.execute(player.vkId, 'bp-hunter-cleaver-1', 'intent-craft-1', stateKey, 'payload');
@@ -314,6 +332,7 @@ describe('CraftWorkshopItem', () => {
             },
           ],
         },
+        dustCost: 8,
         options: {
           intentId: 'intent-craft-1',
           intentStateKey: stateKey,
@@ -321,6 +340,16 @@ describe('CraftWorkshopItem', () => {
         },
       },
     ]);
+    expect(telemetry.economyTransactionCommitted).toHaveBeenCalledWith(player.userId, {
+      transactionType: 'dust_spent',
+      sourceType: 'WORKSHOP_CRAFT',
+      sourceId: 'hunter_cleaver',
+      resourceDustDelta: -8,
+      resourceRadianceDelta: 0,
+      resourceShardsDelta: 0,
+      runeDelta: 0,
+      playerLevel: 1,
+    });
     expect(repository.storedResults).toEqual([
       {
         playerId: player.playerId,
@@ -333,6 +362,7 @@ describe('CraftWorkshopItem', () => {
       durability: 14,
       maxDurability: 14,
     });
+    expect(result.view.player.gold).toBe(0);
     expect(result.view.blueprints.find((entry) => entry.blueprint.code === 'hunter_cleaver')).toBeUndefined();
     expect(result.view.craftedItems.find((entry) => entry.item.id === result.craftedItem.id)).toMatchObject({
       repairable: false,
@@ -347,6 +377,7 @@ describe('CraftWorkshopItem', () => {
 
   it('rejects crafting when required materials are missing before mutating workshop records', async () => {
     const player = createPlayer({
+      gold: 8,
       inventory: inventory({
         leather: 4,
         bone: 2,
@@ -365,8 +396,31 @@ describe('CraftWorkshopItem', () => {
     expect(repository.storedResults).toEqual([]);
   });
 
+  it('rejects crafting when the player cannot pay the workshop dust fee', async () => {
+    const player = createPlayer({
+      gold: 7,
+      inventory: inventory({
+        leather: 4,
+        bone: 2,
+        metal: 1,
+      }),
+    });
+    const blueprintInstances = [createBlueprintInstance({ id: 'bp-hunter-cleaver-1', blueprintCode: 'hunter_cleaver' })];
+    const repository = new InMemoryCraftWorkshopRepository(player, blueprintInstances);
+    const useCase = new CraftWorkshopItem(repository.asGameRepository());
+    const stateKey = buildCraftWorkshopItemIntentStateKey(player, 'bp-hunter-cleaver-1', blueprintInstances, []);
+
+    await expect(useCase.execute(player.vkId, 'bp-hunter-cleaver-1', 'intent-craft-1', stateKey, 'payload')).rejects.toMatchObject({
+      code: 'not_enough_dust',
+    });
+
+    expect(repository.craftRequests).toEqual([]);
+    expect(repository.storedResults).toEqual([]);
+  });
+
   it('rejects crafting when the player does not own the blueprint', async () => {
     const player = createPlayer({
+      gold: 8,
       inventory: inventory({
         leather: 4,
         bone: 2,
@@ -427,6 +481,7 @@ describe('CraftWorkshopItem', () => {
 
   it('rejects stale payload craft intents before spending a blueprint', async () => {
     const player = createPlayer({
+      gold: 8,
       inventory: inventory({
         leather: 4,
         bone: 2,

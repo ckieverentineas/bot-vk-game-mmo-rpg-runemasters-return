@@ -7,6 +7,7 @@ export type EconomyTransactionSourceType =
   | 'QUEST_REWARD'
   | 'DAILY_TRACE'
   | 'WORKSHOP_SHOP'
+  | 'WORKSHOP_CRAFT'
   | 'WORKSHOP_BLUEPRINT_FEATURE';
 
 export interface QuestTelemetryPayload {

@@ -7,6 +7,7 @@ import {
   type CommandIntentSource,
 } from '../../../shared/application/command-intent';
 import type { GameRepository } from '../../../shared/application/ports/GameRepository';
+import type { GameTelemetry } from '../../../shared/application/ports/GameTelemetry';
 import type {
   CommandIntentReplayRepository,
   FindPlayerByVkIdRepository,
@@ -17,12 +18,17 @@ import {
   getWorkshopBlueprint,
   getWorkshopItemDefinition,
   isWorkshopBlueprintCode,
+  resolveWorkshopCraftDustCost,
   resolveWorkshopMissingCost,
   type WorkshopBlueprintCode,
   type WorkshopCraftItemBlueprintDefinition,
 } from '../../domain/workshop-catalog';
 import { resolveWorkshopCraftedItemOutcome } from '../../domain/workshop-crafting-quality';
 import { buildCraftWorkshopItemIntentStateKey } from '../command-intent-state';
+import {
+  buildWorkshopCraftEconomyTelemetryPayload,
+  trackWorkshopEconomyTelemetry,
+} from '../workshop-economy-telemetry';
 import type { PlayerBlueprintInstanceView, PlayerCraftedItemView } from '../workshop-persistence';
 import { buildWorkshopView, type WorkshopView } from '../workshop-view';
 
@@ -85,6 +91,20 @@ const assertCraftMaterialsAvailable = (
     throw new AppError(
       'not_enough_workshop_resources',
       `Не хватает материалов для мастерской: ${JSON.stringify(resolveWorkshopMissingCost(player.inventory, blueprint))}.`,
+    );
+  }
+};
+
+const assertCraftDustAvailable = (
+  player: PlayerState,
+  blueprint: WorkshopCraftItemBlueprintDefinition,
+): void => {
+  const dustCost = resolveWorkshopCraftDustCost(blueprint);
+
+  if (player.gold < dustCost) {
+    throw new AppError(
+      'not_enough_dust',
+      `Для работы мастерской не хватает пыли: ${dustCost - player.gold}.`,
     );
   }
 };
@@ -189,7 +209,10 @@ const replayCraftWorkshopItemResult = async (
 };
 
 export class CraftWorkshopItem {
-  public constructor(private readonly repository: CraftWorkshopItemRepository) {}
+  public constructor(
+    private readonly repository: CraftWorkshopItemRepository,
+    private readonly telemetry?: GameTelemetry,
+  ) {}
 
   public async execute(
     vkId: number,
@@ -233,13 +256,16 @@ export class CraftWorkshopItem {
     const blueprintInstance = requireAvailableBlueprintInstance(snapshot.blueprintInstances, blueprintInstanceId);
     const blueprint = requireCraftBlueprint(blueprintInstance.blueprintCode);
     assertCraftMaterialsAvailable(player, blueprint);
+    assertCraftDustAvailable(player, blueprint);
     const itemDefinition = getWorkshopItemDefinition(blueprint.resultItemCode);
     const craftedOutcome = resolveWorkshopCraftedItemOutcome(player, blueprint, itemDefinition, blueprintInstance);
+    const dustCost = resolveWorkshopCraftDustCost(blueprint);
 
     const craftedItem = await this.repository.craftWorkshopItem(
       player.playerId,
       blueprintInstance.id,
       craftedOutcome,
+      dustCost,
       {
         intentId: intent.intentId,
         intentStateKey: intent.intentStateKey,
@@ -250,6 +276,13 @@ export class CraftWorkshopItem {
     const result = buildCraftResult(view, blueprint.code, craftedItem);
 
     await this.repository.storeCommandIntentResult(player.playerId, intent.intentId, result);
+    if (dustCost > 0) {
+      await trackWorkshopEconomyTelemetry(
+        this.telemetry,
+        player.userId,
+        buildWorkshopCraftEconomyTelemetryPayload(blueprint, player.level),
+      );
+    }
 
     return result;
   }

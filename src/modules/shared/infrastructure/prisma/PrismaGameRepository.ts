@@ -2189,9 +2189,10 @@ export class PrismaGameRepository implements GameRepository {
     playerId: number,
     blueprintInstanceId: string,
     outcome: WorkshopCraftedItemOutcome,
+    dustCost: number,
     options?: WorkshopMutationOptions,
   ): Promise<PlayerCraftedItemView> {
-    return this.workshopPersistence.craftWorkshopItem(playerId, blueprintInstanceId, outcome, options);
+    return this.workshopPersistence.craftWorkshopItem(playerId, blueprintInstanceId, outcome, dustCost, options);
   }
 
   public async awakenWorkshopBlueprintFeature(

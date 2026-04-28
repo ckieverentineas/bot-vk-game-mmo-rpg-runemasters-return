@@ -1049,6 +1049,7 @@ describe('PrismaGameRepository release hardening', () => {
       blueprintCode: 'hunter_cleaver',
     }));
     tx.playerBlueprintInstance.updateMany.mockResolvedValue({ count: 1 });
+    tx.player.updateMany.mockResolvedValue({ count: 1 });
     tx.playerInventory.updateMany.mockResolvedValue({ count: 1 });
     tx.playerCraftedItem.create.mockResolvedValue(createCraftedItemRecord({
       id: 'crafted-cleaver-1',
@@ -1075,7 +1076,7 @@ describe('PrismaGameRepository release hardening', () => {
       },
     });
 
-    const item = await repository.craftWorkshopItem(1, 'bp-cleaver-1', outcome, {
+    const item = await repository.craftWorkshopItem(1, 'bp-cleaver-1', outcome, 8, {
       intentId: 'intent-workshop-craft-1',
       intentStateKey: 'state-workshop-craft-1',
       currentStateKey: 'state-workshop-craft-1',
@@ -1114,6 +1115,16 @@ describe('PrismaGameRepository release hardening', () => {
       },
     });
     expect(tx.playerBlueprint.updateMany).not.toHaveBeenCalled();
+    expect(tx.player.updateMany).toHaveBeenCalledWith({
+      where: {
+        id: 1,
+        gold: { gte: 8 },
+      },
+      data: {
+        gold: { decrement: 8 },
+        updatedAt: expect.any(Date),
+      },
+    });
     expect(tx.playerInventory.updateMany).toHaveBeenCalledWith({
       where: {
         playerId: 1,
@@ -1275,7 +1286,7 @@ describe('PrismaGameRepository release hardening', () => {
       blueprintCode: 'resonance_tool',
     }));
 
-    await expect(repository.craftWorkshopItem(1, 'bp-repair-1', createCraftedItemOutcome())).rejects.toMatchObject({
+    await expect(repository.craftWorkshopItem(1, 'bp-repair-1', createCraftedItemOutcome(), 8)).rejects.toMatchObject({
       code: 'workshop_blueprint_not_craftable',
     });
 
@@ -1301,7 +1312,7 @@ describe('PrismaGameRepository release hardening', () => {
       })),
     });
 
-    const item = await repository.craftWorkshopItem(1, 'bp-cleaver-1', createCraftedItemOutcome(), {
+    const item = await repository.craftWorkshopItem(1, 'bp-cleaver-1', createCraftedItemOutcome(), 8, {
       intentId: 'intent-workshop-craft-1',
       intentStateKey: 'state-workshop-craft-1',
       currentStateKey: 'state-workshop-craft-1',
@@ -1330,7 +1341,7 @@ describe('PrismaGameRepository release hardening', () => {
       })),
     });
 
-    await expect(repository.craftWorkshopItem(1, 'bp-repair-1', createCraftedItemOutcome(), {
+    await expect(repository.craftWorkshopItem(1, 'bp-repair-1', createCraftedItemOutcome(), 8, {
       intentId: 'intent-workshop-craft-1',
       intentStateKey: 'state-workshop-craft-1',
       currentStateKey: 'state-workshop-craft-1',

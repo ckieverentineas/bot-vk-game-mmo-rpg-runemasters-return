@@ -85,6 +85,13 @@ const isCraftItemBlueprintEntry = (
   entry: WorkshopBlueprintEntryView,
 ): boolean => entry.blueprint.kind === 'craft_item';
 
+const createWorkshopCraftButtonLabel = (entry: WorkshopBlueprintEntryView): string => {
+  const icon = entry.canCraft ? '⚒' : entry.missingDust > 0 ? '💰' : '🧩';
+  const title = resolveWorkshopBlueprintTitle(entry.blueprint.code);
+
+  return truncateLabel(`${icon} ${title} · ${entry.dustCost} пыли`, 40);
+};
+
 const createWorkshopAwakenRows = (view: WorkshopView): KeyboardLayout => {
   const blueprintStateEntries = createBlueprintStateEntries(view);
   const buttons = view.blueprints
@@ -115,10 +122,7 @@ const createWorkshopCraftRows = (view: WorkshopView): KeyboardLayout => {
     .filter(isCraftItemBlueprintEntry)
     .filter((entry) => entry.ownedQuantity > 0)
     .map((entry) => ({
-      label: truncateLabel(
-        `${entry.canCraft ? '⚒' : '🧩'} ${resolveWorkshopBlueprintTitle(entry.blueprint.code)} x${entry.ownedQuantity}`,
-        40,
-      ),
+      label: createWorkshopCraftButtonLabel(entry),
       command: createWorkshopCraftCommand(entry.instance.id),
       color: entry.canCraft ? Keyboard.POSITIVE_COLOR : Keyboard.SECONDARY_COLOR,
       intentScoped: true,

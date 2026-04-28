@@ -73,6 +73,7 @@ export interface WorkshopCraftItemBlueprintDefinition extends BaseWorkshopBluepr
   readonly resultItemCode: WorkshopItemCode;
   readonly slot: WorkshopItemSlot;
   readonly maxDurability: number;
+  readonly dustCost: number;
 }
 
 export interface WorkshopRepairToolBlueprintDefinition extends BaseWorkshopBlueprintDefinition {
@@ -167,6 +168,7 @@ const workshopBlueprints = [
     itemClass: 'L',
     rarity: 'RARE',
     maxDurability: 14,
+    dustCost: 8,
     cost: {
       leather: 4,
       bone: 2,
@@ -181,6 +183,7 @@ const workshopBlueprints = [
     itemClass: 'L',
     rarity: 'UNCOMMON',
     maxDurability: 18,
+    dustCost: 6,
     cost: {
       leather: 5,
       herb: 1,
@@ -194,6 +197,7 @@ const workshopBlueprints = [
     itemClass: 'UL',
     rarity: 'COMMON',
     maxDurability: 12,
+    dustCost: 4,
     cost: {
       leather: 2,
       bone: 2,
@@ -313,6 +317,12 @@ export const resolveWorkshopCraftInventoryDelta = (
     };
   }, {});
 };
+
+export const resolveWorkshopCraftDustCost = (
+  blueprint: WorkshopBlueprintDefinition,
+): number => (
+  blueprint.kind === 'craft_item' ? blueprint.dustCost : 0
+);
 
 export const resolveWorkshopMissingCost = (
   inventory: InventoryView,

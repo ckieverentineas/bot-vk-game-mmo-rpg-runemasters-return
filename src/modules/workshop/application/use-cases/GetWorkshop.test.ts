@@ -105,6 +105,7 @@ const createRepository = (
 describe('GetWorkshop', () => {
   it('builds a workshop view with blueprint affordability and repair tool readiness', async () => {
     const player = createPlayer({
+      gold: 8,
       inventory: inventory({
         leather: 4,
         bone: 2,
@@ -140,6 +141,8 @@ describe('GetWorkshop', () => {
       instance: expect.objectContaining({ id: 'bp-cleaver-1' }),
       ownedQuantity: 1,
       canCraft: true,
+      dustCost: 8,
+      missingDust: 0,
       missingCost: {},
     });
     expect(result.blueprints.find((entry) => entry.blueprint.code === 'tracker_jacket')).toBeUndefined();
@@ -191,5 +194,29 @@ describe('GetWorkshop', () => {
 
     expect(result.blueprints).toEqual([]);
     expect(result.repairTools).toEqual([]);
+  });
+
+  it('shows found blueprints as blocked when the player cannot pay the workshop dust fee', async () => {
+    const player = createPlayer({
+      gold: 7,
+      inventory: inventory({
+        leather: 4,
+        bone: 2,
+        metal: 1,
+      }),
+    });
+    const repository = createRepository(player, [
+      createBlueprintInstance({ id: 'bp-cleaver-1', blueprintCode: 'hunter_cleaver' }),
+    ]);
+    const useCase = new GetWorkshop(repository);
+
+    const result = await useCase.execute(player.vkId);
+
+    expect(result.blueprints[0]).toMatchObject({
+      canCraft: false,
+      missingCost: {},
+      dustCost: 8,
+      missingDust: 1,
+    });
   });
 });

@@ -433,6 +433,7 @@ export class PrismaWorkshopPersistence {
     playerId: number,
     blueprintInstanceId: string,
     outcome: WorkshopCraftedItemOutcome,
+    dustCost: number,
     options?: WorkshopMutationOptions,
   ): Promise<PlayerCraftedItemView> {
     return this.prisma.$transaction((tx) => this.context.runWithCommandIntent(
@@ -447,6 +448,23 @@ export class PrismaWorkshopPersistence {
         const blueprint = requireWorkshopCraftBlueprint(
           requireKnownWorkshopValue(instance.blueprintCode, isWorkshopBlueprintCode, 'blueprintCode'),
         );
+
+        if (dustCost > 0) {
+          const spentDust = await tx.player.updateMany({
+            where: {
+              id: playerId,
+              gold: { gte: dustCost },
+            },
+            data: {
+              gold: { decrement: dustCost },
+              updatedAt: new Date(),
+            },
+          });
+
+          if (spentDust.count === 0) {
+            throw new AppError('not_enough_dust', 'Пыли уже не хватает для работы мастерской.');
+          }
+        }
 
         await spendWorkshopBlueprintInstance(tx, playerId, blueprintInstanceId);
         await spendWorkshopInventoryCost(
