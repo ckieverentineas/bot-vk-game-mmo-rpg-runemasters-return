@@ -19,6 +19,7 @@ import type {
   PlayerBlueprintInstanceView,
   PlayerBlueprintView,
   PlayerCraftedItemView,
+  WorkshopBlueprintModifierSnapshot,
   WorkshopCraftedItemOutcome,
   WorkshopCommandIntentKey,
   WorkshopMutationOptions,
@@ -364,6 +365,13 @@ export interface GameRepository {
     outcome: WorkshopCraftedItemOutcome,
     options?: WorkshopMutationOptions,
   ): Promise<PlayerCraftedItemView>;
+  awakenWorkshopBlueprintFeature(
+    playerId: number,
+    blueprintInstanceId: string,
+    radianceCost: number,
+    modifierSnapshot: WorkshopBlueprintModifierSnapshot,
+    options?: WorkshopMutationOptions,
+  ): Promise<PlayerBlueprintInstanceView>;
   repairWorkshopItem(
     playerId: number,
     itemId: string,

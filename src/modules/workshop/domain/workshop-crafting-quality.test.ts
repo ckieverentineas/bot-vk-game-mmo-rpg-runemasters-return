@@ -125,6 +125,22 @@ describe('workshop crafting quality', () => {
     expect(outcome.statBonus.dexterity).toBe(3);
   });
 
+  it('lets an awakened radiance feature raise the resulting quality by one tier', () => {
+    const player = createPlayer();
+    const blueprint = getWorkshopBlueprint('hunter_cleaver');
+    const item = getWorkshopItemDefinition('hunter_cleaver');
+    const instance = createBlueprintInstance({
+      quality: 'STURDY',
+      modifierSnapshot: { radianceFeatureAwakened: true },
+    });
+
+    const outcome = resolveWorkshopCraftedItemOutcome(player, blueprint, item, instance);
+
+    expect(outcome.quality).toBe('FINE');
+    expect(outcome.maxDurability).toBe(18);
+    expect(outcome.statBonus.attack).toBe(3);
+  });
+
   it('keeps rough blueprints visibly worse without producing invalid negative stats', () => {
     const player = createPlayer();
     const blueprint = getWorkshopBlueprint('skinning_kit');

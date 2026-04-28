@@ -13,6 +13,7 @@ import {
   listAlchemyConsumables,
 } from '../../modules/consumables/domain/alchemy-consumables';
 import {
+  buildAwakenWorkshopBlueprintFeatureIntentStateKey,
   buildBuyWorkshopShopOfferIntentStateKey,
   buildCraftWorkshopItemIntentStateKey,
   buildEquipWorkshopItemIntentStateKey,
@@ -28,6 +29,7 @@ import type {
 import type { WorkshopRepairToolBlueprintDefinition } from '../../modules/workshop/domain/workshop-catalog';
 import {
   createWorkshopCraftCommand,
+  createWorkshopAwakenCommand,
   createWorkshopEquipCommand,
   createWorkshopRepairCommand,
   createWorkshopShopCommand,
@@ -46,6 +48,7 @@ import type { KeyboardBuilder, KeyboardLayout } from './types';
 const rowSize = 2;
 const maxKeyboardRows = 6;
 const navigationRowCount = 2;
+const awakenButtonLimit = 4;
 const equipmentButtonLimit = 4;
 const repairButtonLimit = 4;
 const shopButtonLimit = 4;
@@ -81,6 +84,29 @@ const createCraftedItemStateEntries = (view: WorkshopView) => (
 const isCraftItemBlueprintEntry = (
   entry: WorkshopBlueprintEntryView,
 ): boolean => entry.blueprint.kind === 'craft_item';
+
+const createWorkshopAwakenRows = (view: WorkshopView): KeyboardLayout => {
+  const blueprintStateEntries = createBlueprintStateEntries(view);
+  const buttons = view.blueprints
+    .filter((entry) => entry.featureAwakeningRadianceCost > 0)
+    .slice(0, awakenButtonLimit)
+    .map((entry) => ({
+      label: truncateLabel(
+        `✨ Пробудить ${resolveWorkshopBlueprintTitle(entry.blueprint.code)} · ${entry.featureAwakeningRadianceCost}`,
+        40,
+      ),
+      command: createWorkshopAwakenCommand(entry.instance.id),
+      color: entry.canAwakenFeature ? Keyboard.PRIMARY_COLOR : Keyboard.SECONDARY_COLOR,
+      intentScoped: true,
+      stateKey: buildAwakenWorkshopBlueprintFeatureIntentStateKey(
+        view.player,
+        entry.instance.id,
+        blueprintStateEntries,
+      ),
+    }));
+
+  return chunkRows(buttons, rowSize);
+};
 
 const createWorkshopCraftRows = (view: WorkshopView): KeyboardLayout => {
   const blueprintStateEntries = createBlueprintStateEntries(view);
@@ -223,6 +249,7 @@ const createUseConsumableRows = (view: WorkshopView): KeyboardLayout => {
 };
 
 const createWorkshopActionRows = (view: WorkshopView): KeyboardLayout => limitActionRows([
+  ...createWorkshopAwakenRows(view),
   ...createWorkshopCraftRows(view),
   ...createWorkshopEquipmentRows(view),
   ...createWorkshopRepairRows(view),

@@ -136,6 +136,16 @@ const summarizeWorkshopShopState = (
   materials: summarizeMaterials(player.inventory),
 });
 
+const summarizeWorkshopRadianceState = (
+  player: Pick<PlayerState, 'playerId' | 'updatedAt' | 'radiance'>,
+  blueprintInstances: readonly BlueprintInstanceStateView[],
+) => ({
+  playerId: player.playerId,
+  playerUpdatedAt: player.updatedAt,
+  radiance: player.radiance,
+  blueprintInstances: summarizeBlueprintInstances(blueprintInstances),
+});
+
 export const buildCraftWorkshopItemIntentStateKey = (
   player: Pick<PlayerState, 'playerId' | 'updatedAt' | 'inventory'>,
   blueprintInstanceId: string,
@@ -167,6 +177,16 @@ export const buildBuyWorkshopShopOfferIntentStateKey = (
   action: 'buy_workshop_shop_offer',
   offerCode,
   ...summarizeWorkshopShopState(player),
+});
+
+export const buildAwakenWorkshopBlueprintFeatureIntentStateKey = (
+  player: Pick<PlayerState, 'playerId' | 'updatedAt' | 'radiance'>,
+  blueprintInstanceId: string,
+  blueprintInstances: readonly BlueprintInstanceStateView[],
+): string => serializeStateKey({
+  action: 'awaken_workshop_blueprint_feature',
+  blueprintInstanceId,
+  ...summarizeWorkshopRadianceState(player, blueprintInstances),
 });
 
 export const buildEquipWorkshopItemIntentStateKey = (

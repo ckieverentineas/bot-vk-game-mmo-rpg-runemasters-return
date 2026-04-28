@@ -17,6 +17,7 @@ import {
   createWorkshopKeyboard,
 } from './index';
 import {
+  createWorkshopAwakenCommand,
   createWorkshopCraftCommand,
   createWorkshopRepairCommand,
   createWorkshopShopCommand,
@@ -713,6 +714,41 @@ describe('profile keyboard', () => {
     }));
     expect(payloads).not.toContainEqual(expect.objectContaining({
       command: createWorkshopCraftCommand(blueprintInstance.blueprintCode),
+    }));
+  });
+
+  it('binds workshop awakening buttons to unique blueprint instances', () => {
+    const blueprintInstance = createBlueprintInstance({
+      rarity: 'RARE',
+      discoveryKind: 'QUEST',
+    });
+    const keyboard = createWorkshopKeyboard({
+      player: createPlayer({ radiance: 1 }),
+      blueprints: [
+        {
+          blueprint: getWorkshopBlueprint('hunter_cleaver'),
+          instance: {
+            ...blueprintInstance,
+            blueprintCode: 'hunter_cleaver',
+          },
+          ownedQuantity: 1,
+          canCraft: true,
+          missingCost: {},
+          canAwakenFeature: true,
+          featureAwakeningRadianceCost: 1,
+          missingRadiance: 0,
+        },
+      ],
+      repairTools: [],
+      craftedItems: [],
+      shopOffers: [],
+    });
+    const payloads = collectPayloads(keyboard);
+
+    expect(payloads).toContainEqual(expect.objectContaining({
+      command: createWorkshopAwakenCommand(blueprintInstance.id),
+      intentId: expect.any(String),
+      stateKey: expect.any(String),
     }));
   });
 

@@ -36,6 +36,7 @@ import { UnequipCurrentRune } from '../modules/runes/application/use-cases/Unequ
 import { PrismaGameRepository } from '../modules/shared/infrastructure/prisma/PrismaGameRepository';
 import { SystemGameRandom } from '../modules/shared/infrastructure/random/SystemGameRandom';
 import { RepositoryGameTelemetry } from '../modules/shared/infrastructure/telemetry/RepositoryGameTelemetry';
+import { AwakenWorkshopBlueprintFeature } from '../modules/workshop/application/use-cases/AwakenWorkshopBlueprintFeature';
 import { BuyWorkshopShopOffer } from '../modules/workshop/application/use-cases/BuyWorkshopShopOffer';
 import { CraftWorkshopItem } from '../modules/workshop/application/use-cases/CraftWorkshopItem';
 import { EquipWorkshopItem } from '../modules/workshop/application/use-cases/EquipWorkshopItem';
@@ -82,6 +83,7 @@ export interface AppServices {
   rerollCurrentRuneStat: RerollCurrentRuneStat;
   destroyCurrentRune: DestroyCurrentRune;
   getWorkshop: GetWorkshop;
+  awakenWorkshopBlueprintFeature: AwakenWorkshopBlueprintFeature;
   craftWorkshopItem: CraftWorkshopItem;
   repairWorkshopItem: RepairWorkshopItem;
   buyWorkshopShopOffer: BuyWorkshopShopOffer;
@@ -133,6 +135,7 @@ export const createAppServices = (): AppServices => {
     rerollCurrentRuneStat: new RerollCurrentRuneStat(repository, random),
     destroyCurrentRune: new DestroyCurrentRune(repository),
     getWorkshop: new GetWorkshop(repository),
+    awakenWorkshopBlueprintFeature: new AwakenWorkshopBlueprintFeature(repository),
     craftWorkshopItem: new CraftWorkshopItem(repository),
     repairWorkshopItem: new RepairWorkshopItem(repository),
     buyWorkshopShopOffer: new BuyWorkshopShopOffer(repository),

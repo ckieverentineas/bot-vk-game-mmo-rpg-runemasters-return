@@ -7,6 +7,7 @@ import {
   resolveRuneCursorDeltaCommand,
   resolveRunePageSlotCommand,
   resolveRuneStatRerollCommand,
+  resolveWorkshopAwakenCommand,
   resolveWorkshopCraftCommand,
   resolveWorkshopRepairCommand,
   resolveWorkshopShopCommand,
@@ -50,7 +51,9 @@ export const recoverableCommandErrorCodes = new Set([
   'not_enough_crafting_resources',
   'not_enough_workshop_resources',
   'not_enough_dust',
+  'not_enough_radiance',
   'workshop_blueprint_unavailable',
+  'workshop_blueprint_feature_unavailable',
   'workshop_item_not_repairable',
   'not_enough_shards',
   'battle_in_progress',
@@ -79,6 +82,7 @@ const isWorkshopCommand = (command: string): boolean => (
   command === gameCommands.workshop
   || resolveCraftingRecipeCommand(command) !== null
   || resolveWorkshopCraftCommand(command) !== null
+  || resolveWorkshopAwakenCommand(command) !== null
   || resolveWorkshopRepairCommand(command) !== null
   || resolveWorkshopShopCommand(command) !== null
 );

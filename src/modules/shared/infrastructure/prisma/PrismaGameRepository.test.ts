@@ -1166,6 +1166,107 @@ describe('PrismaGameRepository release hardening', () => {
     });
   });
 
+  it('awakens a workshop blueprint feature by spending radiance atomically', async () => {
+    const { repository, tx } = createPrismaMock();
+    const modifierSnapshot = {
+      radianceFeatureAwakened: true,
+      notes: ['radiance_quality_step'],
+    };
+
+    tx.commandIntentRecord.findUnique.mockResolvedValue(null);
+    tx.commandIntentRecord.create.mockResolvedValue({});
+    tx.commandIntentRecord.update.mockResolvedValue({});
+    tx.player.updateMany.mockResolvedValue({ count: 1 });
+    tx.playerBlueprintInstance.findFirst
+      .mockResolvedValueOnce(createPlayerBlueprintInstanceRecord({
+        id: 'bp-cleaver-1',
+        blueprintCode: 'hunter_cleaver',
+        modifierSnapshot: '{}',
+      }))
+      .mockResolvedValueOnce(createPlayerBlueprintInstanceRecord({
+        id: 'bp-cleaver-1',
+        blueprintCode: 'hunter_cleaver',
+        modifierSnapshot: JSON.stringify(modifierSnapshot),
+      }));
+    tx.playerBlueprintInstance.updateMany.mockResolvedValue({ count: 1 });
+
+    const instance = await repository.awakenWorkshopBlueprintFeature(
+      1,
+      'bp-cleaver-1',
+      1,
+      modifierSnapshot,
+      {
+        intentId: 'intent-workshop-awaken-1',
+        intentStateKey: 'state-workshop-awaken-1',
+        currentStateKey: 'state-workshop-awaken-1',
+      },
+    );
+
+    expect(instance.modifierSnapshot).toEqual(modifierSnapshot);
+    expect(tx.commandIntentRecord.create).toHaveBeenCalledWith({
+      data: {
+        playerId: 1,
+        intentId: 'intent-workshop-awaken-1',
+        commandKey: 'AWAKEN_WORKSHOP_BLUEPRINT_FEATURE',
+        stateKey: 'state-workshop-awaken-1',
+      },
+    });
+    expect(tx.player.updateMany).toHaveBeenCalledWith({
+      where: {
+        id: 1,
+        radiance: { gte: 1 },
+      },
+      data: {
+        radiance: { decrement: 1 },
+        updatedAt: expect.any(Date),
+      },
+    });
+    expect(tx.playerBlueprintInstance.updateMany).toHaveBeenCalledWith({
+      where: {
+        id: 'bp-cleaver-1',
+        playerId: 1,
+        status: 'AVAILABLE',
+        modifierSnapshot: '{}',
+      },
+      data: {
+        modifierSnapshot: JSON.stringify(modifierSnapshot),
+      },
+    });
+  });
+
+  it('does not awaken a workshop blueprint feature when radiance was already spent', async () => {
+    const { repository, tx } = createPrismaMock();
+
+    tx.commandIntentRecord.findUnique.mockResolvedValue(null);
+    tx.commandIntentRecord.create.mockResolvedValue({});
+    tx.playerBlueprintInstance.findFirst.mockResolvedValue(createPlayerBlueprintInstanceRecord({
+      id: 'bp-cleaver-1',
+      blueprintCode: 'hunter_cleaver',
+      modifierSnapshot: '{}',
+    }));
+    tx.player.updateMany.mockResolvedValue({ count: 0 });
+
+    await expect(repository.awakenWorkshopBlueprintFeature(
+      1,
+      'bp-cleaver-1',
+      1,
+      {
+        radianceFeatureAwakened: true,
+        notes: ['radiance_quality_step'],
+      },
+      {
+        intentId: 'intent-workshop-awaken-1',
+        intentStateKey: 'state-workshop-awaken-1',
+        currentStateKey: 'state-workshop-awaken-1',
+      },
+    )).rejects.toMatchObject({
+      code: 'not_enough_radiance',
+    });
+
+    expect(tx.playerBlueprintInstance.updateMany).not.toHaveBeenCalled();
+    expect(tx.commandIntentRecord.update).not.toHaveBeenCalled();
+  });
+
   it('rejects repair blueprints when crafting workshop items', async () => {
     const { repository, tx } = createPrismaMock();
 

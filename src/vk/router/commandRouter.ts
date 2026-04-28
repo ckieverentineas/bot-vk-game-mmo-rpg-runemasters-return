@@ -8,6 +8,7 @@ import {
   resolveRunePageSlotCommand,
   resolveRuneStatRerollCommand,
   resolveUseConsumableCommand,
+  resolveWorkshopAwakenCommand,
   resolveWorkshopCraftCommand,
   resolveWorkshopRepairCommand,
   resolveWorkshopShopCommand,
@@ -85,6 +86,7 @@ const legacyTextIntentMatchers: readonly LegacyTextIntentMatcher[] = [
   (command) => resolveCraftingRecipeCommand(command) !== null,
   (command) => resolveUseConsumableCommand(command) !== null,
   (command) => resolveWorkshopCraftCommand(command) !== null,
+  (command) => resolveWorkshopAwakenCommand(command) !== null,
   (command) => resolveWorkshopRepairCommand(command) !== null,
   (command) => resolveWorkshopShopCommand(command) !== null,
 ];

@@ -12,6 +12,10 @@ import {
   type WorkshopItemView,
 } from '../domain/workshop-catalog';
 import {
+  canAwakenWorkshopBlueprintFeature,
+  workshopBlueprintFeatureAwakeningRadianceCost,
+} from '../domain/workshop-blueprint-instances';
+import {
   canBuyWorkshopShopOffer,
   listWorkshopShopOffers,
   resolveWorkshopShopOfferMissingDust,
@@ -24,6 +28,9 @@ export interface WorkshopBlueprintEntryView {
   readonly ownedQuantity: number;
   readonly canCraft: boolean;
   readonly missingCost: WorkshopBlueprintCost;
+  readonly canAwakenFeature: boolean;
+  readonly featureAwakeningRadianceCost: number;
+  readonly missingRadiance: number;
 }
 
 export interface WorkshopRepairToolEntryView {
@@ -82,6 +89,10 @@ const buildBlueprintEntry = (
   blueprint: WorkshopBlueprintDefinition,
 ): WorkshopBlueprintEntryView => {
   const missingCost = resolveWorkshopMissingCost(player.inventory, blueprint);
+  const featureAwakeningRadianceCost = blueprint.kind === 'craft_item' && canAwakenWorkshopBlueprintFeature(instance)
+    ? workshopBlueprintFeatureAwakeningRadianceCost
+    : 0;
+  const missingRadiance = Math.max(0, featureAwakeningRadianceCost - player.radiance);
 
   return {
     instance,
@@ -90,6 +101,9 @@ const buildBlueprintEntry = (
     canCraft: blueprint.kind === 'craft_item'
       && canCraftWorkshopBlueprint(player.inventory, blueprint),
     missingCost,
+    canAwakenFeature: featureAwakeningRadianceCost > 0 && missingRadiance === 0,
+    featureAwakeningRadianceCost,
+    missingRadiance,
   };
 };
 

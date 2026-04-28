@@ -75,6 +75,7 @@ import type {
   PlayerBlueprintInstanceView,
   PlayerBlueprintView,
   PlayerCraftedItemView,
+  WorkshopBlueprintModifierSnapshot,
   WorkshopCraftedItemOutcome,
   WorkshopMutationOptions,
 } from '../../../workshop/application/workshop-persistence';
@@ -2191,6 +2192,22 @@ export class PrismaGameRepository implements GameRepository {
     options?: WorkshopMutationOptions,
   ): Promise<PlayerCraftedItemView> {
     return this.workshopPersistence.craftWorkshopItem(playerId, blueprintInstanceId, outcome, options);
+  }
+
+  public async awakenWorkshopBlueprintFeature(
+    playerId: number,
+    blueprintInstanceId: string,
+    radianceCost: number,
+    modifierSnapshot: WorkshopBlueprintModifierSnapshot,
+    options?: WorkshopMutationOptions,
+  ): Promise<PlayerBlueprintInstanceView> {
+    return this.workshopPersistence.awakenWorkshopBlueprintFeature(
+      playerId,
+      blueprintInstanceId,
+      radianceCost,
+      modifierSnapshot,
+      options,
+    );
   }
 
   public async repairWorkshopItem(

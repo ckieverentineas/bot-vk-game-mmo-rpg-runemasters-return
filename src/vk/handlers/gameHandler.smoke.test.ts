@@ -19,6 +19,7 @@ import {
   createBestiaryLocationCommand,
   createBestiaryLocationRewardCommand,
   createPartyJoinCommand,
+  createWorkshopAwakenCommand,
   createWorkshopCraftCommand,
   createWorkshopRepairCommand,
   createWorkshopShopCommand,
@@ -642,6 +643,38 @@ const createServices = (): AppServices => {
     getWorkshop: {
       execute: vi.fn().mockResolvedValue(workshopView),
     } as unknown as AppServices['getWorkshop'],
+    awakenWorkshopBlueprintFeature: {
+      execute: vi.fn().mockResolvedValue({
+        view: workshopView,
+        awakenedBlueprint: {
+          id: 'bp-skinning-kit-1',
+          playerId: basePlayer.playerId,
+          blueprintCode: 'skinning_kit',
+          rarity: 'RARE',
+          sourceType: 'QUEST',
+          sourceId: 'test',
+          discoveryKind: 'QUEST',
+          quality: 'STURDY',
+          craftPotential: 'default',
+          modifierSnapshot: { radianceFeatureAwakened: true },
+          status: 'AVAILABLE',
+          createdAt: '2026-04-12T00:00:00.000Z',
+          updatedAt: '2026-04-12T00:00:00.000Z',
+          discoveredAt: '2026-04-12T00:00:00.000Z',
+          consumedAt: null,
+        },
+        acquisitionSummary: {
+          kind: 'awakened_workshop_blueprint_feature',
+          blueprintInstanceId: 'bp-skinning-kit-1',
+          blueprintCode: 'skinning_kit',
+          title: 'Особенность пробуждена',
+          changeLine: 'Чертеж пробужден.',
+          nextStepLine: 'Можно создавать предмет.',
+          radianceCost: 1,
+        },
+        message: 'Чертеж пробужден.',
+      }),
+    } as unknown as AppServices['awakenWorkshopBlueprintFeature'],
     craftWorkshopItem: {
       execute: vi.fn().mockResolvedValue({
         view: workshopView,
@@ -2086,6 +2119,27 @@ describe('GameHandler smoke', () => {
       'healing_pill',
       'intent-workshop-shop-1',
       'state-workshop-shop-1',
+      'payload',
+    );
+  });
+
+  it('пробрасывает intentId для пробуждения чертежа мастерской через transport payload', async () => {
+    const services = createServices();
+    const handler = new GameHandler(services);
+    const blueprintInstanceId = 'bp-skinning-kit-1';
+    const ctx = createFakeContext({
+      command: createWorkshopAwakenCommand(blueprintInstanceId),
+      intentId: 'intent-workshop-awaken-1',
+      stateKey: 'state-workshop-awaken-1',
+    });
+
+    await handler.handle(ctx as never);
+
+    expect(services.awakenWorkshopBlueprintFeature.execute).toHaveBeenCalledWith(
+      1001,
+      blueprintInstanceId,
+      'intent-workshop-awaken-1',
+      'state-workshop-awaken-1',
       'payload',
     );
   });

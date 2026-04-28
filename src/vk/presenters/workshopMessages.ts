@@ -12,6 +12,7 @@ import {
   type AlchemyConsumableDefinition,
 } from '../../modules/consumables/domain/alchemy-consumables';
 import type { AcquisitionSummaryView } from '../../modules/player/application/read-models/acquisition-summary';
+import type { AwakenWorkshopBlueprintFeatureSummaryView } from '../../modules/workshop/application/use-cases/AwakenWorkshopBlueprintFeature';
 import type { WorkshopShopPurchaseSummaryView } from '../../modules/workshop/application/use-cases/BuyWorkshopShopOffer';
 import type { WorkshopCraftedItemSummaryView } from '../../modules/workshop/application/use-cases/CraftWorkshopItem';
 import type { WorkshopEquippedItemSummaryView } from '../../modules/workshop/application/use-cases/EquipWorkshopItem';
@@ -54,6 +55,7 @@ export type WorkshopScreenSummary =
   | WorkshopEquippedItemSummaryView
   | WorkshopUnequippedItemSummaryView
   | WorkshopRepairedItemSummaryView
+  | AwakenWorkshopBlueprintFeatureSummaryView
   | WorkshopShopPurchaseSummaryView;
 
 const materialTitles: Readonly<Record<MaterialField, string>> = {
@@ -194,8 +196,11 @@ const formatBlueprintInstanceDetails = (
   const discovery = blueprintDiscoveryTitles[instance.discoveryKind];
   const source = blueprintSourceTitles[instance.sourceType];
   const sourceSuffix = source === discovery ? source : `${discovery}, ${source}`;
+  const featureSuffix = instance.modifierSnapshot.radianceFeatureAwakened === true
+    ? ' · сияние пробуждено'
+    : '';
 
-  return `чертеж #${formatShortBlueprintInstanceId(instance.id)} · ${quality} · ${rarity} · ${sourceSuffix}`;
+  return `чертеж #${formatShortBlueprintInstanceId(instance.id)} · ${quality} · ${rarity} · ${sourceSuffix}${featureSuffix}`;
 };
 
 const formatCraftedItemQuality = (quality: WorkshopBlueprintQuality | undefined): string => (
@@ -220,6 +225,12 @@ const resolveConsumableIcon = (consumable: AlchemyConsumableDefinition): string 
 const collectAvailableCraftTargets = (view: WorkshopView): readonly string[] => (
   view.blueprints
     .filter((entry) => entry.blueprint.kind === 'craft_item' && entry.canCraft)
+    .map((entry) => resolveWorkshopBlueprintTitle(entry.blueprint.code))
+);
+
+const collectAvailableAwakeningTargets = (view: WorkshopView): readonly string[] => (
+  view.blueprints
+    .filter((entry) => entry.canAwakenFeature)
     .map((entry) => resolveWorkshopBlueprintTitle(entry.blueprint.code))
 );
 
@@ -270,6 +281,7 @@ const formatQuickActionLine = (
 const renderWorkshopActions = (view: WorkshopView): readonly string[] => {
   const actionLines = [
     formatQuickActionLine('⚒', 'Создать', collectAvailableCraftTargets(view)),
+    formatQuickActionLine('✨', 'Пробудить', collectAvailableAwakeningTargets(view)),
     formatQuickActionLine('🎽', 'Надеть', collectAvailableEquipTargets(view)),
     formatQuickActionLine('🔧', 'Починить', collectAvailableRepairTargets(view)),
     formatQuickActionLine('🧪', 'Сварить', collectAvailablePillCraftTargets(view)),
@@ -296,8 +308,21 @@ const formatBlueprintEntry = (entry: WorkshopBlueprintEntryView): string => {
   const resultLine = blueprint.kind === 'craft_item'
     ? `${resolveWorkshopItemSlotTitle(blueprint.slot)} · ${resolveWorkshopItemClassTitle(blueprint.itemClass)} · прочн. ${blueprint.maxDurability}`
     : `${resolveWorkshopItemClassTitle(blueprint.itemClass)} · ремонт`;
+  const awakeningLine = entry.instance.modifierSnapshot.radianceFeatureAwakened === true
+    ? '✨ особенность пробуждена'
+    : entry.featureAwakeningRadianceCost > 0
+      ? entry.canAwakenFeature
+        ? `✨ пробуждение: ${entry.featureAwakeningRadianceCost} сияния`
+        : `✨ не хватает сияния ${entry.missingRadiance}`
+      : null;
+  const parts = [
+    `• ${craftState} · ${title}: ${ownedLine}`,
+    resultLine,
+    ...(awakeningLine ? [awakeningLine] : []),
+    formatWorkshopCost(blueprint.cost),
+  ];
 
-  return `• ${craftState} · ${title}: ${ownedLine} · ${resultLine} · ${formatWorkshopCost(blueprint.cost)}.`;
+  return `${parts.join(' · ')}.`;
 };
 
 const formatRepairToolEntry = (entry: WorkshopRepairToolEntryView): string => {

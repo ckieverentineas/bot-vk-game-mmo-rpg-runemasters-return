@@ -1,6 +1,7 @@
 import {
   gameCommands,
   resolveCraftingRecipeCommand,
+  resolveWorkshopAwakenCommand,
   resolveWorkshopCraftCommand,
   resolveWorkshopEquipCommand,
   resolveWorkshopRepairCommand,
@@ -33,6 +34,19 @@ export const workshopDynamicCommandRoutes = [
         view,
         acquisitionSummary: result.acquisitionSummary,
       });
+    },
+  ),
+  createDynamicCommandRoute(
+    resolveWorkshopAwakenCommand,
+    async (handler, ctx, vkId, blueprintInstanceId, context) => {
+      const result = await handler.services.awakenWorkshopBlueprintFeature.execute(
+        vkId,
+        blueprintInstanceId,
+        context.intentId ?? undefined,
+        context.stateKey ?? undefined,
+        context.intentSource,
+      );
+      await handler.replyWithWorkshop(ctx, result);
     },
   ),
   createDynamicCommandRoute(

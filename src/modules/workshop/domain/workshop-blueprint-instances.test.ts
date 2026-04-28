@@ -1,10 +1,14 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  awakenWorkshopBlueprintFeature,
+  canAwakenWorkshopBlueprintFeature,
   canCraftBlueprintInstance,
   createLegacyBlueprintInstances,
   formatWorkshopBlueprintQuality,
   isSecretSkinningKitConditionMet,
+  workshopBlueprintFeatureAwakeningRadianceCost,
+  workshopRadianceFeatureNote,
 } from './workshop-blueprint-instances';
 
 describe('workshop blueprint instances', () => {
@@ -77,5 +81,60 @@ describe('workshop blueprint instances', () => {
       successfulTrophyActions: 3,
       bestiaryVictoryCount: 5,
     })).toBe(false);
+  });
+
+  it('allows only available unique blueprint instances to awaken a radiance feature', () => {
+    const [legacy] = createLegacyBlueprintInstances({
+      playerId: 7,
+      blueprintCode: 'skinning_kit',
+      quantity: 1,
+      createdAt: '2026-04-28T00:00:00.000Z',
+      updatedAt: '2026-04-28T00:10:00.000Z',
+    });
+    const secret = {
+      ...legacy,
+      rarity: 'COMMON' as const,
+      discoveryKind: 'SECRET' as const,
+      sourceType: 'BESTIARY' as const,
+      modifierSnapshot: {},
+    };
+    const rareTrophy = {
+      ...legacy,
+      rarity: 'RARE' as const,
+      discoveryKind: 'COMMON' as const,
+      sourceType: 'TROPHY' as const,
+      modifierSnapshot: {},
+    };
+
+    expect(workshopBlueprintFeatureAwakeningRadianceCost).toBe(1);
+    expect(canAwakenWorkshopBlueprintFeature(secret)).toBe(true);
+    expect(canAwakenWorkshopBlueprintFeature(rareTrophy)).toBe(true);
+    expect(canAwakenWorkshopBlueprintFeature(legacy)).toBe(false);
+    expect(canAwakenWorkshopBlueprintFeature({ ...secret, status: 'CONSUMED' })).toBe(false);
+    expect(canAwakenWorkshopBlueprintFeature({
+      ...secret,
+      modifierSnapshot: { radianceFeatureAwakened: true },
+    })).toBe(false);
+  });
+
+  it('marks an awakened blueprint feature without losing existing notes', () => {
+    const [legacy] = createLegacyBlueprintInstances({
+      playerId: 7,
+      blueprintCode: 'skinning_kit',
+      quantity: 1,
+      createdAt: '2026-04-28T00:00:00.000Z',
+      updatedAt: '2026-04-28T00:10:00.000Z',
+    });
+
+    expect(awakenWorkshopBlueprintFeature({
+      ...legacy,
+      discoveryKind: 'QUEST',
+      modifierSnapshot: {
+        notes: ['quest_reward'],
+      },
+    })).toEqual({
+      radianceFeatureAwakened: true,
+      notes: ['quest_reward', workshopRadianceFeatureNote],
+    });
   });
 });

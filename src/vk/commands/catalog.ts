@@ -101,6 +101,7 @@ export const partyJoinCommandPrefix = 'отряд ';
 export const workshopEquipCommandPrefix = 'workshop equip ';
 export const workshopUnequipCommandPrefix = 'workshop unequip ';
 export const workshopShopCommandPrefix = 'workshop shop ';
+export const workshopAwakenCommandPrefix = 'workshop awaken ';
 
 export type StaticGameCommand = (typeof gameCommands)[keyof typeof gameCommands];
 export type BestiaryPageCommand = `${typeof bestiaryPageCommandPrefix}${number}`;
@@ -114,6 +115,7 @@ export type WorkshopRepairCommand = `${typeof workshopRepairCommandPrefix}${stri
 export type WorkshopEquipCommand = `${typeof workshopEquipCommandPrefix}${string}`;
 export type WorkshopUnequipCommand = `${typeof workshopUnequipCommandPrefix}${string}`;
 export type WorkshopShopCommand = `${typeof workshopShopCommandPrefix}${WorkshopShopOfferCode}`;
+export type WorkshopAwakenCommand = `${typeof workshopAwakenCommandPrefix}${string}`;
 export type PartyJoinCommand = `${typeof partyJoinCommandPrefix}${string}`;
 export type GameCommand =
   | StaticGameCommand
@@ -128,6 +130,7 @@ export type GameCommand =
   | WorkshopEquipCommand
   | WorkshopUnequipCommand
   | WorkshopShopCommand
+  | WorkshopAwakenCommand
   | PartyJoinCommand;
 
 export interface WorkshopRepairCommandPayload {
@@ -588,6 +591,21 @@ export const resolveWorkshopShopCommand = (command: string): WorkshopShopOfferCo
 
   const offerCode = trimmedCommand.slice(workshopShopCommandPrefix.length).trim();
   return isWorkshopShopOfferCode(offerCode) ? offerCode : null;
+};
+
+export const createWorkshopAwakenCommand = (blueprintInstanceId: string): WorkshopAwakenCommand => (
+  `${workshopAwakenCommandPrefix}${blueprintInstanceId}` as WorkshopAwakenCommand
+);
+
+export const resolveWorkshopAwakenCommand = (command: string): string | null => {
+  const trimmedCommand = command.trim();
+
+  if (!trimmedCommand.startsWith(workshopAwakenCommandPrefix)) {
+    return null;
+  }
+
+  const blueprintInstanceId = trimmedCommand.slice(workshopAwakenCommandPrefix.length).trim();
+  return blueprintInstanceId.length > 0 ? blueprintInstanceId : null;
 };
 
 export const createWorkshopEquipCommand = (itemId: string): WorkshopEquipCommand => (

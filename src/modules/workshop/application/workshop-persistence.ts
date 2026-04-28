@@ -8,14 +8,19 @@ import type {
   WorkshopItemSlot,
   WorkshopItemStatus,
 } from '../domain/workshop-catalog';
-import type { WorkshopBlueprintQuality } from '../domain/workshop-blueprint-instances';
+import type {
+  WorkshopBlueprintModifierSnapshot,
+  WorkshopBlueprintQuality,
+} from '../domain/workshop-blueprint-instances';
 
 export type { WorkshopBlueprintInstanceView as PlayerBlueprintInstanceView } from '../domain/workshop-blueprint-instances';
+export type { WorkshopBlueprintModifierSnapshot };
 export type { WorkshopCraftedItemOutcome } from '../domain/workshop-crafting-quality';
 
 export type WorkshopCommandIntentKey =
   | 'GRANT_WORKSHOP_BLUEPRINT'
   | 'CRAFT_WORKSHOP_ITEM'
+  | 'AWAKEN_WORKSHOP_BLUEPRINT_FEATURE'
   | 'BUY_WORKSHOP_SHOP_OFFER'
   | 'REPAIR_WORKSHOP_ITEM'
   | 'EQUIP_WORKSHOP_ITEM'

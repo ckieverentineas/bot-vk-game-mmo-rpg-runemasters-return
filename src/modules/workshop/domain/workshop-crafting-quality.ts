@@ -60,13 +60,17 @@ const resolveWorkshopSkillRank = (player: PlayerState): number => (
 
 const resolveResultQuality = (
   blueprintQuality: WorkshopBlueprintQuality,
-  workshopSkillRank: number,
+  qualityBonus: number,
 ): WorkshopBlueprintQuality => {
   const baseIndex = qualityOrder.indexOf(blueprintQuality);
-  const nextIndex = Math.min(qualityOrder.length - 1, baseIndex + Math.max(0, workshopSkillRank));
+  const nextIndex = Math.min(qualityOrder.length - 1, baseIndex + Math.max(0, qualityBonus));
 
   return qualityOrder[nextIndex];
 };
+
+const resolveAwakenedFeatureQualityBonus = (
+  instance: Pick<WorkshopBlueprintInstanceView, 'modifierSnapshot'>,
+): number => (instance.modifierSnapshot.radianceFeatureAwakened === true ? 1 : 0);
 
 const resolveStatBonus = (
   baseBonus: StatBlock,
@@ -96,13 +100,16 @@ export const resolveWorkshopCraftedItemOutcome = (
   player: PlayerState,
   blueprint: WorkshopBlueprintDefinition,
   item: WorkshopItemDefinition,
-  instance: Pick<WorkshopBlueprintInstanceView, 'quality' | 'rarity'>,
+  instance: Pick<WorkshopBlueprintInstanceView, 'quality' | 'rarity' | 'modifierSnapshot'>,
 ): WorkshopCraftedItemOutcome => {
   if (blueprint.kind !== 'craft_item') {
     throw new Error(`Workshop blueprint does not craft an item: ${blueprint.code}`);
   }
 
-  const quality = resolveResultQuality(instance.quality, resolveWorkshopSkillRank(player));
+  const quality = resolveResultQuality(
+    instance.quality,
+    resolveWorkshopSkillRank(player) + resolveAwakenedFeatureQualityBonus(instance),
+  );
   const maxDurability = Math.max(
     1,
     item.maxDurability + qualityDurabilityBonus[quality] + rarityDurabilityBonus[instance.rarity],

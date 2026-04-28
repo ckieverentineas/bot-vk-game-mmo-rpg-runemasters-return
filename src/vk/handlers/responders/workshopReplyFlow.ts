@@ -1,6 +1,7 @@
 import type { Context } from 'vk-io';
 
 import type { CraftItemResultView } from '../../../modules/crafting/application/use-cases/CraftItem';
+import type { AwakenWorkshopBlueprintFeatureResultView } from '../../../modules/workshop/application/use-cases/AwakenWorkshopBlueprintFeature';
 import type { BuyWorkshopShopOfferResultView } from '../../../modules/workshop/application/use-cases/BuyWorkshopShopOffer';
 import type { CraftWorkshopItemResultView } from '../../../modules/workshop/application/use-cases/CraftWorkshopItem';
 import type { EquipWorkshopItemResultView } from '../../../modules/workshop/application/use-cases/EquipWorkshopItem';
@@ -13,6 +14,7 @@ import type { WorkshopScreenSummary } from '../../presenters/workshopMessages';
 
 export type WorkshopReplyState =
   | WorkshopView
+  | AwakenWorkshopBlueprintFeatureResultView
   | CraftWorkshopItemResultView
   | EquipWorkshopItemResultView
   | UnequipWorkshopItemResultView

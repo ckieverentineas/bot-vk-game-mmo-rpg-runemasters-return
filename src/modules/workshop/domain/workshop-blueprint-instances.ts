@@ -88,6 +88,9 @@ export const workshopBlueprintSourceTypes = [
   'LEGACY',
 ] as const satisfies readonly WorkshopBlueprintSourceType[];
 
+export const workshopBlueprintFeatureAwakeningRadianceCost = 1;
+export const workshopRadianceFeatureNote = 'radiance_quality_step';
+
 const qualityLabels: Readonly<Record<WorkshopBlueprintQuality, string>> = {
   ROUGH: 'Грубое',
   STURDY: 'Крепкое',
@@ -96,6 +99,15 @@ const qualityLabels: Readonly<Record<WorkshopBlueprintQuality, string>> = {
 };
 
 const skinnableEnemyKinds = ['beast', 'wolf', 'boar'] as const;
+const awakenableDiscoveryKinds = [
+  'SECRET',
+  'QUEST',
+  'SCHOOL',
+] as const satisfies readonly WorkshopBlueprintDiscoveryKind[];
+const awakenableRarities = [
+  'RARE',
+  'EPIC',
+] as const satisfies readonly WorkshopBlueprintRarity[];
 
 const normalizeQuantity = (quantity: number): number => (
   Number.isFinite(quantity) ? Math.max(0, Math.floor(quantity)) : 0
@@ -137,6 +149,35 @@ export const formatWorkshopBlueprintQuality = (quality: WorkshopBlueprintQuality
 export const canCraftBlueprintInstance = (
   instance: Pick<WorkshopBlueprintInstanceView, 'status'>,
 ): boolean => instance.status === 'AVAILABLE';
+
+export const canAwakenWorkshopBlueprintFeature = (
+  instance: Pick<
+    WorkshopBlueprintInstanceView,
+    'status' | 'rarity' | 'discoveryKind' | 'modifierSnapshot'
+  >,
+): boolean => {
+  if (instance.status !== 'AVAILABLE' || instance.modifierSnapshot.radianceFeatureAwakened === true) {
+    return false;
+  }
+
+  return awakenableDiscoveryKinds.includes(instance.discoveryKind as (typeof awakenableDiscoveryKinds)[number])
+    || awakenableRarities.includes(instance.rarity as (typeof awakenableRarities)[number]);
+};
+
+export const awakenWorkshopBlueprintFeature = (
+  instance: Pick<WorkshopBlueprintInstanceView, 'modifierSnapshot'>,
+): WorkshopBlueprintModifierSnapshot => {
+  const notes = instance.modifierSnapshot.notes ?? [];
+  const nextNotes = notes.includes(workshopRadianceFeatureNote)
+    ? notes
+    : [...notes, workshopRadianceFeatureNote];
+
+  return {
+    ...instance.modifierSnapshot,
+    radianceFeatureAwakened: true,
+    notes: nextNotes,
+  };
+};
 
 export const createLegacyBlueprintInstances = (
   stack: LegacyBlueprintStackInput,

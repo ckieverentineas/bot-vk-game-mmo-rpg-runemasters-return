@@ -36,6 +36,7 @@ import {
   type WorkshopRepairToolBlueprintDefinition,
 } from '../../../workshop/domain/workshop-catalog';
 import {
+  canAwakenWorkshopBlueprintFeature,
   isWorkshopBlueprintDiscoveryKind,
   isWorkshopBlueprintInstanceStatus,
   isWorkshopBlueprintQuality,
@@ -483,6 +484,86 @@ export class PrismaWorkshopPersistence {
         });
 
         return mapPlayerCraftedItemRecord(item);
+      },
+    ));
+  }
+
+  public async awakenWorkshopBlueprintFeature(
+    playerId: number,
+    blueprintInstanceId: string,
+    radianceCost: number,
+    modifierSnapshot: WorkshopBlueprintModifierSnapshot,
+    options?: WorkshopMutationOptions,
+  ): Promise<PlayerBlueprintInstanceView> {
+    return this.prisma.$transaction((tx) => this.context.runWithCommandIntent(
+      tx,
+      playerId,
+      'AWAKEN_WORKSHOP_BLUEPRINT_FEATURE',
+      options?.intentId,
+      options?.intentStateKey,
+      options?.currentStateKey,
+      async () => {
+        const instanceRecord = await requireAvailableBlueprintInstanceRecord(tx, playerId, blueprintInstanceId);
+        const instance = mapPlayerBlueprintInstanceRecord(instanceRecord);
+        const blueprint = requireWorkshopBlueprintDefinition(instance.blueprintCode);
+
+        if (
+          blueprint.kind !== 'craft_item'
+          || !canAwakenWorkshopBlueprintFeature(instance)
+          || modifierSnapshot.radianceFeatureAwakened !== true
+        ) {
+          throw new AppError(
+            'workshop_blueprint_feature_unavailable',
+            'Этот чертеж нельзя пробудить сиянием.',
+          );
+        }
+
+        const spentRadiance = await tx.player.updateMany({
+          where: {
+            id: playerId,
+            radiance: { gte: radianceCost },
+          },
+          data: {
+            radiance: { decrement: radianceCost },
+            updatedAt: new Date(),
+          },
+        });
+
+        if (spentRadiance.count === 0) {
+          throw new AppError('not_enough_radiance', 'Сияния уже не хватает для пробуждения чертежа.');
+        }
+
+        const awakened = await tx.playerBlueprintInstance.updateMany({
+          where: {
+            id: blueprintInstanceId,
+            playerId,
+            status: 'AVAILABLE',
+            modifierSnapshot: instanceRecord.modifierSnapshot,
+          },
+          data: {
+            modifierSnapshot: JSON.stringify(modifierSnapshot),
+          },
+        });
+
+        if (awakened.count === 0) {
+          throw new AppError(
+            'workshop_blueprint_feature_unavailable',
+            'Этот чертеж уже нельзя пробудить сиянием.',
+          );
+        }
+
+        const updatedInstance = await tx.playerBlueprintInstance.findFirst({
+          where: {
+            id: blueprintInstanceId,
+            playerId,
+          },
+        });
+
+        if (!updatedInstance) {
+          throw new AppError('workshop_blueprint_unavailable', 'Чертеж мастерской больше не найден.');
+        }
+
+        return mapPlayerBlueprintInstanceRecord(updatedInstance);
       },
     ));
   }
