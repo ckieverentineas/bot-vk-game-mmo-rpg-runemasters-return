@@ -531,10 +531,19 @@ describe('messages school-first onboarding framing', () => {
             itemCode: 'hunter_cleaver',
             itemClass: 'L',
             slot: 'weapon',
+            quality: 'MASTERWORK',
             status: 'ACTIVE',
             equipped: false,
             durability: 14,
             maxDurability: 14,
+            statBonus: {
+              health: 0,
+              attack: 4,
+              defence: 0,
+              magicDefence: 0,
+              dexterity: 0,
+              intelligence: 0,
+            },
             createdAt: '2026-04-12T00:00:00.000Z',
             updatedAt: '2026-04-12T00:00:00.000Z',
           },
@@ -559,6 +568,7 @@ describe('messages school-first onboarding framing', () => {
     expect(message).toContain('можно надеть');
     expect(message).toContain('❤️ Пилюля восстановления x1: +6 HP.');
     expect(message).not.toContain('Закрывает раны');
+    expect(message).toContain('мастерское · АТК +4');
   });
 
   it('keeps active tutorial recap focused on the first training battle', () => {

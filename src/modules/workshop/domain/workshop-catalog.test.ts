@@ -156,6 +156,14 @@ describe('workshop catalog', () => {
         itemClass: 'L',
         slot: 'weapon',
         maxDurability: 14,
+        statBonus: {
+          health: 0,
+          attack: 4,
+          defence: 0,
+          magicDefence: 0,
+          dexterity: 0,
+          intelligence: 0,
+        },
       }),
       createEquippedWorkshopItem({
         id: 'armor-1',
@@ -179,7 +187,7 @@ describe('workshop catalog', () => {
 
     expect(bonus).toEqual({
       health: 3,
-      attack: 2,
+      attack: 4,
       defence: 1,
       magicDefence: 0,
       dexterity: 0,

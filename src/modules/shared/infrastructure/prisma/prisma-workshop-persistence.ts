@@ -5,6 +5,7 @@ import type {
   BattleView,
   InventoryDelta,
   MaterialField,
+  PlayerSkillPointGain,
 } from '../../../../shared/types/game';
 import { parseJson } from '../../../../shared/utils/json';
 import type {
@@ -14,6 +15,7 @@ import type {
   PlayerBlueprintInstanceView,
   PlayerBlueprintView,
   PlayerCraftedItemView,
+  WorkshopCraftedItemOutcome,
   WorkshopMutationOptions,
 } from '../../../workshop/application/workshop-persistence';
 import {
@@ -57,8 +59,15 @@ type RunWithCommandIntent = <TResult>(
   apply: () => Promise<TResult>,
 ) => Promise<TResult>;
 
+type PersistPlayerSkillGains = (
+  tx: TransactionClient,
+  playerId: number,
+  gains: readonly PlayerSkillPointGain[] | undefined,
+) => Promise<void>;
+
 interface PrismaWorkshopPersistenceContext {
   readonly runWithCommandIntent: RunWithCommandIntent;
+  readonly persistPlayerSkillGains: PersistPlayerSkillGains;
 }
 
 const workshopMaterialFields: readonly MaterialField[] = [
@@ -216,10 +225,19 @@ const mapPlayerCraftedItemRecord = (record: PlayerCraftedItem): PlayerCraftedIte
   itemCode: requireKnownWorkshopValue(record.itemCode, isWorkshopItemCode, 'itemCode'),
   itemClass: requireKnownWorkshopValue(record.itemClass, isWorkshopItemClass, 'itemClass'),
   slot: requireKnownWorkshopValue(record.slot, isWorkshopItemSlot, 'slot'),
+  quality: requireKnownWorkshopValue(record.quality, isWorkshopBlueprintQuality, 'quality'),
   status: requireKnownWorkshopValue(record.status, isWorkshopItemStatus, 'status'),
   equipped: record.equipped,
   durability: record.durability,
   maxDurability: record.maxDurability,
+  statBonus: {
+    health: record.health,
+    attack: record.attack,
+    defence: record.defence,
+    magicDefence: record.magicDefence,
+    dexterity: record.dexterity,
+    intelligence: record.intelligence,
+  },
   createdAt: record.createdAt.toISOString(),
   updatedAt: record.updatedAt.toISOString(),
 });
@@ -321,6 +339,14 @@ const toWorkshopEquippedItem = (item: PlayerCraftedItem): WorkshopEquippedItemVi
   equipped: item.equipped,
   durability: item.durability,
   maxDurability: item.maxDurability,
+  statBonus: {
+    health: item.health,
+    attack: item.attack,
+    defence: item.defence,
+    magicDefence: item.magicDefence,
+    dexterity: item.dexterity,
+    intelligence: item.intelligence,
+  },
 });
 
 const canRepairCraftedItemRecord = (item: PlayerCraftedItem): boolean => {
@@ -427,6 +453,7 @@ export class PrismaWorkshopPersistence {
   public async craftWorkshopItem(
     playerId: number,
     blueprintInstanceId: string,
+    outcome: WorkshopCraftedItemOutcome,
     options?: WorkshopMutationOptions,
   ): Promise<PlayerCraftedItemView> {
     return this.prisma.$transaction((tx) => this.context.runWithCommandIntent(
@@ -457,13 +484,21 @@ export class PrismaWorkshopPersistence {
             itemCode: blueprint.resultItemCode,
             itemClass: blueprint.itemClass,
             slot: blueprint.slot,
+            quality: outcome.quality,
             status: 'ACTIVE',
             equipped: false,
-            durability: blueprint.maxDurability,
-            maxDurability: blueprint.maxDurability,
+            durability: outcome.durability,
+            maxDurability: outcome.maxDurability,
+            health: outcome.statBonus.health,
+            attack: outcome.statBonus.attack,
+            defence: outcome.statBonus.defence,
+            magicDefence: outcome.statBonus.magicDefence,
+            dexterity: outcome.statBonus.dexterity,
+            intelligence: outcome.statBonus.intelligence,
           },
         });
 
+        await this.context.persistPlayerSkillGains(tx, playerId, outcome.skillGains);
         await tx.player.update({
           where: { id: playerId },
           data: { updatedAt: new Date() },

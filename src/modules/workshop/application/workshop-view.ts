@@ -55,6 +55,7 @@ const toWorkshopItemView = (item: PlayerCraftedItemView): WorkshopItemView => ({
   status: item.status,
   durability: item.durability,
   maxDurability: item.maxDurability,
+  statBonus: item.statBonus,
 });
 
 export const canRepairPlayerCraftedItem = (

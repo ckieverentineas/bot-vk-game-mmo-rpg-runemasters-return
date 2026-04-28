@@ -10,6 +10,7 @@ import type {
   PlayerBlueprintInstanceView,
   PlayerBlueprintView,
   PlayerCraftedItemView,
+  WorkshopCraftedItemOutcome,
 } from '../../../workshop/application/workshop-persistence';
 import { BESTIARY_ENEMY_KILL_MILESTONE_SOURCE_TYPE } from '../../domain/contracts/bestiary-enemy-kill-milestone-ledger';
 import { BESTIARY_LOCATION_DISCOVERY_SOURCE_TYPE } from '../../domain/contracts/bestiary-location-discovery-ledger';
@@ -399,10 +400,17 @@ interface PlayerCraftedItemRecordFixture {
   readonly itemCode: string;
   readonly itemClass: string;
   readonly slot: string;
+  readonly quality: string;
   readonly status: string;
   readonly equipped: boolean;
   readonly durability: number;
   readonly maxDurability: number;
+  readonly health: number;
+  readonly attack: number;
+  readonly defence: number;
+  readonly magicDefence: number;
+  readonly dexterity: number;
+  readonly intelligence: number;
   readonly createdAt: Date;
   readonly updatedAt: Date;
 }
@@ -479,10 +487,17 @@ const createCraftedItemRecord = (
   itemCode: 'skinning_kit',
   itemClass: 'UL',
   slot: 'tool',
+  quality: 'STURDY',
   status: 'ACTIVE',
   equipped: false,
   durability: 12,
   maxDurability: 12,
+  health: 0,
+  attack: 0,
+  defence: 0,
+  magicDefence: 0,
+  dexterity: 1,
+  intelligence: 0,
   createdAt: new Date('2026-04-22T11:00:00.000Z'),
   updatedAt: new Date('2026-04-22T11:30:00.000Z'),
   ...overrides,
@@ -496,12 +511,44 @@ const createCraftedItemViewSnapshot = (
   itemCode: 'skinning_kit',
   itemClass: 'UL',
   slot: 'tool',
+  quality: 'STURDY',
   status: 'ACTIVE',
   equipped: false,
   durability: 12,
   maxDurability: 12,
+  statBonus: {
+    health: 0,
+    attack: 0,
+    defence: 0,
+    magicDefence: 0,
+    dexterity: 1,
+    intelligence: 0,
+  },
   createdAt: '2026-04-22T11:00:00.000Z',
   updatedAt: '2026-04-22T11:30:00.000Z',
+  ...overrides,
+});
+
+const createCraftedItemOutcome = (
+  overrides: Partial<WorkshopCraftedItemOutcome> = {},
+): WorkshopCraftedItemOutcome => ({
+  quality: 'STURDY',
+  durability: 14,
+  maxDurability: 14,
+  statBonus: {
+    health: 0,
+    attack: 2,
+    defence: 0,
+    magicDefence: 0,
+    dexterity: 0,
+    intelligence: 0,
+  },
+  skillGains: [
+    {
+      skillCode: 'crafting.workshop',
+      points: 20,
+    },
+  ],
   ...overrides,
 });
 
@@ -1008,12 +1055,27 @@ describe('PrismaGameRepository release hardening', () => {
       itemCode: 'hunter_cleaver',
       itemClass: 'L',
       slot: 'weapon',
+      quality: 'FINE',
       durability: 14,
       maxDurability: 14,
+      attack: 3,
     }));
+    tx.playerSkill.findMany.mockResolvedValue([]);
+    tx.playerSkill.upsert.mockResolvedValue({});
     tx.player.update.mockResolvedValue({});
+    const outcome = createCraftedItemOutcome({
+      quality: 'FINE',
+      statBonus: {
+        health: 0,
+        attack: 3,
+        defence: 0,
+        magicDefence: 0,
+        dexterity: 0,
+        intelligence: 0,
+      },
+    });
 
-    const item = await repository.craftWorkshopItem(1, 'bp-cleaver-1', {
+    const item = await repository.craftWorkshopItem(1, 'bp-cleaver-1', outcome, {
       intentId: 'intent-workshop-craft-1',
       intentStateKey: 'state-workshop-craft-1',
       currentStateKey: 'state-workshop-craft-1',
@@ -1024,10 +1086,14 @@ describe('PrismaGameRepository release hardening', () => {
       itemCode: 'hunter_cleaver',
       itemClass: 'L',
       slot: 'weapon',
+      quality: 'FINE',
       status: 'ACTIVE',
       equipped: false,
       durability: 14,
       maxDurability: 14,
+      statBonus: {
+        attack: 3,
+      },
     });
     expect(tx.playerBlueprintInstance.findFirst).toHaveBeenCalledWith({
       where: {
@@ -1067,10 +1133,35 @@ describe('PrismaGameRepository release hardening', () => {
         itemCode: 'hunter_cleaver',
         itemClass: 'L',
         slot: 'weapon',
+        quality: 'FINE',
         status: 'ACTIVE',
         equipped: false,
         durability: 14,
         maxDurability: 14,
+        health: 0,
+        attack: 3,
+        defence: 0,
+        magicDefence: 0,
+        dexterity: 0,
+        intelligence: 0,
+      },
+    });
+    expect(tx.playerSkill.upsert).toHaveBeenCalledWith({
+      where: {
+        playerId_skillCode: {
+          playerId: 1,
+          skillCode: 'crafting.workshop',
+        },
+      },
+      update: {
+        experience: 20,
+        rank: 0,
+      },
+      create: {
+        playerId: 1,
+        skillCode: 'crafting.workshop',
+        experience: 20,
+        rank: 0,
       },
     });
   });
@@ -1083,7 +1174,7 @@ describe('PrismaGameRepository release hardening', () => {
       blueprintCode: 'resonance_tool',
     }));
 
-    await expect(repository.craftWorkshopItem(1, 'bp-repair-1')).rejects.toMatchObject({
+    await expect(repository.craftWorkshopItem(1, 'bp-repair-1', createCraftedItemOutcome())).rejects.toMatchObject({
       code: 'workshop_blueprint_not_craftable',
     });
 
@@ -1109,7 +1200,7 @@ describe('PrismaGameRepository release hardening', () => {
       })),
     });
 
-    const item = await repository.craftWorkshopItem(1, 'bp-cleaver-1', {
+    const item = await repository.craftWorkshopItem(1, 'bp-cleaver-1', createCraftedItemOutcome(), {
       intentId: 'intent-workshop-craft-1',
       intentStateKey: 'state-workshop-craft-1',
       currentStateKey: 'state-workshop-craft-1',
@@ -1138,7 +1229,7 @@ describe('PrismaGameRepository release hardening', () => {
       })),
     });
 
-    await expect(repository.craftWorkshopItem(1, 'bp-repair-1', {
+    await expect(repository.craftWorkshopItem(1, 'bp-repair-1', createCraftedItemOutcome(), {
       intentId: 'intent-workshop-craft-1',
       intentStateKey: 'state-workshop-craft-1',
       currentStateKey: 'state-workshop-craft-1',

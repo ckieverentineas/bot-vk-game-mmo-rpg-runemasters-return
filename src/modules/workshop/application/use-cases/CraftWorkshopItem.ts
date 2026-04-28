@@ -15,11 +15,13 @@ import { requirePlayerByVkId } from '../../../shared/application/require-player'
 import {
   canCraftWorkshopBlueprint,
   getWorkshopBlueprint,
+  getWorkshopItemDefinition,
   isWorkshopBlueprintCode,
   resolveWorkshopMissingCost,
   type WorkshopBlueprintCode,
   type WorkshopCraftItemBlueprintDefinition,
 } from '../../domain/workshop-catalog';
+import { resolveWorkshopCraftedItemOutcome } from '../../domain/workshop-crafting-quality';
 import { buildCraftWorkshopItemIntentStateKey } from '../command-intent-state';
 import type { PlayerBlueprintInstanceView, PlayerCraftedItemView } from '../workshop-persistence';
 import { buildWorkshopView, type WorkshopView } from '../workshop-view';
@@ -231,12 +233,19 @@ export class CraftWorkshopItem {
     const blueprintInstance = requireAvailableBlueprintInstance(snapshot.blueprintInstances, blueprintInstanceId);
     const blueprint = requireCraftBlueprint(blueprintInstance.blueprintCode);
     assertCraftMaterialsAvailable(player, blueprint);
+    const itemDefinition = getWorkshopItemDefinition(blueprint.resultItemCode);
+    const craftedOutcome = resolveWorkshopCraftedItemOutcome(player, blueprint, itemDefinition, blueprintInstance);
 
-    const craftedItem = await this.repository.craftWorkshopItem(player.playerId, blueprintInstance.id, {
-      intentId: intent.intentId,
-      intentStateKey: intent.intentStateKey,
-      currentStateKey: intentSource === 'legacy_text' ? undefined : currentStateKey,
-    });
+    const craftedItem = await this.repository.craftWorkshopItem(
+      player.playerId,
+      blueprintInstance.id,
+      craftedOutcome,
+      {
+        intentId: intent.intentId,
+        intentStateKey: intent.intentStateKey,
+        currentStateKey: intentSource === 'legacy_text' ? undefined : currentStateKey,
+      },
+    );
     const view = await loadCurrentWorkshopView(this.repository, vkId);
     const result = buildCraftResult(view, blueprint.code, craftedItem);
 

@@ -98,6 +98,7 @@ export interface WorkshopItemView {
   readonly status: WorkshopItemStatus;
   readonly durability: number;
   readonly maxDurability: number;
+  readonly statBonus?: StatBlock;
 }
 
 export interface WorkshopEquippedItemView extends WorkshopItemView {
@@ -361,7 +362,7 @@ export const canEquipWorkshopItem = (item: WorkshopItemView): boolean => (
 );
 
 export const resolveWorkshopItemStatBonus = (item: WorkshopItemView): StatBlock => (
-  canEquipWorkshopItem(item) ? getWorkshopItemDefinition(item.code).statBonus : emptyStatBonus()
+  canEquipWorkshopItem(item) ? item.statBonus ?? getWorkshopItemDefinition(item.code).statBonus : emptyStatBonus()
 );
 
 export const resolveWorkshopEquipmentStatBonus = (

@@ -154,10 +154,17 @@ model PlayerCraftedItem {
   itemCode      String
   itemClass     String
   slot          String
+  quality       String   @default("STURDY")
   status        String   @default("ACTIVE")
   equipped      Boolean  @default(false)
   durability    Int
   maxDurability Int
+  health        Int      @default(0)
+  attack        Int      @default(0)
+  defence       Int      @default(0)
+  magicDefence  Int      @default(0)
+  dexterity     Int      @default(0)
+  intelligence  Int      @default(0)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   player        Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)

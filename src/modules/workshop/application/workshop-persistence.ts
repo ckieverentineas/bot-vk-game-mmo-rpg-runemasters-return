@@ -1,12 +1,17 @@
 import type {
+  StatBlock,
+} from '../../../shared/types/game';
+import type {
   WorkshopBlueprintCode,
   WorkshopItemClass,
   WorkshopItemCode,
   WorkshopItemSlot,
   WorkshopItemStatus,
 } from '../domain/workshop-catalog';
+import type { WorkshopBlueprintQuality } from '../domain/workshop-blueprint-instances';
 
 export type { WorkshopBlueprintInstanceView as PlayerBlueprintInstanceView } from '../domain/workshop-blueprint-instances';
+export type { WorkshopCraftedItemOutcome } from '../domain/workshop-crafting-quality';
 
 export type WorkshopCommandIntentKey =
   | 'GRANT_WORKSHOP_BLUEPRINT'
@@ -35,10 +40,12 @@ export interface PlayerCraftedItemView {
   readonly itemCode: WorkshopItemCode;
   readonly itemClass: WorkshopItemClass;
   readonly slot: WorkshopItemSlot;
+  readonly quality: WorkshopBlueprintQuality;
   readonly status: WorkshopItemStatus;
   readonly equipped: boolean;
   readonly durability: number;
   readonly maxDurability: number;
+  readonly statBonus: StatBlock;
   readonly createdAt: string;
   readonly updatedAt: string;
 }

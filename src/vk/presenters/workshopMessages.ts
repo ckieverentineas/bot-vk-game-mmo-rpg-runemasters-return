@@ -29,9 +29,10 @@ import type {
 import {
   formatWorkshopBlueprintQuality,
   type WorkshopBlueprintDiscoveryKind,
+  type WorkshopBlueprintQuality,
   type WorkshopBlueprintSourceType,
 } from '../../modules/workshop/domain/workshop-blueprint-instances';
-import type { InventoryView, MaterialField } from '../../shared/types/game';
+import type { InventoryView, MaterialField, StatBlock } from '../../shared/types/game';
 import {
   renderHintBlock,
   renderHintLine,
@@ -105,6 +106,33 @@ const formatInlineList = (items: readonly string[], limit = 3): string => {
     : visibleItems.join(', ');
 };
 
+const statFields = [
+  'health',
+  'attack',
+  'defence',
+  'magicDefence',
+  'dexterity',
+  'intelligence',
+] as const satisfies readonly (keyof StatBlock)[];
+
+const statTitles: Readonly<Record<keyof StatBlock, string>> = {
+  health: 'ЗДР',
+  attack: 'АТК',
+  defence: 'ФЗАЩ',
+  magicDefence: 'МЗАЩ',
+  dexterity: 'ЛВК',
+  intelligence: 'ИНТ',
+};
+
+const emptyStatBonus = (): StatBlock => ({
+  health: 0,
+  attack: 0,
+  defence: 0,
+  magicDefence: 0,
+  dexterity: 0,
+  intelligence: 0,
+});
+
 const formatWorkshopCost = (cost: WorkshopBlueprintCost): string => {
   const parts = Object.entries(cost)
     .filter(([, amount]) => amount !== undefined && amount > 0)
@@ -140,6 +168,19 @@ const formatBlueprintInstanceDetails = (
   const sourceSuffix = source === discovery ? source : `${discovery}, ${source}`;
 
   return `чертеж #${formatShortBlueprintInstanceId(instance.id)} · ${quality} · ${rarity} · ${sourceSuffix}`;
+};
+
+const formatCraftedItemQuality = (quality: WorkshopBlueprintQuality | undefined): string => (
+  formatWorkshopBlueprintQuality(quality ?? 'STURDY').toLowerCase()
+);
+
+const formatCraftedItemStatBonus = (statBonus: StatBlock | undefined): string => {
+  const bonus = statBonus ?? emptyStatBonus();
+  const parts = statFields
+    .filter((field) => bonus[field] > 0)
+    .map((field) => `${statTitles[field]} +${bonus[field]}`);
+
+  return parts.length > 0 ? parts.join(', ') : 'без бонусов';
 };
 
 const trimPillTitle = (title: string): string => title.replace(/^Пилюля\s+/u, '');
@@ -276,6 +317,8 @@ const formatCraftedItemEntry = (entry: WorkshopCraftedItemEntryView): string => 
   const details = [
     resolveWorkshopItemSlotTitle(item.slot),
     resolveWorkshopItemClassTitle(item.itemClass),
+    formatCraftedItemQuality(item.quality),
+    formatCraftedItemStatBonus(item.statBonus),
     resolveWorkshopItemStatusTitle(item.status),
     storageLine,
     equipState,

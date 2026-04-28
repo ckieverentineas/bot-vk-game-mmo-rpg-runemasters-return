@@ -9,6 +9,7 @@ import {
   getWorkshopBlueprint,
   type WorkshopCraftItemBlueprintDefinition,
 } from '../../domain/workshop-catalog';
+import type { WorkshopCraftedItemOutcome } from '../../domain/workshop-crafting-quality';
 import type {
   PlayerBlueprintInstanceView,
   PlayerCraftedItemView,
@@ -104,10 +105,19 @@ const createItem = (overrides: Partial<PlayerCraftedItemView> = {}): PlayerCraft
   itemCode: 'hunter_cleaver',
   itemClass: 'L',
   slot: 'weapon',
+  quality: 'STURDY',
   status: 'ACTIVE',
   equipped: false,
   durability: 14,
   maxDurability: 14,
+  statBonus: {
+    health: 0,
+    attack: 2,
+    defence: 0,
+    magicDefence: 0,
+    dexterity: 0,
+    intelligence: 0,
+  },
   createdAt: '2026-04-12T00:00:00.000Z',
   updatedAt: '2026-04-12T00:00:00.000Z',
   ...overrides,
@@ -116,6 +126,7 @@ const createItem = (overrides: Partial<PlayerCraftedItemView> = {}): PlayerCraft
 interface CraftRequest {
   readonly playerId: number;
   readonly blueprintInstanceId: string;
+  readonly outcome: WorkshopCraftedItemOutcome | undefined;
   readonly options: WorkshopMutationOptions | undefined;
 }
 
@@ -198,9 +209,15 @@ class InMemoryCraftWorkshopRepository implements Pick<
   public async craftWorkshopItem(
     playerId: number,
     blueprintInstanceId: string,
+    outcome: WorkshopCraftedItemOutcome,
     options?: WorkshopMutationOptions,
   ): Promise<PlayerCraftedItemView> {
-    this.craftRequests.push({ playerId, blueprintInstanceId, options });
+    this.craftRequests.push({
+      playerId,
+      blueprintInstanceId,
+      outcome,
+      options,
+    });
 
     const instance = this.blueprintInstances.find((entry) => entry.id === blueprintInstanceId);
     if (!instance) {
@@ -221,8 +238,10 @@ class InMemoryCraftWorkshopRepository implements Pick<
       itemCode: blueprint.resultItemCode,
       itemClass: blueprint.itemClass,
       slot: blueprint.slot,
-      durability: blueprint.maxDurability,
-      maxDurability: blueprint.maxDurability,
+      quality: outcome.quality,
+      durability: outcome.durability,
+      maxDurability: outcome.maxDurability,
+      statBonus: outcome.statBonus,
     });
 
     this.items = [...this.items, craftedItem];
@@ -276,6 +295,25 @@ describe('CraftWorkshopItem', () => {
       {
         playerId: player.playerId,
         blueprintInstanceId: 'bp-hunter-cleaver-1',
+        outcome: {
+          quality: 'STURDY',
+          durability: 14,
+          maxDurability: 14,
+          statBonus: {
+            health: 0,
+            attack: 2,
+            defence: 0,
+            magicDefence: 0,
+            dexterity: 0,
+            intelligence: 0,
+          },
+          skillGains: [
+            {
+              skillCode: 'crafting.workshop',
+              points: 20,
+            },
+          ],
+        },
         options: {
           intentId: 'intent-craft-1',
           intentStateKey: stateKey,

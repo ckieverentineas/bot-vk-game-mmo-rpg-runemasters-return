@@ -19,6 +19,7 @@ import type {
   PlayerBlueprintInstanceView,
   PlayerBlueprintView,
   PlayerCraftedItemView,
+  WorkshopCraftedItemOutcome,
   WorkshopCommandIntentKey,
   WorkshopMutationOptions,
 } from '../../../workshop/application/workshop-persistence';
@@ -354,6 +355,7 @@ export interface GameRepository {
   craftWorkshopItem(
     playerId: number,
     blueprintInstanceId: string,
+    outcome: WorkshopCraftedItemOutcome,
     options?: WorkshopMutationOptions,
   ): Promise<PlayerCraftedItemView>;
   repairWorkshopItem(

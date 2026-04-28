@@ -79,6 +79,7 @@ const toWorkshopEquippedItem = (item: PlayerCraftedItemView): WorkshopEquippedIt
   equipped: item.equipped,
   durability: item.durability,
   maxDurability: item.maxDurability,
+  statBonus: item.statBonus,
 });
 
 const lowerBiomeRoamingChancePercent = 10;
