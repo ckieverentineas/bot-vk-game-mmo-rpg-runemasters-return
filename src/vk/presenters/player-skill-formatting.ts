@@ -16,6 +16,7 @@ const playerSkillRankSubjects: Readonly<Record<PlayerSkillCode, string>> = {
   'rune.active_use': 'активных рун',
   'rune.preparation': 'подготовки рун',
   'crafting.alchemy': 'алхимии',
+  'crafting.workshop': 'мастерства',
 };
 
 export interface PlayerSkillGainView {

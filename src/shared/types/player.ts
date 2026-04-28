@@ -20,7 +20,9 @@ export type RuneSkillCode =
   | 'rune.active_use'
   | 'rune.preparation';
 
-export type CraftingSkillCode = 'crafting.alchemy';
+export type CraftingSkillCode =
+  | 'crafting.alchemy'
+  | 'crafting.workshop';
 
 export type PlayerSkillCode =
   | GatheringSkillCode

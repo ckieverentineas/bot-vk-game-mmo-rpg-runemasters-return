@@ -46,6 +46,15 @@ describe('player skills', () => {
     });
   });
 
+  it('includes workshop craft as a crafting skill for equipment quality', () => {
+    expect(getPlayerSkillDefinition('crafting.workshop')).toEqual({
+      code: 'crafting.workshop',
+      category: 'crafting',
+      title: 'Мастерство',
+      description: 'Работа с чертежами, снаряжением, качеством предметов и ремонтом.',
+    });
+  });
+
   it('keeps player skill codes unique', () => {
     const codes = listPlayerSkillCodes();
     const uniqueCodes = new Set(codes);

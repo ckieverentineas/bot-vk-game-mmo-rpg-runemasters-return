@@ -21,6 +21,14 @@ describe('player skill formatting', () => {
     })).toBe('Извлечение эссенции: Ученик извлечения эссенции · рука привыкает');
   });
 
+  it('formats workshop craft skill progress', () => {
+    expect(formatPlayerSkillProgressLine({
+      skillCode: 'crafting.workshop',
+      experience: 0,
+      rank: 0,
+    })).toBe('Мастерство: Ученик мастерства · след ещё чист');
+  });
+
   it('formats trophy skill gains as qualitative progress instead of raw numbers', () => {
     expect(formatPlayerSkillGainLine({
       skillCode: 'gathering.skinning',

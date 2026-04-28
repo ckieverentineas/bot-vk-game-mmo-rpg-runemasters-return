@@ -62,6 +62,12 @@ const playerSkillDefinitions: readonly PlayerSkillDefinition[] = [
     title: 'Алхимия',
     description: 'Создание пилюль и зелий из трав, слизи и трофейных материалов.',
   },
+  {
+    code: 'crafting.workshop',
+    category: 'crafting',
+    title: 'Мастерство',
+    description: 'Работа с чертежами, снаряжением, качеством предметов и ремонтом.',
+  },
 ];
 
 const maxPlayerSkillRank = 1;
