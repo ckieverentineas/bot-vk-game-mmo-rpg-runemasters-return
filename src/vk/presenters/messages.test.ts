@@ -1302,6 +1302,33 @@ describe('messages school-first onboarding framing', () => {
     expect(message).toContain('🎒 Забрать добычу — +2 кожи · +1 кость · без роста навыка');
   });
 
+  it('falls back to the safe trophy preview when a unique action needs a missing tool', () => {
+    const pendingReward = createPendingReward();
+    const skinningLabel = pendingReward.snapshot.trophyActions.find((action) => action.code === 'skin_beast')?.label ?? '';
+    const claimAllLabel = pendingReward.snapshot.trophyActions.find((action) => action.code === 'claim_all')?.label ?? '';
+    const message = renderPendingReward({
+      ...pendingReward,
+      snapshot: {
+        ...pendingReward.snapshot,
+        trophyActions: pendingReward.snapshot.trophyActions.map((action) => (
+          action.code === 'skin_beast'
+            ? {
+                ...action,
+                availability: {
+                  available: false,
+                  reasonCode: 'missing_workshop_tool',
+                  requiredWorkshopItemCodes: ['skinning_kit'],
+                },
+              }
+            : action
+        )),
+      },
+    });
+
+    expect(message).toContain(claimAllLabel);
+    expect(message).not.toContain(skinningLabel);
+  });
+
   it('renders collected trophy results without repeating route guidance', () => {
     const result: CollectPendingRewardView = {
       player: createPlayer({ tutorialState: 'SKIPPED', locationLevel: 1 }),

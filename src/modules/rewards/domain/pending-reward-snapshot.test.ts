@@ -201,6 +201,32 @@ describe('pending reward snapshots', () => {
     expect(isPendingRewardSnapshot(snapshot)).toBe(true);
   });
 
+  it('accepts trophy action availability in canonical pending snapshot data', () => {
+    const snapshot = createPendingRewardSnapshot(
+      createRewardIntent(),
+      trophyActions,
+      '2026-04-22T00:00:00.000Z',
+    );
+
+    const snapshotWithAvailability = {
+      ...snapshot,
+      trophyActions: snapshot.trophyActions.map((action) => (
+        action.code === 'skin_beast'
+          ? {
+              ...action,
+              availability: {
+                available: false,
+                reasonCode: 'missing_workshop_tool',
+                requiredWorkshopItemCodes: ['skinning_kit'],
+              },
+            }
+          : action
+      )),
+    };
+
+    expect(isPendingRewardSnapshot(snapshotWithAvailability)).toBe(true);
+  });
+
   it('accepts ember hidden trophy rewards as canonical pending snapshot data', () => {
     const snapshot = createPendingRewardSnapshot(
       createRewardIntent(),

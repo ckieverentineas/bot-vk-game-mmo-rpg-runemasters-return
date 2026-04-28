@@ -15,12 +15,20 @@ import type { TrophyActionCode, TrophyActionDefinition, TrophyActionReward } fro
 export const PENDING_REWARD_SNAPSHOT_SCHEMA_VERSION = 1 as const;
 
 export type PendingRewardSnapshotStatus = 'PENDING' | 'APPLIED' | 'EXPIRED';
+export type PendingRewardTrophyActionUnavailableReason = 'missing_workshop_tool';
+
+export interface PendingRewardTrophyActionAvailabilitySnapshot {
+  readonly available: boolean;
+  readonly reasonCode?: PendingRewardTrophyActionUnavailableReason;
+  readonly requiredWorkshopItemCodes?: readonly string[];
+}
 
 export interface PendingRewardTrophyActionSnapshot {
   readonly code: TrophyActionCode;
   readonly label: string;
   readonly skillCodes: readonly PlayerSkillCode[];
   readonly visibleRewardFields: readonly InventoryField[];
+  readonly availability?: PendingRewardTrophyActionAvailabilitySnapshot;
   readonly reward?: PendingRewardTrophyActionRewardSnapshot;
 }
 
@@ -127,6 +135,9 @@ const trophyActionCodes: readonly TrophyActionCode[] = [
 ];
 
 const pendingRewardStatuses: readonly PendingRewardSnapshotStatus[] = ['PENDING', 'APPLIED', 'EXPIRED'];
+const pendingRewardTrophyActionUnavailableReasons: readonly PendingRewardTrophyActionUnavailableReason[] = [
+  'missing_workshop_tool',
+];
 
 const inventoryFields: readonly InventoryField[] = [
   'usualShards',
@@ -164,6 +175,13 @@ const isPendingRewardSnapshotStatus = (value: unknown): value is PendingRewardSn
 
 const isTrophyActionCode = (value: unknown): value is TrophyActionCode => (
   isString(value) && trophyActionCodes.includes(value as TrophyActionCode)
+);
+
+const isPendingRewardTrophyActionUnavailableReason = (
+  value: unknown,
+): value is PendingRewardTrophyActionUnavailableReason => (
+  isString(value)
+  && pendingRewardTrophyActionUnavailableReasons.includes(value as PendingRewardTrophyActionUnavailableReason)
 );
 
 const isInventoryField = (value: unknown): value is InventoryField => (
@@ -206,12 +224,39 @@ const isInventoryFieldArray = (value: unknown): value is readonly InventoryField
   Array.isArray(value) && value.every(isInventoryField)
 );
 
+const isStringArray = (value: unknown): value is readonly string[] => (
+  Array.isArray(value) && value.every(isString)
+);
+
+const isPendingRewardTrophyActionAvailabilitySnapshot = (
+  value: unknown,
+): value is PendingRewardTrophyActionAvailabilitySnapshot => (
+  isJsonRecord(value)
+  && isBoolean(value.available)
+  && (
+    value.reasonCode === undefined
+    || isPendingRewardTrophyActionUnavailableReason(value.reasonCode)
+  )
+  && (
+    value.requiredWorkshopItemCodes === undefined
+    || isStringArray(value.requiredWorkshopItemCodes)
+  )
+  && (
+    value.available
+    || isPendingRewardTrophyActionUnavailableReason(value.reasonCode)
+  )
+);
+
 const isPendingRewardTrophyActionSnapshot = (value: unknown): value is PendingRewardTrophyActionSnapshot => (
   isJsonRecord(value)
   && isTrophyActionCode(value.code)
   && isString(value.label)
   && isPlayerSkillCodeArray(value.skillCodes)
   && isInventoryFieldArray(value.visibleRewardFields)
+  && (
+    value.availability === undefined
+    || isPendingRewardTrophyActionAvailabilitySnapshot(value.availability)
+  )
   && (value.reward === undefined || isPendingRewardTrophyActionRewardSnapshot(value.reward))
 );
 

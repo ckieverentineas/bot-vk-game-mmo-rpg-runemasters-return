@@ -2,12 +2,17 @@ import type { PendingRewardView } from '../modules/shared/application/ports/Game
 
 type PendingTrophyAction = PendingRewardView['snapshot']['trophyActions'][number];
 
+const isTrophyActionAvailable = (action: PendingTrophyAction): boolean => (
+  action.availability?.available !== false
+);
+
 export const listPlayerFacingTrophyActions = (
   actions: readonly PendingTrophyAction[],
 ): readonly PendingTrophyAction[] => {
-  const hasUniqueAction = actions.some((action) => action.code !== 'claim_all');
+  const availableActions = actions.filter(isTrophyActionAvailable);
+  const hasUniqueAction = availableActions.some((action) => action.code !== 'claim_all');
 
   return hasUniqueAction
-    ? actions.filter((action) => action.code !== 'claim_all')
-    : actions;
+    ? availableActions.filter((action) => action.code !== 'claim_all')
+    : availableActions;
 };

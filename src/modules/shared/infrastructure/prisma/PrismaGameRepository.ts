@@ -44,6 +44,7 @@ import {
 import type {
   TrophyActionCode,
 } from '../../../rewards/domain/trophy-actions';
+import { resolveTrophyToolItemCodes } from '../../../rewards/domain/trophy-tool-requirements';
 import {
   buildPendingRewardInventoryDelta,
   buildPendingRewardSkillPointGains,
@@ -63,7 +64,6 @@ import {
   isWorkshopBlueprintRarity,
   type WorkshopBlueprintCode,
   type WorkshopBlueprintRarity,
-  type WorkshopItemCode,
 } from '../../../workshop/domain/workshop-catalog';
 import {
   isWorkshopBlueprintDiscoveryKind,
@@ -155,16 +155,6 @@ type TransactionClient = Prisma.TransactionClient;
 type CommandIntentKey = GameCommandIntentKey;
 
 type PersistedBattleState = Pick<BattleView, 'status' | 'turnOwner' | 'player' | 'enemy' | 'party' | 'encounter' | 'log' | 'result' | 'rewards' | 'actionRevision'>;
-
-const trophyToolItemCodesByActionCode: Readonly<Partial<Record<TrophyActionCode, readonly WorkshopItemCode[]>>> = {
-  skin_beast: ['skinning_kit'],
-  careful_skinning: ['skinning_kit'],
-  harvest_dragon_scale: ['skinning_kit'],
-};
-
-const resolveTrophyToolItemCodes = (actionCode: TrophyActionCode): readonly WorkshopItemCode[] => (
-  trophyToolItemCodesByActionCode[actionCode] ?? []
-);
 
 const spendRuneDust = async (
   client: TransactionClient,

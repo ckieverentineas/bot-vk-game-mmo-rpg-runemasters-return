@@ -370,6 +370,36 @@ describe('profile keyboard', () => {
     expect(payloads.find((payload) => payload.command === gameCommands.collectAllReward)?.stateKey).toBe('battle-victory:battle-1');
   });
 
+  it('keeps the safe trophy collection button when unique trophy actions need missing tools', () => {
+    const pendingReward = createPendingReward();
+    const skinningLabel = pendingReward.snapshot.trophyActions.find((action) => action.code === 'skin_beast')?.label ?? '';
+    const claimAllLabel = pendingReward.snapshot.trophyActions.find((action) => action.code === 'claim_all')?.label ?? '';
+    const keyboard = createPendingRewardKeyboard({
+      ...pendingReward,
+      snapshot: {
+        ...pendingReward.snapshot,
+        trophyActions: pendingReward.snapshot.trophyActions.map((action) => (
+          action.code === 'skin_beast'
+            ? {
+                ...action,
+                availability: {
+                  available: false,
+                  reasonCode: 'missing_workshop_tool',
+                  requiredWorkshopItemCodes: ['skinning_kit'],
+                },
+              }
+            : action
+        )),
+      },
+    });
+    const labels = collectLabels(keyboard);
+    const payloads = collectPayloads(keyboard);
+
+    expect(labels).toContain(claimAllLabel);
+    expect(labels).not.toContain(skinningLabel);
+    expect(payloads.find((payload) => payload.command === gameCommands.collectAllReward)?.stateKey).toBe('battle-victory:battle-1');
+  });
+
   it('turns ember hidden trophy actions into ledger-scoped trophy buttons', () => {
     const pendingReward = createPendingReward();
     const keyboard = createPendingRewardKeyboard({

@@ -1,5 +1,6 @@
 import { AppError } from '../../../shared/domain/AppError';
 import type {
+  BattleWorkshopItemSnapshot,
   BattleView,
   InventoryDelta,
   PlayerSkillCode,
@@ -18,8 +19,10 @@ import {
   createPendingRewardSnapshot,
   type PendingRewardAppliedResultSnapshot,
   type PendingRewardAppliedSnapshotV1,
+  type PendingRewardTrophyActionAvailabilitySnapshot,
   type PendingRewardTrophyActionSnapshot,
 } from '../domain/pending-reward-snapshot';
+import { resolveTrophyToolItemCodes } from '../domain/trophy-tool-requirements';
 import {
   resolveTrophyActionReward,
   resolveTrophyActions,
@@ -92,6 +95,66 @@ const resolvePendingRewardTrophyActionRewards = (
   }, action));
 };
 
+const hasEquippedActiveWorkshopItem = (
+  loadout: readonly BattleWorkshopItemSnapshot[] | undefined,
+  itemCodes: readonly string[],
+): boolean => (
+  (loadout ?? []).some((item) => (
+    item.slot === 'tool'
+    && item.durability > 0
+    && itemCodes.includes(item.itemCode)
+  ))
+);
+
+const createToolAvailabilitySnapshot = (
+  battle: BattleView,
+  itemCodes: readonly string[],
+): PendingRewardTrophyActionAvailabilitySnapshot => {
+  if (hasEquippedActiveWorkshopItem(battle.player.workshopLoadout, itemCodes)) {
+    return {
+      available: true,
+      requiredWorkshopItemCodes: [...itemCodes],
+    };
+  }
+
+  return {
+    available: false,
+    reasonCode: 'missing_workshop_tool',
+    requiredWorkshopItemCodes: [...itemCodes],
+  };
+};
+
+const attachTrophyActionAvailability = (
+  battle: BattleView,
+  actions: readonly PendingRewardTrophyActionSnapshot[],
+): readonly PendingRewardTrophyActionSnapshot[] => (
+  actions.map((action) => {
+    const requiredItemCodes = resolveTrophyToolItemCodes(action.code);
+
+    if (requiredItemCodes.length === 0) {
+      return action;
+    }
+
+    return {
+      ...action,
+      availability: createToolAvailabilitySnapshot(battle, requiredItemCodes),
+    };
+  })
+);
+
+const ensurePendingRewardTrophyActionAvailable = (
+  action: PendingRewardTrophyActionSnapshot,
+): void => {
+  if (action.availability?.available !== false) {
+    return;
+  }
+
+  throw new AppError(
+    'pending_reward_action_unavailable',
+    'Для этого трофейного действия нужен активный инструмент мастерской. Соберите добычу безопасно или вернитесь с подходящим инструментом.',
+  );
+};
+
 export const createPendingRewardLedgerForBattle = (
   input: PendingRewardBattlePipelineInput,
 ): PendingRewardLedgerEntryV1 | null => {
@@ -109,7 +172,10 @@ export const createPendingRewardLedgerForBattle = (
     resolvePendingRewardTrophyActionRewards(input.battle, trophyActions, input.playerSkills),
   );
 
-  return createPendingRewardLedgerEntry(pendingRewardSnapshot);
+  return createPendingRewardLedgerEntry({
+    ...pendingRewardSnapshot,
+    trophyActions: attachTrophyActionAvailability(input.battle, pendingRewardSnapshot.trophyActions),
+  });
 };
 
 export const findPendingRewardTrophyAction = (
@@ -124,6 +190,8 @@ export const findPendingRewardTrophyAction = (
       'Этот трофейный жест уже недоступен. Вернитесь к текущей добыче.',
     );
   }
+
+  ensurePendingRewardTrophyActionAvailable(action);
 
   return action;
 };

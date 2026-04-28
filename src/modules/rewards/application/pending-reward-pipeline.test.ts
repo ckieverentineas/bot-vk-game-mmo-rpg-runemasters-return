@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import type { PlayerSkillView } from '../../../shared/types/game';
+import { AppError } from '../../../shared/domain/AppError';
+import type { BattleWorkshopItemSnapshot, PlayerSkillView } from '../../../shared/types/game';
 import {
   createTestBattle,
   createTestBattleEnemySnapshot,
@@ -31,6 +32,45 @@ const createVictoryBattle = () => createTestBattle({
   rewards: {
     experience: 6,
     gold: 2,
+    shards: {
+      USUAL: 1,
+    },
+    droppedRune: null,
+  },
+});
+
+const createSkinningKitSnapshot = (
+  overrides: Partial<BattleWorkshopItemSnapshot> = {},
+): BattleWorkshopItemSnapshot => ({
+  id: 'skinning-kit-1',
+  itemCode: 'skinning_kit',
+  itemClass: 'COMMON',
+  slot: 'tool',
+  durability: 3,
+  maxDurability: 12,
+  ...overrides,
+});
+
+const createWolfBattle = (
+  workshopLoadout: readonly BattleWorkshopItemSnapshot[] = [],
+) => createTestBattle({
+  status: 'COMPLETED',
+  result: 'VICTORY',
+  player: createTestBattlePlayerSnapshot({
+    workshopLoadout: [...workshopLoadout],
+  }),
+  enemy: createTestBattleEnemySnapshot({
+    code: 'forest-wolf',
+    kind: 'wolf',
+    currentHealth: 0,
+    lootTable: {
+      leather: 2,
+      bone: 1,
+    },
+  }),
+  rewards: {
+    experience: 8,
+    gold: 3,
     shards: {
       USUAL: 1,
     },
@@ -80,6 +120,43 @@ describe('pending reward pipeline', () => {
       essence: 1,
     });
     expect(buildPendingRewardSkillPointGains(claimAllAction)).toEqual([]);
+  });
+
+  it('marks tool-gated trophy actions unavailable without an equipped active tool', () => {
+    const ledger = createPendingRewardLedgerForBattle({
+      playerId: 1,
+      battle: createWolfBattle(),
+      createdAt: testTimestamp,
+    });
+
+    const skinningAction = ledger?.pendingRewardSnapshot.trophyActions.find((action) => action.code === 'skin_beast');
+
+    expect(skinningAction?.availability).toEqual({
+      available: false,
+      reasonCode: 'missing_workshop_tool',
+      requiredWorkshopItemCodes: ['skinning_kit'],
+    });
+    expect(() => findPendingRewardTrophyAction(ledger!, 'skin_beast')).toThrow(AppError);
+    expect(findPendingRewardTrophyAction(ledger!, 'claim_all').code).toBe('claim_all');
+  });
+
+  it('keeps tool-gated trophy actions available with an equipped active tool', () => {
+    const ledger = createPendingRewardLedgerForBattle({
+      playerId: 1,
+      battle: createWolfBattle([createSkinningKitSnapshot()]),
+      createdAt: testTimestamp,
+    });
+
+    const skinningAction = findPendingRewardTrophyAction(ledger!, 'skin_beast');
+
+    expect(skinningAction.availability).toEqual({
+      available: true,
+      requiredWorkshopItemCodes: ['skinning_kit'],
+    });
+    expect(buildPendingRewardInventoryDelta(skinningAction)).toEqual({
+      leather: 2,
+      bone: 1,
+    });
   });
 
   it('creates an applied ledger from the selected trophy action', () => {
