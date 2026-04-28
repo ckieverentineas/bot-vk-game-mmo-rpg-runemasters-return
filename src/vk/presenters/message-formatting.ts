@@ -2,7 +2,7 @@ import type { AcquisitionSummaryView } from '../../modules/player/application/re
 import type { NextGoalView } from '../../modules/player/application/read-models/next-goal';
 import { listSchoolDefinitions } from '../../modules/runes/domain/rune-schools';
 import { isWorkshopBlueprintCode } from '../../modules/workshop/domain/workshop-catalog';
-import type { BlueprintDelta, ResourceReward, RuneDraft } from '../../shared/types/game';
+import type { BlueprintDelta, BlueprintDrop, ResourceReward, RuneDraft } from '../../shared/types/game';
 import { resolveWorkshopBlueprintTitle } from './workshopLabels';
 
 interface AmountLabel {
@@ -190,6 +190,34 @@ const formatBlueprintDelta = (delta: BlueprintDelta): string => {
   return parts.length > 0 ? parts.join(' · ') : 'без чертежей';
 };
 
+const normalizeBlueprintDropQuantity = (quantity: number | undefined): number => {
+  if (quantity === undefined) {
+    return 1;
+  }
+
+  return Number.isFinite(quantity) ? Math.max(0, Math.floor(quantity)) : 0;
+};
+
+const formatBlueprintDrops = (drops: readonly BlueprintDrop[]): string => {
+  const parts = drops.reduce<string[]>((result, drop) => {
+    if (!isWorkshopBlueprintCode(drop.blueprintCode)) {
+      return result;
+    }
+
+    const quantity = normalizeBlueprintDropQuantity(drop.quantity);
+    if (quantity <= 0) {
+      return result;
+    }
+
+    return [
+      ...result,
+      `+${formatCountPhrase(quantity, ['чертеж', 'чертежа', 'чертежей'])} «${resolveWorkshopBlueprintTitle(drop.blueprintCode)}»`,
+    ];
+  }, []);
+
+  return parts.length > 0 ? parts.join(' · ') : 'без чертежей';
+};
+
 const resolveAmountForm = (amount: number): keyof AmountLabel => {
   const absolute = Math.abs(amount);
   const remainder10 = absolute % 10;
@@ -217,6 +245,7 @@ export const formatResourceReward = (reward: ResourceReward): string => {
     reward.radiance !== undefined && reward.radiance > 0 ? formatRadianceReward(reward.radiance) : null,
     reward.inventoryDelta ? formatInventoryDelta(reward.inventoryDelta) : null,
     reward.blueprintDelta ? formatBlueprintDelta(reward.blueprintDelta) : null,
+    reward.blueprintDrops ? formatBlueprintDrops(reward.blueprintDrops) : null,
   ].filter((part): part is string => (
     Boolean(part)
     && part !== 'без дополнительных материалов'

@@ -1901,6 +1901,20 @@ describe('PrismaGameRepository release hardening', () => {
         quantity: 1,
       },
     });
+    expect(tx.playerBlueprintInstance.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        playerId: 1,
+        blueprintCode: 'skinning_kit',
+        rarity: 'COMMON',
+        sourceType: 'LEGACY',
+        sourceId: null,
+        discoveryKind: 'LEGACY',
+        quality: 'STURDY',
+        craftPotential: 'legacy_delta',
+        status: 'AVAILABLE',
+        discoveredAt: expect.any(Date),
+      }),
+    });
     expect(result.claimed).toBe(true);
     expect(result.questCode).toBe('awakening_empty_master');
   });
@@ -2101,6 +2115,62 @@ describe('PrismaGameRepository release hardening', () => {
         sourceId: 'blue-slime:10',
         status: 'APPLIED',
       }),
+    });
+  });
+
+  it('claims resource rewards by granting concrete blueprint drop instances', async () => {
+    const { repository, tx } = createPrismaMock();
+    const reward = {
+      blueprintDrops: [
+        {
+          blueprintCode: 'skinning_kit',
+          rarity: 'COMMON',
+          sourceType: 'BESTIARY',
+          sourceId: 'forest-wolf:5',
+          discoveryKind: 'SECRET',
+          quality: 'FINE',
+          craftPotential: 'skinning_tool_v1',
+          modifierSnapshot: {
+            notes: ['secret pelt pattern'],
+          },
+        },
+      ],
+    };
+
+    tx.rewardLedgerRecord.create.mockResolvedValue({});
+    tx.player.findUnique.mockResolvedValue(createPlayerRecord());
+
+    const result = await repository.claimBestiaryEnemyKillMilestoneReward(
+      1,
+      'forest-wolf',
+      5,
+      reward as never,
+    );
+
+    const createCall = tx.playerBlueprintInstance.create.mock.calls[0]?.[0];
+    expect(createCall).toEqual({
+      data: expect.objectContaining({
+        playerId: 1,
+        blueprintCode: 'skinning_kit',
+        rarity: 'COMMON',
+        sourceType: 'BESTIARY',
+        sourceId: 'forest-wolf:5',
+        discoveryKind: 'SECRET',
+        quality: 'FINE',
+        craftPotential: 'skinning_tool_v1',
+        status: 'AVAILABLE',
+        discoveredAt: expect.any(Date),
+      }),
+    });
+    expect(JSON.parse(String(createCall?.data.modifierSnapshot))).toEqual({
+      notes: ['secret pelt pattern'],
+    });
+    expect(tx.playerBlueprint.upsert).not.toHaveBeenCalled();
+    expect(result).toMatchObject({
+      enemyCode: 'forest-wolf',
+      threshold: 5,
+      reward,
+      claimed: true,
     });
   });
 

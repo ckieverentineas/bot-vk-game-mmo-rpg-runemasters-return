@@ -95,6 +95,8 @@ const qualityLabels: Readonly<Record<WorkshopBlueprintQuality, string>> = {
   MASTERWORK: 'Мастерское',
 };
 
+const skinnableEnemyKinds = ['beast', 'wolf', 'boar'] as const;
+
 const normalizeQuantity = (quantity: number): number => (
   Number.isFinite(quantity) ? Math.max(0, Math.floor(quantity)) : 0
 );
@@ -163,7 +165,7 @@ export const createLegacyBlueprintInstances = (
 export const isSecretSkinningKitConditionMet = (
   input: SecretSkinningKitConditionInput,
 ): boolean => (
-  input.enemyKind === 'beast'
+  skinnableEnemyKinds.includes(input.enemyKind as (typeof skinnableEnemyKinds)[number])
   && input.successfulTrophyActions >= 3
   && input.bestiaryVictoryCount >= 5
 );

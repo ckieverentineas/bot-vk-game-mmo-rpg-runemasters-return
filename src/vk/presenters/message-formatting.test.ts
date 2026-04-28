@@ -4,6 +4,7 @@ import {
   formatBattleReward,
   formatCountPhrase,
   formatCurrencyBalance,
+  formatResourceReward,
   formatProgressCounter,
   renderPrimaryActionLine,
   renderNextGoalSummary,
@@ -25,6 +26,18 @@ describe('message-formatting', () => {
       shards: { USUAL: 2 },
       droppedRune: null,
     })).toBe('+14 опыта · +5 пыли · +2 обычных осколка');
+  });
+
+  it('formats concrete blueprint drops in resource rewards', () => {
+    expect(formatResourceReward({
+      blueprintDrops: [
+        {
+          blueprintCode: 'skinning_kit',
+          quantity: 2,
+          quality: 'FINE',
+        },
+      ],
+    })).toBe('+2 чертежа «Набор свежевателя»');
   });
 
   it('formats Russian count phrases for compact progress summaries', () => {

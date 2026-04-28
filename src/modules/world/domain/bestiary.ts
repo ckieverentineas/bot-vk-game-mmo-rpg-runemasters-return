@@ -1,5 +1,6 @@
 import { resolveEnemyTacticalProfile, type EnemyTacticalProfile } from '../../../shared/domain/enemy-tactical-profile';
 import type { BiomeView, MobTemplateView, ResourceReward } from '../../../shared/types/game';
+import { isSecretSkinningKitConditionMet } from '../../workshop/domain/workshop-blueprint-instances';
 
 export const bestiaryLocationPageSize = 5;
 export const bestiaryEnemyPageSize = 4;
@@ -188,9 +189,51 @@ export const resolveBestiaryLocationDiscoveryReward = (
   radiance: locationDiscoveryRadianceByBiomeCode[biome.code] ?? Math.max(1, biomeIndex + 1),
 });
 
-export const resolveBestiaryKillMilestoneReward = (threshold: number): ResourceReward => ({
-  radiance: killMilestoneRadianceByThreshold[threshold] ?? 1,
-});
+type BestiaryKillMilestoneRewardEnemy = Pick<MobTemplateView, 'code' | 'kind'>;
+
+const createSecretSkinningKitReward = (
+  enemy: BestiaryKillMilestoneRewardEnemy,
+  threshold: number,
+): Pick<ResourceReward, 'blueprintDrops'> => {
+  const isSecretUnlocked = isSecretSkinningKitConditionMet({
+    enemyKind: enemy.kind,
+    successfulTrophyActions: threshold >= 5 ? 3 : 0,
+    bestiaryVictoryCount: threshold,
+  });
+
+  if (!isSecretUnlocked) {
+    return {};
+  }
+
+  return {
+    blueprintDrops: [
+      {
+        blueprintCode: 'skinning_kit',
+        rarity: 'COMMON',
+        sourceType: 'BESTIARY',
+        sourceId: `${enemy.code}:${threshold}`,
+        discoveryKind: 'SECRET',
+        quality: 'FINE',
+        craftPotential: 'secret_skinning_kit',
+      },
+    ],
+  };
+};
+
+export const resolveBestiaryKillMilestoneReward = (
+  enemyOrThreshold: BestiaryKillMilestoneRewardEnemy | number,
+  maybeThreshold?: number,
+): ResourceReward => {
+  const threshold = typeof enemyOrThreshold === 'number'
+    ? enemyOrThreshold
+    : maybeThreshold ?? 0;
+  const enemy = typeof enemyOrThreshold === 'number' ? null : enemyOrThreshold;
+
+  return {
+    radiance: killMilestoneRadianceByThreshold[threshold] ?? 1,
+    ...(enemy ? createSecretSkinningKitReward(enemy, threshold) : {}),
+  };
+};
 
 const createVictoryCountMap = (
   enemyVictoryCounts: readonly BestiaryEnemyVictoryCount[] = [],
@@ -205,18 +248,18 @@ const createKillMilestoneSet = (
 );
 
 const buildKillMilestones = (
-  enemyCode: string,
+  template: MobTemplateView,
   victoryCount: number,
   claimedKillMilestones: ReadonlySet<string>,
   newlyClaimedKillMilestones: ReadonlySet<string>,
 ): readonly BestiaryKillMilestoneView[] => bestiaryKillMilestoneThresholds.map((threshold) => {
-  const milestoneKey = createBestiaryKillMilestoneKey(enemyCode, threshold);
+  const milestoneKey = createBestiaryKillMilestoneKey(template.code, threshold);
   const claimedNow = newlyClaimedKillMilestones.has(milestoneKey);
   const isClaimed = claimedNow || claimedKillMilestones.has(milestoneKey);
 
   return {
     threshold,
-    reward: resolveBestiaryKillMilestoneReward(threshold),
+    reward: resolveBestiaryKillMilestoneReward(template, threshold),
     isCompleted: victoryCount >= threshold,
     isClaimed,
     claimedNow,
@@ -241,7 +284,7 @@ const buildEnemyView = (
     tacticalProfile: isDiscovered ? resolveEnemyTacticalProfile(template) : null,
     victoryCount,
     killMilestones: buildKillMilestones(
-      template.code,
+      template,
       victoryCount,
       claimedKillMilestones,
       newlyClaimedKillMilestones,

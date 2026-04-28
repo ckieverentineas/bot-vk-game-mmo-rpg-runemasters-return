@@ -461,7 +461,17 @@ const questDefinitions: readonly QuestDefinition[] = [
     reward: {
       gold: 9,
       inventoryDelta: { leather: 1, bone: 1 },
-      blueprintDelta: { skinning_kit: 1 },
+      blueprintDrops: [
+        {
+          blueprintCode: 'skinning_kit',
+          rarity: 'COMMON',
+          sourceType: 'QUEST',
+          sourceId: 'craft_after_battle',
+          discoveryKind: 'QUEST',
+          quality: 'STURDY',
+          craftPotential: 'starter_skinning_kit',
+        },
+      ],
     },
     progress: (player) => clampProgress(highestGatheringSkillExperience(player), 1),
   },

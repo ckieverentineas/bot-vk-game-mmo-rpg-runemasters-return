@@ -7,6 +7,7 @@ import {
   buildBestiaryOverviewView,
   buildBestiaryView,
   normalizeBestiaryPageNumber,
+  resolveBestiaryKillMilestoneReward,
 } from './bestiary';
 
 const createBiome = (index: number): BiomeView => ({
@@ -179,5 +180,24 @@ describe('bestiary', () => {
     ]);
     expect(bestiary.enemies[1]?.victoryCount).toBe(0);
     expect(bestiary.enemies[1]?.killMilestones.every(({ isClaimed }) => !isClaimed)).toBe(true);
+  });
+
+  it('adds a secret skinning kit blueprint to the five-kill beast milestone', () => {
+    expect(resolveBestiaryKillMilestoneReward({
+      code: 'forest-wolf',
+      kind: 'wolf',
+    }, 5)).toMatchObject({
+      radiance: 1,
+      blueprintDrops: [
+        {
+          blueprintCode: 'skinning_kit',
+          sourceType: 'BESTIARY',
+          sourceId: 'forest-wolf:5',
+          discoveryKind: 'SECRET',
+          quality: 'FINE',
+          craftPotential: 'secret_skinning_kit',
+        },
+      ],
+    });
   });
 });

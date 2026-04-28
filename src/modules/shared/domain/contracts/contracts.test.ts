@@ -231,6 +231,17 @@ describe('battle platform contracts', () => {
       blueprintDelta: {
         skinning_kit: 1,
       },
+      blueprintDrops: [
+        {
+          blueprintCode: 'skinning_kit',
+          rarity: 'COMMON',
+          sourceType: 'QUEST',
+          sourceId: 'awakening_empty_master',
+          discoveryKind: 'QUEST',
+          quality: 'STURDY',
+          craftPotential: 'starter_skinning_kit',
+        },
+      ],
     };
 
     const ledger = createQuestRewardLedgerEntry(

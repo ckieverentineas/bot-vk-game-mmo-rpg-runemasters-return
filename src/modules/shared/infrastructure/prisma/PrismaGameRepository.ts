@@ -6,6 +6,7 @@ import { parseJson, stringifyJson } from '../../../../shared/utils/json';
 import type {
   BattleView,
   BlueprintDelta,
+  BlueprintDrop,
   CreateBattleInput,
   InventoryDelta,
   PartyView,
@@ -56,9 +57,20 @@ import {
   resolveRuneRerollSpend,
 } from '../../../runes/domain/rune-economy';
 import {
+  getWorkshopBlueprint,
   isWorkshopBlueprintCode,
+  isWorkshopBlueprintRarity,
   type WorkshopBlueprintCode,
+  type WorkshopBlueprintRarity,
 } from '../../../workshop/domain/workshop-catalog';
+import {
+  isWorkshopBlueprintDiscoveryKind,
+  isWorkshopBlueprintQuality,
+  isWorkshopBlueprintSourceType,
+  type WorkshopBlueprintDiscoveryKind,
+  type WorkshopBlueprintQuality,
+  type WorkshopBlueprintSourceType,
+} from '../../../workshop/domain/workshop-blueprint-instances';
 import type {
   PlayerBlueprintInstanceView,
   PlayerBlueprintView,
@@ -176,6 +188,62 @@ const aggregatePlayerSkillPointGains = (
   result.set(gain.skillCode, (result.get(gain.skillCode) ?? 0) + points);
   return result;
 }, new Map<PlayerSkillCode, number>());
+
+const normalizeBlueprintDropQuantity = (quantity: number | undefined): number => {
+  if (quantity === undefined) {
+    return 1;
+  }
+
+  return Number.isFinite(quantity) ? Math.max(0, Math.floor(quantity)) : 0;
+};
+
+const requireKnownBlueprintDropValue = <TValue extends string>(
+  value: string,
+  isKnownValue: (candidate: string) => candidate is TValue,
+  fieldName: string,
+): TValue => {
+  if (isKnownValue(value)) {
+    return value;
+  }
+
+  throw new AppError(
+    'invalid_blueprint_reward',
+    `Награда содержит неизвестное поле чертежа мастерской: ${fieldName}.`,
+  );
+};
+
+const resolveBlueprintDropRarity = (
+  drop: BlueprintDrop,
+  fallback: WorkshopBlueprintRarity,
+): WorkshopBlueprintRarity => requireKnownBlueprintDropValue(
+  drop.rarity ?? fallback,
+  isWorkshopBlueprintRarity,
+  'rarity',
+);
+
+const resolveBlueprintDropSourceType = (
+  drop: BlueprintDrop,
+): WorkshopBlueprintSourceType => requireKnownBlueprintDropValue(
+  drop.sourceType ?? 'EVENT',
+  isWorkshopBlueprintSourceType,
+  'sourceType',
+);
+
+const resolveBlueprintDropDiscoveryKind = (
+  drop: BlueprintDrop,
+): WorkshopBlueprintDiscoveryKind => requireKnownBlueprintDropValue(
+  drop.discoveryKind ?? 'COMMON',
+  isWorkshopBlueprintDiscoveryKind,
+  'discoveryKind',
+);
+
+const resolveBlueprintDropQuality = (
+  drop: BlueprintDrop,
+): WorkshopBlueprintQuality => requireKnownBlueprintDropValue(
+  drop.quality ?? 'STURDY',
+  isWorkshopBlueprintQuality,
+  'quality',
+);
 
 const parseRewardLedgerEntrySnapshot = (value: string): RewardLedgerEntry => {
   const parsed = parseJson<unknown>(value, null);
@@ -2119,10 +2187,15 @@ export class PrismaGameRepository implements GameRepository {
         throw new AppError('invalid_blueprint_reward', 'Награда содержит неизвестный чертеж мастерской.');
       }
 
-      const quantity = rawQuantity ?? 0;
+      const quantity = Number.isFinite(rawQuantity ?? 0)
+        ? Math.max(0, Math.floor(rawQuantity ?? 0))
+        : 0;
       if (quantity <= 0) {
         continue;
       }
+
+      const blueprint = getWorkshopBlueprint(rawBlueprintCode);
+      const discoveredAt = new Date();
 
       await client.playerBlueprint.upsert({
         where: {
@@ -2140,6 +2213,62 @@ export class PrismaGameRepository implements GameRepository {
           quantity,
         },
       });
+
+      for (let copyIndex = 0; copyIndex < quantity; copyIndex += 1) {
+        await client.playerBlueprintInstance.create({
+          data: {
+            playerId,
+            blueprintCode: rawBlueprintCode,
+            rarity: blueprint.rarity,
+            sourceType: 'LEGACY',
+            sourceId: null,
+            discoveryKind: 'LEGACY',
+            quality: 'STURDY',
+            craftPotential: 'legacy_delta',
+            modifierSnapshot: '{}',
+            status: 'AVAILABLE',
+            discoveredAt,
+          },
+        });
+      }
+    }
+  }
+
+  private async applyBlueprintDrops(
+    client: TransactionClient | PrismaClient,
+    playerId: number,
+    drops: readonly BlueprintDrop[],
+  ): Promise<void> {
+    const discoveredAt = new Date();
+
+    for (const drop of drops) {
+      if (!isWorkshopBlueprintCode(drop.blueprintCode)) {
+        throw new AppError('invalid_blueprint_reward', 'Награда содержит неизвестный чертеж мастерской.');
+      }
+
+      const quantity = normalizeBlueprintDropQuantity(drop.quantity);
+      if (quantity <= 0) {
+        continue;
+      }
+
+      const blueprint = getWorkshopBlueprint(drop.blueprintCode);
+      const data = {
+        playerId,
+        blueprintCode: drop.blueprintCode,
+        rarity: resolveBlueprintDropRarity(drop, blueprint.rarity),
+        sourceType: resolveBlueprintDropSourceType(drop),
+        sourceId: drop.sourceId ?? null,
+        discoveryKind: resolveBlueprintDropDiscoveryKind(drop),
+        quality: resolveBlueprintDropQuality(drop),
+        craftPotential: drop.craftPotential ?? 'default',
+        modifierSnapshot: stringifyJson(drop.modifierSnapshot ?? {}, '{}'),
+        status: 'AVAILABLE',
+        discoveredAt,
+      };
+
+      for (let copyIndex = 0; copyIndex < quantity; copyIndex += 1) {
+        await client.playerBlueprintInstance.create({ data });
+      }
     }
   }
 
@@ -2176,6 +2305,10 @@ export class PrismaGameRepository implements GameRepository {
 
     if (reward.blueprintDelta) {
       await this.applyBlueprintDelta(client, playerId, reward.blueprintDelta);
+    }
+
+    if (reward.blueprintDrops) {
+      await this.applyBlueprintDrops(client, playerId, reward.blueprintDrops);
     }
 
     return mapPlayerRecord(await this.requirePlayerRecord(client, playerId));

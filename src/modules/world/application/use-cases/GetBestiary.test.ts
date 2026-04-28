@@ -264,4 +264,80 @@ describe('GetBestiary', () => {
       claimedNow: true,
     });
   });
+
+  it('passes secret beast blueprint drops through kill milestone claims', async () => {
+    const wolfTemplate = {
+      ...catalog.listMobTemplatesForBiome('initium')[0]!,
+      code: 'forest-wolf',
+      name: 'Лесной волк',
+      kind: 'wolf',
+      lootTable: { leather: 2, bone: 1 },
+    };
+    const beastCatalog = {
+      ...catalog,
+      listMobTemplatesForBiome: vi.fn().mockReturnValue([wolfTemplate]),
+    } satisfies WorldCatalog;
+    const repository = {
+      findPlayerByVkId: vi.fn().mockResolvedValue(createPlayer()),
+      listBestiaryDiscovery: vi.fn()
+        .mockResolvedValueOnce(createDiscovery({
+          discoveredEnemyCodes: ['forest-wolf'],
+          rewardedEnemyCodes: ['forest-wolf'],
+          claimedLocationRewardCodes: ['initium'],
+          enemyVictoryCounts: [{ enemyCode: 'forest-wolf', victoryCount: 5 }],
+          claimedKillMilestones: [{ enemyCode: 'forest-wolf', threshold: 1 }],
+        }))
+        .mockResolvedValueOnce(createDiscovery({
+          discoveredEnemyCodes: ['forest-wolf'],
+          rewardedEnemyCodes: ['forest-wolf'],
+          claimedLocationRewardCodes: ['initium'],
+          enemyVictoryCounts: [{ enemyCode: 'forest-wolf', victoryCount: 5 }],
+          claimedKillMilestones: [
+            { enemyCode: 'forest-wolf', threshold: 1 },
+            { enemyCode: 'forest-wolf', threshold: 5 },
+          ],
+        })),
+      claimBestiaryLocationDiscoveryReward: vi.fn(),
+      claimBestiaryEnemyKillMilestoneReward: vi.fn().mockResolvedValue({
+        player: { ...createPlayer(), radiance: 1 },
+        enemyCode: 'forest-wolf',
+        threshold: 5,
+        reward: {
+          radiance: 1,
+          blueprintDrops: [
+            {
+              blueprintCode: 'skinning_kit',
+              rarity: 'COMMON',
+              sourceType: 'BESTIARY',
+              sourceId: 'forest-wolf:5',
+              discoveryKind: 'SECRET',
+              quality: 'FINE',
+              craftPotential: 'secret_skinning_kit',
+            },
+          ],
+        },
+        claimed: true,
+      }),
+    } as unknown as GameRepository;
+    const useCase = new GetBestiary(repository, beastCatalog);
+
+    await useCase.claimEnemyReward(1001, 'initium', 'forest-wolf');
+
+    expect(repository.claimBestiaryEnemyKillMilestoneReward).toHaveBeenCalledWith(
+      1,
+      'forest-wolf',
+      5,
+      expect.objectContaining({
+        blueprintDrops: [
+          expect.objectContaining({
+            blueprintCode: 'skinning_kit',
+            sourceType: 'BESTIARY',
+            sourceId: 'forest-wolf:5',
+            discoveryKind: 'SECRET',
+            quality: 'FINE',
+          }),
+        ],
+      }),
+    );
+  });
 });

@@ -246,7 +246,7 @@ export class GetBestiary {
           playerId,
           template.code,
           threshold,
-          resolveBestiaryKillMilestoneReward(threshold),
+          resolveBestiaryKillMilestoneReward(template, threshold),
         );
 
         if (result.claimed) {

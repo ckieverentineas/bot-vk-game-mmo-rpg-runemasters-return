@@ -66,6 +66,11 @@ describe('workshop blueprint instances', () => {
       successfulTrophyActions: 3,
       bestiaryVictoryCount: 5,
     })).toBe(true);
+    expect(isSecretSkinningKitConditionMet({
+      enemyKind: 'wolf',
+      successfulTrophyActions: 3,
+      bestiaryVictoryCount: 5,
+    })).toBe(true);
 
     expect(isSecretSkinningKitConditionMet({
       enemyKind: 'spirit',
