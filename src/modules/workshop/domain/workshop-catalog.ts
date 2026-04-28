@@ -32,6 +32,13 @@ export const workshopItemCodes = [
   'skinning_kit',
 ] as const satisfies readonly WorkshopItemCode[];
 
+export const workshopBlueprintRarities = [
+  'COMMON',
+  'UNCOMMON',
+  'RARE',
+  'EPIC',
+] as const satisfies readonly WorkshopBlueprintRarity[];
+
 export const workshopItemClasses = [
   'COMMON',
   'UNCOMMON',
@@ -232,6 +239,10 @@ const includesWorkshopValue = <T extends string>(
 
 export const isWorkshopBlueprintCode = (value: string): value is WorkshopBlueprintCode => (
   includesWorkshopValue(workshopBlueprintCodes, value)
+);
+
+export const isWorkshopBlueprintRarity = (value: string): value is WorkshopBlueprintRarity => (
+  includesWorkshopValue(workshopBlueprintRarities, value)
 );
 
 export const isWorkshopItemCode = (value: string): value is WorkshopItemCode => (

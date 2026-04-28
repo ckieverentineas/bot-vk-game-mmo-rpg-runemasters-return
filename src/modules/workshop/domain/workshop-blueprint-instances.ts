@@ -56,6 +56,38 @@ export interface SecretSkinningKitConditionInput {
   readonly bestiaryVictoryCount: number;
 }
 
+export const workshopBlueprintDiscoveryKinds = [
+  'COMMON',
+  'SECRET',
+  'QUEST',
+  'SCHOOL',
+  'REPAIR',
+  'LEGACY',
+] as const satisfies readonly WorkshopBlueprintDiscoveryKind[];
+
+export const workshopBlueprintInstanceStatuses = [
+  'AVAILABLE',
+  'CONSUMED',
+  'EXPIRED',
+] as const satisfies readonly WorkshopBlueprintInstanceStatus[];
+
+export const workshopBlueprintQualities = [
+  'ROUGH',
+  'STURDY',
+  'FINE',
+  'MASTERWORK',
+] as const satisfies readonly WorkshopBlueprintQuality[];
+
+export const workshopBlueprintSourceTypes = [
+  'TROPHY',
+  'QUEST',
+  'BESTIARY',
+  'DAILY_TRACE',
+  'EVENT',
+  'SCHOOL_TRIAL',
+  'LEGACY',
+] as const satisfies readonly WorkshopBlueprintSourceType[];
+
 const qualityLabels: Readonly<Record<WorkshopBlueprintQuality, string>> = {
   ROUGH: 'Грубое',
   STURDY: 'Крепкое',
@@ -65,6 +97,35 @@ const qualityLabels: Readonly<Record<WorkshopBlueprintQuality, string>> = {
 
 const normalizeQuantity = (quantity: number): number => (
   Number.isFinite(quantity) ? Math.max(0, Math.floor(quantity)) : 0
+);
+
+const includesWorkshopBlueprintInstanceValue = <TValue extends string>(
+  values: readonly TValue[],
+  value: string,
+): value is TValue => values.includes(value as TValue);
+
+export const isWorkshopBlueprintDiscoveryKind = (
+  value: string,
+): value is WorkshopBlueprintDiscoveryKind => (
+  includesWorkshopBlueprintInstanceValue(workshopBlueprintDiscoveryKinds, value)
+);
+
+export const isWorkshopBlueprintInstanceStatus = (
+  value: string,
+): value is WorkshopBlueprintInstanceStatus => (
+  includesWorkshopBlueprintInstanceValue(workshopBlueprintInstanceStatuses, value)
+);
+
+export const isWorkshopBlueprintQuality = (
+  value: string,
+): value is WorkshopBlueprintQuality => (
+  includesWorkshopBlueprintInstanceValue(workshopBlueprintQualities, value)
+);
+
+export const isWorkshopBlueprintSourceType = (
+  value: string,
+): value is WorkshopBlueprintSourceType => (
+  includesWorkshopBlueprintInstanceValue(workshopBlueprintSourceTypes, value)
 );
 
 export const formatWorkshopBlueprintQuality = (quality: WorkshopBlueprintQuality): string => (

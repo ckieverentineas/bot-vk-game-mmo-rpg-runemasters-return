@@ -60,6 +60,7 @@ import {
   type WorkshopBlueprintCode,
 } from '../../../workshop/domain/workshop-catalog';
 import type {
+  PlayerBlueprintInstanceView,
   PlayerBlueprintView,
   PlayerCraftedItemView,
   WorkshopMutationOptions,
@@ -2052,6 +2053,10 @@ export class PrismaGameRepository implements GameRepository {
 
   public async listPlayerBlueprints(playerId: number): Promise<readonly PlayerBlueprintView[]> {
     return this.workshopPersistence.listPlayerBlueprints(playerId);
+  }
+
+  public async listPlayerBlueprintInstances(playerId: number): Promise<readonly PlayerBlueprintInstanceView[]> {
+    return this.workshopPersistence.listPlayerBlueprintInstances(playerId);
   }
 
   public async listPlayerCraftedItems(playerId: number): Promise<readonly PlayerCraftedItemView[]> {

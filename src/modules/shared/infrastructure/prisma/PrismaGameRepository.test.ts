@@ -7,6 +7,7 @@ import type { BattleView, PlayerState, RuneDraft, StatBlock } from '../../../../
 import { createPendingRewardSnapshot, type PendingRewardAppliedResultSnapshot } from '../../../rewards/domain/pending-reward-snapshot';
 import type { TrophyActionDefinition } from '../../../rewards/domain/trophy-actions';
 import type {
+  PlayerBlueprintInstanceView,
   PlayerBlueprintView,
   PlayerCraftedItemView,
 } from '../../../workshop/application/workshop-persistence';
@@ -374,6 +375,24 @@ interface PlayerBlueprintRecordFixture {
   readonly updatedAt: Date;
 }
 
+interface PlayerBlueprintInstanceRecordFixture {
+  readonly id: string;
+  readonly playerId: number;
+  readonly blueprintCode: string;
+  readonly rarity: string;
+  readonly sourceType: string;
+  readonly sourceId: string | null;
+  readonly discoveryKind: string;
+  readonly quality: string;
+  readonly craftPotential: string;
+  readonly modifierSnapshot: string;
+  readonly status: string;
+  readonly createdAt: Date;
+  readonly updatedAt: Date;
+  readonly discoveredAt: Date | null;
+  readonly consumedAt: Date | null;
+}
+
 interface PlayerCraftedItemRecordFixture {
   readonly id: string;
   readonly playerId: number;
@@ -407,6 +426,48 @@ const createPlayerBlueprintViewSnapshot = (
   quantity: 2,
   createdAt: '2026-04-22T10:00:00.000Z',
   updatedAt: '2026-04-22T10:30:00.000Z',
+  ...overrides,
+});
+
+const createPlayerBlueprintInstanceRecord = (
+  overrides: Partial<PlayerBlueprintInstanceRecordFixture> = {},
+): PlayerBlueprintInstanceRecordFixture => ({
+  id: 'bp-instance-1',
+  playerId: 1,
+  blueprintCode: 'skinning_kit',
+  rarity: 'COMMON',
+  sourceType: 'BESTIARY',
+  sourceId: 'forest-wolf:5',
+  discoveryKind: 'SECRET',
+  quality: 'FINE',
+  craftPotential: 'skinning_tool_v1',
+  modifierSnapshot: '{}',
+  status: 'AVAILABLE',
+  createdAt: new Date('2026-04-28T00:00:00.000Z'),
+  updatedAt: new Date('2026-04-28T00:05:00.000Z'),
+  discoveredAt: new Date('2026-04-28T00:00:00.000Z'),
+  consumedAt: null,
+  ...overrides,
+});
+
+const createPlayerBlueprintInstanceViewSnapshot = (
+  overrides: Partial<PlayerBlueprintInstanceView> = {},
+): PlayerBlueprintInstanceView => ({
+  id: 'bp-instance-1',
+  playerId: 1,
+  blueprintCode: 'skinning_kit',
+  rarity: 'COMMON',
+  sourceType: 'BESTIARY',
+  sourceId: 'forest-wolf:5',
+  discoveryKind: 'SECRET',
+  quality: 'FINE',
+  craftPotential: 'skinning_tool_v1',
+  modifierSnapshot: {},
+  status: 'AVAILABLE',
+  createdAt: '2026-04-28T00:00:00.000Z',
+  updatedAt: '2026-04-28T00:05:00.000Z',
+  discoveredAt: '2026-04-28T00:00:00.000Z',
+  consumedAt: null,
   ...overrides,
 });
 
@@ -615,6 +676,12 @@ const createPrismaMock = () => {
       upsert: vi.fn(),
       updateMany: vi.fn(),
     },
+    playerBlueprintInstance: {
+      findMany: vi.fn(),
+      create: vi.fn(),
+      findFirst: vi.fn(),
+      updateMany: vi.fn(),
+    },
     playerCraftedItem: {
       findMany: vi.fn(),
       findFirst: vi.fn(),
@@ -772,6 +839,27 @@ describe('PrismaGameRepository release hardening', () => {
     expect(tx.playerBlueprint.findMany).toHaveBeenCalledWith({
       where: { playerId: 1 },
       orderBy: { blueprintCode: 'asc' },
+    });
+    expect(tx.player.findUnique).not.toHaveBeenCalled();
+  });
+
+  it('lists player blueprint instances with quality and discovery metadata', async () => {
+    const { repository, tx } = createPrismaMock();
+
+    tx.playerBlueprintInstance.findMany.mockResolvedValue([
+      createPlayerBlueprintInstanceRecord(),
+    ]);
+
+    await expect(repository.listPlayerBlueprintInstances(1)).resolves.toEqual([
+      createPlayerBlueprintInstanceViewSnapshot(),
+    ]);
+
+    expect(tx.playerBlueprintInstance.findMany).toHaveBeenCalledWith({
+      where: { playerId: 1 },
+      orderBy: [
+        { createdAt: 'asc' },
+        { id: 'asc' },
+      ],
     });
     expect(tx.player.findUnique).not.toHaveBeenCalled();
   });

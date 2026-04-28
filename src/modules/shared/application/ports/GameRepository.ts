@@ -16,6 +16,7 @@ import type {
 } from '../../../rewards/domain/pending-reward-snapshot';
 import type { TrophyActionCode } from '../../../rewards/domain/trophy-actions';
 import type {
+  PlayerBlueprintInstanceView,
   PlayerBlueprintView,
   PlayerCraftedItemView,
   WorkshopCommandIntentKey,
@@ -342,6 +343,7 @@ export interface GameRepository {
     currentStateKey?: string,
   ): Promise<PlayerState>;
   listPlayerBlueprints(playerId: number): Promise<readonly PlayerBlueprintView[]>;
+  listPlayerBlueprintInstances(playerId: number): Promise<readonly PlayerBlueprintInstanceView[]>;
   listPlayerCraftedItems(playerId: number): Promise<readonly PlayerCraftedItemView[]>;
   grantPlayerBlueprint(
     playerId: number,

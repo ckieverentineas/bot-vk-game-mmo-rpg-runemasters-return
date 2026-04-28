@@ -1,4 +1,4 @@
-import { Prisma, PrismaClient, type PlayerBlueprint, type PlayerCraftedItem } from '@prisma/client';
+import { Prisma, PrismaClient, type PlayerBlueprint, type PlayerBlueprintInstance, type PlayerCraftedItem } from '@prisma/client';
 
 import { AppError } from '../../../../shared/domain/AppError';
 import type {
@@ -6,10 +6,12 @@ import type {
   InventoryDelta,
   MaterialField,
 } from '../../../../shared/types/game';
+import { parseJson } from '../../../../shared/utils/json';
 import type {
   GameCommandIntentKey,
 } from '../../application/ports/GameRepository';
 import type {
+  PlayerBlueprintInstanceView,
   PlayerBlueprintView,
   PlayerCraftedItemView,
   WorkshopMutationOptions,
@@ -18,6 +20,7 @@ import {
   canEquipWorkshopItem,
   getWorkshopBlueprint,
   isWorkshopBlueprintCode,
+  isWorkshopBlueprintRarity,
   isWorkshopItemClass,
   isWorkshopItemCode,
   isWorkshopItemSlot,
@@ -30,6 +33,13 @@ import {
   type WorkshopEquippedItemView,
   type WorkshopRepairToolBlueprintDefinition,
 } from '../../../workshop/domain/workshop-catalog';
+import {
+  isWorkshopBlueprintDiscoveryKind,
+  isWorkshopBlueprintInstanceStatus,
+  isWorkshopBlueprintQuality,
+  isWorkshopBlueprintSourceType,
+  type WorkshopBlueprintModifierSnapshot,
+} from '../../../workshop/domain/workshop-blueprint-instances';
 import {
   buildInventoryAvailabilityWhere,
   buildInventoryDeltaInput,
@@ -139,6 +149,67 @@ const mapPlayerBlueprintRecord = (record: PlayerBlueprint): PlayerBlueprintView 
   updatedAt: record.updatedAt.toISOString(),
 });
 
+const isWorkshopBlueprintModifierSnapshot = (
+  value: unknown,
+): value is WorkshopBlueprintModifierSnapshot => {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    return false;
+  }
+
+  const snapshot = value as {
+    readonly radianceFeatureAwakened?: unknown;
+    readonly notes?: unknown;
+  };
+
+  if (
+    snapshot.radianceFeatureAwakened !== undefined
+    && typeof snapshot.radianceFeatureAwakened !== 'boolean'
+  ) {
+    return false;
+  }
+
+  if (
+    snapshot.notes !== undefined
+    && (!Array.isArray(snapshot.notes) || snapshot.notes.some((note) => typeof note !== 'string'))
+  ) {
+    return false;
+  }
+
+  return true;
+};
+
+const parseWorkshopBlueprintModifierSnapshot = (
+  value: string,
+): WorkshopBlueprintModifierSnapshot => {
+  const parsed = parseJson<unknown>(value, {});
+
+  if (!isWorkshopBlueprintModifierSnapshot(parsed)) {
+    throw new AppError('workshop_persistence_invalid', 'В записи чертежа мастерской повреждены особенности.');
+  }
+
+  return parsed;
+};
+
+const mapPlayerBlueprintInstanceRecord = (
+  record: PlayerBlueprintInstance,
+): PlayerBlueprintInstanceView => ({
+  id: record.id,
+  playerId: record.playerId,
+  blueprintCode: requireKnownWorkshopValue(record.blueprintCode, isWorkshopBlueprintCode, 'blueprintCode'),
+  rarity: requireKnownWorkshopValue(record.rarity, isWorkshopBlueprintRarity, 'rarity'),
+  sourceType: requireKnownWorkshopValue(record.sourceType, isWorkshopBlueprintSourceType, 'sourceType'),
+  sourceId: record.sourceId,
+  discoveryKind: requireKnownWorkshopValue(record.discoveryKind, isWorkshopBlueprintDiscoveryKind, 'discoveryKind'),
+  quality: requireKnownWorkshopValue(record.quality, isWorkshopBlueprintQuality, 'quality'),
+  craftPotential: record.craftPotential,
+  modifierSnapshot: parseWorkshopBlueprintModifierSnapshot(record.modifierSnapshot),
+  status: requireKnownWorkshopValue(record.status, isWorkshopBlueprintInstanceStatus, 'status'),
+  createdAt: record.createdAt.toISOString(),
+  updatedAt: record.updatedAt.toISOString(),
+  discoveredAt: record.discoveredAt?.toISOString() ?? null,
+  consumedAt: record.consumedAt?.toISOString() ?? null,
+});
+
 const mapPlayerCraftedItemRecord = (record: PlayerCraftedItem): PlayerCraftedItemView => ({
   id: record.id,
   playerId: record.playerId,
@@ -241,6 +312,18 @@ export class PrismaWorkshopPersistence {
     });
 
     return blueprints.map(mapPlayerBlueprintRecord);
+  }
+
+  public async listPlayerBlueprintInstances(playerId: number): Promise<readonly PlayerBlueprintInstanceView[]> {
+    const instances = await this.prisma.playerBlueprintInstance.findMany({
+      where: { playerId },
+      orderBy: [
+        { createdAt: 'asc' },
+        { id: 'asc' },
+      ],
+    });
+
+    return instances.map(mapPlayerBlueprintInstanceRecord);
   }
 
   public async listPlayerCraftedItems(playerId: number): Promise<readonly PlayerCraftedItemView[]> {

@@ -6,6 +6,8 @@ import type {
   WorkshopItemStatus,
 } from '../domain/workshop-catalog';
 
+export type { WorkshopBlueprintInstanceView as PlayerBlueprintInstanceView } from '../domain/workshop-blueprint-instances';
+
 export type WorkshopCommandIntentKey =
   | 'GRANT_WORKSHOP_BLUEPRINT'
   | 'CRAFT_WORKSHOP_ITEM'

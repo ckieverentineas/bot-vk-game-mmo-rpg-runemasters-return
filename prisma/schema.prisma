@@ -17,55 +17,56 @@ model User {
 }
 
 model Player {
-  id               Int                   @id @default(autoincrement())
-  userId           Int                   @unique
-  name             String?
-  level            Int                   @default(1)
-  experience       Int                   @default(0)
-  gold             Int                   @default(0)
-  radiance         Int                   @default(0)
-  baseHealth       Int                   @default(4)
-  baseAttack       Int                   @default(2)
-  baseDefence      Int                   @default(3)
-  baseMagicDefence Int                   @default(0)
-  baseDexterity    Int                   @default(2)
-  baseIntelligence Int                   @default(0)
-  createdAt        DateTime              @default(now())
-  updatedAt        DateTime              @updatedAt
-  user             User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
-  progress         PlayerProgress?
-  inventory        PlayerInventory?
-  runes            Rune[]
-  battles          BattleSession[]
-  rewardLedger     RewardLedgerRecord[]
-  commandIntents   CommandIntentRecord[]
-  schoolMasteries  PlayerSchoolMastery[]
-  skills           PlayerSkill[]
-  blueprints       PlayerBlueprint[]
-  craftedItems     PlayerCraftedItem[]
-  ledParties       PlayerParty[]          @relation("PartyLeader")
-  partyMemberships PlayerPartyMember[]
+  id                 Int                       @id @default(autoincrement())
+  userId             Int                       @unique
+  name               String?
+  level              Int                       @default(1)
+  experience         Int                       @default(0)
+  gold               Int                       @default(0)
+  radiance           Int                       @default(0)
+  baseHealth         Int                       @default(4)
+  baseAttack         Int                       @default(2)
+  baseDefence        Int                       @default(3)
+  baseMagicDefence   Int                       @default(0)
+  baseDexterity      Int                       @default(2)
+  baseIntelligence   Int                       @default(0)
+  createdAt          DateTime                  @default(now())
+  updatedAt          DateTime                  @updatedAt
+  user               User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  progress           PlayerProgress?
+  inventory          PlayerInventory?
+  runes              Rune[]
+  battles            BattleSession[]
+  rewardLedger       RewardLedgerRecord[]
+  commandIntents     CommandIntentRecord[]
+  schoolMasteries    PlayerSchoolMastery[]
+  skills             PlayerSkill[]
+  blueprints         PlayerBlueprint[]
+  blueprintInstances PlayerBlueprintInstance[]
+  craftedItems       PlayerCraftedItem[]
+  ledParties         PlayerParty[]             @relation("PartyLeader")
+  partyMemberships   PlayerPartyMember[]
 }
 
 model PlayerSchoolMastery {
-  playerId    Int
-  schoolCode  String
-  experience  Int      @default(0)
-  rank        Int      @default(0)
-  updatedAt   DateTime @updatedAt
-  player      Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  playerId   Int
+  schoolCode String
+  experience Int      @default(0)
+  rank       Int      @default(0)
+  updatedAt  DateTime @updatedAt
+  player     Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
 
   @@id([playerId, schoolCode])
   @@index([schoolCode, rank])
 }
 
 model PlayerSkill {
-  playerId    Int
-  skillCode   String
-  experience  Int      @default(0)
-  rank        Int      @default(0)
-  updatedAt   DateTime @updatedAt
-  player      Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  playerId   Int
+  skillCode  String
+  experience Int      @default(0)
+  rank       Int      @default(0)
+  updatedAt  DateTime @updatedAt
+  player     Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
 
   @@id([playerId, skillCode])
   @@index([skillCode, rank])
@@ -91,25 +92,25 @@ model PlayerProgress {
 }
 
 model PlayerInventory {
-  playerId         Int      @id
-  usualShards      Int      @default(0)
-  unusualShards    Int      @default(0)
-  rareShards       Int      @default(0)
-  epicShards       Int      @default(0)
-  legendaryShards  Int      @default(0)
-  mythicalShards   Int      @default(0)
-  leather          Int      @default(0)
-  bone             Int      @default(0)
-  herb             Int      @default(0)
-  essence          Int      @default(0)
-  metal            Int      @default(0)
-  crystal          Int      @default(0)
-  healingPills     Int      @default(0)
-  focusPills       Int      @default(0)
-  guardPills       Int      @default(0)
-  clarityPills     Int      @default(0)
-  updatedAt        DateTime @updatedAt
-  player           Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  playerId        Int      @id
+  usualShards     Int      @default(0)
+  unusualShards   Int      @default(0)
+  rareShards      Int      @default(0)
+  epicShards      Int      @default(0)
+  legendaryShards Int      @default(0)
+  mythicalShards  Int      @default(0)
+  leather         Int      @default(0)
+  bone            Int      @default(0)
+  herb            Int      @default(0)
+  essence         Int      @default(0)
+  metal           Int      @default(0)
+  crystal         Int      @default(0)
+  healingPills    Int      @default(0)
+  focusPills      Int      @default(0)
+  guardPills      Int      @default(0)
+  clarityPills    Int      @default(0)
+  updatedAt       DateTime @updatedAt
+  player          Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
 }
 
 model PlayerBlueprint {
@@ -122,6 +123,29 @@ model PlayerBlueprint {
 
   @@id([playerId, blueprintCode])
   @@index([blueprintCode])
+}
+
+model PlayerBlueprintInstance {
+  id               String    @id @default(cuid())
+  playerId         Int
+  blueprintCode    String
+  rarity           String
+  sourceType       String
+  sourceId         String?
+  discoveryKind    String
+  quality          String
+  craftPotential   String    @default("default")
+  modifierSnapshot String    @default("{}")
+  status           String    @default("AVAILABLE")
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  discoveredAt     DateTime?
+  consumedAt       DateTime?
+  player           Player    @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@index([playerId, status])
+  @@index([playerId, blueprintCode])
+  @@index([sourceType, sourceId])
 }
 
 model PlayerCraftedItem {
@@ -144,51 +168,51 @@ model PlayerCraftedItem {
 }
 
 model Rune {
-  id               String   @id @default(cuid())
-  playerId         Int
-  runeCode         String?  @unique
-  archetypeCode    String? 
-  passiveAbilityCodes String @default("[]")
-  activeAbilityCodes  String @default("[]")
-  name             String
-  rarity           String
-  health           Int      @default(0)
-  attack           Int      @default(0)
-  defence          Int      @default(0)
-  magicDefence     Int      @default(0)
-  dexterity        Int      @default(0)
-  intelligence     Int      @default(0)
-  isEquipped       Boolean  @default(false)
-  equippedSlot     Int?
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-  player           Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  id                  String   @id @default(cuid())
+  playerId            Int
+  runeCode            String?  @unique
+  archetypeCode       String?
+  passiveAbilityCodes String   @default("[]")
+  activeAbilityCodes  String   @default("[]")
+  name                String
+  rarity              String
+  health              Int      @default(0)
+  attack              Int      @default(0)
+  defence             Int      @default(0)
+  magicDefence        Int      @default(0)
+  dexterity           Int      @default(0)
+  intelligence        Int      @default(0)
+  isEquipped          Boolean  @default(false)
+  equippedSlot        Int?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  player              Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
 
   @@index([playerId, createdAt])
 }
 
 model BattleSession {
-  id              String   @id @default(cuid())
-  playerId        Int
-  status          String   @default("ACTIVE")
-  battleType      String   @default("PVE")
-  actionRevision  Int      @default(0)
-  battleSnapshot  String?
-  playerLoadoutSnapshot String? 
-  locationLevel   Int
-  biomeCode       String
-  enemyCode       String
-  enemyName       String
-  rewardTableCode String? 
-  turnOwner       String
-  playerSnapshot  String
-  enemySnapshot   String
-  log             String   @default("[]")
-  result          String?
-  rewardsSnapshot String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  player          Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  id                    String   @id @default(cuid())
+  playerId              Int
+  status                String   @default("ACTIVE")
+  battleType            String   @default("PVE")
+  actionRevision        Int      @default(0)
+  battleSnapshot        String?
+  playerLoadoutSnapshot String?
+  locationLevel         Int
+  biomeCode             String
+  enemyCode             String
+  enemyName             String
+  rewardTableCode       String?
+  turnOwner             String
+  playerSnapshot        String
+  enemySnapshot         String
+  log                   String   @default("[]")
+  result                String?
+  rewardsSnapshot       String?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  player                Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
 
   @@index([playerId, status])
 }
@@ -235,8 +259,8 @@ model PlayerParty {
 model PlayerPartyMember {
   partyId  String
   playerId Int
-  role     String   @default("MEMBER")
-  joinedAt DateTime @default(now())
+  role     String      @default("MEMBER")
+  joinedAt DateTime    @default(now())
   party    PlayerParty @relation(fields: [partyId], references: [id], onDelete: Cascade)
   player   Player      @relation(fields: [playerId], references: [id], onDelete: Cascade)
 
@@ -245,17 +269,17 @@ model PlayerPartyMember {
 }
 
 model RewardLedgerRecord {
-  id            String   @id @default(cuid())
+  id            String    @id @default(cuid())
   playerId      Int
-  ledgerKey     String   @unique
+  ledgerKey     String    @unique
   sourceType    String
   sourceId      String
-  status        String   @default("APPLIED")
+  status        String    @default("APPLIED")
   entrySnapshot String
   appliedAt     DateTime?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  player        Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  player        Player    @relation(fields: [playerId], references: [id], onDelete: Cascade)
 
   @@index([playerId, sourceType, sourceId])
 }
@@ -277,16 +301,16 @@ model CommandIntentRecord {
 }
 
 model DeletePlayerReceipt {
-  id             String   @id @default(cuid())
+  id             String    @id @default(cuid())
   scopeVkId      Int
   intentId       String
   stateKey       String
-  status         String   @default("PENDING")
-  resultSnapshot String   @default("{}")
+  status         String    @default("PENDING")
+  resultSnapshot String    @default("{}")
   expiresAt      DateTime
   appliedAt      DateTime?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 
   @@unique([scopeVkId, intentId])
   @@index([scopeVkId, status])
