@@ -3,10 +3,6 @@ import type { AlchemyConsumableCode } from '../../modules/consumables/domain/alc
 import type { CraftingRecipeCode } from '../../modules/crafting/domain/crafting-recipes';
 import type { TrophyActionCode } from '../../modules/rewards/domain/trophy-actions';
 import { runeCollectionPageSize } from '../../modules/runes/domain/rune-collection';
-import {
-  isWorkshopBlueprintCode,
-  type WorkshopBlueprintCode,
-} from '../../modules/workshop/domain/workshop-catalog';
 
 export const gameCommands = {
   start: 'начать',
@@ -109,7 +105,7 @@ export type BestiaryLocationRewardCommand = `${typeof bestiaryLocationRewardComm
 export type BestiaryEnemyRewardCommand = `${typeof bestiaryEnemyRewardCommandPrefix}${string} ${string}`;
 export type QuestBookPageCommand = `${typeof questBookPageCommandPrefix}${number}`;
 export type WorkshopCraftCommand = `${typeof workshopCraftCommandPrefix}${string}`;
-export type WorkshopRepairCommand = `${typeof workshopRepairCommandPrefix}${string} ${WorkshopBlueprintCode}`;
+export type WorkshopRepairCommand = `${typeof workshopRepairCommandPrefix}${string} ${string}`;
 export type WorkshopEquipCommand = `${typeof workshopEquipCommandPrefix}${string}`;
 export type WorkshopUnequipCommand = `${typeof workshopUnequipCommandPrefix}${string}`;
 export type PartyJoinCommand = `${typeof partyJoinCommandPrefix}${string}`;
@@ -129,7 +125,7 @@ export type GameCommand =
 
 export interface WorkshopRepairCommandPayload {
   readonly itemId: string;
-  readonly repairBlueprintCode: WorkshopBlueprintCode;
+  readonly repairBlueprintInstanceId: string;
 }
 
 export interface BestiaryLocationCommandPayload {
@@ -550,9 +546,9 @@ export const resolveWorkshopCraftCommand = (command: string): string | null => {
 
 export const createWorkshopRepairCommand = (
   itemId: string,
-  repairBlueprintCode: WorkshopBlueprintCode,
+  repairBlueprintInstanceId: string,
 ): WorkshopRepairCommand => (
-  `${workshopRepairCommandPrefix}${itemId} ${repairBlueprintCode}` as WorkshopRepairCommand
+  `${workshopRepairCommandPrefix}${itemId} ${repairBlueprintInstanceId}` as WorkshopRepairCommand
 );
 
 export const resolveWorkshopRepairCommand = (command: string): WorkshopRepairCommandPayload | null => {
@@ -563,13 +559,13 @@ export const resolveWorkshopRepairCommand = (command: string): WorkshopRepairCom
   }
 
   const suffix = trimmedCommand.slice(workshopRepairCommandPrefix.length).trim();
-  const [itemId, repairBlueprintCode, ...extraParts] = suffix.split(/\s+/);
+  const [itemId, repairBlueprintInstanceId, ...extraParts] = suffix.split(/\s+/);
 
-  if (!itemId || !repairBlueprintCode || extraParts.length > 0 || !isWorkshopBlueprintCode(repairBlueprintCode)) {
+  if (!itemId || !repairBlueprintInstanceId || extraParts.length > 0) {
     return null;
   }
 
-  return { itemId, repairBlueprintCode };
+  return { itemId, repairBlueprintInstanceId };
 };
 
 export const createWorkshopEquipCommand = (itemId: string): WorkshopEquipCommand => (

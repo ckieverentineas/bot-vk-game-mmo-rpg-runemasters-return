@@ -15,6 +15,7 @@ import { requirePlayerByVkId } from '../../../shared/application/require-player'
 import {
   canCraftWorkshopBlueprint,
   getWorkshopBlueprint,
+  isWorkshopBlueprintCode,
   resolveWorkshopMissingCost,
   type WorkshopBlueprintCode,
   type WorkshopRepairToolBlueprintDefinition,
@@ -55,15 +56,6 @@ const isRepairWorkshopItemResult = (
   result: RepairWorkshopReplayResult,
 ): result is RepairWorkshopItemResultView => 'repairedItem' in result && 'view' in result;
 
-const getOwnedBlueprintQuantity = (
-  blueprintInstances: readonly PlayerBlueprintInstanceView[],
-  blueprintCode: WorkshopBlueprintCode,
-): number => (
-  blueprintInstances.filter((instance) => (
-    instance.blueprintCode === blueprintCode && instance.status === 'AVAILABLE'
-  )).length
-);
-
 const requireRepairBlueprint = (blueprintCode: WorkshopBlueprintCode): WorkshopRepairToolBlueprintDefinition => {
   const blueprint = getWorkshopBlueprint(blueprintCode);
 
@@ -74,13 +66,23 @@ const requireRepairBlueprint = (blueprintCode: WorkshopBlueprintCode): WorkshopR
   return blueprint;
 };
 
-const assertRepairBlueprintAvailable = (
+const requireAvailableRepairBlueprintInstance = (
   blueprintInstances: readonly PlayerBlueprintInstanceView[],
-  blueprintCode: WorkshopBlueprintCode,
-): void => {
-  if (getOwnedBlueprintQuantity(blueprintInstances, blueprintCode) <= 0) {
+  blueprintInstanceId: string,
+): {
+  readonly instance: PlayerBlueprintInstanceView;
+  readonly blueprint: WorkshopRepairToolBlueprintDefinition;
+} => {
+  const instance = blueprintInstances.find((entry) => entry.id === blueprintInstanceId);
+
+  if (!instance || instance.status !== 'AVAILABLE') {
     throw new AppError('workshop_blueprint_unavailable', 'У вас нет такого ремонтного чертежа.');
   }
+
+  return {
+    instance,
+    blueprint: requireRepairBlueprint(instance.blueprintCode),
+  };
 };
 
 const requireRepairableItem = (
@@ -164,7 +166,7 @@ const loadCurrentWorkshopView = async (
 const replayRepairWorkshopItemResult = async (
   repository: CommandIntentReplayRepository,
   player: PlayerState,
-  repairBlueprintCode: WorkshopBlueprintCode,
+  repairBlueprintInstanceId: string,
   snapshot: {
     readonly blueprintInstances: readonly PlayerBlueprintInstanceView[];
     readonly craftedItems: readonly PlayerCraftedItemView[];
@@ -184,10 +186,31 @@ const replayRepairWorkshopItemResult = async (
         return result;
       }
 
+      const repairBlueprintCode = resolveReplayRepairBlueprintCode(
+        repairBlueprintInstanceId,
+        snapshot.blueprintInstances,
+      );
       const view = buildWorkshopView(player, snapshot.blueprintInstances, snapshot.craftedItems);
       return buildRepairResult(view, repairBlueprintCode, result);
     },
   });
+};
+
+const resolveReplayRepairBlueprintCode = (
+  repairBlueprintInstanceId: string,
+  blueprintInstances: readonly PlayerBlueprintInstanceView[],
+): WorkshopBlueprintCode => {
+  const instance = blueprintInstances.find((entry) => entry.id === repairBlueprintInstanceId);
+
+  if (instance) {
+    return instance.blueprintCode;
+  }
+
+  if (isWorkshopBlueprintCode(repairBlueprintInstanceId)) {
+    return repairBlueprintInstanceId;
+  }
+
+  throw new AppError('workshop_blueprint_unavailable', 'Чертёж для повтора ремонта больше не найден.');
 };
 
 export class RepairWorkshopItem {
@@ -196,7 +219,7 @@ export class RepairWorkshopItem {
   public async execute(
     vkId: number,
     itemId: string,
-    repairBlueprintCode: WorkshopBlueprintCode,
+    repairBlueprintInstanceId: string,
     intentId?: string,
     stateKey?: string,
     intentSource: CommandIntentSource = 'payload',
@@ -211,14 +234,14 @@ export class RepairWorkshopItem {
     const currentStateKey = buildRepairWorkshopItemIntentStateKey(
       player,
       itemId,
-      repairBlueprintCode,
+      repairBlueprintInstanceId,
       snapshot.blueprintInstances,
       snapshot.craftedItems,
     );
     const replay = await replayRepairWorkshopItemResult(
       this.repository,
       player,
-      repairBlueprintCode,
+      repairBlueprintInstanceId,
       snapshot,
       resolvedIntent.intentId,
       resolvedIntent.intentStateKey,
@@ -234,12 +257,14 @@ export class RepairWorkshopItem {
       staleMessage: staleRepairMessage,
       requireIntent: true,
     });
-    const repairBlueprint = requireRepairBlueprint(repairBlueprintCode);
+    const { instance, blueprint: repairBlueprint } = requireAvailableRepairBlueprintInstance(
+      snapshot.blueprintInstances,
+      repairBlueprintInstanceId,
+    );
     requireRepairableItem(snapshot.craftedItems, itemId, repairBlueprint);
-    assertRepairBlueprintAvailable(snapshot.blueprintInstances, repairBlueprint.code);
     assertRepairMaterialsAvailable(player, repairBlueprint);
 
-    const repairedItem = await this.repository.repairWorkshopItem(player.playerId, itemId, repairBlueprint.code, {
+    const repairedItem = await this.repository.repairWorkshopItem(player.playerId, itemId, instance.id, {
       intentId: intent.intentId,
       intentStateKey: intent.intentStateKey,
       currentStateKey: intentSource === 'legacy_text' ? undefined : currentStateKey,

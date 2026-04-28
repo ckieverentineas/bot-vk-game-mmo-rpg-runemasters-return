@@ -242,28 +242,6 @@ const mapPlayerCraftedItemRecord = (record: PlayerCraftedItem): PlayerCraftedIte
   updatedAt: record.updatedAt.toISOString(),
 });
 
-const spendWorkshopBlueprint = async (
-  client: TransactionClient,
-  playerId: number,
-  blueprintCode: WorkshopBlueprintCode,
-  errorMessage: string,
-): Promise<void> => {
-  const spent = await client.playerBlueprint.updateMany({
-    where: {
-      playerId,
-      blueprintCode,
-      quantity: { gte: 1 },
-    },
-    data: {
-      quantity: { decrement: 1 },
-    },
-  });
-
-  if (spent.count === 0) {
-    throw new AppError('workshop_blueprint_spent', errorMessage);
-  }
-};
-
 const requireAvailableBlueprintInstanceRecord = async (
   client: TransactionClient,
   playerId: number,
@@ -512,7 +490,7 @@ export class PrismaWorkshopPersistence {
   public async repairWorkshopItem(
     playerId: number,
     itemId: string,
-    repairBlueprintCode: WorkshopBlueprintCode,
+    repairBlueprintInstanceId: string,
     options?: WorkshopMutationOptions,
   ): Promise<PlayerCraftedItemView> {
     return this.prisma.$transaction((tx) => this.context.runWithCommandIntent(
@@ -523,7 +501,14 @@ export class PrismaWorkshopPersistence {
       options?.intentStateKey,
       options?.currentStateKey,
       async () => {
-        const repairBlueprint = requireWorkshopRepairBlueprint(repairBlueprintCode);
+        const repairBlueprintInstance = await requireAvailableBlueprintInstanceRecord(
+          tx,
+          playerId,
+          repairBlueprintInstanceId,
+        );
+        const repairBlueprint = requireWorkshopRepairBlueprint(
+          requireKnownWorkshopValue(repairBlueprintInstance.blueprintCode, isWorkshopBlueprintCode, 'blueprintCode'),
+        );
 
         const item = await tx.playerCraftedItem.findFirst({
           where: {
@@ -540,12 +525,7 @@ export class PrismaWorkshopPersistence {
           throw new AppError('workshop_item_not_repairable', 'Этот предмет нельзя отремонтировать.');
         }
 
-        await spendWorkshopBlueprint(
-          tx,
-          playerId,
-          repairBlueprint.code,
-          'Ремонтный чертёж уже потрачен.',
-        );
+        await spendWorkshopBlueprintInstance(tx, playerId, repairBlueprintInstanceId);
         await spendWorkshopInventoryCost(
           tx,
           playerId,

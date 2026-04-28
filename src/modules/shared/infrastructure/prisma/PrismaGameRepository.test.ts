@@ -1347,31 +1347,44 @@ describe('PrismaGameRepository release hardening', () => {
     tx.commandIntentRecord.findUnique.mockResolvedValue(null);
     tx.commandIntentRecord.create.mockResolvedValue({});
     tx.commandIntentRecord.update.mockResolvedValue({});
+    tx.playerBlueprintInstance.findFirst.mockResolvedValue(createPlayerBlueprintInstanceRecord({
+      id: 'bp-repair-1',
+      blueprintCode: 'resonance_tool',
+    }));
     tx.playerCraftedItem.findFirst
       .mockResolvedValueOnce(damagedItem)
       .mockResolvedValueOnce(repairedItem);
-    tx.playerBlueprint.updateMany.mockResolvedValue({ count: 1 });
+    tx.playerBlueprintInstance.updateMany.mockResolvedValue({ count: 1 });
     tx.playerInventory.updateMany.mockResolvedValue({ count: 1 });
     tx.playerCraftedItem.updateMany.mockResolvedValue({ count: 1 });
     tx.player.update.mockResolvedValue({});
 
-    const item = await repository.repairWorkshopItem(1, 'crafted-ul-1', 'resonance_tool', {
+    const item = await repository.repairWorkshopItem(1, 'crafted-ul-1', 'bp-repair-1', {
       intentId: 'intent-workshop-repair-1',
       intentStateKey: 'state-workshop-repair-1',
       currentStateKey: 'state-workshop-repair-1',
     });
 
     expect(item.durability).toBe(12);
-    expect(tx.playerBlueprint.updateMany).toHaveBeenCalledWith({
+    expect(tx.playerBlueprintInstance.findFirst).toHaveBeenCalledWith({
       where: {
+        id: 'bp-repair-1',
         playerId: 1,
-        blueprintCode: 'resonance_tool',
-        quantity: { gte: 1 },
-      },
-      data: {
-        quantity: { decrement: 1 },
+        status: 'AVAILABLE',
       },
     });
+    expect(tx.playerBlueprintInstance.updateMany).toHaveBeenCalledWith({
+      where: {
+        id: 'bp-repair-1',
+        playerId: 1,
+        status: 'AVAILABLE',
+      },
+      data: {
+        status: 'CONSUMED',
+        consumedAt: expect.any(Date),
+      },
+    });
+    expect(tx.playerBlueprint.updateMany).not.toHaveBeenCalled();
     expect(tx.playerInventory.updateMany).toHaveBeenCalledWith({
       where: {
         playerId: 1,
@@ -1415,7 +1428,7 @@ describe('PrismaGameRepository release hardening', () => {
       })),
     });
 
-    await expect(repository.repairWorkshopItem(1, 'crafted-ul-1', 'hunter_cleaver', {
+    await expect(repository.repairWorkshopItem(1, 'crafted-ul-1', 'bp-repair-legacy', {
       intentId: 'intent-workshop-repair-1',
       intentStateKey: 'state-workshop-repair-1',
       currentStateKey: 'state-workshop-repair-1',
@@ -1430,17 +1443,22 @@ describe('PrismaGameRepository release hardening', () => {
   it('does not repair L workshop items', async () => {
     const { repository, tx } = createPrismaMock();
 
+    tx.playerBlueprintInstance.findFirst.mockResolvedValue(createPlayerBlueprintInstanceRecord({
+      id: 'bp-repair-1',
+      blueprintCode: 'resonance_tool',
+    }));
     tx.playerCraftedItem.findFirst.mockResolvedValue(createCraftedItemRecord({
       itemClass: 'L',
       durability: 5,
       maxDurability: 12,
     }));
 
-    await expect(repository.repairWorkshopItem(1, 'crafted-1', 'resonance_tool')).rejects.toMatchObject({
+    await expect(repository.repairWorkshopItem(1, 'crafted-1', 'bp-repair-1')).rejects.toMatchObject({
       code: 'workshop_item_not_repairable',
     });
 
     expect(tx.playerBlueprint.updateMany).not.toHaveBeenCalled();
+    expect(tx.playerBlueprintInstance.updateMany).not.toHaveBeenCalled();
     expect(tx.playerInventory.updateMany).not.toHaveBeenCalled();
     expect(tx.playerCraftedItem.updateMany).not.toHaveBeenCalled();
   });
@@ -1464,12 +1482,16 @@ describe('PrismaGameRepository release hardening', () => {
     tx.playerCraftedItem.findFirst
       .mockResolvedValueOnce(brokenItem)
       .mockResolvedValueOnce(repairedItem);
-    tx.playerBlueprint.updateMany.mockResolvedValue({ count: 1 });
+    tx.playerBlueprintInstance.findFirst.mockResolvedValue(createPlayerBlueprintInstanceRecord({
+      id: 'bp-repair-1',
+      blueprintCode: 'resonance_tool',
+    }));
+    tx.playerBlueprintInstance.updateMany.mockResolvedValue({ count: 1 });
     tx.playerInventory.updateMany.mockResolvedValue({ count: 1 });
     tx.playerCraftedItem.updateMany.mockResolvedValue({ count: 1 });
     tx.player.update.mockResolvedValue({});
 
-    await expect(repository.repairWorkshopItem(1, 'crafted-broken-ul-1', 'resonance_tool')).resolves.toMatchObject({
+    await expect(repository.repairWorkshopItem(1, 'crafted-broken-ul-1', 'bp-repair-1')).resolves.toMatchObject({
       status: 'ACTIVE',
       durability: 12,
     });
@@ -1491,6 +1513,10 @@ describe('PrismaGameRepository release hardening', () => {
   it('does not repair destroyed workshop items', async () => {
     const { repository, tx } = createPrismaMock();
 
+    tx.playerBlueprintInstance.findFirst.mockResolvedValue(createPlayerBlueprintInstanceRecord({
+      id: 'bp-repair-1',
+      blueprintCode: 'resonance_tool',
+    }));
     tx.playerCraftedItem.findFirst.mockResolvedValue(createCraftedItemRecord({
       itemClass: 'UL',
       status: 'DESTROYED',
@@ -1498,11 +1524,12 @@ describe('PrismaGameRepository release hardening', () => {
       maxDurability: 12,
     }));
 
-    await expect(repository.repairWorkshopItem(1, 'crafted-1', 'resonance_tool')).rejects.toMatchObject({
+    await expect(repository.repairWorkshopItem(1, 'crafted-1', 'bp-repair-1')).rejects.toMatchObject({
       code: 'workshop_item_not_repairable',
     });
 
     expect(tx.playerBlueprint.updateMany).not.toHaveBeenCalled();
+    expect(tx.playerBlueprintInstance.updateMany).not.toHaveBeenCalled();
     expect(tx.playerInventory.updateMany).not.toHaveBeenCalled();
     expect(tx.playerCraftedItem.updateMany).not.toHaveBeenCalled();
   });

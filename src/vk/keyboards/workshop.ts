@@ -140,13 +140,13 @@ const createWorkshopRepairRows = (view: WorkshopView): KeyboardLayout => {
   const buttons = view.craftedItems
     .flatMap((entry) => entry.availableRepairTools.map((repairTool) => ({
       label: createRepairButtonLabel(entry, repairTool.blueprint),
-      command: createWorkshopRepairCommand(entry.item.id, repairTool.blueprint.code),
+      command: createWorkshopRepairCommand(entry.item.id, repairTool.instance.id),
       color: Keyboard.POSITIVE_COLOR,
       intentScoped: true,
       stateKey: buildRepairWorkshopItemIntentStateKey(
         view.player,
         entry.item.id,
-        repairTool.blueprint.code,
+        repairTool.instance.id,
         blueprintStateEntries,
         craftedItemStateEntries,
       ),

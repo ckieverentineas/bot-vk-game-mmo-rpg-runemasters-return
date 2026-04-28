@@ -53,7 +53,7 @@ export const workshopDynamicCommandRoutes = [
       const result = await handler.services.repairWorkshopItem.execute(
         vkId,
         payload.itemId,
-        payload.repairBlueprintCode,
+        payload.repairBlueprintInstanceId,
         context.intentId ?? undefined,
         context.stateKey ?? undefined,
         context.intentSource,

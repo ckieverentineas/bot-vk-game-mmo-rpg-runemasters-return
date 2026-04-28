@@ -2059,7 +2059,7 @@ describe('GameHandler smoke', () => {
     const services = createServices();
     const handler = new GameHandler(services);
     const ctx = createFakeContext({
-      command: createWorkshopRepairCommand('crafted-test-1', 'resonance_tool'),
+      command: createWorkshopRepairCommand('crafted-test-1', 'bp-repair-1'),
       intentId: 'intent-workshop-repair-1',
       stateKey: 'state-workshop-repair-1',
     });
@@ -2069,7 +2069,7 @@ describe('GameHandler smoke', () => {
     expect(services.repairWorkshopItem.execute).toHaveBeenCalledWith(
       1001,
       'crafted-test-1',
-      'resonance_tool',
+      'bp-repair-1',
       'intent-workshop-repair-1',
       'state-workshop-repair-1',
       'payload',

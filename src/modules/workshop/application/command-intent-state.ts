@@ -2,7 +2,6 @@ import { createHash } from 'node:crypto';
 
 import type { InventoryView, MaterialField, PlayerState } from '../../../shared/types/game';
 import type { PlayerBlueprintInstanceView, PlayerCraftedItemView } from './workshop-persistence';
-import type { WorkshopBlueprintCode } from '../domain/workshop-catalog';
 
 type BlueprintInstanceStateView = Pick<
   PlayerBlueprintInstanceView,
@@ -142,13 +141,13 @@ export const buildCraftWorkshopItemIntentStateKey = (
 export const buildRepairWorkshopItemIntentStateKey = (
   player: Pick<PlayerState, 'playerId' | 'updatedAt' | 'inventory'>,
   itemId: string,
-  repairBlueprintCode: WorkshopBlueprintCode,
+  repairBlueprintInstanceId: string,
   blueprintInstances: readonly BlueprintInstanceStateView[],
   items: readonly CraftedItemStateView[],
 ): string => serializeStateKey({
   action: 'repair_workshop_item',
   itemId,
-  repairBlueprintCode,
+  repairBlueprintInstanceId,
   ...summarizeWorkshopState(player, blueprintInstances, items),
 });
 

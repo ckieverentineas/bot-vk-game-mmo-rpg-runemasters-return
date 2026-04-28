@@ -16,7 +16,7 @@ import {
   createTutorialKeyboard,
   createWorkshopKeyboard,
 } from './index';
-import { createWorkshopCraftCommand, gameCommands } from '../commands/catalog';
+import { createWorkshopCraftCommand, createWorkshopRepairCommand, gameCommands } from '../commands/catalog';
 import type { PendingRewardView } from '../../modules/shared/application/ports/GameRepository';
 import type { PlayerBlueprintInstanceView } from '../../modules/workshop/application/workshop-persistence';
 import { getWorkshopBlueprint } from '../../modules/workshop/domain/workshop-catalog';
@@ -705,6 +705,74 @@ describe('profile keyboard', () => {
     }));
     expect(payloads).not.toContainEqual(expect.objectContaining({
       command: createWorkshopCraftCommand(blueprintInstance.blueprintCode),
+    }));
+  });
+
+  it('binds workshop repair buttons to owned repair blueprint instances', () => {
+    const repairBlueprintInstance = createBlueprintInstance({
+      id: 'bp-repair-1',
+      blueprintCode: 'resonance_tool',
+      discoveryKind: 'REPAIR',
+    });
+    const keyboard = createWorkshopKeyboard({
+      player: createPlayer(),
+      blueprints: [],
+      repairTools: [
+        {
+          blueprint: getWorkshopBlueprint('resonance_tool'),
+          instance: repairBlueprintInstance,
+          ownedQuantity: 1,
+          available: true,
+          missingCost: {},
+        },
+      ],
+      craftedItems: [
+        {
+          item: {
+            id: 'crafted-tool-1',
+            playerId: 1,
+            itemCode: 'skinning_kit',
+            itemClass: 'UL',
+            slot: 'tool',
+            quality: 'STURDY',
+            status: 'ACTIVE',
+            equipped: false,
+            durability: 5,
+            maxDurability: 12,
+            statBonus: {
+              health: 0,
+              attack: 0,
+              defence: 0,
+              magicDefence: 0,
+              dexterity: 1,
+              intelligence: 0,
+            },
+            createdAt: '2026-04-12T00:00:00.000Z',
+            updatedAt: '2026-04-12T00:00:00.000Z',
+          },
+          equippable: true,
+          repairable: true,
+          availableRepairTools: [
+            {
+              blueprint: getWorkshopBlueprint('resonance_tool'),
+              instance: repairBlueprintInstance,
+              ownedQuantity: 1,
+              available: true,
+              missingCost: {},
+            },
+          ],
+        },
+      ],
+    });
+    const payloads = collectPayloads(keyboard);
+
+    expect(payloads).toContainEqual(expect.objectContaining({
+      command: createWorkshopRepairCommand('crafted-tool-1', repairBlueprintInstance.id),
+      intentId: expect.any(String),
+      stateKey: expect.any(String),
+    }));
+    expect(payloads).not.toContainEqual(expect.objectContaining({
+      command: createWorkshopRepairCommand('crafted-tool-1', repairBlueprintInstance.blueprintCode),
     }));
   });
 

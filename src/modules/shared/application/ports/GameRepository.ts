@@ -361,7 +361,7 @@ export interface GameRepository {
   repairWorkshopItem(
     playerId: number,
     itemId: string,
-    repairBlueprintCode: WorkshopBlueprintCode,
+    repairBlueprintInstanceId: string,
     options?: WorkshopMutationOptions,
   ): Promise<PlayerCraftedItemView>;
   equipWorkshopItem(
