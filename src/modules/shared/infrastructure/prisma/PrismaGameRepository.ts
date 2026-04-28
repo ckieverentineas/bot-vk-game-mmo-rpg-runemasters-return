@@ -62,6 +62,7 @@ import {
   isWorkshopBlueprintRarity,
   type WorkshopBlueprintCode,
   type WorkshopBlueprintRarity,
+  type WorkshopItemCode,
 } from '../../../workshop/domain/workshop-catalog';
 import {
   isWorkshopBlueprintDiscoveryKind,
@@ -153,6 +154,16 @@ type TransactionClient = Prisma.TransactionClient;
 type CommandIntentKey = GameCommandIntentKey;
 
 type PersistedBattleState = Pick<BattleView, 'status' | 'turnOwner' | 'player' | 'enemy' | 'party' | 'encounter' | 'log' | 'result' | 'rewards' | 'actionRevision'>;
+
+const trophyToolItemCodesByActionCode: Readonly<Partial<Record<TrophyActionCode, readonly WorkshopItemCode[]>>> = {
+  skin_beast: ['skinning_kit'],
+  careful_skinning: ['skinning_kit'],
+  harvest_dragon_scale: ['skinning_kit'],
+};
+
+const resolveTrophyToolItemCodes = (actionCode: TrophyActionCode): readonly WorkshopItemCode[] => (
+  trophyToolItemCodesByActionCode[actionCode] ?? []
+);
 
 const spendRuneDust = async (
   client: TransactionClient,
@@ -1448,6 +1459,7 @@ export class PrismaGameRepository implements GameRepository {
 
       await this.applyInventoryDelta(tx, playerId, inventoryDelta);
       await this.persistPendingRewardSkillUps(tx, playerId, skillUps);
+      await this.decayTrophyToolLoadout(tx, playerId, action.code);
 
       return {
         player: mapPlayerRecord(await this.requirePlayerRecord(tx, playerId)),
@@ -2407,7 +2419,18 @@ export class PrismaGameRepository implements GameRepository {
     await this.workshopPersistence.decayLoadout(client, playerId, battle);
   }
 
+  private async decayTrophyToolLoadout(
+    client: TransactionClient,
+    playerId: number,
+    actionCode: TrophyActionCode,
+  ): Promise<void> {
+    const itemCodes = resolveTrophyToolItemCodes(actionCode);
+    if (itemCodes.length === 0) {
+      return;
+    }
 
+    await this.workshopPersistence.decayEquippedItemsByCode(client, playerId, itemCodes);
+  }
 
   public async getActiveParty(playerId: number): Promise<PartyView | null> {
     return this.partyPersistence.getActiveParty(playerId);

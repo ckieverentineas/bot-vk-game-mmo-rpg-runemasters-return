@@ -2532,12 +2532,24 @@ describe('PrismaGameRepository release hardening', () => {
     });
   });
 
-  it('collects a pending reward with the selected trophy action', async () => {
+  it('collects a pending reward with the selected trophy action and wears the matching tool', async () => {
     const { repository, tx } = createPrismaMock();
     const pendingRecord = createPendingRewardLedgerRecord();
 
     tx.rewardLedgerRecord.findUnique.mockResolvedValue(pendingRecord);
     tx.rewardLedgerRecord.updateMany.mockResolvedValue({ count: 1 });
+    tx.playerCraftedItem.findMany.mockResolvedValue([
+      createCraftedItemRecord({
+        id: 'skinning-tool-1',
+        itemCode: 'skinning_kit',
+        itemClass: 'UL',
+        slot: 'tool',
+        equipped: true,
+        durability: 2,
+        maxDurability: 12,
+      }),
+    ]);
+    tx.playerCraftedItem.updateMany.mockResolvedValue({ count: 1 });
     tx.playerSkill.findMany.mockResolvedValue([]);
     tx.playerSkill.upsert.mockResolvedValue({});
     tx.player.findUnique.mockResolvedValue({
@@ -2617,6 +2629,28 @@ describe('PrismaGameRepository release hardening', () => {
         rank: 0,
       },
     });
+    expect(tx.playerCraftedItem.findMany).toHaveBeenCalledWith({
+      where: {
+        playerId: 1,
+        itemCode: { in: ['skinning_kit'] },
+        equipped: true,
+        status: 'ACTIVE',
+        durability: { gt: 0 },
+      },
+    });
+    expect(tx.playerCraftedItem.updateMany).toHaveBeenCalledWith({
+      where: {
+        id: 'skinning-tool-1',
+        playerId: 1,
+        status: 'ACTIVE',
+        durability: { gt: 0 },
+      },
+      data: {
+        status: 'ACTIVE',
+        equipped: true,
+        durability: 1,
+      },
+    });
     expect(result.ledgerKey).toBe('battle-victory:battle-1');
     expect(result.selectedActionCode).toBe('skin_beast');
     expect(result.appliedResult).toEqual(ledgerSnapshot.pendingRewardSnapshot.appliedResult);
@@ -2678,6 +2712,8 @@ describe('PrismaGameRepository release hardening', () => {
     });
     expect(tx.playerSkill.findMany).not.toHaveBeenCalled();
     expect(tx.playerSkill.upsert).not.toHaveBeenCalled();
+    expect(tx.playerCraftedItem.findMany).not.toHaveBeenCalled();
+    expect(tx.playerCraftedItem.updateMany).not.toHaveBeenCalled();
     expect(result.selectedActionCode).toBe('claim_all');
     expect(result.appliedResult.inventoryDelta).toEqual({
       leather: 2,
@@ -3643,6 +3679,14 @@ describe('PrismaGameRepository release hardening', () => {
             maxDurability: 14,
           },
           {
+            id: 'limited-armor-1',
+            itemCode: 'tracker_jacket',
+            itemClass: 'L',
+            slot: 'armor',
+            durability: 2,
+            maxDurability: 18,
+          },
+          {
             id: 'ul-tool-1',
             itemCode: 'skinning_kit',
             itemClass: 'UL',
@@ -3676,13 +3720,13 @@ describe('PrismaGameRepository release hardening', () => {
         maxDurability: 14,
       }),
       createCraftedItemRecord({
-        id: 'ul-tool-1',
-        itemCode: 'skinning_kit',
-        itemClass: 'UL',
-        slot: 'tool',
+        id: 'limited-armor-1',
+        itemCode: 'tracker_jacket',
+        itemClass: 'L',
+        slot: 'armor',
         equipped: true,
         durability: 2,
-        maxDurability: 12,
+        maxDurability: 18,
       }),
     ]);
     tx.playerCraftedItem.updateMany.mockResolvedValue({ count: 1 });
@@ -3692,7 +3736,7 @@ describe('PrismaGameRepository release hardening', () => {
     expect(tx.playerCraftedItem.findMany).toHaveBeenCalledWith({
       where: {
         playerId: 1,
-        id: { in: ['limited-weapon-1', 'ul-tool-1'] },
+        id: { in: ['limited-weapon-1', 'limited-armor-1'] },
         status: 'ACTIVE',
         durability: { gt: 0 },
       },
@@ -3712,7 +3756,7 @@ describe('PrismaGameRepository release hardening', () => {
     });
     expect(tx.playerCraftedItem.updateMany).toHaveBeenCalledWith({
       where: {
-        id: 'ul-tool-1',
+        id: 'limited-armor-1',
         playerId: 1,
         status: 'ACTIVE',
         durability: { gt: 0 },
@@ -3722,6 +3766,15 @@ describe('PrismaGameRepository release hardening', () => {
         equipped: true,
         durability: 1,
       },
+    });
+    expect(tx.playerCraftedItem.updateMany).not.toHaveBeenCalledWith({
+      where: {
+        id: 'ul-tool-1',
+        playerId: 1,
+        status: 'ACTIVE',
+        durability: { gt: 0 },
+      },
+      data: expect.anything(),
     });
   });
 

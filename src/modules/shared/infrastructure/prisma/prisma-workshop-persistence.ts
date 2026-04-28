@@ -33,6 +33,8 @@ import {
   type WorkshopBlueprintDefinition,
   type WorkshopCraftItemBlueprintDefinition,
   type WorkshopEquippedItemView,
+  type WorkshopItemCode,
+  type WorkshopItemSlot,
   type WorkshopRepairToolBlueprintDefinition,
 } from '../../../workshop/domain/workshop-catalog';
 import {
@@ -344,6 +346,14 @@ const canEquipCraftedItemRecord = (item: PlayerCraftedItem): boolean => (
   item.status === 'ACTIVE'
   && item.durability > 0
   && canEquipWorkshopItem(toWorkshopEquippedItem(item))
+);
+
+type BattleWorkshopLoadoutItem = NonNullable<BattleView['player']['workshopLoadout']>[number];
+
+const battleDecaySlots = new Set<WorkshopItemSlot>(['weapon', 'armor']);
+
+const shouldDecayAfterBattle = (item: BattleWorkshopLoadoutItem): boolean => (
+  isWorkshopItemSlot(item.slot) && battleDecaySlots.has(item.slot)
 );
 
 export class PrismaWorkshopPersistence {
@@ -804,7 +814,14 @@ export class PrismaWorkshopPersistence {
     playerId: number,
     battle: BattleView,
   ): Promise<void> {
-    const itemIds = [...new Set((battle.player.workshopLoadout ?? []).map((item) => item.id))];
+    const itemIds = [
+      ...new Set(
+        (battle.player.workshopLoadout ?? [])
+          .filter(shouldDecayAfterBattle)
+          .map((item) => item.id),
+      ),
+    ];
+
     if (itemIds.length === 0) {
       return;
     }
@@ -818,6 +835,37 @@ export class PrismaWorkshopPersistence {
       },
     });
 
+    await this.decayCraftedItems(client, playerId, items);
+  }
+
+  public async decayEquippedItemsByCode(
+    client: TransactionClient,
+    playerId: number,
+    itemCodes: readonly WorkshopItemCode[],
+  ): Promise<void> {
+    const uniqueItemCodes = [...new Set(itemCodes)];
+    if (uniqueItemCodes.length === 0) {
+      return;
+    }
+
+    const items = await client.playerCraftedItem.findMany({
+      where: {
+        playerId,
+        itemCode: { in: uniqueItemCodes },
+        equipped: true,
+        status: 'ACTIVE',
+        durability: { gt: 0 },
+      },
+    });
+
+    await this.decayCraftedItems(client, playerId, items);
+  }
+
+  private async decayCraftedItems(
+    client: TransactionClient,
+    playerId: number,
+    items: readonly PlayerCraftedItem[],
+  ): Promise<void> {
     for (const item of items) {
       const decayed = resolveWorkshopItemDecay(toWorkshopEquippedItem(item));
 
