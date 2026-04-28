@@ -1,10 +1,12 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import type { InventoryDelta, InventoryView, PlayerState, StatBlock } from '../../../../../shared/types/game';
+import { Logger } from '../../../../utils/logger';
 import type {
   CommandIntentReplayResult,
   GameRepository,
 } from '../../../../shared/application/ports/GameRepository';
+import type { GameTelemetry } from '../../../../shared/application/ports/GameTelemetry';
 import { buildBuyWorkshopShopOfferIntentStateKey } from '../command-intent-state';
 import type { PlayerBlueprintInstanceView, PlayerCraftedItemView, WorkshopMutationOptions } from '../workshop-persistence';
 import { BuyWorkshopShopOffer, type BuyWorkshopShopOfferResultView } from './BuyWorkshopShopOffer';
@@ -60,6 +62,10 @@ const createPlayer = (overrides: Partial<PlayerState> = {}): PlayerState => ({
   updatedAt: '2026-04-12T00:00:00.000Z',
   ...overrides,
 });
+
+const createTelemetry = (): GameTelemetry => ({
+  economyTransactionCommitted: vi.fn().mockResolvedValue(undefined),
+} as Partial<GameTelemetry> as GameTelemetry);
 
 interface PurchaseRequest {
   readonly playerId: number;
@@ -171,7 +177,8 @@ describe('BuyWorkshopShopOffer', () => {
   it('buys a routine shop offer for dust and returns the refreshed workshop view', async () => {
     const player = createPlayer({ gold: 20, radiance: 3, inventory: inventory({ healingPills: 1 }) });
     const repository = new InMemoryBuyWorkshopShopOfferRepository(player);
-    const useCase = new BuyWorkshopShopOffer(repository.asGameRepository());
+    const telemetry = createTelemetry();
+    const useCase = new BuyWorkshopShopOffer(repository.asGameRepository(), telemetry);
     const stateKey = buildBuyWorkshopShopOfferIntentStateKey(player, 'healing_pill');
 
     const result = await useCase.execute(player.vkId, 'healing_pill', 'intent-buy-1', stateKey, 'payload');
@@ -194,6 +201,16 @@ describe('BuyWorkshopShopOffer', () => {
     expect(result.acquisitionSummary).toMatchObject({
       kind: 'workshop_shop_purchase',
       offerCode: 'healing_pill',
+    });
+    expect(telemetry.economyTransactionCommitted).toHaveBeenCalledWith(player.userId, {
+      transactionType: 'dust_spent',
+      sourceType: 'WORKSHOP_SHOP',
+      sourceId: 'healing_pill',
+      resourceDustDelta: -12,
+      resourceRadianceDelta: 0,
+      resourceShardsDelta: 0,
+      runeDelta: 0,
+      playerLevel: 1,
     });
     expect(repository.storedResults).toEqual([
       {
@@ -218,8 +235,33 @@ describe('BuyWorkshopShopOffer', () => {
     expect(repository.storedResults).toEqual([]);
   });
 
+  it('keeps a completed shop purchase when economy telemetry fails', async () => {
+    const player = createPlayer({ gold: 20, radiance: 3 });
+    const repository = new InMemoryBuyWorkshopShopOfferRepository(player);
+    const telemetry = createTelemetry();
+    const warnSpy = vi.spyOn(Logger, 'warn').mockImplementation(() => undefined);
+    vi.mocked(telemetry.economyTransactionCommitted).mockRejectedValueOnce(new Error('telemetry offline'));
+    const useCase = new BuyWorkshopShopOffer(repository.asGameRepository(), telemetry);
+    const stateKey = buildBuyWorkshopShopOfferIntentStateKey(player, 'healing_pill');
+
+    const result = await useCase.execute(player.vkId, 'healing_pill', 'intent-buy-1', stateKey, 'payload');
+
+    expect(result.view.player.gold).toBe(8);
+    expect(repository.purchaseRequests).toHaveLength(1);
+    expect(warnSpy).toHaveBeenCalledWith('Telemetry logging failed', expect.any(Error));
+    expect(repository.storedResults).toEqual([
+      {
+        playerId: player.playerId,
+        intentId: 'intent-buy-1',
+        result,
+      },
+    ]);
+    warnSpy.mockRestore();
+  });
+
   it('returns the canonical replay result without buying again', async () => {
     const player = createPlayer({ gold: 0 });
+    const telemetry = createTelemetry();
     const replayedResult: BuyWorkshopShopOfferResultView = {
       view: {
         player,
@@ -241,7 +283,7 @@ describe('BuyWorkshopShopOffer', () => {
       status: 'APPLIED',
       result: replayedResult,
     });
-    const useCase = new BuyWorkshopShopOffer(repository.asGameRepository());
+    const useCase = new BuyWorkshopShopOffer(repository.asGameRepository(), telemetry);
 
     await expect(useCase.execute(player.vkId, 'healing_pill', 'intent-buy-1', 'old-state', 'payload')).resolves.toBe(replayedResult);
 
@@ -254,5 +296,6 @@ describe('BuyWorkshopShopOffer', () => {
       },
     ]);
     expect(repository.purchaseRequests).toEqual([]);
+    expect(telemetry.economyTransactionCommitted).not.toHaveBeenCalled();
   });
 });

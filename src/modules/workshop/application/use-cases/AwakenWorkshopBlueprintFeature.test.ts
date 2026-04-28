@@ -1,10 +1,12 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import type { InventoryView, PlayerState, StatBlock } from '../../../../../shared/types/game';
+import { Logger } from '../../../../utils/logger';
 import type {
   CommandIntentReplayResult,
   GameRepository,
 } from '../../../../shared/application/ports/GameRepository';
+import type { GameTelemetry } from '../../../../shared/application/ports/GameTelemetry';
 import type { WorkshopBlueprintModifierSnapshot } from '../../domain/workshop-blueprint-instances';
 import {
   workshopBlueprintFeatureAwakeningRadianceCost,
@@ -71,6 +73,10 @@ const createPlayer = (overrides: Partial<PlayerState> = {}): PlayerState => ({
   updatedAt: '2026-04-12T00:00:00.000Z',
   ...overrides,
 });
+
+const createTelemetry = (): GameTelemetry => ({
+  economyTransactionCommitted: vi.fn().mockResolvedValue(undefined),
+} as Partial<GameTelemetry> as GameTelemetry);
 
 const createBlueprintInstance = (
   overrides: Partial<PlayerBlueprintInstanceView> = {},
@@ -226,7 +232,8 @@ describe('AwakenWorkshopBlueprintFeature', () => {
     const player = createPlayer({ radiance: 1 });
     const blueprintInstance = createBlueprintInstance();
     const repository = new InMemoryAwakenWorkshopBlueprintFeatureRepository(player, [blueprintInstance]);
-    const useCase = new AwakenWorkshopBlueprintFeature(repository.asGameRepository());
+    const telemetry = createTelemetry();
+    const useCase = new AwakenWorkshopBlueprintFeature(repository.asGameRepository(), telemetry);
     const stateKey = buildAwakenWorkshopBlueprintFeatureIntentStateKey(
       player,
       blueprintInstance.id,
@@ -265,6 +272,16 @@ describe('AwakenWorkshopBlueprintFeature', () => {
       blueprintInstanceId: blueprintInstance.id,
       radianceCost: workshopBlueprintFeatureAwakeningRadianceCost,
     });
+    expect(telemetry.economyTransactionCommitted).toHaveBeenCalledWith(player.userId, {
+      transactionType: 'radiance_spent',
+      sourceType: 'WORKSHOP_BLUEPRINT_FEATURE',
+      sourceId: 'hunter_cleaver',
+      resourceDustDelta: 0,
+      resourceRadianceDelta: -workshopBlueprintFeatureAwakeningRadianceCost,
+      resourceShardsDelta: 0,
+      runeDelta: 0,
+      playerLevel: 1,
+    });
     expect(repository.storedResults).toEqual([
       {
         playerId: player.playerId,
@@ -299,6 +316,42 @@ describe('AwakenWorkshopBlueprintFeature', () => {
     expect(repository.storedResults).toEqual([]);
   });
 
+  it('keeps an awakened blueprint when economy telemetry fails', async () => {
+    const player = createPlayer({ radiance: 1 });
+    const blueprintInstance = createBlueprintInstance();
+    const repository = new InMemoryAwakenWorkshopBlueprintFeatureRepository(player, [blueprintInstance]);
+    const telemetry = createTelemetry();
+    const warnSpy = vi.spyOn(Logger, 'warn').mockImplementation(() => undefined);
+    vi.mocked(telemetry.economyTransactionCommitted).mockRejectedValueOnce(new Error('telemetry offline'));
+    const useCase = new AwakenWorkshopBlueprintFeature(repository.asGameRepository(), telemetry);
+    const stateKey = buildAwakenWorkshopBlueprintFeatureIntentStateKey(
+      player,
+      blueprintInstance.id,
+      [blueprintInstance],
+    );
+
+    const result = await useCase.execute(
+      player.vkId,
+      blueprintInstance.id,
+      'intent-awaken-1',
+      stateKey,
+      'payload',
+    );
+
+    expect(result.view.player.radiance).toBe(0);
+    expect(result.awakenedBlueprint.modifierSnapshot.radianceFeatureAwakened).toBe(true);
+    expect(repository.awakeningRequests).toHaveLength(1);
+    expect(warnSpy).toHaveBeenCalledWith('Telemetry logging failed', expect.any(Error));
+    expect(repository.storedResults).toEqual([
+      {
+        playerId: player.playerId,
+        intentId: 'intent-awaken-1',
+        result,
+      },
+    ]);
+    warnSpy.mockRestore();
+  });
+
   it('rejects routine common blueprints', async () => {
     const player = createPlayer({ radiance: 1 });
     const blueprintInstance = createBlueprintInstance({
@@ -329,6 +382,7 @@ describe('AwakenWorkshopBlueprintFeature', () => {
 
   it('returns the canonical replay result without spending radiance again', async () => {
     const player = createPlayer({ radiance: 0 });
+    const telemetry = createTelemetry();
     const awakenedBlueprint = createBlueprintInstance({
       modifierSnapshot: { radianceFeatureAwakened: true },
     });
@@ -356,7 +410,7 @@ describe('AwakenWorkshopBlueprintFeature', () => {
       status: 'APPLIED',
       result: replayedResult,
     });
-    const useCase = new AwakenWorkshopBlueprintFeature(repository.asGameRepository());
+    const useCase = new AwakenWorkshopBlueprintFeature(repository.asGameRepository(), telemetry);
 
     await expect(useCase.execute(
       player.vkId,
@@ -375,5 +429,6 @@ describe('AwakenWorkshopBlueprintFeature', () => {
       },
     ]);
     expect(repository.awakeningRequests).toEqual([]);
+    expect(telemetry.economyTransactionCommitted).not.toHaveBeenCalled();
   });
 });

@@ -135,10 +135,10 @@ export const createAppServices = (): AppServices => {
     rerollCurrentRuneStat: new RerollCurrentRuneStat(repository, random),
     destroyCurrentRune: new DestroyCurrentRune(repository),
     getWorkshop: new GetWorkshop(repository),
-    awakenWorkshopBlueprintFeature: new AwakenWorkshopBlueprintFeature(repository),
+    awakenWorkshopBlueprintFeature: new AwakenWorkshopBlueprintFeature(repository, telemetry),
     craftWorkshopItem: new CraftWorkshopItem(repository),
     repairWorkshopItem: new RepairWorkshopItem(repository),
-    buyWorkshopShopOffer: new BuyWorkshopShopOffer(repository),
+    buyWorkshopShopOffer: new BuyWorkshopShopOffer(repository, telemetry),
     equipWorkshopItem: new EquipWorkshopItem(repository),
     unequipWorkshopItem: new UnequipWorkshopItem(repository),
   };

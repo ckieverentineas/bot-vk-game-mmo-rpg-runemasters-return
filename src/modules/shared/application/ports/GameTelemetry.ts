@@ -2,8 +2,12 @@ import type { RuneRarity, TutorialState } from '../../../../shared/types/game';
 import type { NextGoalType } from '../../../player/application/read-models/next-goal';
 
 export type QuestTelemetryStatus = 'READY_TO_CLAIM' | 'IN_PROGRESS' | 'CLAIMED';
-export type EconomyTransactionType = 'reward_claim';
-export type EconomyTransactionSourceType = 'QUEST_REWARD' | 'DAILY_TRACE';
+export type EconomyTransactionType = 'reward_claim' | 'dust_spent' | 'radiance_spent';
+export type EconomyTransactionSourceType =
+  | 'QUEST_REWARD'
+  | 'DAILY_TRACE'
+  | 'WORKSHOP_SHOP'
+  | 'WORKSHOP_BLUEPRINT_FEATURE';
 
 export interface QuestTelemetryPayload {
   readonly playerId: number;

@@ -7,6 +7,7 @@ import {
   type CommandIntentSource,
 } from '../../../shared/application/command-intent';
 import type { GameRepository } from '../../../shared/application/ports/GameRepository';
+import type { GameTelemetry } from '../../../shared/application/ports/GameTelemetry';
 import type {
   CommandIntentReplayRepository,
   FindPlayerByVkIdRepository,
@@ -20,6 +21,10 @@ import {
   type WorkshopShopOfferDefinition,
 } from '../../domain/workshop-shop';
 import { buildBuyWorkshopShopOfferIntentStateKey } from '../command-intent-state';
+import {
+  buildWorkshopShopPurchaseEconomyTelemetryPayload,
+  trackWorkshopEconomyTelemetry,
+} from '../workshop-economy-telemetry';
 import { buildWorkshopView, type WorkshopView } from '../workshop-view';
 
 export interface WorkshopShopPurchaseSummaryView {
@@ -115,7 +120,10 @@ const replayBuyWorkshopShopOfferResult = async (
 };
 
 export class BuyWorkshopShopOffer {
-  public constructor(private readonly repository: BuyWorkshopShopOfferRepository) {}
+  public constructor(
+    private readonly repository: BuyWorkshopShopOfferRepository,
+    private readonly telemetry?: GameTelemetry,
+  ) {}
 
   public async execute(
     vkId: number,
@@ -172,6 +180,11 @@ export class BuyWorkshopShopOffer {
     const result = buildShopPurchaseResult(view, offer);
 
     await this.repository.storeCommandIntentResult(player.playerId, intent.intentId, result);
+    await trackWorkshopEconomyTelemetry(
+      this.telemetry,
+      updatedPlayer.userId,
+      buildWorkshopShopPurchaseEconomyTelemetryPayload(offer, updatedPlayer.level),
+    );
 
     return result;
   }

@@ -7,6 +7,7 @@ import {
   type CommandIntentSource,
 } from '../../../shared/application/command-intent';
 import type { GameRepository } from '../../../shared/application/ports/GameRepository';
+import type { GameTelemetry } from '../../../shared/application/ports/GameTelemetry';
 import type {
   CommandIntentReplayRepository,
   FindPlayerByVkIdRepository,
@@ -23,6 +24,10 @@ import {
   workshopBlueprintFeatureAwakeningRadianceCost,
 } from '../../domain/workshop-blueprint-instances';
 import { buildAwakenWorkshopBlueprintFeatureIntentStateKey } from '../command-intent-state';
+import {
+  buildWorkshopBlueprintFeatureAwakeningEconomyTelemetryPayload,
+  trackWorkshopEconomyTelemetry,
+} from '../workshop-economy-telemetry';
 import type { PlayerBlueprintInstanceView, PlayerCraftedItemView } from '../workshop-persistence';
 import { buildWorkshopView, type WorkshopView } from '../workshop-view';
 
@@ -192,7 +197,10 @@ const replayAwakenWorkshopBlueprintFeatureResult = async (
 };
 
 export class AwakenWorkshopBlueprintFeature {
-  public constructor(private readonly repository: AwakenWorkshopBlueprintFeatureRepository) {}
+  public constructor(
+    private readonly repository: AwakenWorkshopBlueprintFeatureRepository,
+    private readonly telemetry?: GameTelemetry,
+  ) {}
 
   public async execute(
     vkId: number,
@@ -252,6 +260,15 @@ export class AwakenWorkshopBlueprintFeature {
     const result = buildAwakeningResult(view, blueprint, awakenedBlueprint);
 
     await this.repository.storeCommandIntentResult(player.playerId, intent.intentId, result);
+    await trackWorkshopEconomyTelemetry(
+      this.telemetry,
+      player.userId,
+      buildWorkshopBlueprintFeatureAwakeningEconomyTelemetryPayload(
+        blueprint,
+        workshopBlueprintFeatureAwakeningRadianceCost,
+        player.level,
+      ),
+    );
 
     return result;
   }
