@@ -36,10 +36,10 @@ export const workshopDynamicCommandRoutes = [
   ),
   createDynamicCommandRoute(
     resolveWorkshopCraftCommand,
-    async (handler, ctx, vkId, blueprintCode, context) => {
+    async (handler, ctx, vkId, blueprintInstanceId, context) => {
       const result = await handler.services.craftWorkshopItem.execute(
         vkId,
-        blueprintCode,
+        blueprintInstanceId,
         context.intentId ?? undefined,
         context.stateKey ?? undefined,
         context.intentSource,

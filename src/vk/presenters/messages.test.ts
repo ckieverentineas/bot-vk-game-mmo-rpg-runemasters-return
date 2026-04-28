@@ -27,6 +27,7 @@ import {
 } from './messages';
 import type { PendingRewardView } from '../../modules/shared/application/ports/GameRepository';
 import type { CollectPendingRewardView } from '../../modules/rewards/application/use-cases/CollectPendingReward';
+import type { PlayerBlueprintInstanceView } from '../../modules/workshop/application/workshop-persistence';
 import { getWorkshopBlueprint } from '../../modules/workshop/domain/workshop-catalog';
 
 const createPlayer = (overrides: Partial<PlayerState> = {}): PlayerState => createTestPlayer({
@@ -48,6 +49,27 @@ const createEquippedRune = () => ({
   ...createDroppedRune(),
   isEquipped: true,
   equippedSlot: 0,
+});
+
+const createBlueprintInstance = (
+  overrides: Partial<PlayerBlueprintInstanceView> = {},
+): PlayerBlueprintInstanceView => ({
+  id: 'bp-hunter-cleaver-1',
+  playerId: 1,
+  blueprintCode: 'hunter_cleaver',
+  rarity: 'RARE',
+  sourceType: 'QUEST',
+  sourceId: 'test',
+  discoveryKind: 'QUEST',
+  quality: 'FINE',
+  craftPotential: 'default',
+  modifierSnapshot: {},
+  status: 'AVAILABLE',
+  createdAt: '2026-04-12T00:00:00.000Z',
+  updatedAt: '2026-04-12T00:00:00.000Z',
+  discoveredAt: '2026-04-12T00:00:00.000Z',
+  consumedAt: null,
+  ...overrides,
 });
 
 const createUnusualReserveRune = () => ({
@@ -466,18 +488,35 @@ describe('messages school-first onboarding framing', () => {
       blueprints: [
         {
           blueprint: getWorkshopBlueprint('hunter_cleaver'),
+          instance: createBlueprintInstance({ id: 'bp-hunter-cleaver-1', blueprintCode: 'hunter_cleaver' }),
           ownedQuantity: 1,
           canCraft: true,
           missingCost: {},
         },
         {
           blueprint: getWorkshopBlueprint('tracker_jacket'),
+          instance: createBlueprintInstance({
+            id: 'bp-tracker-jacket-1',
+            blueprintCode: 'tracker_jacket',
+            rarity: 'UNCOMMON',
+            discoveryKind: 'SECRET',
+            sourceType: 'BESTIARY',
+            quality: 'STURDY',
+          }),
           ownedQuantity: 1,
           canCraft: false,
           missingCost: { leather: 1 },
         },
         {
           blueprint: getWorkshopBlueprint('skinning_kit'),
+          instance: createBlueprintInstance({
+            id: 'bp-skinning-kit-1',
+            blueprintCode: 'skinning_kit',
+            rarity: 'COMMON',
+            discoveryKind: 'SECRET',
+            sourceType: 'BESTIARY',
+            quality: 'ROUGH',
+          }),
           ownedQuantity: 0,
           canCraft: false,
           missingCost: { leather: 2, bone: 2 },
@@ -512,7 +551,9 @@ describe('messages school-first onboarding framing', () => {
     expect(message).toContain('• 🧪 Сварить: восстановления, стойкости.');
     expect(message).toContain('• 💊 Выпить: восстановления x1.');
     expect(message).toContain('• ✅ готово · Охотничий тесак');
+    expect(message).toContain('чертеж #bp-hunte · тонкое · редкий · квестовый, квест');
     expect(message).toContain('• 🧩 не хватает: кожа 1 · Куртка следопыта');
+    expect(message).toContain('чертеж #bp-track · крепкое · необычный · секретный, бестиарий');
     expect(message).toContain('• 🔒 нужен чертеж · Набор свежевателя');
     expect(message).toContain('🎽 Снаряжение');
     expect(message).toContain('можно надеть');

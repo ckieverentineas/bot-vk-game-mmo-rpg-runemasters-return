@@ -7,11 +7,10 @@ import type {
 } from '../../../../shared/application/ports/GameRepository';
 import {
   getWorkshopBlueprint,
-  type WorkshopBlueprintCode,
   type WorkshopCraftItemBlueprintDefinition,
 } from '../../domain/workshop-catalog';
 import type {
-  PlayerBlueprintView,
+  PlayerBlueprintInstanceView,
   PlayerCraftedItemView,
   WorkshopMutationOptions,
 } from '../workshop-persistence';
@@ -78,12 +77,24 @@ const createPlayer = (overrides: Partial<PlayerState> = {}): PlayerState => ({
   ...overrides,
 });
 
-const createBlueprint = (overrides: Partial<PlayerBlueprintView> = {}): PlayerBlueprintView => ({
+const createBlueprintInstance = (
+  overrides: Partial<PlayerBlueprintInstanceView> = {},
+): PlayerBlueprintInstanceView => ({
+  id: 'bp-hunter-cleaver-1',
   playerId: 1,
   blueprintCode: 'hunter_cleaver',
-  quantity: 1,
+  rarity: 'COMMON',
+  sourceType: 'QUEST',
+  sourceId: 'test',
+  discoveryKind: 'QUEST',
+  quality: 'STURDY',
+  craftPotential: 'default',
+  modifierSnapshot: {},
+  status: 'AVAILABLE',
   createdAt: '2026-04-12T00:00:00.000Z',
   updatedAt: '2026-04-12T00:00:00.000Z',
+  discoveredAt: '2026-04-12T00:00:00.000Z',
+  consumedAt: null,
   ...overrides,
 });
 
@@ -104,7 +115,7 @@ const createItem = (overrides: Partial<PlayerCraftedItemView> = {}): PlayerCraft
 
 interface CraftRequest {
   readonly playerId: number;
-  readonly blueprintCode: WorkshopBlueprintCode;
+  readonly blueprintInstanceId: string;
   readonly options: WorkshopMutationOptions | undefined;
 }
 
@@ -126,7 +137,7 @@ class InMemoryCraftWorkshopRepository implements Pick<
   | 'findPlayerByVkId'
   | 'getCommandIntentResult'
   | 'storeCommandIntentResult'
-  | 'listPlayerBlueprints'
+  | 'listPlayerBlueprintInstances'
   | 'listPlayerCraftedItems'
   | 'craftWorkshopItem'
 > {
@@ -135,17 +146,17 @@ class InMemoryCraftWorkshopRepository implements Pick<
   public readonly storedResults: StoredResult[] = [];
 
   private player: PlayerState;
-  private blueprints: PlayerBlueprintView[];
+  private blueprintInstances: PlayerBlueprintInstanceView[];
   private items: PlayerCraftedItemView[];
 
   public constructor(
     player: PlayerState,
-    blueprints: readonly PlayerBlueprintView[] = [],
+    blueprintInstances: readonly PlayerBlueprintInstanceView[] = [],
     items: readonly PlayerCraftedItemView[] = [],
     private readonly replay: CommandIntentReplayResult<unknown> | null = null,
   ) {
     this.player = player;
-    this.blueprints = [...blueprints];
+    this.blueprintInstances = [...blueprintInstances];
     this.items = [...items];
   }
 
@@ -176,8 +187,8 @@ class InMemoryCraftWorkshopRepository implements Pick<
     this.storedResults.push({ playerId, intentId, result });
   }
 
-  public async listPlayerBlueprints(): Promise<readonly PlayerBlueprintView[]> {
-    return this.blueprints;
+  public async listPlayerBlueprintInstances(): Promise<readonly PlayerBlueprintInstanceView[]> {
+    return this.blueprintInstances;
   }
 
   public async listPlayerCraftedItems(): Promise<readonly PlayerCraftedItemView[]> {
@@ -186,17 +197,22 @@ class InMemoryCraftWorkshopRepository implements Pick<
 
   public async craftWorkshopItem(
     playerId: number,
-    blueprintCode: WorkshopBlueprintCode,
+    blueprintInstanceId: string,
     options?: WorkshopMutationOptions,
   ): Promise<PlayerCraftedItemView> {
-    this.craftRequests.push({ playerId, blueprintCode, options });
+    this.craftRequests.push({ playerId, blueprintInstanceId, options });
 
-    const blueprint = getWorkshopBlueprint(blueprintCode);
+    const instance = this.blueprintInstances.find((entry) => entry.id === blueprintInstanceId);
+    if (!instance) {
+      throw new Error('Blueprint instance expected.');
+    }
+
+    const blueprint = getWorkshopBlueprint(instance.blueprintCode);
     if (blueprint.kind !== 'craft_item') {
       throw new Error('Craft blueprint expected.');
     }
 
-    this.spendBlueprint(blueprint.code);
+    this.spendBlueprint(blueprintInstanceId);
     this.spendMaterials(blueprint);
 
     const craftedItem = createItem({
@@ -218,11 +234,11 @@ class InMemoryCraftWorkshopRepository implements Pick<
     return craftedItem;
   }
 
-  private spendBlueprint(blueprintCode: WorkshopBlueprintCode): void {
-    this.blueprints = this.blueprints.map((blueprint) => (
-      blueprint.blueprintCode === blueprintCode
-        ? { ...blueprint, quantity: blueprint.quantity - 1 }
-        : blueprint
+  private spendBlueprint(blueprintInstanceId: string): void {
+    this.blueprintInstances = this.blueprintInstances.map((instance) => (
+      instance.id === blueprintInstanceId
+        ? { ...instance, status: 'CONSUMED', consumedAt: '2026-04-12T00:00:01.000Z' }
+        : instance
     ));
   }
 
@@ -249,17 +265,17 @@ describe('CraftWorkshopItem', () => {
         metal: 1,
       }),
     });
-    const blueprints = [createBlueprint({ blueprintCode: 'hunter_cleaver', quantity: 1 })];
-    const repository = new InMemoryCraftWorkshopRepository(player, blueprints);
+    const blueprintInstances = [createBlueprintInstance({ id: 'bp-hunter-cleaver-1', blueprintCode: 'hunter_cleaver' })];
+    const repository = new InMemoryCraftWorkshopRepository(player, blueprintInstances);
     const useCase = new CraftWorkshopItem(repository.asGameRepository());
-    const stateKey = buildCraftWorkshopItemIntentStateKey(player, 'hunter_cleaver', blueprints, []);
+    const stateKey = buildCraftWorkshopItemIntentStateKey(player, 'bp-hunter-cleaver-1', blueprintInstances, []);
 
-    const result = await useCase.execute(player.vkId, 'hunter_cleaver', 'intent-craft-1', stateKey, 'payload');
+    const result = await useCase.execute(player.vkId, 'bp-hunter-cleaver-1', 'intent-craft-1', stateKey, 'payload');
 
     expect(repository.craftRequests).toEqual([
       {
         playerId: player.playerId,
-        blueprintCode: 'hunter_cleaver',
+        blueprintInstanceId: 'bp-hunter-cleaver-1',
         options: {
           intentId: 'intent-craft-1',
           intentStateKey: stateKey,
@@ -279,10 +295,7 @@ describe('CraftWorkshopItem', () => {
       durability: 14,
       maxDurability: 14,
     });
-    expect(result.view.blueprints.find((entry) => entry.blueprint.code === 'hunter_cleaver')).toMatchObject({
-      ownedQuantity: 0,
-      canCraft: false,
-    });
+    expect(result.view.blueprints.find((entry) => entry.blueprint.code === 'hunter_cleaver')).toBeUndefined();
     expect(result.view.craftedItems.find((entry) => entry.item.id === result.craftedItem.id)).toMatchObject({
       repairable: false,
     });
@@ -301,12 +314,12 @@ describe('CraftWorkshopItem', () => {
         bone: 2,
       }),
     });
-    const blueprints = [createBlueprint({ blueprintCode: 'hunter_cleaver', quantity: 1 })];
-    const repository = new InMemoryCraftWorkshopRepository(player, blueprints);
+    const blueprintInstances = [createBlueprintInstance({ id: 'bp-hunter-cleaver-1', blueprintCode: 'hunter_cleaver' })];
+    const repository = new InMemoryCraftWorkshopRepository(player, blueprintInstances);
     const useCase = new CraftWorkshopItem(repository.asGameRepository());
-    const stateKey = buildCraftWorkshopItemIntentStateKey(player, 'hunter_cleaver', blueprints, []);
+    const stateKey = buildCraftWorkshopItemIntentStateKey(player, 'bp-hunter-cleaver-1', blueprintInstances, []);
 
-    await expect(useCase.execute(player.vkId, 'hunter_cleaver', 'intent-craft-1', stateKey, 'payload')).rejects.toMatchObject({
+    await expect(useCase.execute(player.vkId, 'bp-hunter-cleaver-1', 'intent-craft-1', stateKey, 'payload')).rejects.toMatchObject({
       code: 'not_enough_workshop_resources',
     });
 
@@ -324,9 +337,9 @@ describe('CraftWorkshopItem', () => {
     });
     const repository = new InMemoryCraftWorkshopRepository(player, []);
     const useCase = new CraftWorkshopItem(repository.asGameRepository());
-    const stateKey = buildCraftWorkshopItemIntentStateKey(player, 'hunter_cleaver', [], []);
+    const stateKey = buildCraftWorkshopItemIntentStateKey(player, 'bp-hunter-cleaver-1', [], []);
 
-    await expect(useCase.execute(player.vkId, 'hunter_cleaver', 'intent-craft-1', stateKey, 'payload')).rejects.toMatchObject({
+    await expect(useCase.execute(player.vkId, 'bp-hunter-cleaver-1', 'intent-craft-1', stateKey, 'payload')).rejects.toMatchObject({
       code: 'workshop_blueprint_unavailable',
     });
 
@@ -361,7 +374,7 @@ describe('CraftWorkshopItem', () => {
     );
     const useCase = new CraftWorkshopItem(repository.asGameRepository());
 
-    await expect(useCase.execute(player.vkId, 'resonance_tool', 'intent-craft-1', 'old-state', 'payload')).resolves.toBe(replayedResult);
+    await expect(useCase.execute(player.vkId, 'bp-replayed-1', 'intent-craft-1', 'old-state', 'payload')).resolves.toBe(replayedResult);
 
     expect(repository.replayRequests).toEqual([
       {
@@ -382,11 +395,11 @@ describe('CraftWorkshopItem', () => {
         metal: 1,
       }),
     });
-    const blueprints = [createBlueprint({ blueprintCode: 'hunter_cleaver', quantity: 1 })];
-    const repository = new InMemoryCraftWorkshopRepository(player, blueprints);
+    const blueprintInstances = [createBlueprintInstance({ id: 'bp-hunter-cleaver-1', blueprintCode: 'hunter_cleaver' })];
+    const repository = new InMemoryCraftWorkshopRepository(player, blueprintInstances);
     const useCase = new CraftWorkshopItem(repository.asGameRepository());
 
-    await expect(useCase.execute(player.vkId, 'hunter_cleaver', 'intent-craft-1', 'old-state', 'payload')).rejects.toMatchObject({
+    await expect(useCase.execute(player.vkId, 'bp-hunter-cleaver-1', 'intent-craft-1', 'old-state', 'payload')).rejects.toMatchObject({
       code: 'stale_command_intent',
     });
 

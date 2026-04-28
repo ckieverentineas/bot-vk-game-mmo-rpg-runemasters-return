@@ -108,7 +108,7 @@ export type BestiaryEnemyCommand = `${typeof bestiaryEnemyCommandPrefix}${string
 export type BestiaryLocationRewardCommand = `${typeof bestiaryLocationRewardCommandPrefix}${string}`;
 export type BestiaryEnemyRewardCommand = `${typeof bestiaryEnemyRewardCommandPrefix}${string} ${string}`;
 export type QuestBookPageCommand = `${typeof questBookPageCommandPrefix}${number}`;
-export type WorkshopCraftCommand = `${typeof workshopCraftCommandPrefix}${WorkshopBlueprintCode}`;
+export type WorkshopCraftCommand = `${typeof workshopCraftCommandPrefix}${string}`;
 export type WorkshopRepairCommand = `${typeof workshopRepairCommandPrefix}${string} ${WorkshopBlueprintCode}`;
 export type WorkshopEquipCommand = `${typeof workshopEquipCommandPrefix}${string}`;
 export type WorkshopUnequipCommand = `${typeof workshopUnequipCommandPrefix}${string}`;
@@ -533,19 +533,19 @@ export const resolveQuestBookPageCommand = (command: string): number | null => {
   return Number(match[1]);
 };
 
-export const createWorkshopCraftCommand = (blueprintCode: WorkshopBlueprintCode): WorkshopCraftCommand => (
-  `${workshopCraftCommandPrefix}${blueprintCode}` as WorkshopCraftCommand
+export const createWorkshopCraftCommand = (blueprintInstanceId: string): WorkshopCraftCommand => (
+  `${workshopCraftCommandPrefix}${blueprintInstanceId}` as WorkshopCraftCommand
 );
 
-export const resolveWorkshopCraftCommand = (command: string): WorkshopBlueprintCode | null => {
+export const resolveWorkshopCraftCommand = (command: string): string | null => {
   const trimmedCommand = command.trim();
 
   if (!trimmedCommand.startsWith(workshopCraftCommandPrefix)) {
     return null;
   }
 
-  const blueprintCode = trimmedCommand.slice(workshopCraftCommandPrefix.length).trim();
-  return isWorkshopBlueprintCode(blueprintCode) ? blueprintCode : null;
+  const blueprintInstanceId = trimmedCommand.slice(workshopCraftCommandPrefix.length).trim();
+  return blueprintInstanceId.length > 0 ? blueprintInstanceId : null;
 };
 
 export const createWorkshopRepairCommand = (

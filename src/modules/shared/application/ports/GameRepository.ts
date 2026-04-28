@@ -353,7 +353,7 @@ export interface GameRepository {
   ): Promise<PlayerBlueprintView>;
   craftWorkshopItem(
     playerId: number,
-    blueprintCode: WorkshopBlueprintCode,
+    blueprintInstanceId: string,
     options?: WorkshopMutationOptions,
   ): Promise<PlayerCraftedItemView>;
   repairWorkshopItem(

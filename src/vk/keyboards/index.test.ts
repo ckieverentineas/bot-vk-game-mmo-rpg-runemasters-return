@@ -16,8 +16,10 @@ import {
   createTutorialKeyboard,
   createWorkshopKeyboard,
 } from './index';
-import { gameCommands } from '../commands/catalog';
+import { createWorkshopCraftCommand, gameCommands } from '../commands/catalog';
 import type { PendingRewardView } from '../../modules/shared/application/ports/GameRepository';
+import type { PlayerBlueprintInstanceView } from '../../modules/workshop/application/workshop-persistence';
+import { getWorkshopBlueprint } from '../../modules/workshop/domain/workshop-catalog';
 
 const createPlayer = (overrides: Partial<PlayerState> = {}): PlayerState => ({
   userId: 1,
@@ -84,6 +86,27 @@ const createPlayer = (overrides: Partial<PlayerState> = {}): PlayerState => ({
   ],
   createdAt: '2026-04-12T00:00:00.000Z',
   updatedAt: '2026-04-12T00:00:00.000Z',
+  ...overrides,
+});
+
+const createBlueprintInstance = (
+  overrides: Partial<PlayerBlueprintInstanceView> = {},
+): PlayerBlueprintInstanceView => ({
+  id: 'bp-skinning-kit-1',
+  playerId: 1,
+  blueprintCode: 'skinning_kit',
+  rarity: 'COMMON',
+  sourceType: 'QUEST',
+  sourceId: 'test',
+  discoveryKind: 'QUEST',
+  quality: 'STURDY',
+  craftPotential: 'default',
+  modifierSnapshot: {},
+  status: 'AVAILABLE',
+  createdAt: '2026-04-12T00:00:00.000Z',
+  updatedAt: '2026-04-12T00:00:00.000Z',
+  discoveredAt: '2026-04-12T00:00:00.000Z',
+  consumedAt: null,
   ...overrides,
 });
 
@@ -655,6 +678,34 @@ describe('profile keyboard', () => {
       '🧩 🛡️ Стойкость',
       '✅ 💠 Фокус',
     ]));
+  });
+
+  it('binds workshop craft buttons to owned blueprint instances', () => {
+    const blueprintInstance = createBlueprintInstance();
+    const keyboard = createWorkshopKeyboard({
+      player: createPlayer(),
+      blueprints: [
+        {
+          blueprint: getWorkshopBlueprint('skinning_kit'),
+          instance: blueprintInstance,
+          ownedQuantity: 1,
+          canCraft: true,
+          missingCost: {},
+        },
+      ],
+      repairTools: [],
+      craftedItems: [],
+    });
+    const payloads = collectPayloads(keyboard);
+
+    expect(payloads).toContainEqual(expect.objectContaining({
+      command: createWorkshopCraftCommand(blueprintInstance.id),
+      intentId: expect.any(String),
+      stateKey: expect.any(String),
+    }));
+    expect(payloads).not.toContainEqual(expect.objectContaining({
+      command: createWorkshopCraftCommand(blueprintInstance.blueprintCode),
+    }));
   });
 
   it('keeps defeat battle-result CTA aligned with rune review instead of school-test retry', () => {

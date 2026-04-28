@@ -2074,10 +2074,10 @@ export class PrismaGameRepository implements GameRepository {
 
   public async craftWorkshopItem(
     playerId: number,
-    blueprintCode: WorkshopBlueprintCode,
+    blueprintInstanceId: string,
     options?: WorkshopMutationOptions,
   ): Promise<PlayerCraftedItemView> {
-    return this.workshopPersistence.craftWorkshopItem(playerId, blueprintCode, options);
+    return this.workshopPersistence.craftWorkshopItem(playerId, blueprintInstanceId, options);
   }
 
   public async repairWorkshopItem(

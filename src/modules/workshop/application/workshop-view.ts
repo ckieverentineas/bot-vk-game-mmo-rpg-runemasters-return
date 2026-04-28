@@ -1,5 +1,5 @@
 import type { PlayerState } from '../../../shared/types/game';
-import type { PlayerBlueprintView, PlayerCraftedItemView } from './workshop-persistence';
+import type { PlayerBlueprintInstanceView, PlayerCraftedItemView } from './workshop-persistence';
 import {
   canCraftWorkshopBlueprint,
   canRepairWorkshopItem,
@@ -13,6 +13,7 @@ import {
 } from '../domain/workshop-catalog';
 
 export interface WorkshopBlueprintEntryView {
+  readonly instance: PlayerBlueprintInstanceView;
   readonly blueprint: WorkshopBlueprintDefinition;
   readonly ownedQuantity: number;
   readonly canCraft: boolean;
@@ -20,6 +21,7 @@ export interface WorkshopBlueprintEntryView {
 }
 
 export interface WorkshopRepairToolEntryView {
+  readonly instance: PlayerBlueprintInstanceView;
   readonly blueprint: WorkshopRepairToolBlueprintDefinition;
   readonly ownedQuantity: number;
   readonly available: boolean;
@@ -39,13 +41,6 @@ export interface WorkshopView {
   readonly repairTools: readonly WorkshopRepairToolEntryView[];
   readonly craftedItems: readonly WorkshopCraftedItemEntryView[];
 }
-
-const getBlueprintQuantity = (
-  blueprints: readonly PlayerBlueprintView[],
-  blueprintCode: string,
-): number => (
-  blueprints.find((blueprint) => blueprint.blueprintCode === blueprintCode)?.quantity ?? 0
-);
 
 const hasNoMissingCost = (missingCost: WorkshopBlueprintCost): boolean => Object.keys(missingCost).length === 0;
 
@@ -69,17 +64,16 @@ export const canRepairPlayerCraftedItem = (
 
 const buildBlueprintEntry = (
   player: PlayerState,
-  blueprints: readonly PlayerBlueprintView[],
+  instance: PlayerBlueprintInstanceView,
   blueprint: WorkshopBlueprintDefinition,
 ): WorkshopBlueprintEntryView => {
-  const ownedQuantity = getBlueprintQuantity(blueprints, blueprint.code);
   const missingCost = resolveWorkshopMissingCost(player.inventory, blueprint);
 
   return {
+    instance,
     blueprint,
-    ownedQuantity,
+    ownedQuantity: 1,
     canCraft: blueprint.kind === 'craft_item'
-      && ownedQuantity > 0
       && canCraftWorkshopBlueprint(player.inventory, blueprint),
     missingCost,
   };
@@ -87,16 +81,16 @@ const buildBlueprintEntry = (
 
 const buildRepairToolEntry = (
   player: PlayerState,
-  blueprints: readonly PlayerBlueprintView[],
+  instance: PlayerBlueprintInstanceView,
   blueprint: WorkshopRepairToolBlueprintDefinition,
 ): WorkshopRepairToolEntryView => {
-  const ownedQuantity = getBlueprintQuantity(blueprints, blueprint.code);
   const missingCost = resolveWorkshopMissingCost(player.inventory, blueprint);
 
   return {
+    instance,
     blueprint,
-    ownedQuantity,
-    available: ownedQuantity > 0 && hasNoMissingCost(missingCost),
+    ownedQuantity: 1,
+    available: hasNoMissingCost(missingCost),
     missingCost,
   };
 };
@@ -119,17 +113,32 @@ const buildCraftedItemEntry = (
 
 export const buildWorkshopView = (
   player: PlayerState,
-  blueprints: readonly PlayerBlueprintView[],
+  blueprintInstances: readonly PlayerBlueprintInstanceView[],
   craftedItems: readonly PlayerCraftedItemView[],
 ): WorkshopView => {
-  const catalogBlueprints = listWorkshopBlueprints();
-  const repairTools = catalogBlueprints
-    .filter(isRepairToolBlueprint)
-    .map((blueprint) => buildRepairToolEntry(player, blueprints, blueprint));
+  const catalogBlueprintsByCode = new Map(
+    listWorkshopBlueprints().map((blueprint) => [blueprint.code, blueprint]),
+  );
+  const availableBlueprints = blueprintInstances
+    .filter((instance) => instance.status === 'AVAILABLE')
+    .map((instance) => ({
+      instance,
+      blueprint: catalogBlueprintsByCode.get(instance.blueprintCode),
+    }))
+    .filter((entry): entry is {
+      readonly instance: PlayerBlueprintInstanceView;
+      readonly blueprint: WorkshopBlueprintDefinition;
+    } => entry.blueprint !== undefined);
+  const repairTools = availableBlueprints
+    .filter((entry): entry is {
+      readonly instance: PlayerBlueprintInstanceView;
+      readonly blueprint: WorkshopRepairToolBlueprintDefinition;
+    } => isRepairToolBlueprint(entry.blueprint))
+    .map(({ instance, blueprint }) => buildRepairToolEntry(player, instance, blueprint));
 
   return {
     player,
-    blueprints: catalogBlueprints.map((blueprint) => buildBlueprintEntry(player, blueprints, blueprint)),
+    blueprints: availableBlueprints.map(({ instance, blueprint }) => buildBlueprintEntry(player, instance, blueprint)),
     repairTools,
     craftedItems: craftedItems.map((item) => buildCraftedItemEntry(item, repairTools)),
   };

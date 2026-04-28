@@ -24,7 +24,13 @@ import type {
 } from '../../modules/workshop/application/workshop-view';
 import type {
   WorkshopBlueprintCost,
+  WorkshopBlueprintRarity,
 } from '../../modules/workshop/domain/workshop-catalog';
+import {
+  formatWorkshopBlueprintQuality,
+  type WorkshopBlueprintDiscoveryKind,
+  type WorkshopBlueprintSourceType,
+} from '../../modules/workshop/domain/workshop-blueprint-instances';
 import type { InventoryView, MaterialField } from '../../shared/types/game';
 import {
   renderHintBlock,
@@ -53,6 +59,32 @@ const materialTitles: Readonly<Record<MaterialField, string>> = {
   essence: 'эссенция',
   metal: 'металл',
   crystal: 'кристалл',
+};
+
+const blueprintRarityTitles: Readonly<Record<WorkshopBlueprintRarity, string>> = {
+  COMMON: 'обычный',
+  UNCOMMON: 'необычный',
+  RARE: 'редкий',
+  EPIC: 'эпический',
+};
+
+const blueprintDiscoveryTitles: Readonly<Record<WorkshopBlueprintDiscoveryKind, string>> = {
+  COMMON: 'находка',
+  SECRET: 'секретный',
+  QUEST: 'квестовый',
+  SCHOOL: 'школьный',
+  REPAIR: 'ремонтный',
+  LEGACY: 'старый запас',
+};
+
+const blueprintSourceTitles: Readonly<Record<WorkshopBlueprintSourceType, string>> = {
+  TROPHY: 'трофей',
+  QUEST: 'квест',
+  BESTIARY: 'бестиарий',
+  DAILY_TRACE: 'след дня',
+  EVENT: 'событие',
+  SCHOOL_TRIAL: 'испытание школы',
+  LEGACY: 'старый запас',
 };
 
 const materialFields: readonly MaterialField[] = [
@@ -94,6 +126,21 @@ const formatMaterialStock = (inventory: InventoryView): string => (
     .map((field) => `${materialTitles[field]} ${inventory[field]}`)
     .join(' · ')
 );
+
+const formatShortBlueprintInstanceId = (id: string): string => id.slice(0, 8);
+
+const formatBlueprintInstanceDetails = (
+  entry: WorkshopBlueprintEntryView | WorkshopRepairToolEntryView,
+): string => {
+  const { instance } = entry;
+  const quality = formatWorkshopBlueprintQuality(instance.quality).toLowerCase();
+  const rarity = blueprintRarityTitles[instance.rarity];
+  const discovery = blueprintDiscoveryTitles[instance.discoveryKind];
+  const source = blueprintSourceTitles[instance.sourceType];
+  const sourceSuffix = source === discovery ? source : `${discovery}, ${source}`;
+
+  return `чертеж #${formatShortBlueprintInstanceId(instance.id)} · ${quality} · ${rarity} · ${sourceSuffix}`;
+};
 
 const trimPillTitle = (title: string): string => title.replace(/^Пилюля\s+/u, '');
 
@@ -164,7 +211,7 @@ const renderWorkshopActions = (view: WorkshopView): readonly string[] => {
 const formatBlueprintEntry = (entry: WorkshopBlueprintEntryView): string => {
   const blueprint = entry.blueprint;
   const title = resolveWorkshopBlueprintTitle(blueprint.code);
-  const ownedLine = entry.ownedQuantity > 0 ? `чертеж x${entry.ownedQuantity}` : 'чертежа нет';
+  const ownedLine = entry.ownedQuantity > 0 ? formatBlueprintInstanceDetails(entry) : 'чертежа нет';
   const craftState = entry.canCraft
     ? '✅ готово'
     : entry.ownedQuantity > 0
@@ -184,7 +231,7 @@ const formatRepairToolEntry = (entry: WorkshopRepairToolEntryView): string => {
     : entry.ownedQuantity > 0
       ? `🧩 ${formatMissingCost(entry.missingCost)}`
       : '🔒 нужен чертеж';
-  const ownedLine = entry.ownedQuantity > 0 ? `чертеж x${entry.ownedQuantity}` : 'чертежа нет';
+  const ownedLine = entry.ownedQuantity > 0 ? formatBlueprintInstanceDetails(entry) : 'чертежа нет';
 
   return `${[
     `• ${status} · ${title}: ${ownedLine}`,

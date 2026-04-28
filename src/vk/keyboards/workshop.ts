@@ -61,10 +61,7 @@ const truncateLabel = (text: string, maxLength: number): string => (
 const resolveButtonIcon = (label: string): string => label.split(' ')[0] ?? '💊';
 
 const createBlueprintStateEntries = (view: WorkshopView) => (
-  view.blueprints.map((entry) => ({
-    blueprintCode: entry.blueprint.code,
-    quantity: entry.ownedQuantity,
-  }))
+  view.blueprints.map((entry) => entry.instance)
 );
 
 const createCraftedItemStateEntries = (view: WorkshopView) => (
@@ -86,12 +83,12 @@ const createWorkshopCraftRows = (view: WorkshopView): KeyboardLayout => {
         `${entry.canCraft ? '⚒' : '🧩'} ${resolveWorkshopBlueprintTitle(entry.blueprint.code)} x${entry.ownedQuantity}`,
         40,
       ),
-      command: createWorkshopCraftCommand(entry.blueprint.code),
+      command: createWorkshopCraftCommand(entry.instance.id),
       color: entry.canCraft ? Keyboard.POSITIVE_COLOR : Keyboard.SECONDARY_COLOR,
       intentScoped: true,
       stateKey: buildCraftWorkshopItemIntentStateKey(
         view.player,
-        entry.blueprint.code,
+        entry.instance.id,
         blueprintStateEntries,
         craftedItemStateEntries,
       ),

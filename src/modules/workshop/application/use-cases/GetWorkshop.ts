@@ -5,7 +5,7 @@ import { buildWorkshopView, type WorkshopView } from '../workshop-view';
 
 type GetWorkshopRepository = FindPlayerByVkIdRepository & Pick<
   GameRepository,
-  'listPlayerBlueprints' | 'listPlayerCraftedItems'
+  'listPlayerBlueprintInstances' | 'listPlayerCraftedItems'
 >;
 
 export class GetWorkshop {
@@ -13,11 +13,11 @@ export class GetWorkshop {
 
   public async execute(vkId: number): Promise<WorkshopView> {
     const player = await requirePlayerByVkId(this.repository, vkId);
-    const [blueprints, craftedItems] = await Promise.all([
-      this.repository.listPlayerBlueprints(player.playerId),
+    const [blueprintInstances, craftedItems] = await Promise.all([
+      this.repository.listPlayerBlueprintInstances(player.playerId),
       this.repository.listPlayerCraftedItems(player.playerId),
     ]);
 
-    return buildWorkshopView(player, blueprints, craftedItems);
+    return buildWorkshopView(player, blueprintInstances, craftedItems);
   }
 }

@@ -1,10 +1,16 @@
 import { createHash } from 'node:crypto';
 
 import type { InventoryView, MaterialField, PlayerState } from '../../../shared/types/game';
-import type { PlayerBlueprintView, PlayerCraftedItemView } from './workshop-persistence';
+import type { PlayerBlueprintInstanceView, PlayerCraftedItemView } from './workshop-persistence';
 import type { WorkshopBlueprintCode } from '../domain/workshop-catalog';
 
-type BlueprintQuantityView = Pick<PlayerBlueprintView, 'blueprintCode' | 'quantity'>;
+type BlueprintInstanceStateView = Pick<
+  PlayerBlueprintInstanceView,
+  | 'id'
+  | 'blueprintCode'
+  | 'status'
+  | 'updatedAt'
+>;
 
 type CraftedItemStateView = Pick<
   PlayerCraftedItemView,
@@ -31,11 +37,17 @@ interface WorkshopStateKeyItemSnapshot {
   readonly updatedAt: string;
 }
 
+interface WorkshopStateKeyBlueprintInstanceSnapshot {
+  readonly id: string;
+  readonly blueprintCode: string;
+  readonly status: string;
+  readonly updatedAt: string;
+}
+
 interface WorkshopStateKeySnapshot {
   readonly playerId: number;
   readonly playerUpdatedAt: string;
-  readonly blueprintCode: WorkshopBlueprintCode;
-  readonly ownedQuantity: number;
+  readonly blueprintInstances: readonly WorkshopStateKeyBlueprintInstanceSnapshot[];
   readonly materials: Readonly<Record<MaterialField, number>>;
   readonly items: readonly WorkshopStateKeyItemSnapshot[];
 }
@@ -51,13 +63,6 @@ const materialFields: readonly MaterialField[] = [
 
 const serializeStateKey = (value: unknown): string => createHash('sha1').update(JSON.stringify(value)).digest('hex');
 
-const getBlueprintQuantity = (
-  blueprints: readonly BlueprintQuantityView[],
-  blueprintCode: WorkshopBlueprintCode,
-): number => (
-  blueprints.find((blueprint) => blueprint.blueprintCode === blueprintCode)?.quantity ?? 0
-);
-
 const summarizeMaterials = (inventory: InventoryView): Readonly<Record<MaterialField, number>> => (
   materialFields.reduce<Record<MaterialField, number>>((summary, field) => ({
     ...summary,
@@ -70,6 +75,19 @@ const summarizeMaterials = (inventory: InventoryView): Readonly<Record<MaterialF
     metal: 0,
     crystal: 0,
   })
+);
+
+const summarizeBlueprintInstances = (
+  blueprintInstances: readonly BlueprintInstanceStateView[],
+): readonly WorkshopStateKeyBlueprintInstanceSnapshot[] => (
+  [...blueprintInstances]
+    .sort((left, right) => left.id.localeCompare(right.id))
+    .map((instance) => ({
+      id: instance.id,
+      blueprintCode: instance.blueprintCode,
+      status: instance.status,
+      updatedAt: instance.updatedAt,
+    }))
 );
 
 const summarizeItems = (items: readonly CraftedItemStateView[]): readonly WorkshopStateKeyItemSnapshot[] => (
@@ -90,14 +108,12 @@ const summarizeItems = (items: readonly CraftedItemStateView[]): readonly Worksh
 
 const summarizeWorkshopState = (
   player: Pick<PlayerState, 'playerId' | 'updatedAt' | 'inventory'>,
-  blueprints: readonly BlueprintQuantityView[],
+  blueprintInstances: readonly BlueprintInstanceStateView[],
   items: readonly CraftedItemStateView[],
-  blueprintCode: WorkshopBlueprintCode,
 ): WorkshopStateKeySnapshot => ({
   playerId: player.playerId,
   playerUpdatedAt: player.updatedAt,
-  blueprintCode,
-  ownedQuantity: getBlueprintQuantity(blueprints, blueprintCode),
+  blueprintInstances: summarizeBlueprintInstances(blueprintInstances),
   materials: summarizeMaterials(player.inventory),
   items: summarizeItems(items),
 });
@@ -114,24 +130,26 @@ const summarizeWorkshopEquipmentState = (
 
 export const buildCraftWorkshopItemIntentStateKey = (
   player: Pick<PlayerState, 'playerId' | 'updatedAt' | 'inventory'>,
-  blueprintCode: WorkshopBlueprintCode,
-  blueprints: readonly BlueprintQuantityView[],
+  blueprintInstanceId: string,
+  blueprintInstances: readonly BlueprintInstanceStateView[],
   items: readonly CraftedItemStateView[],
 ): string => serializeStateKey({
   action: 'craft_workshop_item',
-  ...summarizeWorkshopState(player, blueprints, items, blueprintCode),
+  blueprintInstanceId,
+  ...summarizeWorkshopState(player, blueprintInstances, items),
 });
 
 export const buildRepairWorkshopItemIntentStateKey = (
   player: Pick<PlayerState, 'playerId' | 'updatedAt' | 'inventory'>,
   itemId: string,
   repairBlueprintCode: WorkshopBlueprintCode,
-  blueprints: readonly BlueprintQuantityView[],
+  blueprintInstances: readonly BlueprintInstanceStateView[],
   items: readonly CraftedItemStateView[],
 ): string => serializeStateKey({
   action: 'repair_workshop_item',
   itemId,
-  ...summarizeWorkshopState(player, blueprints, items, repairBlueprintCode),
+  repairBlueprintCode,
+  ...summarizeWorkshopState(player, blueprintInstances, items),
 });
 
 export const buildEquipWorkshopItemIntentStateKey = (

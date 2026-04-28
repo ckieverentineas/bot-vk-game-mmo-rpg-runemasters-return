@@ -246,6 +246,48 @@ const spendWorkshopBlueprint = async (
   }
 };
 
+const requireAvailableBlueprintInstanceRecord = async (
+  client: TransactionClient,
+  playerId: number,
+  blueprintInstanceId: string,
+): Promise<PlayerBlueprintInstance> => {
+  const instance = await client.playerBlueprintInstance.findFirst({
+    where: {
+      id: blueprintInstanceId,
+      playerId,
+      status: 'AVAILABLE',
+    },
+  });
+
+  if (!instance) {
+    throw new AppError('workshop_blueprint_spent', 'Чертёж для этого предмета уже потрачен.');
+  }
+
+  return instance;
+};
+
+const spendWorkshopBlueprintInstance = async (
+  client: TransactionClient,
+  playerId: number,
+  blueprintInstanceId: string,
+): Promise<void> => {
+  const spent = await client.playerBlueprintInstance.updateMany({
+    where: {
+      id: blueprintInstanceId,
+      playerId,
+      status: 'AVAILABLE',
+    },
+    data: {
+      status: 'CONSUMED',
+      consumedAt: new Date(),
+    },
+  });
+
+  if (spent.count === 0) {
+    throw new AppError('workshop_blueprint_spent', 'Чертёж для этого предмета уже потрачен.');
+  }
+};
+
 const spendWorkshopInventoryCost = async (
   client: TransactionClient,
   playerId: number,
@@ -384,7 +426,7 @@ export class PrismaWorkshopPersistence {
 
   public async craftWorkshopItem(
     playerId: number,
-    blueprintCode: WorkshopBlueprintCode,
+    blueprintInstanceId: string,
     options?: WorkshopMutationOptions,
   ): Promise<PlayerCraftedItemView> {
     return this.prisma.$transaction((tx) => this.context.runWithCommandIntent(
@@ -395,14 +437,12 @@ export class PrismaWorkshopPersistence {
       options?.intentStateKey,
       options?.currentStateKey,
       async () => {
-        const blueprint = requireWorkshopCraftBlueprint(blueprintCode);
-
-        await spendWorkshopBlueprint(
-          tx,
-          playerId,
-          blueprint.code,
-          'Чертёж для этого предмета уже потрачен.',
+        const instance = await requireAvailableBlueprintInstanceRecord(tx, playerId, blueprintInstanceId);
+        const blueprint = requireWorkshopCraftBlueprint(
+          requireKnownWorkshopValue(instance.blueprintCode, isWorkshopBlueprintCode, 'blueprintCode'),
         );
+
+        await spendWorkshopBlueprintInstance(tx, playerId, blueprintInstanceId);
         await spendWorkshopInventoryCost(
           tx,
           playerId,

@@ -2037,8 +2037,9 @@ describe('GameHandler smoke', () => {
   it('пробрасывает intentId для создания предмета мастерской через transport payload', async () => {
     const services = createServices();
     const handler = new GameHandler(services);
+    const blueprintInstanceId = 'bp-skinning-kit-1';
     const ctx = createFakeContext({
-      command: createWorkshopCraftCommand('skinning_kit'),
+      command: createWorkshopCraftCommand(blueprintInstanceId),
       intentId: 'intent-workshop-craft-1',
       stateKey: 'state-workshop-craft-1',
     });
@@ -2047,7 +2048,7 @@ describe('GameHandler smoke', () => {
 
     expect(services.craftWorkshopItem.execute).toHaveBeenCalledWith(
       1001,
-      'skinning_kit',
+      blueprintInstanceId,
       'intent-workshop-craft-1',
       'state-workshop-craft-1',
       'payload',

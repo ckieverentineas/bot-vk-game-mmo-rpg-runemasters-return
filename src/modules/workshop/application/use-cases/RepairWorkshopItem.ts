@@ -20,7 +20,7 @@ import {
   type WorkshopRepairToolBlueprintDefinition,
 } from '../../domain/workshop-catalog';
 import { buildRepairWorkshopItemIntentStateKey } from '../command-intent-state';
-import type { PlayerBlueprintView, PlayerCraftedItemView } from '../workshop-persistence';
+import type { PlayerBlueprintInstanceView, PlayerCraftedItemView } from '../workshop-persistence';
 import {
   buildWorkshopView,
   canRepairPlayerCraftedItem,
@@ -43,7 +43,7 @@ export interface RepairWorkshopItemResultView {
 }
 
 type RepairWorkshopReplayResult = RepairWorkshopItemResultView | PlayerCraftedItemView;
-type WorkshopSnapshotRepository = Pick<GameRepository, 'listPlayerBlueprints' | 'listPlayerCraftedItems'>;
+type WorkshopSnapshotRepository = Pick<GameRepository, 'listPlayerBlueprintInstances' | 'listPlayerCraftedItems'>;
 type WorkshopCurrentViewRepository = FindPlayerByVkIdRepository & WorkshopSnapshotRepository;
 type RepairWorkshopItemRepository = CommandIntentReplayRepository
   & WorkshopCurrentViewRepository
@@ -56,10 +56,12 @@ const isRepairWorkshopItemResult = (
 ): result is RepairWorkshopItemResultView => 'repairedItem' in result && 'view' in result;
 
 const getOwnedBlueprintQuantity = (
-  blueprints: readonly PlayerBlueprintView[],
+  blueprintInstances: readonly PlayerBlueprintInstanceView[],
   blueprintCode: WorkshopBlueprintCode,
 ): number => (
-  blueprints.find((blueprint) => blueprint.blueprintCode === blueprintCode)?.quantity ?? 0
+  blueprintInstances.filter((instance) => (
+    instance.blueprintCode === blueprintCode && instance.status === 'AVAILABLE'
+  )).length
 );
 
 const requireRepairBlueprint = (blueprintCode: WorkshopBlueprintCode): WorkshopRepairToolBlueprintDefinition => {
@@ -73,10 +75,10 @@ const requireRepairBlueprint = (blueprintCode: WorkshopBlueprintCode): WorkshopR
 };
 
 const assertRepairBlueprintAvailable = (
-  blueprints: readonly PlayerBlueprintView[],
+  blueprintInstances: readonly PlayerBlueprintInstanceView[],
   blueprintCode: WorkshopBlueprintCode,
 ): void => {
-  if (getOwnedBlueprintQuantity(blueprints, blueprintCode) <= 0) {
+  if (getOwnedBlueprintQuantity(blueprintInstances, blueprintCode) <= 0) {
     throw new AppError('workshop_blueprint_unavailable', 'У вас нет такого ремонтного чертежа.');
   }
 };
@@ -138,15 +140,15 @@ const loadWorkshopSnapshot = async (
   player: PlayerState,
 ): Promise<{
   readonly player: PlayerState;
-  readonly blueprints: readonly PlayerBlueprintView[];
+  readonly blueprintInstances: readonly PlayerBlueprintInstanceView[];
   readonly craftedItems: readonly PlayerCraftedItemView[];
 }> => {
-  const [blueprints, craftedItems] = await Promise.all([
-    repository.listPlayerBlueprints(player.playerId),
+  const [blueprintInstances, craftedItems] = await Promise.all([
+    repository.listPlayerBlueprintInstances(player.playerId),
     repository.listPlayerCraftedItems(player.playerId),
   ]);
 
-  return { player, blueprints, craftedItems };
+  return { player, blueprintInstances, craftedItems };
 };
 
 const loadCurrentWorkshopView = async (
@@ -156,7 +158,7 @@ const loadCurrentWorkshopView = async (
   const player = await requirePlayerByVkId(repository, vkId);
   const snapshot = await loadWorkshopSnapshot(repository, player);
 
-  return buildWorkshopView(snapshot.player, snapshot.blueprints, snapshot.craftedItems);
+  return buildWorkshopView(snapshot.player, snapshot.blueprintInstances, snapshot.craftedItems);
 };
 
 const replayRepairWorkshopItemResult = async (
@@ -164,7 +166,7 @@ const replayRepairWorkshopItemResult = async (
   player: PlayerState,
   repairBlueprintCode: WorkshopBlueprintCode,
   snapshot: {
-    readonly blueprints: readonly PlayerBlueprintView[];
+    readonly blueprintInstances: readonly PlayerBlueprintInstanceView[];
     readonly craftedItems: readonly PlayerCraftedItemView[];
   },
   intentId: string,
@@ -182,7 +184,7 @@ const replayRepairWorkshopItemResult = async (
         return result;
       }
 
-      const view = buildWorkshopView(player, snapshot.blueprints, snapshot.craftedItems);
+      const view = buildWorkshopView(player, snapshot.blueprintInstances, snapshot.craftedItems);
       return buildRepairResult(view, repairBlueprintCode, result);
     },
   });
@@ -210,7 +212,7 @@ export class RepairWorkshopItem {
       player,
       itemId,
       repairBlueprintCode,
-      snapshot.blueprints,
+      snapshot.blueprintInstances,
       snapshot.craftedItems,
     );
     const replay = await replayRepairWorkshopItemResult(
@@ -234,7 +236,7 @@ export class RepairWorkshopItem {
     });
     const repairBlueprint = requireRepairBlueprint(repairBlueprintCode);
     requireRepairableItem(snapshot.craftedItems, itemId, repairBlueprint);
-    assertRepairBlueprintAvailable(snapshot.blueprints, repairBlueprint.code);
+    assertRepairBlueprintAvailable(snapshot.blueprintInstances, repairBlueprint.code);
     assertRepairMaterialsAvailable(player, repairBlueprint);
 
     const repairedItem = await this.repository.repairWorkshopItem(player.playerId, itemId, repairBlueprint.code, {

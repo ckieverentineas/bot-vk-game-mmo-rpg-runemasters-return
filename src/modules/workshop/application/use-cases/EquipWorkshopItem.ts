@@ -14,7 +14,7 @@ import type {
 import { requirePlayerByVkId } from '../../../shared/application/require-player';
 import { canEquipWorkshopItem, type WorkshopItemView } from '../../domain/workshop-catalog';
 import { buildEquipWorkshopItemIntentStateKey } from '../command-intent-state';
-import type { PlayerBlueprintView, PlayerCraftedItemView } from '../workshop-persistence';
+import type { PlayerBlueprintInstanceView, PlayerCraftedItemView } from '../workshop-persistence';
 import { buildWorkshopView, type WorkshopView } from '../workshop-view';
 
 export interface WorkshopEquippedItemSummaryView {
@@ -32,7 +32,7 @@ export interface EquipWorkshopItemResultView {
 }
 
 type EquipWorkshopReplayResult = EquipWorkshopItemResultView | PlayerCraftedItemView;
-type WorkshopSnapshotRepository = Pick<GameRepository, 'listPlayerBlueprints' | 'listPlayerCraftedItems'>;
+type WorkshopSnapshotRepository = Pick<GameRepository, 'listPlayerBlueprintInstances' | 'listPlayerCraftedItems'>;
 type WorkshopCurrentViewRepository = FindPlayerByVkIdRepository & WorkshopSnapshotRepository;
 type EquipWorkshopItemRepository = CommandIntentReplayRepository
   & WorkshopCurrentViewRepository
@@ -97,15 +97,15 @@ const loadWorkshopSnapshot = async (
   repository: WorkshopSnapshotRepository,
   player: PlayerState,
 ): Promise<{
-  readonly blueprints: readonly PlayerBlueprintView[];
+  readonly blueprintInstances: readonly PlayerBlueprintInstanceView[];
   readonly craftedItems: readonly PlayerCraftedItemView[];
 }> => {
-  const [blueprints, craftedItems] = await Promise.all([
-    repository.listPlayerBlueprints(player.playerId),
+  const [blueprintInstances, craftedItems] = await Promise.all([
+    repository.listPlayerBlueprintInstances(player.playerId),
     repository.listPlayerCraftedItems(player.playerId),
   ]);
 
-  return { blueprints, craftedItems };
+  return { blueprintInstances, craftedItems };
 };
 
 const loadCurrentWorkshopView = async (
@@ -115,7 +115,7 @@ const loadCurrentWorkshopView = async (
   const player = await requirePlayerByVkId(repository, vkId);
   const snapshot = await loadWorkshopSnapshot(repository, player);
 
-  return buildWorkshopView(player, snapshot.blueprints, snapshot.craftedItems);
+  return buildWorkshopView(player, snapshot.blueprintInstances, snapshot.craftedItems);
 };
 
 export class EquipWorkshopItem {
@@ -143,7 +143,7 @@ export class EquipWorkshopItem {
       mapResult: (result) => (
         isEquipWorkshopItemResult(result)
           ? result
-          : buildEquipResult(buildWorkshopView(player, snapshot.blueprints, snapshot.craftedItems), result)
+          : buildEquipResult(buildWorkshopView(player, snapshot.blueprintInstances, snapshot.craftedItems), result)
       ),
     });
     if (replay) {

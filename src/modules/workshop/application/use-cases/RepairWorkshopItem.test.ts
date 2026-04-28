@@ -11,7 +11,7 @@ import {
   type WorkshopRepairToolBlueprintDefinition,
 } from '../../domain/workshop-catalog';
 import type {
-  PlayerBlueprintView,
+  PlayerBlueprintInstanceView,
   PlayerCraftedItemView,
   WorkshopMutationOptions,
 } from '../workshop-persistence';
@@ -78,12 +78,24 @@ const createPlayer = (overrides: Partial<PlayerState> = {}): PlayerState => ({
   ...overrides,
 });
 
-const createBlueprint = (overrides: Partial<PlayerBlueprintView> = {}): PlayerBlueprintView => ({
+const createBlueprintInstance = (
+  overrides: Partial<PlayerBlueprintInstanceView> = {},
+): PlayerBlueprintInstanceView => ({
+  id: 'bp-repair-1',
   playerId: 1,
   blueprintCode: 'resonance_tool',
-  quantity: 1,
+  rarity: 'COMMON',
+  sourceType: 'QUEST',
+  sourceId: 'test',
+  discoveryKind: 'REPAIR',
+  quality: 'STURDY',
+  craftPotential: 'repair_tool_v1',
+  modifierSnapshot: {},
+  status: 'AVAILABLE',
   createdAt: '2026-04-12T00:00:00.000Z',
   updatedAt: '2026-04-12T00:00:00.000Z',
+  discoveredAt: '2026-04-12T00:00:00.000Z',
+  consumedAt: null,
   ...overrides,
 });
 
@@ -127,7 +139,7 @@ class InMemoryRepairWorkshopRepository implements Pick<
   | 'findPlayerByVkId'
   | 'getCommandIntentResult'
   | 'storeCommandIntentResult'
-  | 'listPlayerBlueprints'
+  | 'listPlayerBlueprintInstances'
   | 'listPlayerCraftedItems'
   | 'repairWorkshopItem'
 > {
@@ -136,17 +148,17 @@ class InMemoryRepairWorkshopRepository implements Pick<
   public readonly storedResults: StoredResult[] = [];
 
   private player: PlayerState;
-  private blueprints: PlayerBlueprintView[];
+  private blueprintInstances: PlayerBlueprintInstanceView[];
   private items: PlayerCraftedItemView[];
 
   public constructor(
     player: PlayerState,
-    blueprints: readonly PlayerBlueprintView[] = [],
+    blueprintInstances: readonly PlayerBlueprintInstanceView[] = [],
     items: readonly PlayerCraftedItemView[] = [],
     private readonly replay: CommandIntentReplayResult<unknown> | null = null,
   ) {
     this.player = player;
-    this.blueprints = [...blueprints];
+    this.blueprintInstances = [...blueprintInstances];
     this.items = [...items];
   }
 
@@ -182,8 +194,8 @@ class InMemoryRepairWorkshopRepository implements Pick<
     this.storedResults.push({ playerId, intentId, result });
   }
 
-  public async listPlayerBlueprints(): Promise<readonly PlayerBlueprintView[]> {
-    return this.blueprints;
+  public async listPlayerBlueprintInstances(): Promise<readonly PlayerBlueprintInstanceView[]> {
+    return this.blueprintInstances;
   }
 
   public async listPlayerCraftedItems(): Promise<readonly PlayerCraftedItemView[]> {
@@ -234,10 +246,18 @@ class InMemoryRepairWorkshopRepository implements Pick<
   }
 
   private spendBlueprint(blueprintCode: WorkshopBlueprintCode): void {
-    this.blueprints = this.blueprints.map((blueprint) => (
-      blueprint.blueprintCode === blueprintCode
-        ? { ...blueprint, quantity: blueprint.quantity - 1 }
-        : blueprint
+    const blueprintInstance = this.blueprintInstances.find((instance) => (
+      instance.blueprintCode === blueprintCode && instance.status === 'AVAILABLE'
+    ));
+
+    if (!blueprintInstance) {
+      throw new Error('Repair blueprint instance expected.');
+    }
+
+    this.blueprintInstances = this.blueprintInstances.map((instance) => (
+      instance.id === blueprintInstance.id
+        ? { ...instance, status: 'CONSUMED', consumedAt: '2026-04-12T00:00:01.000Z' }
+        : instance
     ));
   }
 
@@ -263,11 +283,11 @@ describe('RepairWorkshopItem', () => {
         crystal: 2,
       }),
     });
-    const blueprints = [createBlueprint({ blueprintCode: 'resonance_tool', quantity: 1 })];
+    const blueprintInstances = [createBlueprintInstance({ id: 'bp-repair-1', blueprintCode: 'resonance_tool' })];
     const items = [createItem({ id: 'crafted-ul-1', durability: 5, maxDurability: 12 })];
-    const repository = new InMemoryRepairWorkshopRepository(player, blueprints, items);
+    const repository = new InMemoryRepairWorkshopRepository(player, blueprintInstances, items);
     const useCase = new RepairWorkshopItem(repository.asGameRepository());
-    const stateKey = buildRepairWorkshopItemIntentStateKey(player, 'crafted-ul-1', 'resonance_tool', blueprints, items);
+    const stateKey = buildRepairWorkshopItemIntentStateKey(player, 'crafted-ul-1', 'resonance_tool', blueprintInstances, items);
 
     const result = await useCase.execute(
       player.vkId,
@@ -302,13 +322,7 @@ describe('RepairWorkshopItem', () => {
       durability: 12,
       maxDurability: 12,
     });
-    expect(result.view.repairTools).toEqual([
-      expect.objectContaining({
-        blueprint: expect.objectContaining({ code: 'resonance_tool' }),
-        ownedQuantity: 0,
-        available: false,
-      }),
-    ]);
+    expect(result.view.repairTools).toEqual([]);
     expect(result.acquisitionSummary).toMatchObject({
       kind: 'repaired_workshop_item',
       repairBlueprintCode: 'resonance_tool',
@@ -324,11 +338,11 @@ describe('RepairWorkshopItem', () => {
         crystal: 2,
       }),
     });
-    const blueprints = [createBlueprint({ blueprintCode: 'resonance_tool', quantity: 1 })];
+    const blueprintInstances = [createBlueprintInstance({ id: 'bp-repair-1', blueprintCode: 'resonance_tool' })];
     const items = [createItem({ id: 'crafted-rare-1', itemClass: 'L', durability: 5, maxDurability: 12 })];
-    const repository = new InMemoryRepairWorkshopRepository(player, blueprints, items);
+    const repository = new InMemoryRepairWorkshopRepository(player, blueprintInstances, items);
     const useCase = new RepairWorkshopItem(repository.asGameRepository());
-    const stateKey = buildRepairWorkshopItemIntentStateKey(player, 'crafted-rare-1', 'resonance_tool', blueprints, items);
+    const stateKey = buildRepairWorkshopItemIntentStateKey(player, 'crafted-rare-1', 'resonance_tool', blueprintInstances, items);
 
     await expect(useCase.execute(player.vkId, 'crafted-rare-1', 'resonance_tool', 'intent-repair-1', stateKey, 'payload')).rejects.toMatchObject({
       code: 'workshop_item_not_repairable',
@@ -344,11 +358,11 @@ describe('RepairWorkshopItem', () => {
         essence: 2,
       }),
     });
-    const blueprints = [createBlueprint({ blueprintCode: 'resonance_tool', quantity: 1 })];
+    const blueprintInstances = [createBlueprintInstance({ id: 'bp-repair-1', blueprintCode: 'resonance_tool' })];
     const items = [createItem({ id: 'crafted-ul-1', durability: 5, maxDurability: 12 })];
-    const repository = new InMemoryRepairWorkshopRepository(player, blueprints, items);
+    const repository = new InMemoryRepairWorkshopRepository(player, blueprintInstances, items);
     const useCase = new RepairWorkshopItem(repository.asGameRepository());
-    const stateKey = buildRepairWorkshopItemIntentStateKey(player, 'crafted-ul-1', 'resonance_tool', blueprints, items);
+    const stateKey = buildRepairWorkshopItemIntentStateKey(player, 'crafted-ul-1', 'resonance_tool', blueprintInstances, items);
 
     await expect(useCase.execute(player.vkId, 'crafted-ul-1', 'resonance_tool', 'intent-repair-1', stateKey, 'payload')).rejects.toMatchObject({
       code: 'not_enough_workshop_resources',
@@ -410,16 +424,16 @@ describe('RepairWorkshopItem', () => {
         crystal: 2,
       }),
     });
-    const blueprints = [createBlueprint({ blueprintCode: 'resonance_tool', quantity: 1 })];
+    const blueprintInstances = [createBlueprintInstance({ id: 'bp-repair-1', blueprintCode: 'resonance_tool' })];
     const items = [createItem({ id: 'crafted-ul-1', durability: 5, maxDurability: 12 })];
     const repository = new InMemoryRepairWorkshopRepository(
       player,
-      blueprints,
+      blueprintInstances,
       items,
       { status: 'PENDING' },
     );
     const useCase = new RepairWorkshopItem(repository.asGameRepository());
-    const stateKey = buildRepairWorkshopItemIntentStateKey(player, 'crafted-ul-1', 'resonance_tool', blueprints, items);
+    const stateKey = buildRepairWorkshopItemIntentStateKey(player, 'crafted-ul-1', 'resonance_tool', blueprintInstances, items);
 
     await expect(useCase.execute(player.vkId, 'crafted-ul-1', 'resonance_tool', 'intent-repair-1', stateKey, 'payload')).rejects.toMatchObject({
       code: 'command_retry_pending',

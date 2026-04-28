@@ -15,12 +15,13 @@ import { requirePlayerByVkId } from '../../../shared/application/require-player'
 import {
   canCraftWorkshopBlueprint,
   getWorkshopBlueprint,
+  isWorkshopBlueprintCode,
   resolveWorkshopMissingCost,
   type WorkshopBlueprintCode,
   type WorkshopCraftItemBlueprintDefinition,
 } from '../../domain/workshop-catalog';
 import { buildCraftWorkshopItemIntentStateKey } from '../command-intent-state';
-import type { PlayerBlueprintView, PlayerCraftedItemView } from '../workshop-persistence';
+import type { PlayerBlueprintInstanceView, PlayerCraftedItemView } from '../workshop-persistence';
 import { buildWorkshopView, type WorkshopView } from '../workshop-view';
 
 export interface WorkshopCraftedItemSummaryView {
@@ -39,7 +40,7 @@ export interface CraftWorkshopItemResultView {
 }
 
 type CraftWorkshopReplayResult = CraftWorkshopItemResultView | PlayerCraftedItemView;
-type WorkshopSnapshotRepository = Pick<GameRepository, 'listPlayerBlueprints' | 'listPlayerCraftedItems'>;
+type WorkshopSnapshotRepository = Pick<GameRepository, 'listPlayerBlueprintInstances' | 'listPlayerCraftedItems'>;
 type WorkshopCurrentViewRepository = FindPlayerByVkIdRepository & WorkshopSnapshotRepository;
 type CraftWorkshopItemRepository = CommandIntentReplayRepository
   & WorkshopCurrentViewRepository
@@ -51,13 +52,6 @@ const isCraftWorkshopItemResult = (
   result: CraftWorkshopReplayResult,
 ): result is CraftWorkshopItemResultView => 'craftedItem' in result && 'view' in result;
 
-const getOwnedBlueprintQuantity = (
-  blueprints: readonly PlayerBlueprintView[],
-  blueprintCode: WorkshopBlueprintCode,
-): number => (
-  blueprints.find((blueprint) => blueprint.blueprintCode === blueprintCode)?.quantity ?? 0
-);
-
 const requireCraftBlueprint = (blueprintCode: WorkshopBlueprintCode): WorkshopCraftItemBlueprintDefinition => {
   const blueprint = getWorkshopBlueprint(blueprintCode);
 
@@ -68,13 +62,17 @@ const requireCraftBlueprint = (blueprintCode: WorkshopBlueprintCode): WorkshopCr
   return blueprint;
 };
 
-const assertBlueprintAvailable = (
-  blueprints: readonly PlayerBlueprintView[],
-  blueprintCode: WorkshopBlueprintCode,
-): void => {
-  if (getOwnedBlueprintQuantity(blueprints, blueprintCode) <= 0) {
+const requireAvailableBlueprintInstance = (
+  blueprintInstances: readonly PlayerBlueprintInstanceView[],
+  blueprintInstanceId: string,
+): PlayerBlueprintInstanceView => {
+  const instance = blueprintInstances.find((entry) => entry.id === blueprintInstanceId);
+
+  if (!instance || instance.status !== 'AVAILABLE') {
     throw new AppError('workshop_blueprint_unavailable', 'У вас нет такого одноразового чертежа.');
   }
+
+  return instance;
 };
 
 const assertCraftMaterialsAvailable = (
@@ -120,15 +118,15 @@ const loadWorkshopSnapshot = async (
   player: PlayerState,
 ): Promise<{
   readonly player: PlayerState;
-  readonly blueprints: readonly PlayerBlueprintView[];
+  readonly blueprintInstances: readonly PlayerBlueprintInstanceView[];
   readonly craftedItems: readonly PlayerCraftedItemView[];
 }> => {
-  const [blueprints, craftedItems] = await Promise.all([
-    repository.listPlayerBlueprints(player.playerId),
+  const [blueprintInstances, craftedItems] = await Promise.all([
+    repository.listPlayerBlueprintInstances(player.playerId),
     repository.listPlayerCraftedItems(player.playerId),
   ]);
 
-  return { player, blueprints, craftedItems };
+  return { player, blueprintInstances, craftedItems };
 };
 
 const loadCurrentWorkshopView = async (
@@ -138,15 +136,32 @@ const loadCurrentWorkshopView = async (
   const player = await requirePlayerByVkId(repository, vkId);
   const snapshot = await loadWorkshopSnapshot(repository, player);
 
-  return buildWorkshopView(snapshot.player, snapshot.blueprints, snapshot.craftedItems);
+  return buildWorkshopView(snapshot.player, snapshot.blueprintInstances, snapshot.craftedItems);
+};
+
+const resolveReplayBlueprintCode = (
+  blueprintInstanceId: string,
+  blueprintInstances: readonly PlayerBlueprintInstanceView[],
+  item: PlayerCraftedItemView,
+): WorkshopBlueprintCode => {
+  const instance = blueprintInstances.find((entry) => entry.id === blueprintInstanceId);
+  if (instance) {
+    return instance.blueprintCode;
+  }
+
+  if (isWorkshopBlueprintCode(item.itemCode)) {
+    return item.itemCode;
+  }
+
+  throw new AppError('workshop_blueprint_unavailable', 'Чертёж для повтора больше не найден.');
 };
 
 const replayCraftWorkshopItemResult = async (
   repository: CommandIntentReplayRepository,
   player: PlayerState,
-  blueprintCode: WorkshopBlueprintCode,
+  blueprintInstanceId: string,
   snapshot: {
-    readonly blueprints: readonly PlayerBlueprintView[];
+    readonly blueprintInstances: readonly PlayerBlueprintInstanceView[];
     readonly craftedItems: readonly PlayerCraftedItemView[];
   },
   intentId: string,
@@ -164,7 +179,8 @@ const replayCraftWorkshopItemResult = async (
         return result;
       }
 
-      const view = buildWorkshopView(player, snapshot.blueprints, snapshot.craftedItems);
+      const blueprintCode = resolveReplayBlueprintCode(blueprintInstanceId, snapshot.blueprintInstances, result);
+      const view = buildWorkshopView(player, snapshot.blueprintInstances, snapshot.craftedItems);
       return buildCraftResult(view, blueprintCode, result);
     },
   });
@@ -175,7 +191,7 @@ export class CraftWorkshopItem {
 
   public async execute(
     vkId: number,
-    blueprintCode: WorkshopBlueprintCode,
+    blueprintInstanceId: string,
     intentId?: string,
     stateKey?: string,
     intentSource: CommandIntentSource = 'payload',
@@ -189,14 +205,14 @@ export class CraftWorkshopItem {
     const snapshot = await loadWorkshopSnapshot(this.repository, player);
     const currentStateKey = buildCraftWorkshopItemIntentStateKey(
       player,
-      blueprintCode,
-      snapshot.blueprints,
+      blueprintInstanceId,
+      snapshot.blueprintInstances,
       snapshot.craftedItems,
     );
     const replay = await replayCraftWorkshopItemResult(
       this.repository,
       player,
-      blueprintCode,
+      blueprintInstanceId,
       snapshot,
       resolvedIntent.intentId,
       resolvedIntent.intentStateKey,
@@ -212,11 +228,11 @@ export class CraftWorkshopItem {
       staleMessage: staleCraftMessage,
       requireIntent: true,
     });
-    const blueprint = requireCraftBlueprint(blueprintCode);
-    assertBlueprintAvailable(snapshot.blueprints, blueprint.code);
+    const blueprintInstance = requireAvailableBlueprintInstance(snapshot.blueprintInstances, blueprintInstanceId);
+    const blueprint = requireCraftBlueprint(blueprintInstance.blueprintCode);
     assertCraftMaterialsAvailable(player, blueprint);
 
-    const craftedItem = await this.repository.craftWorkshopItem(player.playerId, blueprint.code, {
+    const craftedItem = await this.repository.craftWorkshopItem(player.playerId, blueprintInstance.id, {
       intentId: intent.intentId,
       intentStateKey: intent.intentStateKey,
       currentStateKey: intentSource === 'legacy_text' ? undefined : currentStateKey,

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { InventoryView, PlayerState, StatBlock } from '../../../../../shared/types/game';
 import type { GameRepository } from '../../../../shared/application/ports/GameRepository';
-import type { PlayerBlueprintView, PlayerCraftedItemView } from '../workshop-persistence';
+import type { PlayerBlueprintInstanceView, PlayerCraftedItemView } from '../workshop-persistence';
 import { GetWorkshop } from './GetWorkshop';
 
 const baseStats = (): StatBlock => ({
@@ -56,12 +56,24 @@ const createPlayer = (overrides: Partial<PlayerState> = {}): PlayerState => ({
   ...overrides,
 });
 
-const createBlueprint = (overrides: Partial<PlayerBlueprintView> = {}): PlayerBlueprintView => ({
+const createBlueprintInstance = (
+  overrides: Partial<PlayerBlueprintInstanceView> = {},
+): PlayerBlueprintInstanceView => ({
+  id: 'bp-instance-1',
   playerId: 1,
   blueprintCode: 'hunter_cleaver',
-  quantity: 1,
+  rarity: 'COMMON',
+  sourceType: 'QUEST',
+  sourceId: 'test',
+  discoveryKind: 'QUEST',
+  quality: 'STURDY',
+  craftPotential: 'default',
+  modifierSnapshot: {},
+  status: 'AVAILABLE',
   createdAt: '2026-04-12T00:00:00.000Z',
   updatedAt: '2026-04-12T00:00:00.000Z',
+  discoveredAt: '2026-04-12T00:00:00.000Z',
+  consumedAt: null,
   ...overrides,
 });
 
@@ -82,11 +94,11 @@ const createItem = (overrides: Partial<PlayerCraftedItemView> = {}): PlayerCraft
 
 const createRepository = (
   player: PlayerState | null,
-  blueprints: readonly PlayerBlueprintView[] = [],
+  blueprintInstances: readonly PlayerBlueprintInstanceView[] = [],
   items: readonly PlayerCraftedItemView[] = [],
 ): GameRepository => ({
   findPlayerByVkId: async () => player,
-  listPlayerBlueprints: async () => blueprints,
+  listPlayerBlueprintInstances: async () => blueprintInstances,
   listPlayerCraftedItems: async () => items,
 } as unknown as GameRepository);
 
@@ -113,8 +125,9 @@ describe('GetWorkshop', () => {
     const repository = createRepository(
       player,
       [
-        createBlueprint({ blueprintCode: 'hunter_cleaver', quantity: 1 }),
-        createBlueprint({ blueprintCode: 'resonance_tool', quantity: 1 }),
+        createBlueprintInstance({ id: 'bp-cleaver-1', blueprintCode: 'hunter_cleaver' }),
+        createBlueprintInstance({ id: 'bp-resonance-1', blueprintCode: 'resonance_tool' }),
+        createBlueprintInstance({ id: 'bp-jacket-1', blueprintCode: 'tracker_jacket', status: 'CONSUMED' }),
       ],
       [damagedItem, completeItem],
     );
@@ -124,22 +137,21 @@ describe('GetWorkshop', () => {
 
     expect(result.player).toBe(player);
     expect(result.blueprints.find((entry) => entry.blueprint.code === 'hunter_cleaver')).toMatchObject({
+      instance: expect.objectContaining({ id: 'bp-cleaver-1' }),
       ownedQuantity: 1,
       canCraft: true,
       missingCost: {},
     });
-    expect(result.blueprints.find((entry) => entry.blueprint.code === 'tracker_jacket')).toMatchObject({
-      ownedQuantity: 0,
-      canCraft: false,
-      missingCost: { leather: 1, herb: 1 },
-    });
+    expect(result.blueprints.find((entry) => entry.blueprint.code === 'tracker_jacket')).toBeUndefined();
     expect(result.blueprints.find((entry) => entry.blueprint.code === 'resonance_tool')).toMatchObject({
+      instance: expect.objectContaining({ id: 'bp-resonance-1' }),
       ownedQuantity: 1,
       canCraft: false,
       missingCost: {},
     });
     expect(result.repairTools).toEqual([
       expect.objectContaining({
+        instance: expect.objectContaining({ id: 'bp-resonance-1' }),
         blueprint: expect.objectContaining({ code: 'resonance_tool' }),
         ownedQuantity: 1,
         available: true,
@@ -168,5 +180,16 @@ describe('GetWorkshop', () => {
     await expect(useCase.execute(404)).rejects.toMatchObject({
       code: 'player_not_found',
     });
+  });
+
+  it('does not show craft templates when the player has no blueprint instances', async () => {
+    const player = createPlayer();
+    const repository = createRepository(player, []);
+    const useCase = new GetWorkshop(repository);
+
+    const result = await useCase.execute(player.vkId);
+
+    expect(result.blueprints).toEqual([]);
+    expect(result.repairTools).toEqual([]);
   });
 });
