@@ -2503,7 +2503,7 @@ describe('PrismaGameRepository release hardening', () => {
         deletedRuneCount: 0,
         deletedAt: '2026-04-18T00:00:00.000Z',
       }),
-      expiresAt: new Date('2026-04-25T00:00:00.000Z'),
+      expiresAt: new Date('2099-04-25T00:00:00.000Z'),
     });
 
     await expect(repository.confirmDeletePlayer(1001, 'intent-delete-1', '2026-04-12T00:00:00.000Z')).resolves.toBeUndefined();
@@ -2578,7 +2578,7 @@ describe('PrismaGameRepository release hardening', () => {
       stateKey: '2026-04-12T00:00:00.000Z',
       status: 'PENDING',
       resultSnapshot: '{}',
-      expiresAt: new Date('2026-04-25T00:00:00.000Z'),
+      expiresAt: new Date('2099-04-25T00:00:00.000Z'),
     });
 
     await expect(repository.confirmDeletePlayer(1001, 'intent-delete-4', '2026-04-12T00:00:00.000Z')).rejects.toMatchObject({
