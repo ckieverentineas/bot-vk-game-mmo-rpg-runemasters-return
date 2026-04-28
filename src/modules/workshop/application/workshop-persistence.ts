@@ -16,6 +16,7 @@ export type { WorkshopCraftedItemOutcome } from '../domain/workshop-crafting-qua
 export type WorkshopCommandIntentKey =
   | 'GRANT_WORKSHOP_BLUEPRINT'
   | 'CRAFT_WORKSHOP_ITEM'
+  | 'BUY_WORKSHOP_SHOP_OFFER'
   | 'REPAIR_WORKSHOP_ITEM'
   | 'EQUIP_WORKSHOP_ITEM'
   | 'UNEQUIP_WORKSHOP_ITEM';

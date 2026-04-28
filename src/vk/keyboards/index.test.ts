@@ -16,10 +16,16 @@ import {
   createTutorialKeyboard,
   createWorkshopKeyboard,
 } from './index';
-import { createWorkshopCraftCommand, createWorkshopRepairCommand, gameCommands } from '../commands/catalog';
+import {
+  createWorkshopCraftCommand,
+  createWorkshopRepairCommand,
+  createWorkshopShopCommand,
+  gameCommands,
+} from '../commands/catalog';
 import type { PendingRewardView } from '../../modules/shared/application/ports/GameRepository';
 import type { PlayerBlueprintInstanceView } from '../../modules/workshop/application/workshop-persistence';
 import { getWorkshopBlueprint } from '../../modules/workshop/domain/workshop-catalog';
+import { getWorkshopShopOffer } from '../../modules/workshop/domain/workshop-shop';
 
 const createPlayer = (overrides: Partial<PlayerState> = {}): PlayerState => ({
   userId: 1,
@@ -658,6 +664,7 @@ describe('profile keyboard', () => {
       blueprints: [],
       repairTools: [],
       craftedItems: [],
+      shopOffers: [],
     });
     const rows = serializeKeyboard(keyboard).rows;
     const payloads = collectPayloads(keyboard);
@@ -695,6 +702,7 @@ describe('profile keyboard', () => {
       ],
       repairTools: [],
       craftedItems: [],
+      shopOffers: [],
     });
     const payloads = collectPayloads(keyboard);
 
@@ -763,6 +771,7 @@ describe('profile keyboard', () => {
           ],
         },
       ],
+      shopOffers: [],
     });
     const payloads = collectPayloads(keyboard);
 
@@ -774,6 +783,76 @@ describe('profile keyboard', () => {
     expect(payloads).not.toContainEqual(expect.objectContaining({
       command: createWorkshopRepairCommand('crafted-tool-1', repairBlueprintInstance.blueprintCode),
     }));
+  });
+
+  it('binds workshop shop buttons to dust purchase offers', () => {
+    const offer = getWorkshopShopOffer('healing_pill');
+    const keyboard = createWorkshopKeyboard({
+      player: createPlayer({ gold: 20 }),
+      blueprints: [],
+      repairTools: [],
+      craftedItems: [],
+      shopOffers: [
+        {
+          offer,
+          canBuy: true,
+          missingDust: 0,
+        },
+      ],
+    });
+    const payloads = collectPayloads(keyboard);
+
+    expect(payloads).toContainEqual(expect.objectContaining({
+      command: createWorkshopShopCommand(offer.code),
+      intentId: expect.any(String),
+      stateKey: expect.any(String),
+    }));
+  });
+
+  it('keeps the workshop keyboard within the VK row limit when shop and consumables are visible', () => {
+    const player = createPlayer({
+      gold: 30,
+      inventory: {
+        ...createPlayer().inventory,
+        leather: 2,
+        bone: 1,
+        herb: 2,
+        essence: 1,
+        healingPills: 1,
+        focusPills: 1,
+        guardPills: 1,
+        clarityPills: 1,
+      },
+    });
+    const keyboard = createWorkshopKeyboard({
+      player,
+      blueprints: [],
+      repairTools: [],
+      craftedItems: [],
+      shopOffers: [
+        {
+          offer: getWorkshopShopOffer('healing_pill'),
+          canBuy: true,
+          missingDust: 0,
+        },
+        {
+          offer: getWorkshopShopOffer('leather_bundle'),
+          canBuy: true,
+          missingDust: 0,
+        },
+      ],
+    });
+    const rows = serializeKeyboard(keyboard).rows;
+    const payloads = collectPayloads(keyboard);
+
+    expect(rows.length).toBeLessThanOrEqual(6);
+    expect(payloads).toContainEqual(expect.objectContaining({
+      command: createWorkshopShopCommand('healing_pill'),
+    }));
+    expect(payloads).toContainEqual(expect.objectContaining({
+      command: createWorkshopShopCommand('leather_bundle'),
+    }));
+    expect(payloads).toContainEqual({ command: gameCommands.backToMenu });
   });
 
   it('keeps defeat battle-result CTA aligned with rune review instead of school-test retry', () => {

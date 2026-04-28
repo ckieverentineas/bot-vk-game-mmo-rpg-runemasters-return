@@ -2,6 +2,10 @@ import type { StatKey } from '../../shared/types/game';
 import type { AlchemyConsumableCode } from '../../modules/consumables/domain/alchemy-consumables';
 import type { CraftingRecipeCode } from '../../modules/crafting/domain/crafting-recipes';
 import type { TrophyActionCode } from '../../modules/rewards/domain/trophy-actions';
+import {
+  isWorkshopShopOfferCode,
+  type WorkshopShopOfferCode,
+} from '../../modules/workshop/domain/workshop-shop';
 import { runeCollectionPageSize } from '../../modules/runes/domain/rune-collection';
 
 export const gameCommands = {
@@ -96,6 +100,7 @@ export const partyJoinCommandPrefix = 'отряд ';
 
 export const workshopEquipCommandPrefix = 'workshop equip ';
 export const workshopUnequipCommandPrefix = 'workshop unequip ';
+export const workshopShopCommandPrefix = 'workshop shop ';
 
 export type StaticGameCommand = (typeof gameCommands)[keyof typeof gameCommands];
 export type BestiaryPageCommand = `${typeof bestiaryPageCommandPrefix}${number}`;
@@ -108,6 +113,7 @@ export type WorkshopCraftCommand = `${typeof workshopCraftCommandPrefix}${string
 export type WorkshopRepairCommand = `${typeof workshopRepairCommandPrefix}${string} ${string}`;
 export type WorkshopEquipCommand = `${typeof workshopEquipCommandPrefix}${string}`;
 export type WorkshopUnequipCommand = `${typeof workshopUnequipCommandPrefix}${string}`;
+export type WorkshopShopCommand = `${typeof workshopShopCommandPrefix}${WorkshopShopOfferCode}`;
 export type PartyJoinCommand = `${typeof partyJoinCommandPrefix}${string}`;
 export type GameCommand =
   | StaticGameCommand
@@ -121,6 +127,7 @@ export type GameCommand =
   | WorkshopRepairCommand
   | WorkshopEquipCommand
   | WorkshopUnequipCommand
+  | WorkshopShopCommand
   | PartyJoinCommand;
 
 export interface WorkshopRepairCommandPayload {
@@ -566,6 +573,21 @@ export const resolveWorkshopRepairCommand = (command: string): WorkshopRepairCom
   }
 
   return { itemId, repairBlueprintInstanceId };
+};
+
+export const createWorkshopShopCommand = (offerCode: WorkshopShopOfferCode): WorkshopShopCommand => (
+  `${workshopShopCommandPrefix}${offerCode}` as WorkshopShopCommand
+);
+
+export const resolveWorkshopShopCommand = (command: string): WorkshopShopOfferCode | null => {
+  const trimmedCommand = command.trim();
+
+  if (!trimmedCommand.startsWith(workshopShopCommandPrefix)) {
+    return null;
+  }
+
+  const offerCode = trimmedCommand.slice(workshopShopCommandPrefix.length).trim();
+  return isWorkshopShopOfferCode(offerCode) ? offerCode : null;
 };
 
 export const createWorkshopEquipCommand = (itemId: string): WorkshopEquipCommand => (

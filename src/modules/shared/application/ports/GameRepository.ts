@@ -343,6 +343,12 @@ export interface GameRepository {
     intentStateKey?: string,
     currentStateKey?: string,
   ): Promise<PlayerState>;
+  purchaseWorkshopShopOffer(
+    playerId: number,
+    priceDust: number,
+    inventoryDelta: InventoryDelta,
+    options?: WorkshopMutationOptions,
+  ): Promise<PlayerState>;
   listPlayerBlueprints(playerId: number): Promise<readonly PlayerBlueprintView[]>;
   listPlayerBlueprintInstances(playerId: number): Promise<readonly PlayerBlueprintInstanceView[]>;
   listPlayerCraftedItems(playerId: number): Promise<readonly PlayerCraftedItemView[]>;

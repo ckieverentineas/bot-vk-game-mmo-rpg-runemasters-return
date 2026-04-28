@@ -1642,6 +1642,86 @@ describe('PrismaGameRepository release hardening', () => {
     });
   });
 
+  it('buys a workshop shop offer by spending dust and incrementing inventory atomically', async () => {
+    const { repository, tx } = createPrismaMock();
+
+    tx.commandIntentRecord.findUnique.mockResolvedValue(null);
+    tx.commandIntentRecord.create.mockResolvedValue({});
+    tx.commandIntentRecord.update.mockResolvedValue({});
+    tx.player.updateMany.mockResolvedValue({ count: 1 });
+    tx.playerInventory.update.mockResolvedValue({});
+    tx.player.findUnique.mockResolvedValue({
+      ...createPlayerRecord(),
+      gold: 8,
+      inventory: {
+        ...createPlayerRecord().inventory,
+        healingPills: 1,
+      },
+    });
+
+    const player = await repository.purchaseWorkshopShopOffer(
+      1,
+      12,
+      { healingPills: 1 },
+      {
+        intentId: 'intent-workshop-shop-1',
+        intentStateKey: 'state-workshop-shop-1',
+        currentStateKey: 'state-workshop-shop-1',
+      },
+    );
+
+    expect(player.gold).toBe(8);
+    expect(player.inventory.healingPills).toBe(1);
+    expect(tx.commandIntentRecord.create).toHaveBeenCalledWith({
+      data: {
+        playerId: 1,
+        intentId: 'intent-workshop-shop-1',
+        commandKey: 'BUY_WORKSHOP_SHOP_OFFER',
+        stateKey: 'state-workshop-shop-1',
+      },
+    });
+    expect(tx.player.updateMany).toHaveBeenCalledWith({
+      where: {
+        id: 1,
+        gold: { gte: 12 },
+      },
+      data: {
+        gold: { decrement: 12 },
+        updatedAt: expect.any(Date),
+      },
+    });
+    expect(tx.playerInventory.update).toHaveBeenCalledWith({
+      where: { playerId: 1 },
+      data: {
+        healingPills: { increment: 1 },
+      },
+    });
+  });
+
+  it('does not grant workshop shop goods when dust was already spent', async () => {
+    const { repository, tx } = createPrismaMock();
+
+    tx.commandIntentRecord.findUnique.mockResolvedValue(null);
+    tx.commandIntentRecord.create.mockResolvedValue({});
+    tx.player.updateMany.mockResolvedValue({ count: 0 });
+
+    await expect(repository.purchaseWorkshopShopOffer(
+      1,
+      12,
+      { healingPills: 1 },
+      {
+        intentId: 'intent-workshop-shop-1',
+        intentStateKey: 'state-workshop-shop-1',
+        currentStateKey: 'state-workshop-shop-1',
+      },
+    )).rejects.toMatchObject({
+      code: 'not_enough_dust',
+    });
+
+    expect(tx.playerInventory.update).not.toHaveBeenCalled();
+    expect(tx.commandIntentRecord.update).not.toHaveBeenCalled();
+  });
+
   it('recovers a canonical player after a vkId uniqueness race during creation', async () => {
     const { repository, tx } = createPrismaMock();
 

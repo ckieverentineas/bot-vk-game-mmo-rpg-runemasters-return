@@ -4,6 +4,7 @@ import {
   resolveWorkshopCraftCommand,
   resolveWorkshopEquipCommand,
   resolveWorkshopRepairCommand,
+  resolveWorkshopShopCommand,
   resolveWorkshopUnequipCommand,
 } from '../../commands/catalog';
 import {
@@ -54,6 +55,19 @@ export const workshopDynamicCommandRoutes = [
         vkId,
         payload.itemId,
         payload.repairBlueprintInstanceId,
+        context.intentId ?? undefined,
+        context.stateKey ?? undefined,
+        context.intentSource,
+      );
+      await handler.replyWithWorkshop(ctx, result);
+    },
+  ),
+  createDynamicCommandRoute(
+    resolveWorkshopShopCommand,
+    async (handler, ctx, vkId, offerCode, context) => {
+      const result = await handler.services.buyWorkshopShopOffer.execute(
+        vkId,
+        offerCode,
         context.intentId ?? undefined,
         context.stateKey ?? undefined,
         context.intentSource,

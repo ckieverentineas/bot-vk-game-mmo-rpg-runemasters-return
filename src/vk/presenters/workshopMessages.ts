@@ -12,6 +12,7 @@ import {
   type AlchemyConsumableDefinition,
 } from '../../modules/consumables/domain/alchemy-consumables';
 import type { AcquisitionSummaryView } from '../../modules/player/application/read-models/acquisition-summary';
+import type { WorkshopShopPurchaseSummaryView } from '../../modules/workshop/application/use-cases/BuyWorkshopShopOffer';
 import type { WorkshopCraftedItemSummaryView } from '../../modules/workshop/application/use-cases/CraftWorkshopItem';
 import type { WorkshopEquippedItemSummaryView } from '../../modules/workshop/application/use-cases/EquipWorkshopItem';
 import type { WorkshopRepairedItemSummaryView } from '../../modules/workshop/application/use-cases/RepairWorkshopItem';
@@ -20,6 +21,7 @@ import type {
   WorkshopBlueprintEntryView,
   WorkshopCraftedItemEntryView,
   WorkshopRepairToolEntryView,
+  WorkshopShopOfferEntryView,
   WorkshopView,
 } from '../../modules/workshop/application/workshop-view';
 import type {
@@ -32,7 +34,7 @@ import {
   type WorkshopBlueprintQuality,
   type WorkshopBlueprintSourceType,
 } from '../../modules/workshop/domain/workshop-blueprint-instances';
-import type { InventoryView, MaterialField, StatBlock } from '../../shared/types/game';
+import type { InventoryDelta, InventoryView, MaterialField, StatBlock } from '../../shared/types/game';
 import {
   renderHintBlock,
   renderHintLine,
@@ -51,7 +53,8 @@ export type WorkshopScreenSummary =
   | WorkshopCraftedItemSummaryView
   | WorkshopEquippedItemSummaryView
   | WorkshopUnequippedItemSummaryView
-  | WorkshopRepairedItemSummaryView;
+  | WorkshopRepairedItemSummaryView
+  | WorkshopShopPurchaseSummaryView;
 
 const materialTitles: Readonly<Record<MaterialField, string>> = {
   leather: 'кожа',
@@ -60,6 +63,20 @@ const materialTitles: Readonly<Record<MaterialField, string>> = {
   essence: 'эссенция',
   metal: 'металл',
   crystal: 'кристалл',
+};
+
+const inventoryDeltaTitles: Partial<Record<keyof InventoryView, string>> = {
+  ...materialTitles,
+  usualShards: 'обычные осколки',
+  unusualShards: 'необычные осколки',
+  rareShards: 'редкие осколки',
+  epicShards: 'эпические осколки',
+  legendaryShards: 'легендарные осколки',
+  mythicalShards: 'мифические осколки',
+  healingPills: 'пилюля восстановления',
+  focusPills: 'пилюля фокуса',
+  guardPills: 'пилюля стойкости',
+  clarityPills: 'пилюля ясности',
 };
 
 const blueprintRarityTitles: Readonly<Record<WorkshopBlueprintRarity, string>> = {
@@ -155,6 +172,17 @@ const formatMaterialStock = (inventory: InventoryView): string => (
     .join(' · ')
 );
 
+const formatInventoryDelta = (delta: InventoryDelta): string => {
+  const parts = Object.entries(delta)
+    .filter(([, amount]) => amount !== undefined && amount > 0)
+    .map(([field, amount]) => {
+      const title = inventoryDeltaTitles[field as keyof InventoryView] ?? field;
+      return `${title} +${amount}`;
+    });
+
+  return parts.length > 0 ? parts.join(' · ') : 'без предметов';
+};
+
 const formatShortBlueprintInstanceId = (id: string): string => id.slice(0, 8);
 
 const formatBlueprintInstanceDetails = (
@@ -209,6 +237,12 @@ const collectAvailableRepairTargets = (view: WorkshopView): readonly string[] =>
   ))
 );
 
+const collectAvailableShopTargets = (view: WorkshopView): readonly string[] => (
+  view.shopOffers
+    .filter((entry) => entry.canBuy)
+    .map((entry) => entry.offer.title)
+);
+
 const collectAvailablePillCraftTargets = (view: WorkshopView): readonly string[] => (
   listCraftingRecipes()
     .filter((recipe) => canPayCraftingRecipe(view.player, recipe))
@@ -240,6 +274,7 @@ const renderWorkshopActions = (view: WorkshopView): readonly string[] => {
     formatQuickActionLine('🔧', 'Починить', collectAvailableRepairTargets(view)),
     formatQuickActionLine('🧪', 'Сварить', collectAvailablePillCraftTargets(view)),
     formatQuickActionLine('💊', 'Выпить', collectAvailableConsumableTargets(view)),
+    formatQuickActionLine('🛒', 'Купить', collectAvailableShopTargets(view)),
   ].filter((line): line is string => line !== null);
 
   return [
@@ -362,6 +397,21 @@ const renderWorkshopRepair = (view: WorkshopView): readonly string[] => [
     : ['• Инструментов ремонта пока нет.']),
 ];
 
+const formatShopOfferEntry = (entry: WorkshopShopOfferEntryView): string => {
+  const state = entry.canBuy
+    ? '✅ доступно'
+    : `💰 не хватает пыли ${entry.missingDust}`;
+
+  return `• ${state} · ${entry.offer.title}: ${entry.offer.priceDust} пыли -> ${formatInventoryDelta(entry.offer.inventoryDelta)}.`;
+};
+
+const renderWorkshopShop = (view: WorkshopView): readonly string[] => [
+  '🛒 Лавка мастерской',
+  ...(view.shopOffers.length > 0
+    ? view.shopOffers.map(formatShopOfferEntry)
+    : ['• Лавка сегодня пуста.']),
+];
+
 const renderCraftedItems = (view: WorkshopView): readonly string[] => [
   '🎽 Снаряжение',
   ...(view.craftedItems.length > 0
@@ -416,6 +466,8 @@ export const renderWorkshop = (
   ...renderCraftedItems(view),
   '',
   ...renderWorkshopRepair(view),
+  '',
+  ...renderWorkshopShop(view),
   '',
   ...renderPillCrafting(view),
   '',

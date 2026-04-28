@@ -13,6 +13,7 @@ import {
   listAlchemyConsumables,
 } from '../../modules/consumables/domain/alchemy-consumables';
 import {
+  buildBuyWorkshopShopOfferIntentStateKey,
   buildCraftWorkshopItemIntentStateKey,
   buildEquipWorkshopItemIntentStateKey,
   buildRepairWorkshopItemIntentStateKey,
@@ -21,6 +22,7 @@ import {
 import type {
   WorkshopBlueprintEntryView,
   WorkshopCraftedItemEntryView,
+  WorkshopShopOfferEntryView,
   WorkshopView,
 } from '../../modules/workshop/application/workshop-view';
 import type { WorkshopRepairToolBlueprintDefinition } from '../../modules/workshop/domain/workshop-catalog';
@@ -28,6 +30,7 @@ import {
   createWorkshopCraftCommand,
   createWorkshopEquipCommand,
   createWorkshopRepairCommand,
+  createWorkshopShopCommand,
   createWorkshopUnequipCommand,
   gameCommands,
   resolveCraftingRecipeCodeCommand,
@@ -41,8 +44,11 @@ import { buildKeyboard } from './builder';
 import type { KeyboardBuilder, KeyboardLayout } from './types';
 
 const rowSize = 2;
+const maxKeyboardRows = 6;
+const navigationRowCount = 2;
 const equipmentButtonLimit = 4;
 const repairButtonLimit = 4;
+const shopButtonLimit = 4;
 
 const chunkRows = <T>(items: readonly T[], size: number): readonly (readonly T[])[] => {
   const rows: T[][] = [];
@@ -53,6 +59,10 @@ const chunkRows = <T>(items: readonly T[], size: number): readonly (readonly T[]
 
   return rows;
 };
+
+const limitActionRows = (rows: KeyboardLayout): KeyboardLayout => (
+  rows.slice(0, maxKeyboardRows - navigationRowCount)
+);
 
 const truncateLabel = (text: string, maxLength: number): string => (
   text.length <= maxLength ? text : `${text.slice(0, Math.max(0, maxLength - 1))}…`
@@ -156,6 +166,25 @@ const createWorkshopRepairRows = (view: WorkshopView): KeyboardLayout => {
   return chunkRows(buttons, rowSize);
 };
 
+const createWorkshopShopButtonLabel = (entry: WorkshopShopOfferEntryView): string => {
+  const icon = entry.canBuy ? '🛒' : '💰';
+  return truncateLabel(`${icon} ${entry.offer.buttonLabel} · ${entry.offer.priceDust}`, 40);
+};
+
+const createWorkshopShopRows = (view: WorkshopView): KeyboardLayout => {
+  const buttons = view.shopOffers
+    .slice(0, shopButtonLimit)
+    .map((entry) => ({
+      label: createWorkshopShopButtonLabel(entry),
+      command: createWorkshopShopCommand(entry.offer.code),
+      color: entry.canBuy ? Keyboard.POSITIVE_COLOR : Keyboard.SECONDARY_COLOR,
+      intentScoped: true,
+      stateKey: buildBuyWorkshopShopOfferIntentStateKey(view.player, entry.offer.code),
+    }));
+
+  return chunkRows(buttons, rowSize);
+};
+
 const createPillCraftingRows = (view: WorkshopView): KeyboardLayout => {
   const buttons = listCraftingRecipes().map((recipe) => {
     const canCraft = canPayCraftingRecipe(view.player, recipe);
@@ -193,12 +222,16 @@ const createUseConsumableRows = (view: WorkshopView): KeyboardLayout => {
   return chunkRows(buttons, rowSize);
 };
 
-const createWorkshopLayout = (view: WorkshopView): KeyboardLayout => [
+const createWorkshopActionRows = (view: WorkshopView): KeyboardLayout => limitActionRows([
   ...createWorkshopCraftRows(view),
   ...createWorkshopEquipmentRows(view),
   ...createWorkshopRepairRows(view),
+  ...createWorkshopShopRows(view),
   ...createPillCraftingRows(view),
   ...createUseConsumableRows(view),
+]);
+
+const createNavigationRows = (): KeyboardLayout => [
   [
     { label: '🔮 Руны', command: gameCommands.runeCollection, color: Keyboard.SECONDARY_COLOR },
     { label: '🕯 Алтарь', command: gameCommands.altar, color: Keyboard.SECONDARY_COLOR },
@@ -206,6 +239,11 @@ const createWorkshopLayout = (view: WorkshopView): KeyboardLayout => [
   [
     { label: '◀ Главное меню', command: gameCommands.backToMenu, color: Keyboard.SECONDARY_COLOR },
   ],
+];
+
+const createWorkshopLayout = (view: WorkshopView): KeyboardLayout => [
+  ...createWorkshopActionRows(view),
+  ...createNavigationRows(),
 ];
 
 export const createWorkshopKeyboard = (view: WorkshopView): KeyboardBuilder => (

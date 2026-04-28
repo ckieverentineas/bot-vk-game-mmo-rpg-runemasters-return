@@ -1,6 +1,7 @@
 import type { Context } from 'vk-io';
 
 import type { CraftItemResultView } from '../../../modules/crafting/application/use-cases/CraftItem';
+import type { BuyWorkshopShopOfferResultView } from '../../../modules/workshop/application/use-cases/BuyWorkshopShopOffer';
 import type { CraftWorkshopItemResultView } from '../../../modules/workshop/application/use-cases/CraftWorkshopItem';
 import type { EquipWorkshopItemResultView } from '../../../modules/workshop/application/use-cases/EquipWorkshopItem';
 import type { RepairWorkshopItemResultView } from '../../../modules/workshop/application/use-cases/RepairWorkshopItem';
@@ -16,6 +17,7 @@ export type WorkshopReplyState =
   | EquipWorkshopItemResultView
   | UnequipWorkshopItemResultView
   | RepairWorkshopItemResultView
+  | BuyWorkshopShopOfferResultView
   | {
       readonly view: WorkshopView;
       readonly acquisitionSummary: CraftItemResultView['acquisitionSummary'];

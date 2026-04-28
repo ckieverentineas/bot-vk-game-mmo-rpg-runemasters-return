@@ -2121,6 +2121,48 @@ export class PrismaGameRepository implements GameRepository {
     ));
   }
 
+  public async purchaseWorkshopShopOffer(
+    playerId: number,
+    priceDust: number,
+    inventoryDelta: InventoryDelta,
+    options?: WorkshopMutationOptions,
+  ): Promise<PlayerState> {
+    return this.prisma.$transaction((tx) => this.runWithCommandIntent(
+      tx,
+      playerId,
+      'BUY_WORKSHOP_SHOP_OFFER',
+      options?.intentId,
+      options?.intentStateKey,
+      options?.currentStateKey,
+      async () => {
+        const spentDust = await tx.player.updateMany({
+          where: {
+            id: playerId,
+            gold: { gte: priceDust },
+          },
+          data: {
+            gold: { decrement: priceDust },
+            updatedAt: new Date(),
+          },
+        });
+
+        if (spentDust.count === 0) {
+          throw new AppError('not_enough_dust', 'Пыли уже не хватает для покупки в лавке мастерской.');
+        }
+
+        const inventoryUpdate = buildInventoryDeltaInput(inventoryDelta);
+        if (Object.keys(inventoryUpdate).length > 0) {
+          await tx.playerInventory.update({
+            where: { playerId },
+            data: inventoryUpdate as Prisma.PlayerInventoryUpdateInput,
+          });
+        }
+
+        return mapPlayerRecord(await this.requirePlayerRecord(tx, playerId));
+      },
+    ));
+  }
+
   public async listPlayerBlueprints(playerId: number): Promise<readonly PlayerBlueprintView[]> {
     return this.workshopPersistence.listPlayerBlueprints(playerId);
   }

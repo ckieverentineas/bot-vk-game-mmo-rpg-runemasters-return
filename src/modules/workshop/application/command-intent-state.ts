@@ -127,6 +127,15 @@ const summarizeWorkshopEquipmentState = (
   items: summarizeItems(items),
 });
 
+const summarizeWorkshopShopState = (
+  player: Pick<PlayerState, 'playerId' | 'updatedAt' | 'gold' | 'inventory'>,
+) => ({
+  playerId: player.playerId,
+  playerUpdatedAt: player.updatedAt,
+  gold: player.gold,
+  materials: summarizeMaterials(player.inventory),
+});
+
 export const buildCraftWorkshopItemIntentStateKey = (
   player: Pick<PlayerState, 'playerId' | 'updatedAt' | 'inventory'>,
   blueprintInstanceId: string,
@@ -149,6 +158,15 @@ export const buildRepairWorkshopItemIntentStateKey = (
   itemId,
   repairBlueprintInstanceId,
   ...summarizeWorkshopState(player, blueprintInstances, items),
+});
+
+export const buildBuyWorkshopShopOfferIntentStateKey = (
+  player: Pick<PlayerState, 'playerId' | 'updatedAt' | 'gold' | 'inventory'>,
+  offerCode: string,
+): string => serializeStateKey({
+  action: 'buy_workshop_shop_offer',
+  offerCode,
+  ...summarizeWorkshopShopState(player),
 });
 
 export const buildEquipWorkshopItemIntentStateKey = (

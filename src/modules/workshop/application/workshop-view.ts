@@ -11,6 +11,12 @@ import {
   type WorkshopRepairToolBlueprintDefinition,
   type WorkshopItemView,
 } from '../domain/workshop-catalog';
+import {
+  canBuyWorkshopShopOffer,
+  listWorkshopShopOffers,
+  resolveWorkshopShopOfferMissingDust,
+  type WorkshopShopOfferDefinition,
+} from '../domain/workshop-shop';
 
 export interface WorkshopBlueprintEntryView {
   readonly instance: PlayerBlueprintInstanceView;
@@ -35,11 +41,18 @@ export interface WorkshopCraftedItemEntryView {
   readonly availableRepairTools: readonly WorkshopRepairToolEntryView[];
 }
 
+export interface WorkshopShopOfferEntryView {
+  readonly offer: WorkshopShopOfferDefinition;
+  readonly canBuy: boolean;
+  readonly missingDust: number;
+}
+
 export interface WorkshopView {
   readonly player: PlayerState;
   readonly blueprints: readonly WorkshopBlueprintEntryView[];
   readonly repairTools: readonly WorkshopRepairToolEntryView[];
   readonly craftedItems: readonly WorkshopCraftedItemEntryView[];
+  readonly shopOffers: readonly WorkshopShopOfferEntryView[];
 }
 
 const hasNoMissingCost = (missingCost: WorkshopBlueprintCost): boolean => Object.keys(missingCost).length === 0;
@@ -112,6 +125,15 @@ const buildCraftedItemEntry = (
   };
 };
 
+const buildShopOfferEntry = (
+  player: PlayerState,
+  offer: WorkshopShopOfferDefinition,
+): WorkshopShopOfferEntryView => ({
+  offer,
+  canBuy: canBuyWorkshopShopOffer(player, offer),
+  missingDust: resolveWorkshopShopOfferMissingDust(player, offer),
+});
+
 export const buildWorkshopView = (
   player: PlayerState,
   blueprintInstances: readonly PlayerBlueprintInstanceView[],
@@ -142,5 +164,6 @@ export const buildWorkshopView = (
     blueprints: availableBlueprints.map(({ instance, blueprint }) => buildBlueprintEntry(player, instance, blueprint)),
     repairTools,
     craftedItems: craftedItems.map((item) => buildCraftedItemEntry(item, repairTools)),
+    shopOffers: listWorkshopShopOffers().map((offer) => buildShopOfferEntry(player, offer)),
   };
 };

@@ -21,6 +21,7 @@ import {
   createPartyJoinCommand,
   createWorkshopCraftCommand,
   createWorkshopRepairCommand,
+  createWorkshopShopCommand,
   gameCommands,
 } from '../commands/catalog';
 import { createRuneKeyboard } from '../keyboards';
@@ -437,6 +438,7 @@ const createServices = (): AppServices => {
     blueprints: [],
     repairTools: [],
     craftedItems: [],
+    shopOffers: [],
   };
   const partyView = {
     id: 'party-1',
@@ -666,6 +668,19 @@ const createServices = (): AppServices => {
         message: 'Создан предмет мастерской.',
       }),
     } as unknown as AppServices['craftWorkshopItem'],
+    buyWorkshopShopOffer: {
+      execute: vi.fn().mockResolvedValue({
+        view: workshopView,
+        acquisitionSummary: {
+          kind: 'workshop_shop_purchase',
+          offerCode: 'healing_pill',
+          title: 'Лавка мастерской',
+          changeLine: 'Куплена пилюля.',
+          nextStepLine: 'Можно выпить позже.',
+        },
+        message: 'Куплена пилюля.',
+      }),
+    } as unknown as AppServices['buyWorkshopShopOffer'],
     repairWorkshopItem: {
       execute: vi.fn().mockResolvedValue({
         view: workshopView,
@@ -2051,6 +2066,26 @@ describe('GameHandler smoke', () => {
       blueprintInstanceId,
       'intent-workshop-craft-1',
       'state-workshop-craft-1',
+      'payload',
+    );
+  });
+
+  it('пробрасывает intentId для покупки в лавке мастерской через transport payload', async () => {
+    const services = createServices();
+    const handler = new GameHandler(services);
+    const ctx = createFakeContext({
+      command: createWorkshopShopCommand('healing_pill'),
+      intentId: 'intent-workshop-shop-1',
+      stateKey: 'state-workshop-shop-1',
+    });
+
+    await handler.handle(ctx as never);
+
+    expect(services.buyWorkshopShopOffer.execute).toHaveBeenCalledWith(
+      1001,
+      'healing_pill',
+      'intent-workshop-shop-1',
+      'state-workshop-shop-1',
       'payload',
     );
   });

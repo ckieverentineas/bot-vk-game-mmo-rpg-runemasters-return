@@ -10,6 +10,7 @@ import {
   resolveUseConsumableCommand,
   resolveWorkshopCraftCommand,
   resolveWorkshopRepairCommand,
+  resolveWorkshopShopCommand,
 } from '../commands/catalog';
 
 export interface ResolvedCommandEnvelope {
@@ -85,6 +86,7 @@ const legacyTextIntentMatchers: readonly LegacyTextIntentMatcher[] = [
   (command) => resolveUseConsumableCommand(command) !== null,
   (command) => resolveWorkshopCraftCommand(command) !== null,
   (command) => resolveWorkshopRepairCommand(command) !== null,
+  (command) => resolveWorkshopShopCommand(command) !== null,
 ];
 
 const supportsLegacyTextIntent = (command: string): boolean => (

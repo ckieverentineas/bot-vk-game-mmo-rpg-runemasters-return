@@ -36,6 +36,7 @@ import { UnequipCurrentRune } from '../modules/runes/application/use-cases/Unequ
 import { PrismaGameRepository } from '../modules/shared/infrastructure/prisma/PrismaGameRepository';
 import { SystemGameRandom } from '../modules/shared/infrastructure/random/SystemGameRandom';
 import { RepositoryGameTelemetry } from '../modules/shared/infrastructure/telemetry/RepositoryGameTelemetry';
+import { BuyWorkshopShopOffer } from '../modules/workshop/application/use-cases/BuyWorkshopShopOffer';
 import { CraftWorkshopItem } from '../modules/workshop/application/use-cases/CraftWorkshopItem';
 import { EquipWorkshopItem } from '../modules/workshop/application/use-cases/EquipWorkshopItem';
 import { GetWorkshop } from '../modules/workshop/application/use-cases/GetWorkshop';
@@ -83,6 +84,7 @@ export interface AppServices {
   getWorkshop: GetWorkshop;
   craftWorkshopItem: CraftWorkshopItem;
   repairWorkshopItem: RepairWorkshopItem;
+  buyWorkshopShopOffer: BuyWorkshopShopOffer;
   equipWorkshopItem: EquipWorkshopItem;
   unequipWorkshopItem: UnequipWorkshopItem;
 }
@@ -133,6 +135,7 @@ export const createAppServices = (): AppServices => {
     getWorkshop: new GetWorkshop(repository),
     craftWorkshopItem: new CraftWorkshopItem(repository),
     repairWorkshopItem: new RepairWorkshopItem(repository),
+    buyWorkshopShopOffer: new BuyWorkshopShopOffer(repository),
     equipWorkshopItem: new EquipWorkshopItem(repository),
     unequipWorkshopItem: new UnequipWorkshopItem(repository),
   };

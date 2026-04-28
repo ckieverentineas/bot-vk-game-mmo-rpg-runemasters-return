@@ -9,6 +9,7 @@ import {
   resolveRuneStatRerollCommand,
   resolveWorkshopCraftCommand,
   resolveWorkshopRepairCommand,
+  resolveWorkshopShopCommand,
 } from '../commands/catalog';
 import {
   createEntryKeyboard,
@@ -48,6 +49,7 @@ export const recoverableCommandErrorCodes = new Set([
   'not_enough_rune_resources',
   'not_enough_crafting_resources',
   'not_enough_workshop_resources',
+  'not_enough_dust',
   'workshop_blueprint_unavailable',
   'workshop_item_not_repairable',
   'not_enough_shards',
@@ -78,6 +80,7 @@ const isWorkshopCommand = (command: string): boolean => (
   || resolveCraftingRecipeCommand(command) !== null
   || resolveWorkshopCraftCommand(command) !== null
   || resolveWorkshopRepairCommand(command) !== null
+  || resolveWorkshopShopCommand(command) !== null
 );
 
 export const recoveryRules: readonly RecoveryRule[] = [

@@ -552,6 +552,7 @@ describe('messages school-first onboarding framing', () => {
           availableRepairTools: [],
         },
       ],
+      shopOffers: [],
     });
 
     expect(message).toContain('📌 Сейчас');
