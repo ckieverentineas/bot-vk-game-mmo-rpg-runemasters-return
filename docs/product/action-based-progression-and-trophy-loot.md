@@ -493,7 +493,7 @@ Player-facing decision:
 - `начать`, `исследовать` и отдельная команда `добыча` возвращают к несобранной награде;
 - выбранное trophy action собирается exact-once и переводит ledger в `APPLIED`;
 - `claim_all` даёт быстрый безопасный сбор без skill progress;
-- первый hidden school pool добавляет `🔥 Вытянуть знак Пламени` для `ash-seer`, если экипирована школа Пламени; reward preview фиксируется в pending snapshot как +2 essence и рост `gathering.essence_extraction`;
+- первый hidden school pool покрывает novice enemy-срез четырёх стартовых школ: `🔥 Вытянуть знак Пламени`, `🧱 Выбить печать Тверди`, `🌪️ Перехватить шквальный след` и `🔮 Считать предзнаменование` появляются только при matching equipped school в одном из двух слотов рун; reward preview фиксируется в pending snapshot и остаётся exact-once;
 - первый skill-threshold unlock добавляет `🔪 Аккуратно снять шкуру` для `wolf`, если `gathering.skinning >= 10`; reward preview фиксируется в pending snapshot как +3 leather, +1 bone и рост `gathering.skinning`;
 - reagent threshold добавляет `🧪 Отделить чистый реагент` для `slime`, если `gathering.reagent_gathering >= 10`; reward preview усиливает `essence` или `herb` и остаётся в том же pending snapshot;
 - essence threshold добавляет `✨ Стабилизировать эссенцию` для `spirit` / `mage`, если `gathering.essence_extraction >= 10`; reward preview усиливает `essence`;
@@ -502,7 +502,7 @@ Player-facing decision:
 
 Что всё ещё не входит:
 
-- hidden school pools за пределами первого Ember / ash-seer среза;
+- глубокие hidden school pools за пределами первого novice enemy-среза;
 - глубокие многоступенчатые threshold-лестницы за пределами первых срезов по `skinning`, `reagent_gathering` и `essence_extraction`;
 - action-based stat growth;
 - глубокая роль навыков в профиле, сборке и будущих unlock'ах.
@@ -531,7 +531,7 @@ Player-facing decision:
 18. Done: `feat: add essence extraction skill growth depth`
 19. Done: `docs: define skill display style`
 20. Done: `feat: add ember hidden trophy pool`
-21. Later: `feat: expand hidden drop pools by school`
+21. Done: `feat: expand novice hidden drop pools by school`
 22. Done: `feat: unlock trophy action by skill threshold`
 23. Done: `feat: expand trophy action skill thresholds`
 24. Done: `feat: add trophy skill quality thresholds`

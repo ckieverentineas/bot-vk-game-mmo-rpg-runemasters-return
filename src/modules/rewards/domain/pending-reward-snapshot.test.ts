@@ -67,6 +67,24 @@ const thresholdTrophyActions: readonly TrophyActionDefinition[] = [
 
 const expandedTrophyActions: readonly TrophyActionDefinition[] = [
   {
+    code: 'break_stone_seal',
+    label: '🧱 Выбить печать Тверди',
+    skillCodes: ['gathering.reagent_gathering'],
+    visibleRewardFields: ['bone', 'metal'],
+  },
+  {
+    code: 'catch_gale_trace',
+    label: '🌪️ Перехватить шквальный след',
+    skillCodes: ['gathering.essence_extraction'],
+    visibleRewardFields: ['herb', 'essence'],
+  },
+  {
+    code: 'read_omen_mark',
+    label: '🔮 Считать предзнаменование',
+    skillCodes: ['gathering.essence_extraction'],
+    visibleRewardFields: ['herb', 'essence'],
+  },
+  {
     code: 'refine_slime_core',
     label: '🧪 Отделить чистый реагент',
     skillCodes: ['gathering.reagent_gathering'],
@@ -335,6 +353,9 @@ describe('pending reward snapshots', () => {
     );
 
     expect(snapshot.trophyActions.map((action) => action.code)).toEqual([
+      'break_stone_seal',
+      'catch_gale_trace',
+      'read_omen_mark',
       'refine_slime_core',
       'stabilize_essence',
       'salvage_armor',

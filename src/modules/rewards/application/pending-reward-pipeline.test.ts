@@ -15,6 +15,7 @@ import {
   createPendingRewardLedgerForBattle,
   findPendingRewardTrophyAction,
   resolveBattlePlayerSchoolCode,
+  resolveBattlePlayerSchoolCodes,
 } from './pending-reward-pipeline';
 
 const createVictoryBattle = () => createTestBattle({
@@ -216,5 +217,66 @@ describe('pending reward pipeline', () => {
 
     expect(defeatLedger).toBeNull();
     expect(resolveBattlePlayerSchoolCode(schoolBattle)).toBe('ember');
+    expect(resolveBattlePlayerSchoolCodes(schoolBattle)).toEqual(['ember']);
+  });
+
+  it('uses both equipped rune schools when resolving hidden trophy actions', () => {
+    const battle = createTestBattle({
+      status: 'COMPLETED',
+      result: 'VICTORY',
+      player: createTestBattlePlayerSnapshot({
+        runeLoadout: {
+          runeId: 'rune-1',
+          runeName: 'Test ember rune',
+          runeRarity: 'USUAL',
+          archetypeCode: 'ember',
+          archetypeName: 'Штурм',
+          schoolCode: 'ember',
+          passiveAbilityCodes: [],
+          activeAbility: null,
+        },
+        supportRuneLoadout: {
+          runeId: 'rune-2',
+          runeName: 'Test gale rune',
+          runeRarity: 'USUAL',
+          archetypeCode: 'gale',
+          archetypeName: 'Налётчик',
+          schoolCode: 'gale',
+          passiveAbilityCodes: [],
+          activeAbility: null,
+        },
+      }),
+      enemy: createTestBattleEnemySnapshot({
+        code: 'storm-lynx',
+        kind: 'wolf',
+        currentHealth: 0,
+        lootTable: {
+          leather: 1,
+          herb: 1,
+          essence: 1,
+        },
+      }),
+      rewards: {
+        experience: 8,
+        gold: 3,
+        shards: {
+          USUAL: 1,
+        },
+        droppedRune: null,
+      },
+    });
+
+    const ledger = createPendingRewardLedgerForBattle({
+      playerId: 1,
+      battle,
+      createdAt: testTimestamp,
+    });
+
+    expect(resolveBattlePlayerSchoolCodes(battle)).toEqual(['ember', 'gale']);
+    expect(ledger?.pendingRewardSnapshot.trophyActions.map((action) => action.code)).toEqual([
+      'catch_gale_trace',
+      'skin_beast',
+      'claim_all',
+    ]);
   });
 });

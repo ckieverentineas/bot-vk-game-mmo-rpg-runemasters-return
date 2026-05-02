@@ -37,6 +37,9 @@ export const gameCommands = {
   gatherSlimeReward: 'собрать слизь',
   extractEssenceReward: 'извлечь эссенцию',
   drawEmberSignReward: 'вытянуть знак',
+  breakStoneSealReward: 'выбить печать тверди',
+  catchGaleTraceReward: 'перехватить шквал',
+  readOmenMarkReward: 'считать предзнаменование',
   refineSlimeCoreReward: 'отделить реагент',
   stabilizeEssenceReward: 'стабилизировать эссенцию',
   salvageArmorReward: 'разобрать доспех',
@@ -185,6 +188,9 @@ type TrophyActionCommand =
   | typeof gameCommands.gatherSlimeReward
   | typeof gameCommands.extractEssenceReward
   | typeof gameCommands.drawEmberSignReward
+  | typeof gameCommands.breakStoneSealReward
+  | typeof gameCommands.catchGaleTraceReward
+  | typeof gameCommands.readOmenMarkReward
   | typeof gameCommands.refineSlimeCoreReward
   | typeof gameCommands.stabilizeEssenceReward
   | typeof gameCommands.salvageArmorReward
@@ -257,6 +263,9 @@ const trophyActionCommandMap = {
   [gameCommands.gatherSlimeReward]: 'gather_slime',
   [gameCommands.extractEssenceReward]: 'extract_essence',
   [gameCommands.drawEmberSignReward]: 'draw_ember_sign',
+  [gameCommands.breakStoneSealReward]: 'break_stone_seal',
+  [gameCommands.catchGaleTraceReward]: 'catch_gale_trace',
+  [gameCommands.readOmenMarkReward]: 'read_omen_mark',
   [gameCommands.refineSlimeCoreReward]: 'refine_slime_core',
   [gameCommands.stabilizeEssenceReward]: 'stabilize_essence',
   [gameCommands.salvageArmorReward]: 'salvage_armor',
@@ -274,6 +283,9 @@ const trophyActionCodeCommandMap = {
   gather_slime: gameCommands.gatherSlimeReward,
   extract_essence: gameCommands.extractEssenceReward,
   draw_ember_sign: gameCommands.drawEmberSignReward,
+  break_stone_seal: gameCommands.breakStoneSealReward,
+  catch_gale_trace: gameCommands.catchGaleTraceReward,
+  read_omen_mark: gameCommands.readOmenMarkReward,
   refine_slime_core: gameCommands.refineSlimeCoreReward,
   stabilize_essence: gameCommands.stabilizeEssenceReward,
   salvage_armor: gameCommands.salvageArmorReward,

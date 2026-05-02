@@ -98,12 +98,12 @@ Fail the slice if any of these happen:
 - `🔪 Аккуратно снять шкуру` appears below `gathering.skinning >= 10` or stays hidden at/above the threshold;
 - `🧪 Отделить чистый реагент` appears below `gathering.reagent_gathering >= 10` or stays hidden at/above the threshold;
 - `✨ Стабилизировать эссенцию` appears below `gathering.essence_extraction >= 10` or stays hidden at/above the threshold;
-- the Ember hidden action appears without the Ember/`ash-seer` condition.
+- a school hidden action appears without its matching school and novice enemy condition.
 
 ## Out Of Scope For This Pass
 
 - action-based stat growth;
-- hidden school pools beyond the first Ember / `ash-seer` slice;
+- deep hidden school pools beyond the first novice enemy slice;
 - deeper multi-rank threshold ladders beyond the first skinning/reagent/essence slices;
 - broad balance tuning or drop-rate review;
 - profile copy rewrites beyond confirming that skill progress is readable.

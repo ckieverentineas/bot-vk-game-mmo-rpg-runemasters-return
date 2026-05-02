@@ -272,6 +272,67 @@ describe('resolveTrophyActions', () => {
     ]);
   });
 
+  it.each([
+    [
+      'stone',
+      'boar',
+      'stonehorn-ram',
+      {
+        code: 'break_stone_seal',
+        label: '🧱 Выбить печать Тверди',
+        skillCodes: ['gathering.reagent_gathering'],
+        visibleRewardFields: ['bone', 'metal'],
+      },
+      'skin_beast',
+    ],
+    [
+      'gale',
+      'wolf',
+      'storm-lynx',
+      {
+        code: 'catch_gale_trace',
+        label: '🌪️ Перехватить шквальный след',
+        skillCodes: ['gathering.essence_extraction'],
+        visibleRewardFields: ['herb', 'essence'],
+      },
+      'skin_beast',
+    ],
+    [
+      'echo',
+      'spirit',
+      'blind-augur',
+      {
+        code: 'read_omen_mark',
+        label: '🔮 Считать предзнаменование',
+        skillCodes: ['gathering.essence_extraction'],
+        visibleRewardFields: ['herb', 'essence'],
+      },
+      'extract_essence',
+    ],
+  ] as const)('offers a %s hidden trophy action for its novice enemy', (
+    equippedSchoolCode,
+    kind,
+    code,
+    hiddenAction,
+    contextualActionCode,
+  ) => {
+    expect(resolveTrophyActions({
+      kind,
+      code,
+      equippedSchoolCode,
+    }).map((action) => action.code)).toEqual([
+      hiddenAction.code,
+      contextualActionCode,
+      'claim_all',
+    ]);
+
+    expect(resolveTrophyActions({
+      kind,
+      code,
+      equippedSchoolCode,
+    })[0]).toEqual(hiddenAction);
+  });
+
   it('keeps the ember hidden trophy action locked without the ember school', () => {
     expect(resolveTrophyActions({
       kind: 'mage',
@@ -281,6 +342,24 @@ describe('resolveTrophyActions', () => {
       'extract_essence',
       'claim_all',
     ]);
+  });
+
+  it.each([
+    ['stone', 'boar', 'stonehorn-ram', 'gale', ['skin_beast', 'claim_all']],
+    ['gale', 'wolf', 'storm-lynx', 'echo', ['skin_beast', 'claim_all']],
+    ['echo', 'spirit', 'blind-augur', 'ember', ['extract_essence', 'claim_all']],
+  ] as const)('keeps the %s hidden trophy action locked without the matching school', (
+    _schoolCode,
+    kind,
+    code,
+    equippedSchoolCode,
+    expectedActionCodes,
+  ) => {
+    expect(resolveTrophyActions({
+      kind,
+      code,
+      equippedSchoolCode,
+    }).map((action) => action.code)).toEqual(expectedActionCodes);
   });
 
   it('models fallback collection as ordinary material loot without skill progress', () => {
@@ -748,6 +827,88 @@ describe('resolveTrophyActions', () => {
       skillPoints: [
         {
           skillCode: 'gathering.essence_extraction',
+          points: 2,
+        },
+      ],
+    });
+  });
+
+  it.each([
+    [
+      'stone',
+      'boar',
+      'stonehorn-ram',
+      'break_stone_seal',
+      {
+        leather: 2,
+        bone: 1,
+        metal: 1,
+      },
+      {
+        bone: 1,
+        metal: 2,
+      },
+      'gathering.reagent_gathering',
+    ],
+    [
+      'gale',
+      'wolf',
+      'storm-lynx',
+      'catch_gale_trace',
+      {
+        leather: 1,
+        herb: 1,
+        essence: 1,
+      },
+      {
+        herb: 1,
+        essence: 2,
+      },
+      'gathering.essence_extraction',
+    ],
+    [
+      'echo',
+      'spirit',
+      'blind-augur',
+      'read_omen_mark',
+      {
+        herb: 1,
+        essence: 2,
+      },
+      {
+        herb: 1,
+        essence: 3,
+      },
+      'gathering.essence_extraction',
+    ],
+  ] as const)('resolves the %s hidden trophy reward before the pending snapshot is persisted', (
+    equippedSchoolCode,
+    kind,
+    code,
+    actionCode,
+    lootTable,
+    inventoryDelta,
+    skillCode,
+  ) => {
+    const action = resolveTrophyActions({
+      kind,
+      code,
+      equippedSchoolCode,
+    }).find((candidate) => candidate.code === actionCode);
+
+    expect(resolveTrophyActionReward({
+      kind,
+      code,
+      equippedSchoolCode,
+      isElite: true,
+      isBoss: false,
+      lootTable,
+    }, action!)).toEqual({
+      actionCode,
+      inventoryDelta,
+      skillPoints: [
+        {
+          skillCode,
           points: 2,
         },
       ],

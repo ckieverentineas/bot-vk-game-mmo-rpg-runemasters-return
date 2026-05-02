@@ -314,11 +314,12 @@ School copy должна отвечать на три вопроса:
 - release evidence видит раннюю цепочку до `RARE seal`;
 - Пламя и Твердь имеют первый locked starter synergy;
 - Буря и Прорицание имеют ранний path и первый mastery promise.
+- первые school-specific hidden trophy actions покрывают novice enemy-срез всех четырёх школ: Пламя вытягивает знак, Твердь выбивает печать, Буря перехватывает след, Прорицание считывает предзнаменование.
 
 Открыто:
 
 - deeper Буря / Прорицание packages;
-- новые school-specific hidden trophy pools за пределами первого Ember-slice;
+- глубокие school-specific hidden trophy pools за пределами первого novice enemy-среза;
 - cross-school synergies;
 - late rarity school promises;
 - full doctrine tree.

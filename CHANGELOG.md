@@ -14,6 +14,7 @@
 
 ### Added
 
+- school-specific hidden trophy pools расширены до четырёх стартовых школ: Твердь, Буря и Прорицание получили свои novice enemy-действия поверх существующего pending reward rail, с reward preview, exact-once snapshot-кодами и доменными тестами;
 - R8 release gate 1.0: добавлен `npm run release:gate`, который последовательно запускает `db:generate`, `db:deploy`, `check`, `release:local-playtest`, `release:school-evidence`, `release:evidence` и `release:preflight`, а затем блокирует выпуск при blocker findings, незаписанных manual decisions, красных дырах в документах или критических content ошибках;
 - R8 release docs: добавлены ручной playtest-гайд 1.0, economy source/sink таблица, release doc sync и `docs/release/manual-decisions.json` для явных release-owner решений;
 

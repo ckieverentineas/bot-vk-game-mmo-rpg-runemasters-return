@@ -53,6 +53,19 @@ export const resolveBattlePlayerSchoolCode = (battle: BattleView): string | null
   ?? null
 );
 
+export const resolveBattlePlayerSchoolCodes = (battle: BattleView): readonly string[] => {
+  const schoolCodes = [
+    battle.player.runeLoadout?.schoolCode
+      ?? getSchoolDefinitionForArchetype(battle.player.runeLoadout?.archetypeCode)?.code
+      ?? null,
+    battle.player.supportRuneLoadout?.schoolCode
+      ?? getSchoolDefinitionForArchetype(battle.player.supportRuneLoadout?.archetypeCode)?.code
+      ?? null,
+  ];
+
+  return [...new Set(schoolCodes.filter((schoolCode): schoolCode is string => schoolCode !== null))];
+};
+
 const createTrophyActionSkillExperienceMap = (
   skills: readonly PlayerSkillView[] | undefined,
 ): TrophyActionSkillExperienceMap => {
@@ -72,6 +85,7 @@ const createTrophyActionEnemyContext = (
   kind: battle.enemy.kind,
   code: battle.enemy.code,
   equippedSchoolCode: resolveBattlePlayerSchoolCode(battle),
+  equippedSchoolCodes: resolveBattlePlayerSchoolCodes(battle),
   skillExperiences: createTrophyActionSkillExperienceMap(playerSkills),
 });
 

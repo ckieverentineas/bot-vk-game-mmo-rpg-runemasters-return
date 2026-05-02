@@ -13,6 +13,9 @@ export type TrophyActionCode =
   | 'gather_slime'
   | 'extract_essence'
   | 'draw_ember_sign'
+  | 'break_stone_seal'
+  | 'catch_gale_trace'
+  | 'read_omen_mark'
   | 'careful_skinning'
   | 'refine_slime_core'
   | 'stabilize_essence'
@@ -36,6 +39,7 @@ export interface TrophyActionEnemyContext {
   readonly kind: string;
   readonly code?: string | null;
   readonly equippedSchoolCode?: string | null;
+  readonly equippedSchoolCodes?: readonly string[];
   readonly skillExperiences?: TrophyActionSkillExperienceMap;
 }
 
@@ -63,6 +67,14 @@ interface TrophyActionQualityPayoff {
   readonly rewardField: MaterialField;
 }
 
+interface HiddenTrophyActionRule {
+  readonly enemyCode: string;
+  readonly schoolCode: string;
+  readonly action: TrophyActionDefinition;
+  readonly bonusField: MaterialField;
+  readonly fallbackBonusField?: MaterialField;
+}
+
 const trophyActionQualityPayoffs: readonly TrophyActionQualityPayoff[] = [
   {
     actionCode: 'skin_beast',
@@ -88,6 +100,27 @@ const drawEmberSignAction: TrophyActionDefinition = {
   label: '🔥 Вытянуть знак Пламени',
   skillCodes: ['gathering.essence_extraction'],
   visibleRewardFields: ['essence'],
+};
+
+const breakStoneSealAction: TrophyActionDefinition = {
+  code: 'break_stone_seal',
+  label: '🧱 Выбить печать Тверди',
+  skillCodes: ['gathering.reagent_gathering'],
+  visibleRewardFields: ['bone', 'metal'],
+};
+
+const catchGaleTraceAction: TrophyActionDefinition = {
+  code: 'catch_gale_trace',
+  label: '🌪️ Перехватить шквальный след',
+  skillCodes: ['gathering.essence_extraction'],
+  visibleRewardFields: ['herb', 'essence'],
+};
+
+const readOmenMarkAction: TrophyActionDefinition = {
+  code: 'read_omen_mark',
+  label: '🔮 Считать предзнаменование',
+  skillCodes: ['gathering.essence_extraction'],
+  visibleRewardFields: ['herb', 'essence'],
 };
 
 const carefulSkinningAction: TrophyActionDefinition = {
@@ -202,6 +235,36 @@ const trophyActionsByEnemyKind: Readonly<Record<string, readonly TrophyActionDef
   ],
 };
 
+const hiddenTrophyActionRules: readonly HiddenTrophyActionRule[] = [
+  {
+    enemyCode: 'ash-seer',
+    schoolCode: 'ember',
+    action: drawEmberSignAction,
+    bonusField: 'essence',
+  },
+  {
+    enemyCode: 'stonehorn-ram',
+    schoolCode: 'stone',
+    action: breakStoneSealAction,
+    bonusField: 'metal',
+    fallbackBonusField: 'bone',
+  },
+  {
+    enemyCode: 'storm-lynx',
+    schoolCode: 'gale',
+    action: catchGaleTraceAction,
+    bonusField: 'essence',
+    fallbackBonusField: 'herb',
+  },
+  {
+    enemyCode: 'blind-augur',
+    schoolCode: 'echo',
+    action: readOmenMarkAction,
+    bonusField: 'essence',
+    fallbackBonusField: 'herb',
+  },
+];
+
 const hasSkillExperience = (
   enemy: TrophyActionEnemyContext,
   skillCode: PlayerSkillCode,
@@ -212,6 +275,14 @@ const hasSkillExperience = (
 
 const isEssenceThresholdEnemy = (enemy: TrophyActionEnemyContext): boolean => (
   enemy.kind === 'spirit' || enemy.kind === 'mage'
+);
+
+const hasEquippedSchool = (
+  enemy: TrophyActionEnemyContext,
+  schoolCode: string,
+): boolean => (
+  enemy.equippedSchoolCode === schoolCode
+  || (enemy.equippedSchoolCodes ?? []).includes(schoolCode)
 );
 
 const resolveSkillThresholdTrophyActions = (
@@ -249,11 +320,9 @@ const resolveSkillThresholdTrophyActions = (
 const resolveHiddenTrophyActions = (
   enemy: TrophyActionEnemyContext,
 ): readonly TrophyActionDefinition[] => {
-  if (enemy.code === 'ash-seer' && enemy.equippedSchoolCode === 'ember') {
-    return [drawEmberSignAction];
-  }
-
-  return [];
+  return hiddenTrophyActionRules
+    .filter((rule) => rule.enemyCode === enemy.code && hasEquippedSchool(enemy, rule.schoolCode))
+    .map((rule) => rule.action);
 };
 
 const resolveTrophyActionQualityPayoff = (
@@ -476,28 +545,57 @@ const applyEssenceExtractionRewardVariation = (
   };
 };
 
-const applyEmberHiddenRewardVariation = (
+const findHiddenTrophyActionRule = (
   enemy: TrophyActionRewardEnemyContext,
   action: TrophyActionDefinition,
+): HiddenTrophyActionRule | undefined => (
+  hiddenTrophyActionRules.find((rule) => (
+    rule.action.code === action.code
+    && rule.enemyCode === enemy.code
+    && hasEquippedSchool(enemy, rule.schoolCode)
+  ))
+);
+
+const addHiddenTrophyBonus = (
   inventoryDelta: InventoryDelta,
+  rule: HiddenTrophyActionRule,
 ): InventoryDelta => {
-  if (
-    action.code !== 'draw_ember_sign'
-    || enemy.code !== 'ash-seer'
-    || enemy.equippedSchoolCode !== 'ember'
-  ) {
+  const bonusAmount = inventoryDelta[rule.bonusField] ?? 0;
+
+  if (bonusAmount > 0) {
+    return {
+      ...inventoryDelta,
+      [rule.bonusField]: bonusAmount + 1,
+    };
+  }
+
+  if (!rule.fallbackBonusField) {
     return inventoryDelta;
   }
 
-  const essence = inventoryDelta.essence ?? 0;
-  if (essence <= 0) {
+  const fallbackAmount = inventoryDelta[rule.fallbackBonusField] ?? 0;
+  if (fallbackAmount <= 0) {
     return inventoryDelta;
   }
 
   return {
     ...inventoryDelta,
-    essence: essence + 1,
+    [rule.fallbackBonusField]: fallbackAmount + 1,
   };
+};
+
+const applyHiddenSchoolRewardVariation = (
+  enemy: TrophyActionRewardEnemyContext,
+  action: TrophyActionDefinition,
+  inventoryDelta: InventoryDelta,
+): InventoryDelta => {
+  const hiddenRule = findHiddenTrophyActionRule(enemy, action);
+
+  if (!hiddenRule) {
+    return inventoryDelta;
+  }
+
+  return addHiddenTrophyBonus(inventoryDelta, hiddenRule);
 };
 
 const applySkillQualityRewardVariation = (
@@ -534,7 +632,7 @@ const trophyRewardVariationResolvers: readonly TrophyRewardVariationResolver[] =
   applyStabilizedEssenceRewardVariation,
   applyReagentGatheringRewardVariation,
   applyEssenceExtractionRewardVariation,
-  applyEmberHiddenRewardVariation,
+  applyHiddenSchoolRewardVariation,
   applySkillQualityRewardVariation,
 ];
 
